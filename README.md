@@ -31,15 +31,16 @@ Run `npm run seed` before each pitch to reset the data. Sample bookings are date
 The hotel login page also has one-click demo login buttons.
 
 ## What it does
-- **Guest flow:** search by area, date and pass type. Then open a listing and pick a date and pass (Pool $45, Pool + Daybed $75, Spa + Pool $120). Remaining spots update live from `/api/availability`. Enter your details and go through the mock checkout ("Demo payment, no charge"). The confirmation page shows an `HDC-xxxxx` code and a QR code.
+- **Guest flow:** search by area, date and pass type. Then open a listing and pick a date and pass (Pool $45, Pool + Daybed $75, Spa + Pool $120). Optional add-ons (gym, parking, a food and drink credit, a cabana, a towel and robe pack, late access) can be added on the listing and at checkout, and the total updates. Remaining spots update live from `/api/availability`. Enter your details and go through the mock checkout ("Demo payment, no charge"). The confirmation page shows an `HDC-xxxxx` code, any add-ons, and a QR code.
 - **Availability:** each pass type has a daily cap, and remaining spots = cap − booked. Blocked dates, past dates and sold-out passes can't be booked. The server re-checks availability inside a SQLite transaction, so the last spot can't be sold twice.
 - **Demo props:** The Saltwater Terrace's Pool + Daybed is sold out 3 days from today. Each hotel has blocked dates (a private event and pool maintenance).
-- **Hotel dashboard (`/hotel`):** stats (passes sold, gross, hotel share at 75%, platform commission at 25%), today's guest list with check-in buttons, a booking lookup (by code, name, email or phone), a 14-day availability grid, upcoming guests, price and daily-cap editing, and a month calendar for blocking or unblocking dates, including a range.
-- **Admin (`/admin`):** all bookings across hotels, totals per hotel, and commission totals, with filters by hotel and by code, name or email.
+- **Hotel dashboard (`/hotel`):** stats (passes sold, gross including add-ons, hotel share at 75%, platform commission at 25%), today's guest list with check-in and add-ons, a booking lookup (by code, name, email or phone), a 14-day availability grid, upcoming guests, price and daily-cap editing, add-on prices and caps, and a month calendar for blocking or unblocking dates, including a range.
+- **Admin (`/admin`):** all bookings across hotels, totals per hotel, and commission totals at 25% of gross (including add-ons), with filters by hotel and by code, name or email.
+- **How it works (`/how-it-works`):** guest steps, hotel partner terms, and an FAQ. Linked from the header and the footer.
 
 ## Going live: what's still needed
 1. **Hosting:** Vercel (porting to Next.js is straightforward because routes map one to one) or Render or Fly.io for this Express app as is.
-2. **Hosted database:** Supabase Postgres (or Neon). Swap `better-sqlite3` for Postgres or Prisma. The schema is in `db.js` and is four tables.
+2. **Hosted database:** Supabase Postgres (or Neon). Swap `better-sqlite3` for Postgres or Prisma. The schema is in `db.js`.
 3. **Payments: Stripe Connect.** Onboard each hotel as an Express connected account. Use destination charges with `application_fee_amount` = 25%, so 75% goes to the hotel. Add webhooks to confirm bookings, plus refunds and cancellations.
 4. **Real auth:** proper hotel staff accounts with hashed passwords or magic links, roles, and password reset (for example Supabase Auth). The demo uses plaintext seeded passwords and signed cookies.
 5. **Email and SMS confirmations** (for example Postmark or Resend, and Twilio), and a phone-camera QR scanner for check-in.

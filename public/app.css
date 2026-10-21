@@ -126,6 +126,40 @@ code{background:#EEF1F5;padding:1px 6px;border-radius:6px;font-size:.88em}
   .block-cal button.day{min-height:44px;font-size:1rem;border-radius:12px}
   .cal-pop form{padding:14px 12px 16px}
 }
+.hdr-nav{display:flex}
+.ftr-in{display:flex;flex-direction:column;gap:14px}
+.ftr-links{display:flex;flex-wrap:wrap;gap:8px 18px;font-weight:600}
+.ftr-links a:hover{text-decoration:underline;text-underline-offset:3px}
+.addon-note{font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:2px 0 8px}
+.addon-pick{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.addon-lines{list-style:none;display:grid;gap:6px;margin:0 0 8px}
+.addon-lines li{display:flex;justify-content:space-between;gap:12px;font-size:.92rem}
+.ticket-adds{padding:4px 20px 16px}
+.ticket-adds b{display:block;margin-bottom:6px}
+.ticket-adds ul{list-style:none;display:grid;gap:6px}
+.ticket-adds li{display:flex;justify-content:space-between;gap:12px}
+.hiw-hero{padding:36px 0 8px}
+.hiw-hero .lead{max-width:640px;margin-top:8px}
+.hiw-jumps{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.hiw-jumps a{border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-weight:700;background:#fff}
+.hiw-jumps a:hover{border-color:var(--navy)}
+.hiw-block{padding:36px 0}
+.hiw-block h2,.hiw-band h2{margin-bottom:14px}
+.hiw-band{background:var(--navy);color:#E4EEF6;padding:48px 0;margin-top:8px}
+.hiw-band h2{color:#fff}
+.hiw-lead{max-width:640px;margin:-4px 0 18px;color:#C5D4E4}
+.partner-grid{display:grid;gap:12px}
+.partner-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:var(--r);padding:16px 18px}
+.partner-card b{display:block;color:#fff;margin-bottom:4px}
+.partner-card p{color:#C5D4E4;font-size:.95rem}
+.faq{display:grid;gap:10px}
+.faq details{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh-1)}
+.faq summary{cursor:pointer;font-weight:700;color:var(--navy);font-size:1.05rem}
+.faq details p{margin-top:8px;color:var(--ink)}
+#addons input[type=checkbox]{width:20px;height:20px;accent-color:var(--navy)}
+@media(min-width:760px){.partner-grid{grid-template-columns:1fr 1fr}.hiw-hero{padding-top:48px}#guests .how-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:800px){.nav-explore{display:none}}
+@media(max-width:560px){.hdr-nav a{padding:8px 8px;font-size:.82rem}.hiw-band{padding:32px 0}.partner-card{padding:14px}}
 @media(min-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
 .l-hd{display:block}
 .tbl td:first-child{white-space:nowrap}
