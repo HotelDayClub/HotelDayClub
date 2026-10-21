@@ -431,7 +431,7 @@ function spotCard(s, index, locked) {
 <label class="fl">Name<input name="spot_name" value="${esc(s.name || '')}" maxlength="40" required></label>
 <label class="fl">People it holds<input name="holds" type="number" min="1" max="12" value="${s.holds || 1}" required></label>
 <label class="fl">Price (AUD)<input name="price" type="number" min="0" step="1" value="${s.price ?? ''}" required></label>
-<label class="fl">Per day<input name="cap" type="number" min="0" step="1" data-code="${esc(s.code || '')}" value="${s.daily_cap ?? ''}" required></label>
+<label class="fl">Each day<input name="cap" type="number" min="0" step="1" data-code="${esc(s.code || '')}" value="${s.daily_cap ?? ''}" required></label>
 <label class="fl">Photo<select name="photo"><option value="">No photo</option>${PHOTOS.map(([f, l]) => `<option value="${f}" ${s.photo === f ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
 </div>
 <label class="fl">Description<input name="spot_desc" maxlength="180" value="${esc(s.description || '')}" placeholder="What is included with this spot"></label></div>`;
@@ -442,7 +442,8 @@ function offeringForm({ action, hotel, spots, hours, account, error, lockedIds }
   const rows = hours && hours.length ? hours : defaultHours();
   return `<form class="offer" id="settings" method="post" action="${esc(action)}">
 ${error ? `<div class="alert">${esc(error)}</div>` : ''}
-<h2>Hotel</h2>
+<nav class="form-jumps"><a href="#sec-hotel">Hotel</a><a href="#sec-seating">Seating</a><a href="#sec-hours">Hours</a><a href="#sec-rules">Rules</a></nav>
+<h2 id="sec-hotel">Hotel</h2>
 <label class="fl">Hotel name<input name="hotel_name" required maxlength="80" value="${esc(h.name || '')}"></label>
 <div class="two"><label class="fl">Neighbourhood<input name="area" required maxlength="60" value="${esc(h.area || '')}" placeholder="Eastern Beaches"></label>
 <label class="fl">Contact name<input name="contact_name" maxlength="80" value="${esc(h.contact_name || '')}"></label></div>
@@ -452,12 +453,12 @@ ${error ? `<div class="alert">${esc(error)}</div>` : ''}
 ${account ? `<div class="two"><label class="fl">Username<input name="login" required maxlength="30" autocapitalize="none" value="${esc(h.login || '')}" placeholder="harbour-hotel"></label>
 <label class="fl">Password<input name="password" type="password" required minlength="4" autocomplete="new-password"></label></div>
 <p class="muted small">Demo only. This login is stored so you can open the dashboard. An admin approves the hotel before it appears on the site.</p>` : ''}
-<h2>Seating</h2>
+<h2 id="sec-seating">Seating</h2>
 <p class="muted small lead-in">Sun lounger, daybed, cabana, pool chair, general entry, or your own name. Each one has its own price and a daily limit.</p>
 <div id="spots">${spots.map((s, i) => spotCard(s, i, locked.has(s.id))).join('')}</div>
 <p class="offer-actions"><button type="button" class="btn btn-line" id="add-spot">Add a seating type</button></p>
 <template id="spot-tpl">${spotCard({ kind: 'lounger', name: 'Sun lounger', holds: 1, price: 45, daily_cap: 10, description: '' }, 0, false)}</template>
-<h2>Hours</h2>
+<h2 id="sec-hours">Hours</h2>
 <p class="muted small lead-in">Days you take day-pass guests, and the times the pool is open.</p>
 ${DAY_ORDER.map(wd => {
     const r = rows.find(x => x.weekday === wd) || { open: 0, opens: '10:00', closes: '16:00' };
@@ -476,7 +477,7 @@ ${DAY_ORDER.map(wd => {
 <div class="two"><label class="fl">From<input type="time" name="room_only_from" value="${esc(h.room_only_from || '')}"></label>
 <label class="fl">To<input type="time" name="room_only_to" value="${esc(h.room_only_to || '')}"></label></div>
 <p class="muted small">Day passes stop when this block starts, if that is before closing.</p></details>
-<h2>Pool rules</h2>
+<h2 id="sec-rules">Pool rules</h2>
 <p class="muted small lead-in">Shown on the listing. Guests tick these rules before they book.</p>
 <div class="two">${yn('heated', 'Heated', h.heated)}
 <label class="fl">Setting<select name="setting"><option value="outdoor" ${h.setting === 'indoor' || h.setting === 'both' ? '' : 'selected'}>Outdoor</option><option value="indoor" ${h.setting === 'indoor' ? 'selected' : ''}>Indoor</option><option value="both" ${h.setting === 'both' ? 'selected' : ''}>Indoor and outdoor</option></select></label></div>
@@ -487,7 +488,7 @@ ${DAY_ORDER.map(wd => {
 <label class="fl">Food and drink<input name="food_rule" maxlength="160" value="${esc(h.food_rule || '')}" placeholder="Pool bar only"></label></div>
 ${account ? `<label class="tick"><input type="checkbox" name="marketing" value="1" ${h.marketing ? 'checked' : ''}> Email me about listing a hotel. Optional, and separate from this application.</label>
 <p class="privacy-note">We use your name, email and login to review this application and reply to you. <a href="/privacy">Privacy policy</a></p>` : ''}
-<button class="btn btn-navy" type="submit">${account ? 'Submit for approval' : 'Save'}</button>
+<div class="offer-save"><button class="btn btn-navy" type="submit">${account ? 'Submit for approval' : 'Save'}</button></div>
 </form>
 <script>
 const KIND={lounger:'Sun lounger',daybed:'Daybed',cabana:'Cabana',chair:'Pool chair',entry:'General entry',custom:''};

@@ -45,8 +45,8 @@ with sync_playwright() as pw:
         pg.wait_for_url(B + "/hotel"); assert code in pg.inner_text("#today" if book_date == DATE else "#upcoming")
         pg.fill("input[name=q]", code); pg.click("#lookup button"); assert code in pg.inner_text("#lookup")
         if book_date == DATE:
-            pg.locator(f"#lookup tr:has-text('{code}') button").click(); pg.wait_for_load_state()
-            assert "Checked in" in pg.inner_text(".flash") and "Checked in" in pg.locator(f"#lookup tr:has-text('{code}')").inner_text()
+            pg.locator("#lookup").get_by_role("button", name="Check in", exact=True).first.click(); pg.wait_for_load_state()
+            assert "Checked in" in pg.inner_text(".flash") and "Checked in" in pg.inner_text("#lookup")
             print(name, "checked in OK")
         else:
             print(name, "same-day already closed; lookup OK for", book_date)
