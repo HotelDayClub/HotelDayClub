@@ -1,6 +1,7 @@
 const fs = require('fs'); const path = require('path');
 const { ymd, addDays } = require('./util');
 const { parseTime, writeOffering, rulesText } = require('./offering');
+const { demoHotelPassword } = require('./passwords');
 
 const CATALOG = [
   { code: 'gym', name: 'Gym access', blurb: 'Use the gym on the same day.', per: 'guest', price: 25, cap: 20 },
@@ -8,7 +9,7 @@ const CATALOG = [
   { code: 'food', name: 'Food & drink credit', blurb: 'To spend at the bar or café.', per: 'guest', price: 30, cap: 40 },
   { code: 'cabana', name: 'Cabana upgrade', blurb: 'A reserved cabana for your group.', per: 'booking', price: 80, cap: 6 },
   { code: 'robe', name: 'Towel & robe pack', blurb: 'An extra towel and a robe.', per: 'guest', price: 15, cap: 30 },
-  { code: 'late', name: 'Late access (until 8pm)', blurb: 'Stay on after the usual close, out by 8pm.', per: 'guest', price: 35, cap: 12 },
+  { code: 'late', name: 'Late access', blurb: 'Stay on after the day-pass hours this hotel has set.', per: 'guest', price: 35, cap: 12 },
 ];
 const PRESETS = {
   'saltwater-terrace': { gym: { enabled: 1, price: 25, cap: 20 }, parking: { enabled: 1, price: 18, cap: 30 }, food: { enabled: 1, price: 30, cap: 40 }, cabana: { enabled: 1, price: 85, cap: 6 }, robe: { enabled: 0 }, late: { enabled: 1, price: 35, cap: 15 } },
@@ -112,7 +113,8 @@ function ensureSchedules(db) {
       const open = new Set(String(h.open_days || '').split(',').map(n => parseInt(n, 10)));
       for (let wd = 0; wd < 7; wd++) ins.run(h.id, wd, open.has(wd) ? 1 : 0, opens, closes);
     }
-    db.prepare("UPDATE addons SET blurb=? WHERE code='late'").run('Stay on after the usual close, out by 8pm.');
+    db.prepare("UPDATE addons SET name=?, blurb=? WHERE code='late'").run('Late access', 'Stay on after the day-pass hours this hotel has set.');
+    db.prepare("UPDATE booking_addons SET name='Late access' WHERE name LIKE 'Late access%'").run();
     db.prepare("UPDATE hotels SET status='active' WHERE status IS NULL OR status=''").run();
     db.prepare('UPDATE hotels SET cutoff_hours=2 WHERE cutoff_hours IS NULL').run();
     db.prepare('UPDATE pass_types SET holds=1 WHERE holds IS NULL OR holds < 1').run();
@@ -158,7 +160,7 @@ db.transaction(() => {
   hotels.forEach((h, i) => {
     const spec = OFFERINGS[h[0]];
     const open = new Set(spec.hours.filter(d => d.open).map(d => d.weekday));
-    const id = insH.run(h[0], h[1], h[2], h[3], h[4], JSON.stringify(h[5]), JSON.stringify(h[6]), '', null, h[7], 'demo1234', 'active').lastInsertRowid;
+    const id = insH.run(h[0], h[1], h[2], h[3], h[4], JSON.stringify(h[5]), JSON.stringify(h[6]), '', null, h[7], demoHotelPassword(), 'active').lastInsertRowid;
     writeOffering(db, id, spec);
     const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(id);
     const rules = rulesText(hotel);

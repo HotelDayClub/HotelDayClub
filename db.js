@@ -37,8 +37,8 @@ ensureCols('hotels', [
   ['age_policy', 'TEXT'], ['kids_hours', 'TEXT'], ['towels', 'INTEGER'], ['food_rule', 'TEXT'],
   ['id_required', 'INTEGER'], ['lifeguard', 'INTEGER'], ['cutoff_hours', 'INTEGER DEFAULT 2'],
   ['season_start', 'TEXT'], ['season_end', 'TEXT'], ['season_opens', 'TEXT'], ['season_closes', 'TEXT'],
-  ['room_only_from', 'TEXT'], ['room_only_to', 'TEXT'],
+  ['room_only_from', 'TEXT'], ['room_only_to', 'TEXT'], ['marketing_opt_in', 'INTEGER DEFAULT 0'],
 ]);
 ensureCols('pass_types', [['holds', 'INTEGER DEFAULT 1'], ['photo', 'TEXT'], ['kind', 'TEXT']]);
-ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER']]);
+ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0']]);
 module.exports = db;

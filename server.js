@@ -1,18 +1,20 @@
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const QRCode = require('qrcode');
+const fs = require('fs');
 const path = require('path');
 const db = require('./db');
 const { seed, ensureAddons, ensureSchedules } = require('./seed');
+const { adminPassword, demoHotelPassword } = require('./passwords');
 const { ymd, addDays, esc, money, nice } = require('./util');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText, amenitiesFrom, slugify,
-  hoursFor, blankJoin, readForm, writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,
+  hoursFor, hoursView, syncHoursLabels, blankJoin, readForm, writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,
 } = require('./offering');
 const app = express();
 const PORT = process.env.PORT || 3030;
 const SECRET = process.env.COOKIE_SECRET || 'hdc-demo-secret';
-const ADMIN = { user: 'jason', pass: 'admin1234' };
+const ADMIN_USER = 'jason';
 const HOTEL_SHARE = 0.75;
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser(SECRET));
@@ -83,14 +85,14 @@ function page(title, body, { nav = 'guest', bare = false } = {}) {
     : '<a class="hotel-link show" href="/hotel">Hotel login</a><a class="hotel-link show hide-sm" href="/admin">Admin</a>';
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)} · Hotel Day Club</title><link rel="icon" href="/assets/logo-mark.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"></head><body class="${nav === 'guest' ? 'guest' : ''}">
-${nav === 'guest' ? '' : '<div class="concept"><b>Demo build</b> · fictional example listings, stock photos, no real payments</div>'}
+<div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>
 <header class="hdr"><div class="wrap hdr-in">${LOGO}
 <nav class="hdr-nav"><a href="/how-it-works">How it works</a></nav>
 <div class="hdr-right">${right}</div></div></header>
 <main>${body}</main>
 ${bare ? '' : `<footer class="app-ftr"><div class="wrap ftr-in"><div>${LOGO}<p class="muted">Hotel life, by the day.</p></div>
-<nav class="ftr-links"><a href="/#explore">Explore</a><a href="/how-it-works">How it works</a><a href="/hotel">Hotel login</a></nav>
-<p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos; they don't represent any real Sydney hotel. No payments are taken.</p></div></footer>`}
+<nav class="ftr-links"><a href="/#explore">Explore</a><a href="/how-it-works">How it works</a><a href="/hotel">Hotel login</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a></nav>
+<p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p></div></footer>`}
 </body></html>`;
 }
 const card = (h, date) => {
@@ -123,7 +125,7 @@ app.get('/', (req, res) => {
   const filtered = where || date || kind;
   const kinds = KINDS.filter(k => k.code !== 'custom');
   res.send(page('Hotel pools & spas by the day', `<section class="hero"><div class="hero-card" style="background-image:url(/assets/photos/beach-resort-pool.jpg)">
-<span class="photo-credit">Stock photo · not a partner hotel</span>
+<span class="photo-credit">Stock photo · example listing</span>
 <div class="hero-copy wrap"><h1>A hotel <em>day</em> out, minutes from home.</h1>
 <p>A pool, daybed or spa. No room needed.</p></div>${WAVE}</div>
 <div class="wrap search-wrap"><form class="search app-search" action="/#explore" method="get">
@@ -149,13 +151,13 @@ app.get('/h/:slug', (req, res) => {
   const blocked = db.prepare('SELECT date FROM blocked_dates WHERE hotel_id=? AND date>=? ORDER BY date').all(h.id, today()).map(b => b.date);
   res.send(page(h.name, `<div class="wrap listing">
 <div class="l-hd"><p class="eyebrow-s">Fictional demo listing</p><h1 class="l-title">${esc(h.name)}</h1>
-<div class="muted l-meta">New · ${esc(h.area)} · ${esc(h.hours)}</div></div>
+<div class="muted l-meta">New · ${esc(h.area)} · ${esc(hoursView(db, h, date).hoursLine)}</div></div>
 <div class="gallery">${h.photos.map((p, i) => `<img class="g${i}" src="/assets/photos/${p}" alt="">`).join('')}<span class="photo-credit">Stock photos · not this hotel</span></div>
 <div class="l-body"><div class="l-main">
 <h2>${esc(h.tagline)}</h2><p class="lead">${esc(h.blurb)}</p>
 <h3 class="mt">What's included</h3><ul class="amen">${h.amenities.map(a => `<li>${ICON.check} ${esc(a)}</li>`).join('')}</ul>
 <h3 class="mt">Seating</h3>${seatList(passes)}
-${rulesCard(h)}
+${rulesCard(h, hoursView(db, h, date))}
 </div>
 <aside class="book-box" id="book"><form action="/checkout" method="get" id="bf">
 <input type="hidden" name="hotel" value="${h.slug}">
@@ -249,8 +251,10 @@ ${addonFields}
 <p class="small">This is a mock checkout. No card is needed and nothing is charged. In the live version this step is Stripe.</p>
 <label class="fl">Card number<input value="4242 4242 4242 4242" disabled></label>
 <div class="two"><label class="fl">Expiry<input value="12 / 30" disabled></label><label class="fl">CVC<input value="123" disabled></label></div></div>
-${rulesCard(h)}
+${rulesCard(h, hoursView(db, h, date))}
 <label class="tick"><input type="checkbox" name="rules" value="1" required> I've read and accept these pool rules.</label>
+<label class="tick"><input type="checkbox" name="marketing" value="1"> Email me about day passes. Optional, and separate from this booking.</label>
+<p class="privacy-note">We use your name, email and mobile to hold this booking and show it to the hotel. <a href="/privacy">Privacy policy</a></p>
 <button class="btn btn-coral full" id="co-btn" type="submit">Confirm booking · ${money(grand)} (demo)</button></form>
 <aside class="co-sum"><img src="/assets/photos/${h.photos[0]}" alt=""><div class="pad"><h3>${esc(h.name)}</h3><p class="muted small">${esc(h.area)}</p>
 <dl><dt>Date</dt><dd>${esc(nice(date))}</dd><dt>Seating</dt><dd>${esc(spotLabel(p))} × ${qty}</dd><dt>People</dt><dd>${people}</dd><dt>Spots left</dt><dd>${a.remaining}</dd></dl>
@@ -279,9 +283,10 @@ app.post('/book', (req, res) => {
     v = validate(b); if (v.err) return;
     if (b.rules !== '1' && b.rules !== 'on') { v = { err: 'Please accept the pool rules.', h: v.h }; return; }
     code = newCode();
-    const info = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,party,rules_ack_at,rules_text)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),?)`)
-      .run(code, v.h.id, v.p.id, v.date, v.qty, v.p.price, v.p.price * v.qty + v.addonTotal, name, email, phone, v.people, rulesText(v.h));
+    const seen = hoursView(db, v.h, v.date);
+    const info = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,party,rules_ack_at,rules_text,marketing_opt_in)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),?,?)`)
+      .run(code, v.h.id, v.p.id, v.date, v.qty, v.p.price, v.p.price * v.qty + v.addonTotal, name, email, phone, v.people, rulesText(v.h, seen), b.marketing === '1' ? 1 : 0);
     const insAdd = db.prepare('INSERT INTO booking_addons(booking_id,addon_id,name,qty,unit_price,total) VALUES (?,?,?,?,?,?)');
     for (const ad of v.addons) insAdd.run(info.lastInsertRowid, ad.id, ad.name, ad.qty, ad.price, ad.line);
   }).immediate();
@@ -289,19 +294,15 @@ app.post('/book', (req, res) => {
   res.redirect(303, '/booking/' + code);
 });
 
-const bookingFull = code => db.prepare(`SELECT b.*, h.name hotel, h.slug, h.area, h.photos, h.hours, h.opens, h.closes, p.name pass, p.holds FROM bookings b JOIN hotels h ON h.id=b.hotel_id JOIN pass_types p ON p.id=b.pass_type_id WHERE b.code=?`).get(code);
-function visitHours(b, adds) {
-  const late = adds.map(a => a.name).find(n => /until\s+\d/i.test(n));
-  const until = late && (late.match(/until\s+([0-9]+(?::[0-9]+)?\s*(?:am|pm))/i) || [])[1];
-  if (b.hours && until && b.closes) return b.hours.replace(b.closes, until.trim());
-  return b.hours || '';
-}
+const bookingFull = code => db.prepare(`SELECT b.*, h.name hotel, h.slug, h.area, h.photos, h.id hotel_id_join, p.name pass, p.holds FROM bookings b JOIN hotels h ON h.id=b.hotel_id JOIN pass_types p ON p.id=b.pass_type_id WHERE b.code=?`).get(code);
 app.get('/booking/:code', async (req, res) => {
   const b = bookingFull(req.params.code.toUpperCase());
   if (!b) return res.status(404).send(page('Not found', '<div class="wrap sec"><h2>Booking not found</h2></div>'));
   const qr = await QRCode.toDataURL(`HDC:${b.code}`, { margin: 1, width: 260, color: { dark: '#0B2545' } });
   const adds = bookingAddons(b.id);
-  const when = visitHours(b, adds);
+  const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(b.hotel_id);
+  const view = hoursView(db, hotel, b.date);
+  const when = view.span || view.hoursLine;
   const party = b.party || b.qty * (b.holds || 1);
   res.send(page('Booking ' + b.code, `<div class="wrap sec narrow confirm">
 <div class="ok-badge">${ICON.check}</div><h1 class="l-title center">You're booked in.</h1>
@@ -316,9 +317,9 @@ ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li
 const hotelAuth = (req, res, next) => { const id = req.signedCookies.hotel; const h = id && db.prepare('SELECT * FROM hotels WHERE id=?').get(id); if (!h) return res.redirect('/hotel/login'); req.hotel = hotelRow(h); next(); };
 function joinPage(error, body) {
   const state = body ? echoForm(body) : blankJoin();
-  return page('Become a partner', `<div class="wrap sec offer-page"><p class="eyebrow-s">Hotel partners</p>
-<h1 class="l-title">Become a partner</h1>
-<p class="lead">Free to join. Set your seating, hours and pool rules. This demo keeps a new hotel as pending until an admin approves it.</p>
+  return page('List a hotel', `<div class="wrap sec offer-page"><p class="eyebrow-s">For hotels</p>
+<h1 class="l-title">List a hotel</h1>
+<p class="lead">Free to list. Set your seating, hours and pool rules. This demo keeps a new hotel pending until an admin approves it.</p>
 ${offeringForm({ action: '/hotel/join', hotel: state.hotel, spots: state.spots, hours: state.hours, account: true, error })}
 <p class="muted small">Already joined? <a href="/hotel/login">Hotel login</a></p></div>`);
 }
@@ -342,9 +343,9 @@ app.post('/hotel/join', (req, res) => {
       while (db.prepare('SELECT 1 FROM hotels WHERE slug=?').get(slug)) slug = (base + '-' + (n++)).slice(0, 48);
       const photo = parsed.spots.map(s => s.photo).find(Boolean) || 'beach-resort-pool.jpg';
       const photos = [...new Set([safePhoto(photo) || 'beach-resort-pool.jpg', 'hero-loungers.jpg', 'infinity-palms.jpg'])];
-      const id = db.prepare(`INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status,contact_name,contact_email)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(slug, parsed.profile.name, parsed.profile.area, parsed.profile.tagline, parsed.profile.blurb,
-        JSON.stringify(photos), JSON.stringify(amenitiesFrom(parsed)), '', null, login, password, 'pending', parsed.profile.contact_name, email).lastInsertRowid;
+      const id = db.prepare(`INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status,contact_name,contact_email,marketing_opt_in)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(slug, parsed.profile.name, parsed.profile.area, parsed.profile.tagline, parsed.profile.blurb,
+        JSON.stringify(photos), JSON.stringify(amenitiesFrom(parsed)), '', null, login, password, 'pending', parsed.profile.contact_name, email, b.marketing === '1' ? 1 : 0).lastInsertRowid;
       const saved = writeOffering(db, id, parsed);
       if (saved && saved.err) bad(saved.err);
       return id;
@@ -358,14 +359,14 @@ app.post('/hotel/join', (req, res) => {
   res.cookie('hotel', hid, { signed: true, httpOnly: true, sameSite: 'lax' });
   res.redirect('/hotel?msg=' + encodeURIComponent('Thanks. Your hotel is pending approval.'));
 });
+const LEGAL_LINKS = '<p class="legal-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a></p>';
 app.get('/hotel/login', (req, res) => {
-  const hs = getHotels();
-  res.send(page('Hotel login', `<div class="wrap sec narrow"><div class="login-card"><h1 class="l-title">Hotel partner login</h1>
+  res.send(page('Hotel login', `<div class="wrap sec narrow"><div class="login-card"><h1 class="l-title">Hotel login</h1>
 ${req.query.e ? '<div class="alert">Wrong username or password.</div>' : ''}
 <form method="post" action="/hotel/login"><label class="fl">Username<input name="user" required autocomplete="username"></label><label class="fl">Password<input name="pass" type="password" required autocomplete="current-password"></label>
 <button class="btn btn-navy full">Log in</button></form>
-<p class="center" style="margin-top:16px"><a href="/hotel/join">Become a partner</a></p>
-<div class="demo-logins"><b>Demo logins</b> (password <code>demo1234</code>)<ul>${hs.map(h => `<li><form method="post" action="/hotel/login"><input type="hidden" name="user" value="${h.login}"><input type="hidden" name="pass" value="demo1234"><button class="linkbtn"><code>${h.login}</code></button> ${esc(h.name)}</form></li>`).join('')}</ul></div></div></div>`, { bare: true }));
+<p class="center" style="margin-top:16px"><a href="/hotel/join">List a hotel</a></p>
+${LEGAL_LINKS}</div></div>`, { bare: true }));
 });
 app.post('/hotel/login', (req, res) => {
   const h = db.prepare('SELECT * FROM hotels WHERE login=? AND password=?').get(String(req.body.user || '').trim(), req.body.pass);
@@ -543,10 +544,10 @@ app.post('/hotel/blocked', hotelAuth, (req, res) => {
 
 const adminAuth = (req, res, next) => req.signedCookies.admin === 'jason' ? next() : res.redirect('/admin/login');
 app.get('/admin/login', (req, res) => res.send(page('Admin login', `<div class="wrap sec narrow"><div class="login-card"><h1 class="l-title">Admin login</h1>${req.query.e ? '<div class="alert">Wrong username or password.</div>' : ''}
-<form method="post" action="/admin/login"><label class="fl">Username<input name="user" value="jason" required></label><label class="fl">Password<input name="pass" type="password" required></label><button class="btn btn-navy full">Log in</button></form>
-<div class="demo-logins"><b>Demo login:</b> <code>jason</code> / <code>admin1234</code></div></div></div>`, { bare: true })));
+<form method="post" action="/admin/login"><label class="fl">Username<input name="user" required autocomplete="username"></label><label class="fl">Password<input name="pass" type="password" required autocomplete="current-password"></label><button class="btn btn-navy full">Log in</button></form>
+${LEGAL_LINKS}</div></div>`, { bare: true })));
 app.post('/admin/login', (req, res) => {
-  if (req.body.user !== ADMIN.user || req.body.pass !== ADMIN.pass) return res.redirect('/admin/login?e=1');
+  if (req.body.user !== ADMIN_USER || req.body.pass !== adminPassword()) return res.redirect('/admin/login?e=1');
   res.cookie('admin', 'jason', { signed: true, httpOnly: true, sameSite: 'lax' }); res.redirect('/admin');
 });
 app.get('/admin/logout', (req, res) => { res.clearCookie('admin'); res.redirect('/'); });
@@ -598,13 +599,13 @@ app.get('/how-it-works', (req, res) => {
 <div><span class="n">1</span><h3>Browse</h3><p class="muted">Search by neighbourhood, date and seating. Each listing shows what's included, the pool rules, and how many spots are left.</p></div>
 <div><span class="n">2</span><h3>Book</h3><p class="muted">Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking, gym access or a food and drink credit if you want. Tick the pool rules. The total updates before you confirm. This demo doesn't charge a card.</p></div>
 <div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">At the front desk when the hotel opens for day passes. The hours are on your confirmation. Reception checks you in and hands you a wristband.</p></div>
-<div><span class="n">4</span><h3>Enjoy</h3><p class="muted">Your spot, for the hotel's day-pass hours. Add late access where a hotel offers a later finish.</p></div>
+<div><span class="n">4</span><h3>Enjoy</h3><p class="muted">Your spot, for the hours that hotel has set. Add-ons stay optional.</p></div>
 </div>
 <p style="margin-top:18px"><a class="btn btn-coral" href="/#explore">Browse pools</a></p>
 </div>
 ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="wave wave-band"')}<section class="hiw-band" id="partners"><div class="wrap">
-<h2>For hotel partners</h2>
-<p class="hiw-lead">Free to join. You decide the seating, the prices and the numbers, and you get paid monthly.</p>
+<h2>For hotels</h2>
+<p class="hiw-lead">Free to list. You decide the seating, the prices and the numbers, and you get paid monthly.</p>
 <div class="partner-grid">
 <div class="partner-card"><b>Free to join</b><p>No signup fee and no monthly charge.</p></div>
 <div class="partner-card"><b>You set the offering</b><p>Seating types, how many people each holds, daily numbers, hours and pool rules.</p></div>
@@ -612,7 +613,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <div class="partner-card"><b>You keep food and drink spend</b><p>What guests buy at your bar or café stays with you.</p></div>
 <div class="partner-card"><b>Paid monthly</b><p>Seating and add-on sales are paid out once a month. You keep 75%. Hotel Day Club keeps 25%.</p></div>
 </div>
-<p class="hiw-cta"><a class="btn btn-coral" href="/hotel/join">Become a partner</a> <a class="btn btn-line" href="/hotel">Hotel login</a></p>
+<p class="hiw-cta"><a class="btn btn-coral" href="/hotel/join">List a hotel</a> <a class="btn btn-line" href="/hotel">Hotel login</a></p>
 </div></section>
 <div class="wrap hiw-block" id="faq">
 <h2>Questions</h2>
@@ -628,5 +629,47 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 if (db.prepare('SELECT COUNT(*) n FROM hotels').get().n === 0) seed(db);
 else ensureAddons(db);
 ensureSchedules(db);
+syncHoursLabels(db);
+db.prepare("UPDATE hotels SET password=? WHERE login LIKE 'demo-%'").run(demoHotelPassword());
+adminPassword();
+
+function inlineMd(text) {
+  return esc(text)
+    .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)/g, '<a href="$2">$1</a>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+}
+function mdToHtml(src) {
+  const lines = String(src).replace(/\r\n/g, '\n').split('\n');
+  let html = '', list = false;
+  const close = () => { if (list) { html += '</ul>'; list = false; } };
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) { close(); continue; }
+    const h = t.match(/^(#{1,3})\s+(.*)$/);
+    if (h) {
+      close();
+      const level = Math.min(3, h[1].length + 1);
+      html += `<h${level}>${inlineMd(h[2])}</h${level}>`;
+      continue;
+    }
+    const li = t.match(/^[-*]\s+(.*)$/);
+    if (li) {
+      if (!list) { html += '<ul>'; list = true; }
+      html += `<li>${inlineMd(li[1])}</li>`;
+      continue;
+    }
+    close();
+    html += `<p>${inlineMd(t)}</p>`;
+  }
+  close();
+  return html;
+}
+function legalDoc(heading, file) {
+  const raw = fs.readFileSync(path.join(__dirname, 'legal', file), 'utf8');
+  return page(heading, `<div class="wrap sec"><h1 class="l-title">${esc(heading)}</h1><article class="legal-doc">${mdToHtml(raw)}</article></div>`);
+}
+app.get('/privacy', (req, res) => res.send(legalDoc('Privacy policy (draft)', 'privacy-policy.md')));
+app.get('/terms', (req, res) => res.send(legalDoc('Customer terms (draft)', 'customer-terms.md')));
+app.get('/refunds', (req, res) => res.send(legalDoc('Cancellation and refunds (draft)', 'cancellation-refund-policy.md')));
 
 app.listen(PORT, () => console.log(`Hotel Day Club demo on http://localhost:${PORT}`));

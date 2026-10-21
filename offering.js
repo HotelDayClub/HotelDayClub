@@ -89,8 +89,15 @@ function spotLabel(p) {
   return holds > 1 ? `${p.name} for ${holds}` : p.name;
 }
 function rot(wd) { return (wd + 6) % 7; }
-function hoursSummary(rows) {
-  const open = rows.filter(r => r.open).slice().sort((a, b) => rot(a.weekday) - rot(b.weekday));
+function effectiveClose(r, roomFrom) {
+  const roomMin = minutes(roomFrom);
+  const openMin = minutes(r.opens);
+  const closeMin = minutes(r.closes);
+  if (roomMin != null && openMin != null && closeMin != null && roomMin > openMin && roomMin < closeMin) return roomFrom;
+  return r.closes;
+}
+function hoursSummary(rows, roomFrom) {
+  const open = rows.filter(r => r.open).map(r => ({ ...r, closes: effectiveClose(r, roomFrom) })).sort((a, b) => rot(a.weekday) - rot(b.weekday));
   if (!open.length) return { hours: 'Closed to day passes', open_days: '', opens: '', closes: '' };
   const groups = [];
   for (const r of open) {
@@ -163,7 +170,31 @@ function closureReason(db, hotel, date, now) {
   if (blocked) return blocked.reason || 'Closed';
   return dayClosure(db, hotel, date, now);
 }
-function rulesLines(hotel) {
+function hoursView(db, hotel, date) {
+  const plan = hotel ? dayPlan(db, hotel, date) : null;
+  let hoursLine = (hotel && hotel.hours) || '';
+  let span = '';
+  if (plan && plan.open && /^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
+    const [y, m, d] = date.split('-').map(Number);
+    span = `${fmtTime(plan.opens)}–${fmtTime(plan.effective || plan.closes)}`;
+    hoursLine = `${DAY_SHORT[new Date(y, m - 1, d).getDay()]} · ${span}`;
+  }
+  return { hoursLine, span, showSeason: !(plan && plan.open && inSeason(hotel, date)) };
+}
+function listingHours(db, hotel, date) {
+  return hoursView(db, hotel, date).hoursLine;
+}
+function syncHoursLabels(db) {
+  const hotels = db.prepare('SELECT id, room_only_from FROM hotels').all();
+  const upd = db.prepare('UPDATE hotels SET hours=?, open_days=?, opens=?, closes=? WHERE id=?');
+  for (const h of hotels) {
+    const rows = db.prepare('SELECT weekday, open, opens, closes FROM hotel_hours WHERE hotel_id=?').all(h.id);
+    if (!rows.length) continue;
+    const sum = hoursSummary(rows, h.room_only_from);
+    upd.run(sum.hours, sum.open_days, sum.opens, sum.closes, h.id);
+  }
+}
+function rulesLines(hotel, opts = {}) {
   const setting = hotel.setting === 'indoor' ? 'Indoor' : hotel.setting === 'both' ? 'Indoor and outdoor' : 'Outdoor';
   const lines = [`${hotel.heated ? 'Heated' : 'Unheated'} · ${setting}`];
   if (hotel.age_policy) lines.push(hotel.age_policy);
@@ -172,9 +203,10 @@ function rulesLines(hotel) {
   if (hotel.food_rule) lines.push(hotel.food_rule);
   lines.push(hotel.id_required ? 'Photo ID required' : 'Photo ID not required');
   lines.push(hotel.lifeguard ? 'Lifeguard on duty' : 'No lifeguard on duty');
-  if (hotel.hours) lines.push(hotel.hours);
+  if (opts.hoursLine) lines.push(opts.hoursLine);
+  else if (hotel.hours) lines.push(hotel.hours);
   if (hotel.room_only_from && hotel.room_only_to) lines.push(`Room guests only ${fmtTime(hotel.room_only_from)}–${fmtTime(hotel.room_only_to)}`);
-  if (hotel.season_start && hotel.season_end && hotel.season_opens && hotel.season_closes) {
+  if (opts.showSeason !== false && hotel.season_start && hotel.season_end && hotel.season_opens && hotel.season_closes) {
     lines.push(`Seasonal hours ${seasonLabel(hotel.season_start)}–${seasonLabel(hotel.season_end)}, ${fmtTime(hotel.season_opens)}–${fmtTime(hotel.season_closes)}`);
   }
   const cutoff = hotel.cutoff_hours == null ? 2 : Number(hotel.cutoff_hours);
@@ -182,9 +214,9 @@ function rulesLines(hotel) {
   lines.push('Free cancellation up to 24 hours before (hotel terms apply)');
   return lines;
 }
-function rulesText(hotel) { return rulesLines(hotel).join('. ') + '.'; }
-function rulesCard(hotel) {
-  return `<div class="rules-card"><h3>Pool rules</h3><ul>${rulesLines(hotel).map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
+function rulesText(hotel, opts) { return rulesLines(hotel, opts).join('. ') + '.'; }
+function rulesCard(hotel, opts) {
+  return `<div class="rules-card"><h3>Pool rules</h3><ul>${rulesLines(hotel, opts).map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
 }
 function amenitiesFrom(h) {
   const a = [h.heated ? 'Heated pool' : 'Unheated pool'];
@@ -334,7 +366,7 @@ function writeOffering(db, hotelId, spec) {
   }
   const rep = db.prepare('INSERT OR REPLACE INTO hotel_hours(hotel_id,weekday,open,opens,closes) VALUES (?,?,?,?,?)');
   for (const r of spec.hours) rep.run(hotelId, r.weekday, r.open ? 1 : 0, r.opens, r.closes);
-  const sum = hoursSummary(spec.hours);
+  const sum = hoursSummary(spec.hours, spec.room_only_from);
   const profile = spec.profile || {};
   db.prepare(`UPDATE hotels SET name=COALESCE(?, name), area=COALESCE(?, area), tagline=COALESCE(?, tagline), blurb=COALESCE(?, blurb),
     contact_name=?, contact_email=?, hours=?, open_days=?, opens=?, closes=?, cutoff_hours=?,
@@ -382,6 +414,7 @@ function echoForm(body) {
       food_rule: body.food_rule || '', id_required: body.id_required === '1' ? 1 : 0, lifeguard: body.lifeguard === '1' ? 1 : 0,
       season_start: body.season_start || '', season_end: body.season_end || '', season_opens: body.season_opens || '',
       season_closes: body.season_closes || '', room_only_from: body.room_only_from || '', room_only_to: body.room_only_to || '',
+      marketing: body.marketing === '1' ? 1 : 0,
     },
     spots, hours,
   };
@@ -452,6 +485,8 @@ ${DAY_ORDER.map(wd => {
 <div class="two">${yn('towels', 'Towels included', h.towels)}${yn('id_required', 'Photo ID required', h.id_required !== 0)}</div>
 <div class="two">${yn('lifeguard', 'Lifeguard on duty', h.lifeguard)}
 <label class="fl">Food and drink<input name="food_rule" maxlength="160" value="${esc(h.food_rule || '')}" placeholder="Pool bar only"></label></div>
+${account ? `<label class="tick"><input type="checkbox" name="marketing" value="1" ${h.marketing ? 'checked' : ''}> Email me about listing a hotel. Optional, and separate from this application.</label>
+<p class="privacy-note">We use your name, email and login to review this application and reply to you. <a href="/privacy">Privacy policy</a></p>` : ''}
 <button class="btn btn-navy" type="submit">${account ? 'Submit for approval' : 'Save'}</button>
 </form>
 <script>
@@ -482,4 +517,5 @@ module.exports = {
   KINDS, PHOTOS, fmtTime, parseTime, minutes, spotLabel, hoursSummary, dayClosure, closureReason,
   rulesLines, rulesText, rulesCard, amenitiesFrom, slugify, hoursFor, blankJoin, readForm,
   writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,
+  listingHours, hoursView, syncHoursLabels, inSeason,
 };

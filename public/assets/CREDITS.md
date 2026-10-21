@@ -26,7 +26,7 @@ All photos were downloaded on 21 Oct 2026 (AEDT) and stored locally in `assets/p
 | photos/resort-palms.jpg | https://unsplash.com/photos/qDMY-BeGoLs | Long Chung (@chungj07) |
 
 The licence and photographer for each Pexels photo were read from its public page. The Unsplash licence lines ("Free to use under the Unsplash License") and photographers come from the public photo pages as indexed by search; unsplash.com blocked direct page fetches.
-**Before launch:** re-check each licence and replace these photos with hotel-supplied images under the partner agreement. Stock photos must never be shown as a specific partner's property. The photo with a child (kids-float.jpg) is a licensed Pexels stock image; don't use it in paid ads without checking the Pexels terms for people.
+**Before launch:** re-check each licence and replace these photos with images supplied by the hotel that is listed. Stock photos must never be shown as a real hotel's property. The photo with a child (kids-float.jpg) is a licensed Pexels stock image; don't use it in paid ads without checking the Pexels terms for people.
 
 ## Other assets
 - `logo-mark.svg`, `ph-*.svg`, and all UI icons (inline SVG in the pages): original artwork made for this mockup.

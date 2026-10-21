@@ -1,6 +1,10 @@
 """End-to-end test + screenshots. Run with the server up: python3 e2e_test.py"""
-import re, json, datetime, urllib.request
+import os, re, sys, json, datetime, urllib.request
 from playwright.sync_api import sync_playwright, expect
+DEMO = os.environ.get("DEMO_HOTEL_PASSWORD", "").strip()
+ADMIN = os.environ.get("ADMIN_PASSWORD", "").strip()
+if not DEMO or not ADMIN:
+    sys.exit("Set DEMO_HOTEL_PASSWORD and ADMIN_PASSWORD before npm test. They are not printed on the site.")
 B = "http://localhost:3030"; S = "screenshots/"
 d = lambda n: (datetime.date.today() + datetime.timedelta(days=n)).isoformat()
 def avail(slug, date): return {p["code"]: p for p in json.load(urllib.request.urlopen(f"{B}/api/availability?hotel={slug}&date={date}"))["passes"]}
@@ -24,14 +28,20 @@ with sync_playwright() as pw:
         pg.screenshot(path=f"{S}listing-{name}.png", full_page=True)
         pg.click("#go"); pg.wait_for_url(re.compile("/checkout"))
         pg.fill("input[name=name]", f"Test Guest {name}"); pg.fill("input[name=email]", "test@example.com"); pg.fill("input[name=phone]", "0412 345 678")
-        pg.check("input[name=rules]"); pg.screenshot(path=f"{S}checkout-{name}.png", full_page=True)
+        pg.check("input[name=rules]")
+        assert pg.locator("input[name=marketing]").is_checked() is False
+        pg.screenshot(path=f"{S}checkout-{name}.png", full_page=True)
         pg.click("button[type=submit]"); pg.wait_for_url(re.compile("/booking/HDC-"))
         code = pg.inner_text(".code"); assert pg.locator("img.qr").count() == 1
         pg.screenshot(path=f"{S}confirmation-{name}.png", full_page=True)
         after = avail("skyline-rooftop", book_date)["chair"]["remaining"]; assert after == before - 2, (before, after, book_date)
         print(name, "booked", code, "chair remaining", before, "->", after, book_date)
         # hotel dashboard
-        pg.goto(B + "/hotel/login"); pg.fill("input[name=user]", "demo-skyline"); pg.fill("input[name=pass]", "demo1234"); pg.click("form >> nth=0 >> button")
+        pg.goto(B + "/hotel/login")
+        login_html = pg.content()
+        assert "demo1234" not in login_html and "admin1234" not in login_html and DEMO not in login_html
+        assert "demo-skyline" not in login_html
+        pg.fill("input[name=user]", "demo-skyline"); pg.fill("input[name=pass]", DEMO); pg.click("form button")
         pg.wait_for_url(B + "/hotel"); assert code in pg.inner_text("#today" if book_date == DATE else "#upcoming")
         pg.fill("input[name=q]", code); pg.click("#lookup button"); assert code in pg.inner_text("#lookup")
         if book_date == DATE:
@@ -62,7 +72,10 @@ with sync_playwright() as pw:
             assert avail("saltwater-terrace", d(10))["lounger"]["blocked"]; print("seeded sold-out + blocked dates OK")
 
         pg.goto(B + "/hotel"); pg.wait_for_load_state("networkidle"); pg.screenshot(path=f"{S}hotel-dashboard-{name}.png", full_page=True)
-        pg.goto(B + "/admin/login"); pg.fill("input[name=pass]", "admin1234"); pg.click("button.full"); pg.wait_for_url(B + "/admin")
+        pg.goto(B + "/admin/login")
+        admin_html = pg.content()
+        assert "admin1234" not in admin_html and "jason" not in admin_html and ADMIN not in admin_html
+        pg.fill("input[name=user]", "jason"); pg.fill("input[name=pass]", ADMIN); pg.click("button.full"); pg.wait_for_url(B + "/admin")
         assert code in pg.inner_text("#all"); pg.screenshot(path=f"{S}admin-{name}.png", full_page=True); print(name, "admin shows booking OK")
         ctx.close()
     br.close()
