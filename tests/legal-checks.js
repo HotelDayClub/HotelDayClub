@@ -42,17 +42,33 @@ assert.strictEqual(sky.plan.closes, '17:00', 'facility still closes at 5pm');
 const [y, m, d] = sky.date.split('-').map(Number);
 assert.ok(offering.dayClosure(db, sky.h, sky.date, new Date(y, m - 1, d, 16, 0, 0)), 'not sellable at room-only start');
 assert.ok(!offering.dayClosure(db, sky.h, sky.date, new Date(y, m - 1, d, 10, 0, 0)), 'morning is still sellable');
-const win = offering.lateWindow(db, sky.h, sky.date);
-assert.ok(win && win.until === '17:00' && win.end === '16:00');
+assert.strictEqual(offering.lateWindow(db, sky.h, sky.date), null, 'late access must not cover the 4–5pm room-guests-only hour');
+assert.strictEqual(offering.latePossible({
+  hours: [{ weekday: 1, open: 1, opens: '11:00', closes: '17:00' }],
+  room_only_from: '16:00', room_only_to: '17:00',
+}), false);
+assert.strictEqual(offering.latePossible({
+  hours: [{ weekday: 1, open: 1, opens: '11:00', closes: '20:00' }],
+  room_only_from: '16:00', room_only_to: '17:00',
+}), true, 'late access can start after room guests only ends');
+
+const skyId = sky.h.id;
+db.prepare('UPDATE hotel_hours SET closes=? WHERE hotel_id=? AND open=1').run('20:00', skyId);
+const widened = offering.lateWindow(db, db.prepare('SELECT * FROM hotels WHERE id=?').get(skyId), sky.date);
+assert.deepStrictEqual(widened, { end: '17:00', until: '20:00' });
+db.prepare('UPDATE hotel_hours SET closes=? WHERE hotel_id=? AND open=1').run('17:00', skyId);
+assert.strictEqual(offering.lateWindow(db, db.prepare('SELECT * FROM hotels WHERE id=?').get(skyId), sky.date), null);
 
 const salt = nextOpen('saltwater-terrace');
 const freeSky = nextOpen('skyline-rooftop', 3);
 assert.ok(/^Free cancellation until 11am /.test(offering.cancelNote(db, freeSky.h, freeSky.date)), offering.cancelNote(db, freeSky.h, freeSky.date));
 assert.strictEqual(offering.lateWindow(db, salt.h, salt.date), null);
 assert.strictEqual(offering.hotelLatePossible(db, salt.h), false);
-assert.strictEqual(offering.hotelLatePossible(db, sky.h), true);
+assert.strictEqual(offering.hotelLatePossible(db, sky.h), false);
 const lateRows = db.prepare("SELECT h.slug, a.enabled FROM addons a JOIN hotels h ON h.id=a.hotel_id WHERE a.code='late' ORDER BY h.slug").all();
-for (const row of lateRows) assert.strictEqual(row.enabled, row.slug === 'skyline-rooftop' ? 1 : 0, row.slug);
+for (const row of lateRows) assert.strictEqual(row.enabled, 0, row.slug);
+assert.ok(offering.hoursView(db, sky.h, sky.date).hoursLine.includes('Mon–Thu'), offering.hoursView(db, sky.h, sky.date).hoursLine);
+assert.ok(offering.hoursView(db, salt.h, salt.date).hoursLine.includes('Mon–Fri'), offering.hoursView(db, salt.h, salt.date).hoursLine);
 
 const earlyRoom = offering.readForm({
   hotel_name: 'Test', area: 'CBD', spot_name: 'Sun lounger', kind: 'lounger', holds: '1', price: '40', cap: '10',
@@ -60,13 +76,16 @@ const earlyRoom = offering.readForm({
 });
 assert.ok(earlyRoom.err && /can't be sold past/.test(earlyRoom.err), earlyRoom.err);
 
+db.prepare("UPDATE addons SET enabled=1 WHERE code='late' AND hotel_id=?").run(sky.h.id);
 const blockedLate = offering.saveOffering(db, sky.h.id, {
   hotel_name: sky.h.name, area: sky.h.area, spot_name: 'Pool chair', kind: 'chair', holds: '1', price: '55', cap: '20',
   day_open: ['1', '2', '3', '4'], cutoff_hours: '1', heated: '1', setting: 'outdoor', age_policy: '18+', towels: '1', id_required: '1', lifeguard: '0',
   opens_1: '11:00', closes_1: '17:00', opens_2: '11:00', closes_2: '17:00', opens_3: '11:00', closes_3: '17:00', opens_4: '11:00', closes_4: '17:00',
+  room_only_from: '16:00', room_only_to: '17:00',
 });
-assert.ok(blockedLate.err && /Late access/.test(blockedLate.err), blockedLate.err);
+assert.ok(blockedLate.err && /overlap room guests only/.test(blockedLate.err), blockedLate.err);
 assert.strictEqual(db.prepare('SELECT room_only_from FROM hotels WHERE id=?').get(sky.h.id).room_only_from, '16:00');
+db.prepare("UPDATE addons SET enabled=0 WHERE code='late' AND hotel_id=?").run(sky.h.id);
 
 const freeAt = new Date(y, m - 1, d, 10, 0, 0);
 freeAt.setDate(freeAt.getDate() - 2);
@@ -134,20 +153,51 @@ function start(port, extra = {}) {
     assert.ok(faq.body.includes('at least 3 years'));
     assert.ok(faq.body.includes('5-pass pack is not offered'));
     assert.ok(faq.body.includes('24 hours before'));
+    assert.ok(faq.body.includes('A free date change may be available once, subject to availability.'));
+    assert.ok(faq.body.includes('noindex'));
 
+    const robots = await get(port, '/robots.txt');
+    assert.strictEqual(robots.status, 200);
+    assert.ok(/User-agent:\s*\*/.test(robots.body) && /Disallow:\s*\//.test(robots.body), robots.body);
+
+    const draft = 'Draft terms for demo purposes, pending legal review.';
+    const trading = 'Jason Baranov (trading as Hotel Day Club, business name registration pending)';
+    for (const pathName of ['/terms', '/privacy', '/refunds', '/risk']) {
+      const doc = await get(port, pathName);
+      assert.strictEqual(doc.status, 200, pathName);
+      assert.ok(doc.body.includes(draft), pathName);
+      assert.ok(doc.body.includes('noindex'), pathName);
+      assert.ok(!doc.body.includes('DRAFT: NOT FOR PUBLICATION'), pathName);
+      assert.ok(!/LAWYER/.test(doc.body), pathName);
+      assert.ok(!/partner hotels?/i.test(doc.body), pathName);
+      assert.ok(!doc.body.includes('">http'), pathName);
+      assert.ok(!/\[[^\]]+\]/.test(doc.body.replace(/<[^>]+>/g, '')), pathName + ' still has a placeholder');
+    }
     const terms = await get(port, '/terms');
-    assert.strictEqual(terms.status, 200);
     assert.ok(terms.body.includes('Customer terms (draft)'));
     assert.ok(terms.body.includes('We are a booking agent.'));
+    assert.ok(terms.body.includes(trading));
+    assert.ok(terms.body.includes('ticking the boxes'));
+    assert.ok(terms.body.includes('A free date change may be available once, subject to availability.'));
+    assert.ok(terms.body.includes('href="https://www.legislation.gov.au/C2004A00109/latest/text"'));
+    assert.ok(terms.body.includes('14. Complaints'));
+    assert.ok(!terms.body.includes('Gift cards') && !terms.body.includes('Referrals') && !/>\s*14\. Reviews/.test(terms.body));
     const risk = await get(port, '/risk');
-    assert.strictEqual(risk.status, 200);
     assert.ok(risk.body.includes('Risk warning (draft)'));
-    assert.ok(risk.body.includes('NOT LEGAL ADVICE'));
-    assert.ok(risk.body.includes('no liability exclusion'));
+    assert.ok(!risk.body.includes('NOT LEGAL ADVICE'));
+    const privacy = await get(port, '/privacy');
+    assert.ok(privacy.body.includes('participating hotels'));
+    assert.ok(privacy.body.includes('Some of our service providers store data overseas, including in the United States.'));
+
+    const listing = await get(port, `/h/skyline-rooftop?date=${freeSky.date}`);
+    assert.ok(listing.body.includes('Mon–Thu · 11am–4pm'), listing.body.slice(listing.body.indexOf('l-meta'), listing.body.indexOf('l-meta') + 180));
+    assert.ok(!listing.body.includes('Wed ·'));
+    const saltListing = await get(port, `/h/saltwater-terrace?date=${salt.date}`);
+    assert.ok(saltListing.body.includes('Mon–Fri · 10am–4pm'));
 
     const avail = await get(port, `/api/availability?hotel=skyline-rooftop&date=${freeSky.date}`);
     const data = JSON.parse(avail.body);
-    assert.ok(data.addons.some(a => a.code === 'late' && a.name === 'Late access until 5pm'), JSON.stringify(data.addons));
+    assert.ok(!data.addons.some(a => a.code === 'late'), JSON.stringify(data.addons));
     assert.ok(/Free cancellation until 11am /.test(data.cancel), data.cancel);
     const soon = JSON.parse((await get(port, `/api/availability?hotel=skyline-rooftop&date=${sky.date}`)).body);
     assert.ok(/can't be cancelled for free/.test(soon.cancel), soon.cancel);
@@ -157,28 +207,59 @@ function start(port, extra = {}) {
     const checkout = await get(port, `/checkout?hotel=skyline-rooftop&date=${freeSky.date}&pass=chair&qty=1`);
     assert.strictEqual(checkout.status, 200);
     assert.ok(checkout.body.includes('name="terms"') && checkout.body.includes('href="/terms"'));
+    assert.ok(checkout.body.includes('href="/refunds"') && checkout.body.includes('href="/privacy"'));
+    assert.ok(checkout.body.includes('cancellation and refund policy'));
     assert.ok(checkout.body.includes('name="risk"') && checkout.body.includes('Risk warning'));
     assert.ok(checkout.body.includes('name="rules"'));
     assert.ok(checkout.body.includes('No lifeguard is on duty'));
     assert.ok(!checkout.body.includes('hotel terms apply'));
     assert.ok(checkout.body.includes(data.cancel));
+    assert.ok(checkout.body.includes("Demo site, please don't enter real personal or payment details"));
+    assert.ok(checkout.body.includes('Some providers store data overseas.'));
+    assert.ok(checkout.body.includes('noindex'));
 
     const missing = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1' });
     assert.strictEqual(missing.status, 409);
     assert.ok(missing.body.includes('customer terms'));
 
     const live = new Database(dbPath);
-    live.prepare("UPDATE addons SET enabled=1 WHERE code='late' AND hotel_id=(SELECT id FROM hotels WHERE slug='saltwater-terrace')").run();
+    live.prepare("UPDATE addons SET enabled=1 WHERE code='late' AND hotel_id IN (SELECT id FROM hotels WHERE slug IN ('saltwater-terrace','skyline-rooftop'))").run();
     live.close();
     const lateBook = await post(port, '/book', { hotel: 'saltwater-terrace', date: salt.date, pass: 'lounger', qty: '1', addon: 'late', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1' });
     assert.strictEqual(lateBook.status, 409);
     assert.ok(/closing time/.test(lateBook.body), lateBook.body.slice(0, 400));
 
-    const booked = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', addon: 'late', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1' });
+    const skyLate = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', addon: 'late', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1' });
+    assert.strictEqual(skyLate.status, 409, skyLate.body.slice(0, 300));
+    assert.ok(/room guests|closing time/.test(skyLate.body), skyLate.body.slice(0, 400));
+
+    const { sign } = require('cookie-signature');
+    const liveHotel = new Database(dbPath);
+    const skyRow = liveHotel.prepare("SELECT id FROM hotels WHERE slug='skyline-rooftop'").get();
+    const lateAddon = liveHotel.prepare("SELECT id FROM addons WHERE hotel_id=? AND code='late'").get(skyRow.id);
+    liveHotel.close();
+    const hotelCookie = 'hotel=' + encodeURIComponent('s:' + sign(String(skyRow.id), 'hdc-demo-secret'));
+    const addonSave = await new Promise((resolve, reject) => {
+      const body = new URLSearchParams({ on: String(lateAddon.id), ['aprice_' + lateAddon.id]: '40', ['acap_' + lateAddon.id]: '10' }).toString();
+      const req = http.request({ hostname: '127.0.0.1', port, path: '/hotel/addons', method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body), Cookie: hotelCookie } }, res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString() }));
+      });
+      req.on('error', reject);
+      req.end(body);
+    });
+    assert.strictEqual(addonSave.status, 303, addonSave.body.slice(0, 200));
+    assert.ok(decodeURIComponent(addonSave.headers.location || '').includes("can't overlap room guests only"));
+    const stillOff = new Database(dbPath, { readonly: true });
+    assert.strictEqual(stillOff.prepare("SELECT enabled FROM addons WHERE id=?").get(lateAddon.id).enabled, 0);
+    stillOff.close();
+
+    const booked = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1' });
     assert.strictEqual(booked.status, 303, booked.body.slice(0, 300));
     const loc = booked.headers.location;
     const page = await get(port, loc);
-    assert.ok(page.body.includes('Late access until 5pm'));
+    assert.ok(!page.body.includes('Late access until'));
     assert.ok(page.body.includes(data.cancel));
     assert.ok(page.body.includes(', Australia'));
     assert.ok(!page.body.includes(', Sydney'));

@@ -173,14 +173,30 @@ function closureReason(db, hotel, date, now) {
   if (blocked) return blocked.reason || 'Closed';
   return dayClosure(db, hotel, date, now);
 }
+function scheduleLabel(db, hotel, date) {
+  if (!hotel || !hotel.id) return (hotel && hotel.hours) || '';
+  const rows = db.prepare('SELECT weekday, open, opens, closes FROM hotel_hours WHERE hotel_id=?').all(hotel.id);
+  if (!rows.length) return hotel.hours || '';
+  const seasonal = inSeason(hotel, date) && hotel.season_opens && hotel.season_closes;
+  const mapped = rows.map(r => ({
+    weekday: r.weekday,
+    open: r.open,
+    opens: seasonal ? hotel.season_opens : r.opens,
+    closes: seasonal ? hotel.season_closes : r.closes,
+  }));
+  return hoursSummary(mapped, hotel.room_only_from).hours;
+}
 function hoursView(db, hotel, date) {
   const plan = hotel ? dayPlan(db, hotel, date) : null;
-  let hoursLine = (hotel && hotel.hours) || '';
   let span = '';
+  let hoursLine = hotel ? scheduleLabel(db, hotel, date) : '';
+  if (!hoursLine && hotel) hoursLine = hotel.hours || '';
   if (plan && plan.open && /^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
-    const [y, m, d] = date.split('-').map(Number);
     span = `${fmtTime(plan.opens)}–${fmtTime(plan.effective || plan.closes)}`;
-    hoursLine = `${DAY_SHORT[new Date(y, m - 1, d).getDay()]} · ${span}`;
+    if (!hoursLine) {
+      const [y, m, d] = date.split('-').map(Number);
+      hoursLine = `${DAY_SHORT[new Date(y, m - 1, d).getDay()]} · ${span}`;
+    }
   }
   return { hoursLine, span, showSeason: !(plan && plan.open && inSeason(hotel, date)) };
 }
@@ -217,19 +233,32 @@ function rulesLines(hotel, opts = {}) {
   lines.push('Free cancellation until 24 hours before access hours start');
   return lines;
 }
-function gapAfterPass(opens, closes, roomFrom) {
+function hhmmFromMinutes(total) {
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
+}
+function lateSpan(opens, closes, roomFrom, roomTo) {
   const openMin = minutes(opens);
   const closeMin = minutes(closes);
-  const roomMin = minutes(roomFrom);
-  if (openMin == null || closeMin == null || closeMin <= openMin) return false;
-  if (roomMin != null && roomMin <= openMin) return false;
-  const effective = roomMin != null && roomMin > openMin && roomMin < closeMin ? roomMin : closeMin;
-  return closeMin > effective;
+  const roomStart = minutes(roomFrom);
+  const roomEnd = minutes(roomTo);
+  if (openMin == null || closeMin == null || closeMin <= openMin) return null;
+  if (roomStart != null && roomStart <= openMin) return null;
+  let passEnd = closeMin;
+  if (roomStart != null && roomStart > openMin && roomStart < closeMin) passEnd = roomStart;
+  if (closeMin <= passEnd) return null;
+  if (roomStart != null && roomEnd != null && passEnd < roomEnd && closeMin > roomStart) {
+    if (roomEnd < closeMin) return { fromMin: roomEnd, untilMin: closeMin };
+    return null;
+  }
+  if (roomStart != null && roomEnd == null) return null;
+  return { fromMin: passEnd, untilMin: closeMin };
 }
 function latePossible(spec) {
   const hours = (spec.hours || []).filter(r => r.open);
-  if (hours.some(r => gapAfterPass(r.opens, r.closes, spec.room_only_from))) return true;
-  if (spec.season_opens && spec.season_closes && hours.length && gapAfterPass(spec.season_opens, spec.season_closes, spec.room_only_from)) return true;
+  const from = spec.room_only_from;
+  const to = spec.room_only_to;
+  if (hours.some(r => lateSpan(r.opens, r.closes, from, to))) return true;
+  if (spec.season_opens && spec.season_closes && hours.length && lateSpan(spec.season_opens, spec.season_closes, from, to)) return true;
   return false;
 }
 function hotelLatePossible(db, hotel) {
@@ -238,6 +267,7 @@ function hotelLatePossible(db, hotel) {
   return latePossible({
     hours,
     room_only_from: hotel.room_only_from,
+    room_only_to: hotel.room_only_to,
     season_opens: hotel.season_opens,
     season_closes: hotel.season_closes,
   });
@@ -245,17 +275,16 @@ function hotelLatePossible(db, hotel) {
 function lateWindow(db, hotel, date) {
   const plan = dayPlan(db, hotel, date);
   if (!plan || !plan.open) return null;
-  const closeMin = minutes(plan.closes);
-  const endMin = minutes(plan.effective || plan.closes);
-  if (closeMin == null || endMin == null || closeMin <= endMin) return null;
-  return { until: plan.closes, end: plan.effective || plan.closes };
+  const span = lateSpan(plan.opens, plan.closes, hotel.room_only_from, hotel.room_only_to);
+  if (!span) return null;
+  return { end: hhmmFromMinutes(span.fromMin), until: hhmmFromMinutes(span.untilMin) };
 }
 function syncLateAddons(db) {
   const off = db.prepare("UPDATE addons SET enabled=0, name=?, blurb=? WHERE hotel_id=? AND code='late'");
   const keep = db.prepare("UPDATE addons SET name=?, blurb=? WHERE hotel_id=? AND code='late'");
   for (const h of db.prepare('SELECT * FROM hotels').all()) {
-    if (hotelLatePossible(db, h)) keep.run('Late access', 'Stay until the pool closes, after day-pass hours end. It does not run past closing time.', h.id);
-    else off.run('Late access', 'Not offered. The pool already closes when day passes end.', h.id);
+    if (hotelLatePossible(db, h)) keep.run('Late access', 'Only after room guests only has ended, and only until the pool closes.', h.id);
+    else off.run('Late access', 'Not offered. It would overlap room guests only or run past the pool closing time.', h.id);
   }
 }
 function cancelNote(db, hotel, date, now = new Date()) {
@@ -486,7 +515,7 @@ function saveOffering(db, hotelId, body) {
   const spec = readForm(body);
   if (spec.err) return spec;
   const late = db.prepare("SELECT enabled FROM addons WHERE hotel_id=? AND code='late'").get(hotelId);
-  if (late && late.enabled && !latePossible(spec)) return { err: "Late access is on, but these hours don't leave time after day passes end and before the pool closes. Turn late access off, or start room guests only before the pool closes." };
+  if (late && late.enabled && !latePossible(spec)) return { err: "Late access is on, but it would overlap room guests only or run past the pool's closing time. Turn late access off, or leave time after room guests only and before the pool closes." };
   return writeOffering(db, hotelId, spec);
 }
 function echoForm(body) {
@@ -578,7 +607,7 @@ ${DAY_ORDER.map(wd => {
 <details class="opt-fold" ${h.room_only_from ? 'open' : ''}><summary>Room guests only, optional</summary>
 <div class="two"><label class="fl">From<input type="time" name="room_only_from" value="${esc(h.room_only_from || '')}"></label>
 <label class="fl">To<input type="time" name="room_only_to" value="${esc(h.room_only_to || '')}"></label></div>
-<p class="muted small">Day passes stop when this block starts, if that is before the pool closes. Late access can only fill the time between that start and closing.</p></details>
+<p class="muted small">Day passes stop when this block starts. Late access cannot overlap these hours. It is only available after the block ends, and only until the pool closes.</p></details>
 <h2 id="sec-rules">Pool rules</h2>
 <p class="muted small lead-in">Shown on the listing. Guests tick these rules before they book.</p>
 <div class="two">${yn('heated', 'Heated', h.heated)}

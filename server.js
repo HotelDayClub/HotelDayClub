@@ -62,8 +62,8 @@ function presentAddon(hotel, date, a) {
   if (!win) return null;
   return {
     ...a,
-    name: `Late access until ${fmtTime(win.until)}`,
-    blurb: `Stay until the pool closes at ${fmtTime(win.until)}. Day passes end at ${fmtTime(win.end)}.`,
+    name: `Late access ${fmtTime(win.end)}–${fmtTime(win.until)}`,
+    blurb: `From ${fmtTime(win.end)} until the pool closes at ${fmtTime(win.until)}. It does not overlap room guests only.`,
   };
 }
 function addonAvailability(hid, date) {
@@ -90,7 +90,7 @@ function chosenAddons(hid, date, people, q) {
     const a = db.prepare('SELECT * FROM addons WHERE hotel_id=? AND code=? AND enabled=1').get(hid, code);
     if (!a) return { err: 'That add-on is not available.' };
     const shown = presentAddon(hotel, date, a);
-    if (!shown) return { err: a.code === 'late' ? "Late access can't run past the pool's closing time." : 'That add-on is not available.' };
+    if (!shown) return { err: a.code === 'late' ? "Late access can't overlap room guests only or run past the pool's closing time." : 'That add-on is not available.' };
     const qty = a.per === 'booking' ? 1 : people;
     const left = Math.max(0, a.daily_cap - addonSold(a.id, date));
     if (left < qty) return { err: left === 0 ? `${shown.name} is sold out that day.` : `Only ${left} ${shown.name} left that day.` };
@@ -114,7 +114,7 @@ function page(title, body, { nav = 'guest', bare = false } = {}) {
     : '<a class="hotel-link show" href="/hotel">Hotel login</a><a class="hotel-link show hide-sm" href="/admin">Admin</a>';
   const abn = showAbn() ? '<p class="muted small abn-line">ABN: to be added</p>' : '';
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)} · Hotel Day Club</title><link rel="icon" href="/assets/logo-mark.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"></head><body class="${nav === 'guest' ? 'guest' : ''}">
+<title>${esc(title)} · Hotel Day Club</title><meta name="robots" content="noindex, nofollow"><link rel="icon" href="/assets/logo-mark.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"></head><body class="${nav === 'guest' ? 'guest' : ''}">
 <div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>
 <header class="hdr"><div class="wrap hdr-in">${LOGO}
 <nav class="hdr-nav"><a href="/how-it-works">How it works</a></nav>
@@ -275,6 +275,7 @@ app.get('/checkout', (req, res) => {
 <a class="link small" href="/h/${h.slug}?date=${date}">← Back to listing</a><h1 class="l-title">Confirm and pay</h1>
 <div class="co-grid"><form class="co-form" method="post" action="/book">
 ${['hotel', 'date', 'qty'].map(k => `<input type="hidden" name="${k}" value="${esc(req.query[k])}">`).join('')}<input type="hidden" name="pass" value="${p.code}">
+<p class="demo-caution">Demo site, please don't enter real personal or payment details</p>
 <h3>Your details</h3>
 <label class="fl">Full name<input name="name" required autocomplete="name" placeholder="Alex Citizen"></label>
 <div class="two"><label class="fl">Email<input name="email" type="email" required autocomplete="email" placeholder="alex@example.com"></label>
@@ -288,10 +289,10 @@ ${rulesCard(h, hoursView(db, h, date))}
 <p class="cancel-note">${esc(cancel)} <a href="/refunds">Cancellation and refunds</a></p>
 ${riskCard(h)}
 <label class="tick"><input type="checkbox" name="rules" value="1" required> <span>I've read and accept these pool rules.</span></label>
-<label class="tick"><input type="checkbox" name="terms" value="1" required> <span>I accept the <a href="/terms">customer terms</a>.</span></label>
+<label class="tick"><input type="checkbox" name="terms" value="1" required> <span>I accept the <a href="/terms">customer terms</a>, the <a href="/refunds">cancellation and refund policy</a>, and the <a href="/privacy">privacy notice</a>.</span></label>
 <label class="tick"><input type="checkbox" name="risk" value="1" required> <span>${esc(riskTick(h))}</span></label>
 <label class="tick"><input type="checkbox" name="marketing" value="1"> <span>Email me about day passes. Optional, and separate from this booking.</span></label>
-<p class="privacy-note">We use your name, email and mobile to hold this booking and show it to the hotel. <a href="/privacy">Privacy policy</a></p>
+<p class="privacy-note">We use your name, email and mobile to hold this booking and show it to the hotel. Some providers store data overseas. <a href="/privacy">Privacy policy</a></p>
 <button class="btn btn-coral full" id="co-btn" type="submit">Confirm booking · ${money(grand)} (demo)</button></form>
 <aside class="co-sum"><img src="/assets/photos/${h.photos[0]}" alt=""><div class="pad"><h3>${esc(h.name)}</h3><p class="muted small">${esc(h.area)}</p>
 <dl><dt>Date</dt><dd>${esc(nice(date))}</dd><dt>Seating</dt><dd>${esc(spotLabel(p))} × ${qty}</dd><dt>People</dt><dd>${people}</dd><dt>Spots left</dt><dd>${a.remaining}</dd></dl>
@@ -569,13 +570,13 @@ ${found ? `<p class="muted small">${found.length} result${found.length === 1 ? '
 <section id="avail" class="panel"><h2 class="ph2">Next 14 days</h2><div class="tbl-wrap"><table class="tbl avail"><thead><tr><th>Seating</th>${days.map(d => `<th>${nice(d).replace(' ', '<br>')}</th>`).join('')}</tr></thead><tbody>
 ${passes.map(p => `<tr><td><b>${esc(spotLabel(p))}</b><div class="muted small">cap ${p.daily_cap}</div></td>${days.map(d => { const a = grid[d].find(x => x.id === p.id); if (a.blocked) return `<td class="bl">${/same-day|closed for today/i.test(a.blocked) ? 'Cutoff' : 'Closed'}</td>`; return `<td class="${a.sold >= p.daily_cap ? 'full' : ''}">${a.sold}/${p.daily_cap}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div><p class="muted small">Booked out of the daily limit. Swipe sideways for later days.</p></section>
 <section id="addons" class="panel"><h2 class="ph2">Add-ons</h2>
-<p class="muted small">Optional extras. Turn one on, then set the price and how many you can take in a day. Late access can only run until the pool closes.</p>
+<p class="muted small">Optional extras. Turn one on, then set the price and how many you can take in a day. Late access cannot overlap room guests only, and it cannot run past the pool's closing time.</p>
 <form method="post" action="/hotel/addons"><div class="addon-edit">
 ${addonsAll.map(a => {
   const closed = closureReason(db, h, t);
   const left = a.enabled ? (closed ? 0 : Math.max(0, a.daily_cap - addonSold(a.id, t))) : null;
   const lateOk = a.code !== 'late' || hotelLatePossible(db, h);
-  const lateNote = a.code !== 'late' ? '' : `<div class="muted small">${lateOk ? 'Guests stay only until the pool closes, after day-pass hours end.' : 'Leave this off. The pool already closes when day passes end.'}</div>`;
+  const lateNote = a.code !== 'late' ? '' : `<div class="muted small">${lateOk ? 'Only after room guests only has ended, and only until the pool closes.' : 'Leave this off. It would overlap room guests only or run past closing.'}</div>`;
   return `<div class="addon-row"><label class="addon-on"><input type="checkbox" name="on" value="${a.id}" ${a.enabled ? 'checked' : ''}> Offer</label><div><b>${esc(a.name)}</b><div class="muted small">${esc(a.blurb)} · ${a.per === 'booking' ? 'per booking' : 'per person'}</div>${lateNote}<div class="addon-nums"><label>Price<input class="num" type="number" min="0" step="1" name="aprice_${a.id}" value="${a.price}"></label><label>Each day<input class="num" type="number" min="0" step="1" name="acap_${a.id}" value="${a.daily_cap}"></label>${left == null ? '<span class="muted small">Off</span>' : `<span class="muted small">${left} left today</span>`}</div></div></div>`;
 }).join('')}
 </div><button class="btn btn-navy">Save add-ons</button></form></section>
@@ -732,7 +733,7 @@ app.post('/hotel/addons', hotelAuth, (req, res) => {
     if (a.code === 'late' && enabled && !allowLate) { enabled = 0; blocked = true; }
     up.run(enabled, Number.isFinite(price) ? Math.max(0, price) : a.price, Number.isFinite(cap) ? Math.max(0, cap) : a.daily_cap, a.id, req.hotel.id);
   }))();
-  const msg = blocked ? "Late access stays off. It can't run past the pool's closing time." : 'Add-ons saved. Guests see the changes straight away.';
+  const msg = blocked ? "Late access stays off. It can't overlap room guests only or run past the pool's closing time." : 'Add-ons saved. Guests see the changes straight away.';
   res.redirect(303, '/hotel?msg=' + encodeURIComponent(msg) + '#addons');
 });
 app.post('/hotel/block', hotelAuth, (req, res) => {
@@ -847,7 +848,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <div class="wrap hiw-block" id="faq">
 <h2>Questions</h2>
 <div class="faq">
-<details open><summary>Cancellations</summary><p>Free cancellation until 24 hours before your access hours start. Checkout and your confirmation show that time for the date you chose. A booking made inside that window can't be cancelled for free. <a href="/refunds">Cancellation and refunds</a>.</p></details>
+<details open><summary>Cancellations</summary><p>Free cancellation until 24 hours before your access hours start. Checkout and your confirmation show that time for the date you chose. A booking made inside that window can't be cancelled for free. A free date change may be available once, subject to availability. <a href="/refunds">Cancellation and refunds</a>.</p></details>
 <details><summary>What to bring</summary><p>Photo ID when the hotel asks for it, swimwear and sunscreen. The listing says whether a towel is included.</p></details>
 <details><summary>Age limits</summary><p>You need to be 18 or over to book. Each hotel sets its own age policy and kids' hours. They're on the listing, and in the risk warning, before you pay.</p></details>
 <details><summary>Weather</summary><p>Rain on its own is not a closure. If the hotel closes the pool, you choose a full refund or a free rebooking. <a href="/faq">All questions</a>.</p></details>
@@ -864,10 +865,10 @@ adminPassword();
 
 function inlineMd(text) {
   let s = esc(text);
-  s = s.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)/g, '<a href="$2">$1</a>');
-  s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+?)([.,;:]?)(?=\s|$)/g, '$1<a href="$2">$2</a>$3');
+  s = s.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)"']+|\/[^\s)"']*)\)/g, '<a href="$2">$1</a>');
   s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  s = s.replace(/(^|[\s(>])(https?:\/\/[^\s<)"'*]+)/g, '$1<a href="$2">$2</a>');
   return s;
 }
 function tableCells(row) {
@@ -933,7 +934,7 @@ function mdToHtml(src) {
 }
 function legalDoc(heading, file) {
   const raw = fs.readFileSync(path.join(__dirname, 'legal', file), 'utf8');
-  return page(heading, `<div class="wrap sec"><h1 class="l-title">${esc(heading)}</h1><article class="legal-doc">${mdToHtml(raw)}</article></div>`);
+  return page(heading, `<div class="wrap sec"><h1 class="l-title">${esc(heading)}</h1><p class="draft-notice">Draft terms for demo purposes, pending legal review.</p><article class="legal-doc">${mdToHtml(raw)}</article></div>`);
 }
 app.get('/privacy', (req, res) => res.send(legalDoc('Privacy policy (draft)', 'privacy-policy.md')));
 app.get('/terms', (req, res) => res.send(legalDoc('Customer terms (draft)', 'customer-terms.md')));
@@ -944,12 +945,12 @@ app.get('/faq', (req, res) => {
 <p class="lead">Short answers, in line with the <a href="/terms">customer terms</a> and the <a href="/refunds">cancellation and refund policy</a>. Both of those pages are drafts.</p>
 <div class="faq">
 <details open><summary>Is this a real booking site?</summary><p>No. This is a demo. Listings are examples. No real bookings or payments are taken.</p></details>
-<details><summary>Are these partner hotels?</summary><p>No. The example listings use neighbourhood names in Australia. Hotel Day Club is not partnered with them, and the photos are stock photos.</p></details>
-<details><summary>Can I cancel for free?</summary><p>Yes, if you cancel at least 24 hours before your access hours start. Checkout and your confirmation show the time for the date you chose. If you book inside that 24 hours, there is no free-cancellation window. If the hotel closes or limits the facility you booked, you choose a full refund or a free rebooking. Nothing in the policy limits your rights under the Australian Consumer Law.</p></details>
+<details><summary>Are these real hotels?</summary><p>No. The example listings use neighbourhood names in Australia. They are not participating hotels, and the photos are stock photos.</p></details>
+<details><summary>Can I cancel for free?</summary><p>Yes, if you cancel at least 24 hours before your access hours start. Checkout and your confirmation show the time for the date you chose. If you book inside that 24 hours, there is no free-cancellation window. A free date change may be available once, subject to availability. If the hotel closes or limits the facility you booked, you choose a full refund or a free rebooking. Nothing in the policy limits your rights under the Australian Consumer Law.</p></details>
 <details><summary>What if it rains?</summary><p>Rain on its own is not a closure. The listing says whether the pool is indoor, outdoor, heated or unheated. If the hotel decides to close, you get the choice above.</p></details>
 <details><summary>Who can book, and can children come?</summary><p>The person booking needs to be 18 or over. Each hotel sets its own age rules and kids' hours. They are on the listing and in the risk warning before you pay. An adult on the booking supervises each child.</p></details>
-<details><summary>What do I accept at checkout?</summary><p>Three separate boxes: the hotel's pool rules, the <a href="/terms">customer terms</a>, and the <a href="/risk">risk warning</a> for that hotel. The warning is shown in full on checkout. Marketing email is optional and is not required.</p></details>
-<details><summary>What are the hours?</summary><p>Each hotel sets its own hours. A day pass is not sold past the time a room-guests-only period starts. Late access, where a hotel offers it, ends when the pool closes and does not run later than that.</p></details>
+<details><summary>What do I accept at checkout?</summary><p>Three separate boxes: the hotel's pool rules, the <a href="/terms">customer terms</a> (including the <a href="/refunds">refund policy</a> and <a href="/privacy">privacy notice</a>), and the <a href="/risk">risk warning</a> for that hotel. The warning is shown in full on checkout. Marketing email is optional and is not required.</p></details>
+<details><summary>What are the hours?</summary><p>Each hotel sets its own hours. A day pass is not sold past the time a room-guests-only period starts. Late access, where a hotel offers it, starts only after that period ends and stops when the pool closes.</p></details>
 <details><summary>What should I bring?</summary><p>Swimwear, and sunscreen if the pool is outdoors. The listing says if a towel is included and if photo ID is required.</p></details>
 <details><summary>Do you sell gift cards or pass packs?</summary><p>Not on this demo. Any gift card offered later is valid for at least 3 years from the date of issue. A 5-pass pack is not offered, and it is not sold as a gift.</p></details>
 <details><summary>Do you show ratings or reviews?</summary><p>No. Listings say New. This site does not publish star ratings or review counts.</p></details>
