@@ -1,5 +1,6 @@
 const fs = require('fs'); const path = require('path');
 const { ymd, addDays } = require('./util');
+const { parseTime, writeOffering, rulesText } = require('./offering');
 
 const CATALOG = [
   { code: 'gym', name: 'Gym access', blurb: 'Use the gym on the same day.', per: 'guest', price: 25, cap: 20 },
@@ -9,7 +10,6 @@ const CATALOG = [
   { code: 'robe', name: 'Towel & robe pack', blurb: 'An extra towel and a robe.', per: 'guest', price: 15, cap: 30 },
   { code: 'late', name: 'Late access (until 8pm)', blurb: 'Stay on after the usual close, out by 8pm.', per: 'guest', price: 35, cap: 12 },
 ];
-// enabled, price, daily cap. Hotels that already include something leave it off.
 const PRESETS = {
   'saltwater-terrace': { gym: { enabled: 1, price: 25, cap: 20 }, parking: { enabled: 1, price: 18, cap: 30 }, food: { enabled: 1, price: 30, cap: 40 }, cabana: { enabled: 1, price: 85, cap: 6 }, robe: { enabled: 0 }, late: { enabled: 1, price: 35, cap: 15 } },
   'skyline-rooftop': { gym: { enabled: 1, price: 20, cap: 25 }, parking: { enabled: 1, price: 40, cap: 16 }, food: { enabled: 1, price: 28, cap: 30 }, cabana: { enabled: 1, price: 95, cap: 4 }, robe: { enabled: 1, price: 18, cap: 20 }, late: { enabled: 1, price: 40, cap: 10 } },
@@ -19,14 +19,71 @@ const PRESETS = {
   'bayview-spa': { gym: { enabled: 1, price: 25, cap: 12 }, parking: { enabled: 1, price: 28, cap: 18 }, food: { enabled: 1, price: 40, cap: 20 }, cabana: { enabled: 1, price: 110, cap: 5 }, robe: { enabled: 1, price: 20, cap: 20 }, late: { enabled: 0 } },
 };
 
-// Days are JS getDay() numbers: 0 Sun … 6 Sat. Most hotels take day passes on weekdays.
-const SCHEDULE = {
-  'saltwater-terrace': { hours: 'Mon–Fri · 10am–4pm', days: '1,2,3,4,5', opens: '10am', closes: '4pm' },
-  'skyline-rooftop': { hours: 'Mon–Thu · 11am–5pm', days: '1,2,3,4', opens: '11am', closes: '5pm' },
-  'harbourside-lido': { hours: 'Mon–Fri · 9am–6pm', days: '1,2,3,4,5', opens: '9am', closes: '6pm' },
-  'palm-court': { hours: 'Thu–Sun · 10am–5pm', days: '0,4,5,6', opens: '10am', closes: '5pm' },
-  'manly-sands': { hours: 'Mon–Fri · 10am–4pm', days: '1,2,3,4,5', opens: '10am', closes: '4pm' },
-  'bayview-spa': { hours: 'Tue–Fri · 9am–4pm', days: '2,3,4,5', opens: '9am', closes: '4pm' },
+const WEEKDAYS = '1,2,3,4,5';
+function week(days, opens, closes) {
+  const open = new Set(String(days).split(',').map(Number));
+  return [0, 1, 2, 3, 4, 5, 6].map(weekday => ({ weekday, open: open.has(weekday) ? 1 : 0, opens, closes }));
+}
+const OFFERINGS = {
+  'saltwater-terrace': {
+    hours: week(WEEKDAYS, '10:00', '16:00'), cutoff_hours: 2, heated: 1, setting: 'outdoor',
+    age_policy: 'All ages', kids_hours: 'All open hours', towels: 1, food_rule: 'Food and drink from the pool bar only',
+    id_required: 1, lifeguard: 0,
+    spots: [
+      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the infinity pool, with a towel.', holds: 1, price: 45, daily_cap: 24, photo: 'hero-loungers.jpg' },
+      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A reserved daybed for two, with shade.', holds: 2, price: 95, daily_cap: 6, photo: 'daybed-canopy.jpg' },
+      { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A draped cabana for four, with loungers.', holds: 4, price: 220, daily_cap: 3, photo: 'cabana-drapes.jpg' },
+    ],
+  },
+  'skyline-rooftop': {
+    hours: week('1,2,3,4', '11:00', '17:00'), cutoff_hours: 1, heated: 1, setting: 'outdoor',
+    age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: 'Bar from noon. No outside food or drink.',
+    id_required: 1, lifeguard: 0, room_only_from: '16:00', room_only_to: '17:00',
+    spots: [
+      { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair on the rooftop deck, with a towel.', holds: 1, price: 55, daily_cap: 20, photo: 'rooftop-city.jpg' },
+      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A reserved daybed for two, with a city view.', holds: 2, price: 120, daily_cap: 8, photo: 'daybed-canopy.jpg' },
+      { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A cabana for four on the roof.', holds: 4, price: 260, daily_cap: 4, photo: 'cabana-drapes.jpg' },
+    ],
+  },
+  'harbourside-lido': {
+    hours: week(WEEKDAYS, '09:00', '18:00'), cutoff_hours: 2, heated: 1, setting: 'indoor',
+    age_policy: '16+', kids_hours: '16 and over only', towels: 1, food_rule: 'No outside food. Café on site.',
+    id_required: 1, lifeguard: 0,
+    season_start: '12-01', season_end: '03-31', season_opens: '08:00', season_closes: '19:00',
+    spots: [
+      { code: 'entry', kind: 'entry', name: 'General entry', description: 'Pool, steam room and sauna.', holds: 1, price: 65, daily_cap: 40, photo: 'glass-roof-pool.jpg' },
+      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger under the glass roof, with a robe.', holds: 1, price: 85, daily_cap: 16, photo: 'hero-loungers.jpg' },
+      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A quiet daybed for two beside the pool.', holds: 2, price: 150, daily_cap: 6, photo: 'indoor-spa-pool.jpg' },
+    ],
+  },
+  'palm-court': {
+    hours: week('0,4,5,6', '10:00', '17:00'), cutoff_hours: 1, heated: 0, setting: 'outdoor',
+    age_policy: 'All ages', kids_hours: 'All open hours, shallow end', towels: 1, food_rule: 'Café on site. Packed lunches welcome.',
+    id_required: 1, lifeguard: 1,
+    spots: [
+      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger in the palm gardens, with a towel.', holds: 1, price: 35, daily_cap: 40, photo: 'tropical-resort.jpg' },
+      { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair by the shallow end.', holds: 1, price: 25, daily_cap: 30, photo: 'kids-float.jpg' },
+      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A shaded daybed for two.', holds: 2, price: 70, daily_cap: 10, photo: 'thatched-umbrellas.jpg' },
+    ],
+  },
+  'manly-sands': {
+    hours: week(WEEKDAYS, '10:00', '16:00'), cutoff_hours: 2, heated: 0, setting: 'outdoor',
+    age_policy: 'All ages', kids_hours: 'Until 2pm', towels: 1, food_rule: 'Kiosk on site. No glass.',
+    id_required: 1, lifeguard: 0,
+    spots: [
+      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the magnesium pool, with a towel.', holds: 1, price: 40, daily_cap: 28, photo: 'infinity-palms.jpg' },
+      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A canopy daybed for two, steps from the beach.', holds: 2, price: 90, daily_cap: 8, photo: 'daybed-canopy.jpg' },
+    ],
+  },
+  'bayview-spa': {
+    hours: week('2,3,4,5', '09:00', '16:00'), cutoff_hours: 3, heated: 1, setting: 'both',
+    age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: 'No outside food or drink.',
+    id_required: 1, lifeguard: 0,
+    spots: [
+      { code: 'entry', kind: 'entry', name: 'General entry', description: 'Bathhouse, plunge pools and the outdoor pool.', holds: 1, price: 80, daily_cap: 24, photo: 'spa-steps.jpg' },
+      { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A draped cabana for two by the outdoor pool.', holds: 2, price: 180, daily_cap: 5, photo: 'cabana-drapes.jpg' },
+    ],
+  },
 };
 function weekdayOf(date) { return new Date(date + 'T00:00:00').getDay(); }
 
@@ -44,16 +101,24 @@ function ensureAddons(db) {
 }
 
 function ensureSchedules(db) {
-  const up = db.prepare('UPDATE hotels SET hours=?, open_days=?, opens=?, closes=? WHERE slug=?');
-  const upPass = db.prepare("UPDATE pass_types SET description=? WHERE hotel_id=? AND code='pool'");
-  const upLate = db.prepare("UPDATE addons SET blurb=? WHERE code='late'");
+  const ins = db.prepare('INSERT INTO hotel_hours(hotel_id,weekday,open,opens,closes) VALUES (?,?,?,?,?)');
+  const has = db.prepare('SELECT COUNT(*) n FROM hotel_hours WHERE hotel_id=?');
   db.transaction(() => {
-    for (const [slug, s] of Object.entries(SCHEDULE)) {
-      up.run(s.hours, s.days, s.opens, s.closes, slug);
-      const h = db.prepare('SELECT id FROM hotels WHERE slug=?').get(slug);
-      if (h) upPass.run(`Lounger, towel, pool and showers, ${s.opens}–${s.closes}`, h.id);
+    for (const [slug, spec] of Object.entries(OFFERINGS)) {
+      const h = db.prepare('SELECT * FROM hotels WHERE slug=?').get(slug);
+      if (!h || has.get(h.id).n) continue;
+      const opens = parseTime(h.opens) || spec.hours.find(r => r.open).opens;
+      const closes = parseTime(h.closes) || spec.hours.find(r => r.open).closes;
+      const open = new Set(String(h.open_days || '').split(',').map(n => parseInt(n, 10)));
+      for (let wd = 0; wd < 7; wd++) ins.run(h.id, wd, open.has(wd) ? 1 : 0, opens, closes);
     }
-    upLate.run('Stay on after the usual close, out by 8pm.');
+    db.prepare("UPDATE addons SET blurb=? WHERE code='late'").run('Stay on after the usual close, out by 8pm.');
+    db.prepare("UPDATE hotels SET status='active' WHERE status IS NULL OR status=''").run();
+    db.prepare('UPDATE hotels SET cutoff_hours=2 WHERE cutoff_hours IS NULL').run();
+    db.prepare('UPDATE pass_types SET holds=1 WHERE holds IS NULL OR holds < 1').run();
+    db.prepare("UPDATE pass_types SET kind='lounger' WHERE (kind IS NULL OR kind='') AND code='pool'").run();
+    db.prepare("UPDATE pass_types SET kind='entry' WHERE (kind IS NULL OR kind='') AND code='spa'").run();
+    db.prepare("UPDATE pass_types SET kind=code WHERE kind IS NULL OR kind=''").run();
   })();
 }
 
@@ -78,16 +143,10 @@ const hotels = [
    'A calm bathhouse with hot and cold plunge, a heated outdoor pool and draped cabanas. 18+ on weekdays.',
    ['cabana-drapes.jpg', 'indoor-spa-pool.jpg', 'spa-steps.jpg', 'loungers-snacks.jpg'], ['Heated pool', 'Hot & cold plunge', 'Cabanas', '18+ weekdays', 'Robes'], 'demo-bayview'],
 ];
-const passes = [
-  ['pool', 'Pool Pass', 'Lounger, towel, pool and showers', 45, 30],
-  ['daybed', 'Pool + Daybed', 'Reserved daybed for two hours, plus all-day pool access', 75, 8],
-  ['spa', 'Spa + Pool', 'Sauna, steam and spa facilities, plus pool access and a robe', 120, 10],
-];
-const insH = db.prepare('INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,open_days,opens,closes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-const insP = db.prepare('INSERT INTO pass_types(hotel_id,code,name,description,price,daily_cap,sort) VALUES (?,?,?,?,?,?,?)');
+const insH = db.prepare('INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
 const insB = db.prepare('INSERT INTO blocked_dates(hotel_id,date,reason) VALUES (?,?,?)');
-const insBk = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,status,checked_in_at,created_at)
-  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+const insBk = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,status,checked_in_at,created_at,party,rules_ack_at,rules_text)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
 const insA = db.prepare('INSERT INTO addons(hotel_id,code,name,blurb,price,daily_cap,per,enabled,sort) VALUES (?,?,?,?,?,?,?,?,?)');
 const insBA = db.prepare('INSERT INTO booking_addons(booking_id,addon_id,name,qty,unit_price,total) VALUES (?,?,?,?,?,?)');
 const bump = db.prepare('UPDATE bookings SET total=total+? WHERE id=?');
@@ -97,10 +156,13 @@ const today = new Date();
 const usedA = {};
 db.transaction(() => {
   hotels.forEach((h, i) => {
-    const sched = SCHEDULE[h[0]];
-    const open = new Set(sched.days.split(',').map(Number));
-    const id = insH.run(h[0], h[1], h[2], h[3], h[4], JSON.stringify(h[5]), JSON.stringify(h[6]), sched.hours, null, h[7], 'demo1234', sched.days, sched.opens, sched.closes).lastInsertRowid;
-    const pids = passes.map((p, j) => insP.run(id, p[0], p[1], j === 0 ? `${p[2]}, ${sched.opens}–${sched.closes}` : p[2], p[3], p[4], j).lastInsertRowid);
+    const spec = OFFERINGS[h[0]];
+    const open = new Set(spec.hours.filter(d => d.open).map(d => d.weekday));
+    const id = insH.run(h[0], h[1], h[2], h[3], h[4], JSON.stringify(h[5]), JSON.stringify(h[6]), '', null, h[7], 'demo1234', 'active').lastInsertRowid;
+    writeOffering(db, id, spec);
+    const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(id);
+    const rules = rulesText(hotel);
+    const pids = db.prepare('SELECT * FROM pass_types WHERE hotel_id=? ORDER BY sort').all(id);
     const hotelAddons = CATALOG.map((a, sort) => {
       const o = (PRESETS[h[0]] && PRESETS[h[0]][a.code]) || {};
       const row = { ...a, price: o.price ?? a.price, cap: o.cap ?? a.cap, enabled: o.enabled ?? 0 };
@@ -114,11 +176,13 @@ db.transaction(() => {
       if (!open.has(weekdayOf(date0))) continue;
       const n = d === 0 ? 4 + rnd(3) : rnd(d < 0 ? 5 : 3);
       for (let k = 0; k < n; k++) {
-        const pj = rnd(3), qty = 1 + rnd(2), price = passes[pj][3], nm = names[rnd(names.length)];
+        const spot = pids[rnd(pids.length)], qty = 1 + rnd(2), nm = names[rnd(names.length)];
+        const people = qty * (spot.holds || 1);
         const date = ymd(addDays(today, d));
         const ci = d < 0 ? `${date} 1${rnd(3)}:${10 + rnd(49)}` : null;
-        const bid = insBk.run('HDC-' + (seq++), id, pids[pj], date, qty, price, price * qty, nm, nm.toLowerCase().replace(' ', '.') + '@example.com',
-          '04' + String(10000000 + rnd(89999999)), 'confirmed', ci, ymd(addDays(today, Math.min(d, 0) - 3)) + ' 09:00').lastInsertRowid;
+        const created = ymd(addDays(today, Math.min(d, 0) - 3)) + ' 09:00';
+        const bid = insBk.run('HDC-' + (seq++), id, spot.id, date, qty, spot.price, spot.price * qty, nm, nm.toLowerCase().replace(' ', '.') + '@example.com',
+          '04' + String(10000000 + rnd(89999999)), 'confirmed', ci, created, people, created, rules).lastInsertRowid;
         const want = (d === 0 && k === 0) ? 2 : (rnd(100) < 40 ? 1 + rnd(2) : 0);
         if (!want || !hotelAddons.length) continue;
         const idxs = hotelAddons.map((_, ix) => ix);
@@ -127,7 +191,7 @@ db.transaction(() => {
         for (const ix of idxs) {
           if (picked >= want) break;
           const a = hotelAddons[ix];
-          const aq = a.per === 'booking' ? 1 : qty;
+          const aq = a.per === 'booking' ? 1 : people;
           const key = a.id + '|' + date;
           const used = usedA[key] || 0;
           if (d >= 0 && used + aq > a.cap) continue;
@@ -140,8 +204,9 @@ db.transaction(() => {
       }
     }
   });
-  // A sold-out day for the demo: Saltwater Terrace daybeds, on the next open weekday.
-  const st = db.prepare("SELECT id,daily_cap,price FROM pass_types WHERE hotel_id=1 AND code='daybed'").get();
+  const st = db.prepare("SELECT id,daily_cap,price,holds FROM pass_types WHERE hotel_id=1 AND code='daybed'").get();
+  const sample = db.prepare('SELECT rules_text FROM bookings WHERE hotel_id=1 LIMIT 1').get();
+  const rules = sample ? sample.rules_text : rulesText(db.prepare('SELECT * FROM hotels WHERE id=1').get());
   let date = null;
   for (let i = 1; i <= 10 && !date; i++) {
     const cand = ymd(addDays(today, i));
@@ -150,8 +215,11 @@ db.transaction(() => {
     if (db.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=1 AND date=?').get(cand)) continue;
     date = cand;
   }
-  const used = db.prepare('SELECT COALESCE(SUM(qty),0) n FROM bookings WHERE pass_type_id=? AND date=?').get(st.id, date).n;
-  for (let k = used; k < st.daily_cap; k++) insBk.run('HDC-' + (seq++), 1, st.id, date, 1, st.price, st.price, names[k % 15], 'guest' + k + '@example.com', '0400000' + (100 + k), 'confirmed', null, ymd(today) + ' 08:00');
+  const used = db.prepare("SELECT COALESCE(SUM(qty),0) n FROM bookings WHERE pass_type_id=? AND date=? AND status!='cancelled'").get(st.id, date).n;
+  for (let k = used; k < st.daily_cap; k++) {
+    const created = ymd(today) + ' 08:00';
+    insBk.run('HDC-' + (seq++), 1, st.id, date, 1, st.price, st.price, names[k % 15], 'guest' + k + '@example.com', '0400000' + (100 + k), 'confirmed', null, created, st.holds || 2, created, rules);
+  }
 })();
 console.log('Seeded', db.prepare('SELECT COUNT(*) n FROM bookings').get().n, 'bookings');
 }
