@@ -3,7 +3,7 @@ const cookieParser = require('cookie-parser');
 const QRCode = require('qrcode');
 const path = require('path');
 const db = require('./db');
-const { seed, ensureAddons } = require('./seed');
+const { seed, ensureAddons, ensureSchedules } = require('./seed');
 const { ymd, addDays, esc, money, nice } = require('./util');
 const app = express();
 const PORT = process.env.PORT || 3030;
@@ -22,24 +22,36 @@ const getHotel = slug => hotelRow(db.prepare('SELECT * FROM hotels WHERE slug=?'
 const getPasses = hid => db.prepare('SELECT * FROM pass_types WHERE hotel_id=? ORDER BY sort').all(hid);
 const isBlocked = (hid, date) => db.prepare('SELECT reason FROM blocked_dates WHERE hotel_id=? AND date=?').get(hid, date);
 const sold = (pid, date) => db.prepare("SELECT COALESCE(SUM(qty),0) n FROM bookings WHERE pass_type_id=? AND date=? AND status!='cancelled'").get(pid, date).n;
+function offDay(hotel, date) {
+  if (!hotel || !hotel.open_days || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const [y, m, d] = date.split('-').map(Number);
+  const open = hotel.open_days.split(',').map(n => parseInt(n, 10));
+  if (open.includes(new Date(y, m - 1, d).getDay())) return null;
+  const days = String(hotel.hours || '').split('·')[0].trim();
+  return days ? `Day passes run ${days}` : 'Closed this day';
+}
 function availability(hid, date) {
   const blocked = isBlocked(hid, date);
+  const hotel = db.prepare('SELECT hours, open_days FROM hotels WHERE id=?').get(hid);
+  const why = blocked ? blocked.reason : offDay(hotel, date);
   const past = date < today();
   return getPasses(hid).map(p => {
     const s = sold(p.id, date);
     return { id: p.id, code: p.code, name: p.name, price: p.price, cap: p.daily_cap, sold: s,
-      remaining: blocked || past ? 0 : Math.max(0, p.daily_cap - s), blocked: blocked ? blocked.reason : null, past };
+      remaining: why || past ? 0 : Math.max(0, p.daily_cap - s), blocked: why, past };
   });
 }
 const getAddons = (hid, enabledOnly = false) => db.prepare(`SELECT * FROM addons WHERE hotel_id=? ${enabledOnly ? 'AND enabled=1' : ''} ORDER BY sort, id`).all(hid);
 const addonSold = (aid, date) => db.prepare("SELECT COALESCE(SUM(ba.qty),0) n FROM booking_addons ba JOIN bookings b ON b.id=ba.booking_id WHERE ba.addon_id=? AND b.date=? AND b.status!='cancelled'").get(aid, date).n;
 function addonAvailability(hid, date) {
   const blocked = isBlocked(hid, date);
+  const hotel = db.prepare('SELECT hours, open_days FROM hotels WHERE id=?').get(hid);
+  const why = blocked || offDay(hotel, date);
   const past = date < today();
   return getAddons(hid, true).map(a => {
     const s = addonSold(a.id, date);
     return { id: a.id, code: a.code, name: a.name, blurb: a.blurb, price: a.price, cap: a.daily_cap, per: a.per, sold: s,
-      remaining: blocked || past ? 0 : Math.max(0, a.daily_cap - s) };
+      remaining: why || past ? 0 : Math.max(0, a.daily_cap - s) };
   });
 }
 function addonCodes(q) {
@@ -93,7 +105,7 @@ const card = (h, date) => {
   let spots = '';
   if (av) { const left = av.reduce((a, p) => a + p.remaining, 0); spots = av[0].blocked ? '<span class="spots out">Closed</span>' : left === 0 ? '<span class="spots out">Sold out</span>' : `<span class="spots">${left} left</span>`; }
   return `<a class="card" href="/h/${h.slug}${date ? '?date=' + date : ''}"><div class="ph"><img src="/assets/photos/${h.photos[0]}" alt="" loading="lazy"></div>
-<div class="c-body"><div class="c-top"><h3>${esc(h.name)}</h3><span class="rate">${ICON.star}${h.rating.toFixed(2)}</span></div>
+<div class="c-body"><div class="c-top"><h3>${esc(h.name)}</h3><span class="rate">New</span></div>
 <div class="c-sub">${esc(h.area)}</div>
 <div class="c-price">From <b>${money(from)}</b> ${spots}</div></div></a>`;
 };
@@ -121,7 +133,7 @@ app.get('/', (req, res) => {
 <div class="grid">${list.map(h => card(h, date)).join('') || '<p class="muted">Nothing matches. Try another date or pass.</p>'}</div></section>
 <section id="how" class="sec how"><h2>Three steps</h2><div class="how-grid">
 <div><span class="n">1</span><h3>Pick a pool</h3><p class="muted">Browse hotel pools, daybeds and spas across Sydney.</p></div>
-<div><span class="n">2</span><h3>Choose your day</h3><p class="muted">See live spots left. Hotels cap numbers so it never feels crowded.</p></div>
+<div><span class="n">2</span><h3>Choose your day</h3><p class="muted">See live spots left. Hotels cap numbers to keep it relaxed.</p></div>
 <div><span class="n">3</span><h3>Show your QR</h3><p class="muted">Check in at reception, then the lounger is yours.</p></div></div>
 <p class="how-more"><a class="link" href="/how-it-works">Read how it works</a></p></section></div>`));
 });
@@ -133,13 +145,13 @@ app.get('/h/:slug', (req, res) => {
   const blocked = db.prepare('SELECT date FROM blocked_dates WHERE hotel_id=? AND date>=? ORDER BY date').all(h.id, today()).map(b => b.date);
   res.send(page(h.name, `<div class="wrap listing">
 <div class="l-hd"><p class="eyebrow-s">Fictional demo listing</p><h1 class="l-title">${esc(h.name)}</h1>
-<div class="muted l-meta">${ICON.star} ${h.rating.toFixed(2)} · ${esc(h.area)} · ${esc(h.hours)}</div></div>
+<div class="muted l-meta">New · ${esc(h.area)} · ${esc(h.hours)}</div></div>
 <div class="gallery">${h.photos.map((p, i) => `<img class="g${i}" src="/assets/photos/${p}" alt="">`).join('')}<span class="photo-credit">Stock photos · not this hotel</span></div>
 <div class="l-body"><div class="l-main">
 <h2>${esc(h.tagline)}</h2><p class="lead">${esc(h.blurb)}</p>
 <h3 class="mt">What's included</h3><ul class="amen">${h.amenities.map(a => `<li>${ICON.check} ${esc(a)}</li>`).join('')}</ul>
 <h3 class="mt">Passes</h3><div class="pass-list">${passes.map(p => `<div class="pass-row"><div><b>${esc(p.name)}</b><div class="muted small">${esc(p.description)}</div></div><b>${money(p.price)}</b></div>`).join('')}</div>
-<h3 class="mt">Good to know</h3><ul class="rules-l"><li>Check in from 10am, out by 4pm. Bring photo ID.</li><li>Spa passes are 18+. No lifeguard on duty.</li><li>Free cancellation up to 24h before (demo policy).</li></ul>
+<h3 class="mt">Good to know</h3><ul class="rules-l"><li>${esc(h.hours)}. Bring photo ID.</li><li>Spa passes are 18+. No lifeguard on duty.</li><li>Free cancellation up to 24 hours before (hotel terms apply).</li></ul>
 </div>
 <aside class="book-box" id="book"><form action="/checkout" method="get" id="bf">
 <input type="hidden" name="hotel" value="${h.slug}">
@@ -227,7 +239,7 @@ ${addonFields}
 <p class="small">This is a mock checkout. No card is needed and nothing is charged. In the live version this step is Stripe.</p>
 <label class="fl">Card number<input value="4242 4242 4242 4242" disabled></label>
 <div class="two"><label class="fl">Expiry<input value="12 / 30" disabled></label><label class="fl">CVC<input value="123" disabled></label></div></div>
-<label class="tick"><input type="checkbox" required> I'm happy with the pool rules (photo ID, 10am–4pm, no lifeguard).</label>
+<label class="tick"><input type="checkbox" required> I'm happy with the pool rules (photo ID, ${esc(h.opens)}–${esc(h.closes)}, no lifeguard).</label>
 <button class="btn btn-coral full" id="co-btn" type="submit">Confirm booking · ${money(grand)} (demo)</button></form>
 <aside class="co-sum"><img src="/assets/photos/${h.photos[0]}" alt=""><div class="pad"><h3>${esc(h.name)}</h3><p class="muted small">${esc(h.area)}</p>
 <dl><dt>Date</dt><dd>${esc(nice(date))}</dd><dt>Pass</dt><dd>${esc(p.name)} × ${qty}</dd><dt>Guests</dt><dd>${qty}</dd><dt>Spots left</dt><dd>${a.remaining}</dd></dl>
@@ -264,19 +276,25 @@ app.post('/book', (req, res) => {
   res.redirect(303, '/booking/' + code);
 });
 
-const bookingFull = code => db.prepare(`SELECT b.*, h.name hotel, h.slug, h.area, h.photos, p.name pass FROM bookings b JOIN hotels h ON h.id=b.hotel_id JOIN pass_types p ON p.id=b.pass_type_id WHERE b.code=?`).get(code);
+const bookingFull = code => db.prepare(`SELECT b.*, h.name hotel, h.slug, h.area, h.photos, h.hours, h.opens, h.closes, p.name pass FROM bookings b JOIN hotels h ON h.id=b.hotel_id JOIN pass_types p ON p.id=b.pass_type_id WHERE b.code=?`).get(code);
+function visitHours(b, adds) {
+  const late = adds.map(a => a.name).find(n => /until\s+\d/i.test(n));
+  const until = late && (late.match(/until\s+([0-9]+(?::[0-9]+)?\s*(?:am|pm))/i) || [])[1];
+  if (b.hours && until && b.closes) return b.hours.replace(b.closes, until.trim());
+  return b.hours || '';
+}
 app.get('/booking/:code', async (req, res) => {
   const b = bookingFull(req.params.code.toUpperCase());
   if (!b) return res.status(404).send(page('Not found', '<div class="wrap sec"><h2>Booking not found</h2></div>'));
   const qr = await QRCode.toDataURL(`HDC:${b.code}`, { margin: 1, width: 260, color: { dark: '#0B2545' } });
   const adds = bookingAddons(b.id);
-  const until = adds.some(a => a.name.startsWith('Late access')) ? '8pm' : '4pm';
+  const when = visitHours(b, adds);
   res.send(page('Booking ' + b.code, `<div class="wrap sec narrow confirm">
 <div class="ok-badge">${ICON.check}</div><h1 class="l-title center">You're booked in.</h1>
 <p class="center muted">We've sent the details to ${esc(b.email)} (demo: no email is actually sent).</p>
 <div class="ticket"><div class="t-top"><img src="/assets/photos/${JSON.parse(b.photos)[0]}" alt=""><div><h3>${esc(b.hotel)}</h3><p class="muted small">${esc(b.area)}, Sydney</p></div></div>
 <div class="t-mid"><img class="qr" src="${qr}" alt="QR code for ${b.code}"><div class="code">${b.code}</div><p class="muted small">Show this at reception</p></div>
-<dl><dt>Guest</dt><dd>${esc(b.guest_name)}</dd><dt>Date</dt><dd>${esc(nice(b.date))} · 10am–${until}</dd><dt>Pass</dt><dd>${esc(b.pass)} × ${b.qty}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Status</dt><dd>${b.checked_in_at ? 'Checked in ' + esc(b.checked_in_at) : 'Confirmed'}</dd></dl>
+<dl><dt>Guest</dt><dd>${esc(b.guest_name)}</dd><dt>Date</dt><dd>${esc(nice(b.date))}${when ? ` · ${esc(when)}` : ''}</dd><dt>Pass</dt><dd>${esc(b.pass)} × ${b.qty}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Status</dt><dd>${b.checked_in_at ? 'Checked in ' + esc(b.checked_in_at) : 'Confirmed'}</dd></dl>
 ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}</div>
 <div class="center" style="margin-top:20px"><a class="btn btn-line" href="/">Book another day</a></div></div>`));
 });
@@ -456,8 +474,8 @@ app.get('/how-it-works', (req, res) => {
 <div class="how-grid">
 <div><span class="n">1</span><h3>Browse</h3><p class="muted">Search by neighbourhood, date and pass. Each listing shows what's included and how many spots are left.</p></div>
 <div><span class="n">2</span><h3>Book</h3><p class="muted">Pick Pool, Daybed or Spa. Add parking, a cabana, gym access or a food and drink credit if you want. The total updates before you confirm. This demo doesn't charge a card.</p></div>
-<div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">At the front desk from 10am. The code is on your confirmation. Reception checks you in and hands you a wristband.</p></div>
-<div><span class="n">4</span><h3>Enjoy</h3><p class="muted">Pool, towel and a lounger until 4pm. Add late access if you'd like to stay until 8pm.</p></div>
+<div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">At the front desk when the hotel opens for day passes. The hours are on your confirmation. Reception checks you in and hands you a wristband.</p></div>
+<div><span class="n">4</span><h3>Enjoy</h3><p class="muted">Pool, towel and a lounger for the hotel's day-pass hours. Add late access where a hotel offers a later finish.</p></div>
 </div>
 <p style="margin-top:18px"><a class="btn btn-coral" href="/#explore">Browse pools</a></p>
 </div>
@@ -476,7 +494,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <div class="wrap hiw-block" id="faq">
 <h2>Questions</h2>
 <div class="faq">
-<details open><summary>Cancellations</summary><p>Free cancellation up to 24 hours before the visit. After that the booking stands. That's the demo policy.</p></details>
+<details open><summary>Cancellations</summary><p>Free cancellation up to 24 hours before (hotel terms apply).</p></details>
 <details><summary>What to bring</summary><p>Photo ID that matches the booking, swimwear and sunscreen. Passes include a towel. A spa pass includes a robe, or you can add a towel and robe pack.</p></details>
 <details><summary>Age limits</summary><p>Spa passes are 18+. Some pools are glad to have children, and the listing says when a hotel is kid-friendly. There is no lifeguard on duty.</p></details>
 <details><summary>Weather</summary><p>Indoor pools and pools under a roof stay open in the rain. If a hotel has to close for weather, the day can be moved or the booking cancelled. Dates a hotel has blocked can't be booked.</p></details>
@@ -487,5 +505,6 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 // Render's free disk is wiped on restart. Fill demo data only when nothing is there yet.
 if (db.prepare('SELECT COUNT(*) n FROM hotels').get().n === 0) seed(db);
 else ensureAddons(db);
+ensureSchedules(db);
 
 app.listen(PORT, () => console.log(`Hotel Day Club demo on http://localhost:${PORT}`));

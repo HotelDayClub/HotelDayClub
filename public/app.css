@@ -195,6 +195,7 @@ code{background:#EEF1F5;padding:1px 6px;border-radius:6px;font-size:.88em}
 .card:hover .ph img{transform:scale(1.045)}
 .ph img{transition:transform .45s ease}
 .c-top h3{font-family:var(--font-display);font-weight:560;font-size:1.2rem;letter-spacing:-.02em}
+.rate{color:var(--muted);font-weight:600;font-size:.82rem}
 .c-sub{margin-top:2px}
 .c-price{margin-top:6px}
 .c-price .spots{color:var(--muted);font-weight:500}

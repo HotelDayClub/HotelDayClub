@@ -8,7 +8,8 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 db.exec(`
 CREATE TABLE IF NOT EXISTS hotels(id INTEGER PRIMARY KEY, slug TEXT UNIQUE, name TEXT, area TEXT, tagline TEXT, blurb TEXT,
-  photos TEXT, amenities TEXT, hours TEXT, rating REAL, login TEXT UNIQUE, password TEXT);
+  photos TEXT, amenities TEXT, hours TEXT, rating REAL, login TEXT UNIQUE, password TEXT,
+  open_days TEXT, opens TEXT, closes TEXT);
 CREATE TABLE IF NOT EXISTS pass_types(id INTEGER PRIMARY KEY, hotel_id INTEGER REFERENCES hotels(id), code TEXT, name TEXT,
   description TEXT, price INTEGER, daily_cap INTEGER, sort INTEGER);
 CREATE TABLE IF NOT EXISTS blocked_dates(hotel_id INTEGER REFERENCES hotels(id), date TEXT, reason TEXT, PRIMARY KEY(hotel_id,date));
@@ -20,4 +21,8 @@ CREATE TABLE IF NOT EXISTS addons(id INTEGER PRIMARY KEY, hotel_id INTEGER REFER
 CREATE TABLE IF NOT EXISTS booking_addons(booking_id INTEGER REFERENCES bookings(id), addon_id INTEGER REFERENCES addons(id),
   name TEXT, qty INTEGER, unit_price INTEGER, total INTEGER, PRIMARY KEY(booking_id, addon_id));
 `);
+for (const [name, ddl] of [['open_days', 'TEXT'], ['opens', 'TEXT'], ['closes', 'TEXT']]) {
+  const cols = db.prepare('PRAGMA table_info(hotels)').all();
+  if (!cols.some(c => c.name === name)) db.exec(`ALTER TABLE hotels ADD COLUMN ${name} ${ddl}`);
+}
 module.exports = db;
