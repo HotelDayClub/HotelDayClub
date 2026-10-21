@@ -34,7 +34,7 @@ The hotel login page also has one-click demo login buttons.
 - **Guest flow:** search by area, date and pass type. Then open a listing and pick a date and pass (Pool $45, Pool + Daybed $75, Spa + Pool $120). Remaining spots update live from `/api/availability`. Enter your details and go through the mock checkout ("Demo payment, no charge"). The confirmation page shows an `HDC-xxxxx` code and a QR code.
 - **Availability:** each pass type has a daily cap, and remaining spots = cap − booked. Blocked dates, past dates and sold-out passes can't be booked. The server re-checks availability inside a SQLite transaction, so the last spot can't be sold twice.
 - **Demo props:** The Saltwater Terrace's Pool + Daybed is sold out 3 days from today. Each hotel has blocked dates (a private event and pool maintenance).
-- **Hotel dashboard (`/hotel`):** stats (passes sold, gross, hotel share at 75%, platform commission at 25%), today's guest list with check-in buttons, a booking lookup (by code, name, email or phone), a 14-day availability grid, upcoming guests, price and daily-cap editing, and blocking or unblocking dates.
+- **Hotel dashboard (`/hotel`):** stats (passes sold, gross, hotel share at 75%, platform commission at 25%), today's guest list with check-in buttons, a booking lookup (by code, name, email or phone), a 14-day availability grid, upcoming guests, price and daily-cap editing, and a month calendar for blocking or unblocking dates, including a range.
 - **Admin (`/admin`):** all bookings across hotels, totals per hotel, and commission totals, with filters by hotel and by code, name or email.
 
 ## Going live: what's still needed

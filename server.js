@@ -259,8 +259,21 @@ ${passes.map(p => `<tr><td><b>${esc(p.name)}</b><div class="muted small">cap ${p
 <table class="tbl"><thead><tr><th>Pass</th><th>Price (AUD)</th><th>Daily cap</th><th>Left today</th></tr></thead><tbody>
 ${passes.map((p, i) => `<tr><td><b>${esc(p.name)}</b></td><td><input class="num" type="number" min="0" step="1" name="price_${p.id}" value="${p.price}"></td><td><input class="num" type="number" min="0" step="1" name="cap_${p.id}" value="${p.daily_cap}"></td><td>${av[i].remaining}</td></tr>`).join('')}</tbody></table>
 <button class="btn btn-navy">Save changes</button></form></section>
-<section id="blocked" class="panel"><h2 class="ph2">Blocked dates</h2><form class="lookup" method="post" action="/hotel/block"><input type="date" name="date" min="${t}" required><input name="reason" placeholder="Reason (e.g. private event)"><button class="btn btn-navy">Block</button></form>
-<ul class="blk-list">${blocked.map(b => `<li><span><b>${esc(nice(b.date))}</b> <span class="muted">${esc(b.reason || '')}</span></span><form method="post" action="/hotel/unblock"><input type="hidden" name="date" value="${b.date}"><button class="linkbtn">Unblock</button></form></li>`).join('') || '<li class="muted">No blocked dates.</li>'}</ul></section></div>
+<section id="blocked" class="panel"><div class="blk-head"><h2 class="ph2">Blocked dates</h2></div>
+<p class="muted small">Guests can't book a closed day.</p>
+<ul class="blk-list">${blocked.map(b => `<li><span><b>${esc(nice(b.date))}</b> <span class="muted">${esc(b.reason || 'Closed')}</span></span><span class="pill out">Closed</span></li>`).join('') || '<li class="muted">No blocked dates.</li>'}</ul>
+<button type="button" class="btn btn-navy" id="open-block-cal">Manage blocked dates</button>
+<dialog id="block-cal" class="cal-pop" aria-labelledby="block-cal-title" data-today="${t}" data-blocked="${esc(JSON.stringify(blocked.map(b => ({ date: b.date, reason: b.reason || '' }))))}"><form method="post" action="/hotel/blocked" id="block-cal-form">
+<div class="cal-top"><button type="button" class="cal-nav" data-dir="-1" aria-label="Previous month">‹</button><h3 id="block-cal-title"></h3><button type="button" class="cal-nav" data-dir="1" aria-label="Next month">›</button></div>
+<div class="block-cal" id="block-cal-grid" role="grid" aria-label="Blocked dates calendar"></div>
+<p class="cal-legend"><span><i class="sw on"></i> Blocked</span><span><i class="sw today"></i> Today</span><span><i class="sw anchor"></i> Range start</span></p>
+<p class="cal-count" id="block-cal-count"></p>
+<p class="muted small" id="block-cal-hint"></p>
+<label class="fl">Reason for new dates<input name="reason" maxlength="80" placeholder="Private event, pool maintenance" autocomplete="off"></label>
+<input type="hidden" name="dates" id="block-cal-dates" value="">
+<div class="cal-actions"><button type="button" class="btn btn-line" id="block-cal-cancel">Cancel</button><button class="btn btn-navy" type="submit">Save</button></div>
+</form></dialog>
+<script src="/block-cal.js"></script></section></div>
 </div></div>`, { nav: 'hotel', bare: true }));
 });
 app.post('/hotel/checkin', hotelAuth, (req, res) => {
@@ -286,6 +299,31 @@ app.post('/hotel/block', hotelAuth, (req, res) => {
 app.post('/hotel/unblock', hotelAuth, (req, res) => {
   db.prepare('DELETE FROM blocked_dates WHERE hotel_id=? AND date=?').run(req.hotel.id, req.body.date);
   res.redirect(303, '/hotel?msg=' + encodeURIComponent('Unblocked ' + nice(req.body.date) + '.') + '#blocked');
+});
+app.post('/hotel/blocked', hotelAuth, (req, res) => {
+  const reason = String(req.body.reason || '').trim().slice(0, 80);
+  const start = new Date();
+  const horizon = ymd(new Date(start.getFullYear(), start.getMonth() + 19, 0));
+  const todayStr = today();
+  const dates = [...new Set(String(req.body.dates || '').split(',').map(s => s.trim()))]
+    .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= todayStr && d <= horizon);
+  const existing = db.prepare('SELECT date, reason FROM blocked_dates WHERE hotel_id=? AND date>=? AND date<=?').all(req.hotel.id, todayStr, horizon);
+  const prev = new Map(existing.map(r => [r.date, r.reason || '']));
+  const keep = new Set(dates);
+  const del = db.prepare('DELETE FROM blocked_dates WHERE hotel_id=? AND date=?');
+  const up = db.prepare('INSERT OR REPLACE INTO blocked_dates(hotel_id,date,reason) VALUES (?,?,?)');
+  db.transaction(() => {
+    for (const row of existing) if (!keep.has(row.date)) del.run(req.hotel.id, row.date);
+    for (const d of dates) up.run(req.hotel.id, d, prev.has(d) ? (prev.get(d) || reason || 'Closed') : (reason || 'Closed'));
+  })();
+  const added = dates.filter(d => !prev.has(d)).length;
+  const removed = existing.filter(r => !keep.has(r.date)).length;
+  const bit = (n, verb) => `${verb} ${n} date${n === 1 ? '' : 's'}`;
+  const msg = !added && !removed ? 'No changes to blocked dates.'
+    : !added ? `${bit(removed, 'Unblocked')}. Guests can book those days again.`
+    : !removed ? `${bit(added, 'Blocked')}. Guests can no longer book them.`
+    : `${bit(added, 'Blocked')} and ${bit(removed, 'unblocked')}. Guests can no longer book closed days.`;
+  res.redirect(303, '/hotel?msg=' + encodeURIComponent(msg) + '#blocked');
 });
 
 // ---------- admin ----------
