@@ -29,7 +29,11 @@ with sync_playwright() as pw:
         pg.click("#go"); pg.wait_for_url(re.compile("/checkout"))
         pg.fill("input[name=name]", f"Test Guest {name}"); pg.fill("input[name=email]", "test@example.com"); pg.fill("input[name=phone]", "0412 345 678")
         pg.check("input[name=rules]")
+        pg.check("input[name=terms]")
+        pg.check("input[name=risk]")
         assert pg.locator("input[name=marketing]").is_checked() is False
+        assert "hotel terms apply" not in pg.content()
+        assert "Free cancellation" in pg.content() or "can't be cancelled for free" in pg.content()
         pg.screenshot(path=f"{S}checkout-{name}.png", full_page=True)
         pg.click("button[type=submit]"); pg.wait_for_url(re.compile("/booking/HDC-"))
         code = pg.inner_text(".code"); assert pg.locator("img.qr").count() == 1

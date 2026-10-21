@@ -1,6 +1,6 @@
 # Image credits (Harbour Dip concept mockup)
 
-All photos were downloaded on 21 Oct 2026 (AEDT) and stored locally in `assets/photos/`. They are used as **generic mood imagery only**. None of them shows, or is presented as, any real Sydney hotel; every listing on the site is labelled "Example listing". I avoided photos tagged with a named hotel and any with visible hotel branding.
+All photos were downloaded on 21 Oct 2026 (AEDT) and stored locally in `assets/photos/`. They are used as **generic mood imagery only**. None of them shows, or is presented as, any real hotel; every listing on the site is labelled "Example listing". I avoided photos tagged with a named hotel and any with visible hotel branding.
 
 ## Pexels: free under the Pexels License (https://www.pexels.com/license/). Attribution isn't required but is given here.
 | File | Photo | Photographer |

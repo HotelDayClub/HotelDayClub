@@ -1,4 +1,4 @@
-const { esc, ymd } = require('./util');
+const { esc, ymd, nice } = require('./util');
 
 const KINDS = [
   { code: 'lounger', name: 'Sun lounger' },
@@ -134,10 +134,12 @@ function dayPlan(db, hotel, date) {
     opens = hotel.season_opens;
     closes = hotel.season_closes;
   }
+  const roomMin = minutes(hotel.room_only_from);
+  const openMin = minutes(opens);
+  const closeMin = minutes(closes);
+  if (roomMin != null && openMin != null && roomMin <= openMin) return { open: false, roomOnly: true };
   let effective = closes;
-  if (hotel.room_only_from && minutes(hotel.room_only_from) != null && minutes(closes) != null && minutes(hotel.room_only_from) < minutes(closes)) {
-    effective = hotel.room_only_from;
-  }
+  if (roomMin != null && closeMin != null && openMin != null && roomMin > openMin && roomMin < closeMin) effective = hotel.room_only_from;
   return { open: true, opens, closes, effective };
 }
 function dayClosure(db, hotel, date, now = new Date()) {
@@ -152,6 +154,7 @@ function dayClosure(db, hotel, date, now = new Date()) {
     return days ? `Day passes run ${days}` : 'Closed this day';
   }
   if (!plan.open) {
+    if (plan.roomOnly) return 'Room guests only';
     const days = String(hotel.hours || '').split('·')[0].trim();
     return days ? `Day passes run ${days}` : 'Closed this day';
   }
@@ -211,8 +214,99 @@ function rulesLines(hotel, opts = {}) {
   }
   const cutoff = hotel.cutoff_hours == null ? 2 : Number(hotel.cutoff_hours);
   lines.push(cutoff > 0 ? `Same-day bookings close ${cutoff} hour${cutoff === 1 ? '' : 's'} before close` : 'Same-day bookings until close');
-  lines.push('Free cancellation up to 24 hours before (hotel terms apply)');
+  lines.push('Free cancellation until 24 hours before access hours start');
   return lines;
+}
+function gapAfterPass(opens, closes, roomFrom) {
+  const openMin = minutes(opens);
+  const closeMin = minutes(closes);
+  const roomMin = minutes(roomFrom);
+  if (openMin == null || closeMin == null || closeMin <= openMin) return false;
+  if (roomMin != null && roomMin <= openMin) return false;
+  const effective = roomMin != null && roomMin > openMin && roomMin < closeMin ? roomMin : closeMin;
+  return closeMin > effective;
+}
+function latePossible(spec) {
+  const hours = (spec.hours || []).filter(r => r.open);
+  if (hours.some(r => gapAfterPass(r.opens, r.closes, spec.room_only_from))) return true;
+  if (spec.season_opens && spec.season_closes && hours.length && gapAfterPass(spec.season_opens, spec.season_closes, spec.room_only_from)) return true;
+  return false;
+}
+function hotelLatePossible(db, hotel) {
+  if (!hotel) return false;
+  const hours = db.prepare('SELECT weekday, open, opens, closes FROM hotel_hours WHERE hotel_id=?').all(hotel.id);
+  return latePossible({
+    hours,
+    room_only_from: hotel.room_only_from,
+    season_opens: hotel.season_opens,
+    season_closes: hotel.season_closes,
+  });
+}
+function lateWindow(db, hotel, date) {
+  const plan = dayPlan(db, hotel, date);
+  if (!plan || !plan.open) return null;
+  const closeMin = minutes(plan.closes);
+  const endMin = minutes(plan.effective || plan.closes);
+  if (closeMin == null || endMin == null || closeMin <= endMin) return null;
+  return { until: plan.closes, end: plan.effective || plan.closes };
+}
+function syncLateAddons(db) {
+  const off = db.prepare("UPDATE addons SET enabled=0, name=?, blurb=? WHERE hotel_id=? AND code='late'");
+  const keep = db.prepare("UPDATE addons SET name=?, blurb=? WHERE hotel_id=? AND code='late'");
+  for (const h of db.prepare('SELECT * FROM hotels').all()) {
+    if (hotelLatePossible(db, h)) keep.run('Late access', 'Stay until the pool closes, after day-pass hours end. It does not run past closing time.', h.id);
+    else off.run('Late access', 'Not offered. The pool already closes when day passes end.', h.id);
+  }
+}
+function cancelNote(db, hotel, date, now = new Date()) {
+  const plan = dayPlan(db, hotel, date);
+  if (!plan || !plan.open || !plan.opens) return 'See the cancellation policy for this date.';
+  const [y, m, d] = date.split('-').map(Number);
+  const [hh, mm] = String(plan.opens).split(':').map(Number);
+  const start = new Date(y, m - 1, d, hh || 0, mm || 0, 0, 0);
+  const deadline = new Date(start.getTime() - 24 * 60 * 60 * 1000);
+  const when = `${fmtTime(`${pad(deadline.getHours())}:${pad(deadline.getMinutes())}`)} ${nice(ymd(deadline))}`;
+  if (now.getTime() > deadline.getTime()) return "This booking is inside 24 hours of the start, so it can't be cancelled for free.";
+  return `Free cancellation until ${when}.`;
+}
+function venueFacts(hotel) {
+  const setting = hotel.setting === 'indoor' ? 'Indoor' : hotel.setting === 'both' ? 'Indoor and outdoor' : 'Outdoor';
+  return {
+    setting,
+    heat: hotel.heated ? 'Heated' : 'Unheated',
+    guard: hotel.lifeguard ? 'A lifeguard is on duty during day-pass hours.' : 'No lifeguard is on duty.',
+    age: hotel.age_policy || 'See the hotel rules',
+    kids: hotel.kids_hours ? `Kids: ${hotel.kids_hours}.` : '',
+    lifeguard: !!hotel.lifeguard,
+  };
+}
+function riskLines(hotel) {
+  const v = venueFacts(hotel);
+  return [
+    'Swimming and using pools, spas, plunge pools, saunas and steam rooms carry risks of injury, illness and death.',
+    'Drowning or near-drowning, including in shallow water, and especially for children and weak or tired swimmers.',
+    'Slips, trips and falls on wet surfaces, stairs and pool edges. Spinal and head injury from diving or jumping. Diving is not permitted.',
+    'Heat-related illness, fainting and heart strain in spas, saunas and steam rooms, and from cold plunge pools, particularly with alcohol, pregnancy, heart conditions, blood-pressure conditions or some medications.',
+    'Sunburn and heat stress at outdoor pools.',
+    "Alcohol greatly increases these risks. Don't swim or use spas or saunas after drinking.",
+    "Water-borne illness. Don't swim if you've had diarrhoea recently.",
+    `Lifeguard: ${v.guard} Staff are not watching the pool continuously.`,
+    `Pool: ${v.setting} · ${v.heat}.`,
+    `Children: ${v.age}. ${v.kids} Every child must be actively supervised in the water by an adult on this booking.`.replace(/\s+/g, ' ').trim(),
+  ];
+}
+function riskText(hotel) { return riskLines(hotel).join(' '); }
+function riskCard(hotel) {
+  const lines = riskLines(hotel);
+  return `<div class="rules-card risk-card"><h3>Risk warning</h3><p>${esc(lines[0])}</p><ul>${lines.slice(1, 7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p><b>At this venue</b></p><ul>${lines.slice(7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p class="muted small">Shown in full before you confirm. <a href="/risk">Risk warning (draft)</a></p></div>`;
+}
+function riskTick(hotel) {
+  const who = hotel.lifeguard ? 'a lifeguard is on duty during day-pass hours' : 'no lifeguard is on duty';
+  return `I have read the risk warning. I understand that swimming and using spa facilities involve risks of injury and death, and that ${who}. I'll decide for myself whether I, and anyone in my care, am fit to take part, and I won't swim or use a spa or sauna after drinking.`;
+}
+function swimNote(hotel) {
+  const guard = hotel.lifeguard ? 'A lifeguard is on duty during day-pass hours.' : 'No lifeguard on duty.';
+  return `Before you swim: ${guard} Pools, spas and saunas carry risks of serious injury and drowning. No diving. No swimming after alcohol. Supervise children at all times. Follow staff directions and the hotel's rules. In an emergency, alert staff and call 000.`;
 }
 function rulesText(hotel, opts) { return rulesLines(hotel, opts).join('. ') + '.'; }
 function rulesCard(hotel, opts) {
@@ -302,6 +396,12 @@ function readForm(body) {
   const roomTo = parseTime(body.room_only_to);
   if ((String(body.room_only_from || '').trim() || String(body.room_only_to || '').trim()) && (!roomFrom || !roomTo)) return { err: 'Room guests only needs a start and an end.' };
   if (roomFrom && minutes(roomTo) <= minutes(roomFrom)) return { err: 'Room guests only needs an end after the start.' };
+  if (roomFrom) {
+    for (const r of hours) {
+      if (r.open && minutes(roomFrom) <= minutes(r.opens)) return { err: `Room guests only (${fmtTime(roomFrom)}) starts at or before day passes open on ${DAY_LONG[r.weekday]}. A pass can't be sold past that time.` };
+    }
+    if (seasonOpens && minutes(roomFrom) <= minutes(seasonOpens)) return { err: `Room guests only (${fmtTime(roomFrom)}) starts at or before the seasonal opening. A pass can't be sold past that time.` };
+  }
   const name = String(body.hotel_name || '').trim();
   const area = String(body.area || '').trim();
   if (!name) return { err: 'Enter the hotel name.' };
@@ -385,6 +485,8 @@ function writeOffering(db, hotelId, spec) {
 function saveOffering(db, hotelId, body) {
   const spec = readForm(body);
   if (spec.err) return spec;
+  const late = db.prepare("SELECT enabled FROM addons WHERE hotel_id=? AND code='late'").get(hotelId);
+  if (late && late.enabled && !latePossible(spec)) return { err: "Late access is on, but these hours don't leave time after day passes end and before the pool closes. Turn late access off, or start room guests only before the pool closes." };
   return writeOffering(db, hotelId, spec);
 }
 function echoForm(body) {
@@ -476,7 +578,7 @@ ${DAY_ORDER.map(wd => {
 <details class="opt-fold" ${h.room_only_from ? 'open' : ''}><summary>Room guests only, optional</summary>
 <div class="two"><label class="fl">From<input type="time" name="room_only_from" value="${esc(h.room_only_from || '')}"></label>
 <label class="fl">To<input type="time" name="room_only_to" value="${esc(h.room_only_to || '')}"></label></div>
-<p class="muted small">Day passes stop when this block starts, if that is before closing.</p></details>
+<p class="muted small">Day passes stop when this block starts, if that is before the pool closes. Late access can only fill the time between that start and closing.</p></details>
 <h2 id="sec-rules">Pool rules</h2>
 <p class="muted small lead-in">Shown on the listing. Guests tick these rules before they book.</p>
 <div class="two">${yn('heated', 'Heated', h.heated)}
@@ -515,8 +617,9 @@ setInterval(refreshToday,8000);
 </script>`;
 
 module.exports = {
-  KINDS, PHOTOS, fmtTime, parseTime, minutes, spotLabel, hoursSummary, dayClosure, closureReason,
+  KINDS, PHOTOS, fmtTime, parseTime, minutes, spotLabel, hoursSummary, dayPlan, dayClosure, closureReason,
   rulesLines, rulesText, rulesCard, amenitiesFrom, slugify, hoursFor, blankJoin, readForm,
   writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,
-  listingHours, hoursView, syncHoursLabels, inSeason,
+  listingHours, hoursView, syncHoursLabels, inSeason, latePossible, hotelLatePossible, lateWindow, syncLateAddons,
+  cancelNote, riskLines, riskText, riskCard, riskTick, swimNote,
 };

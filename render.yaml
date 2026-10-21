@@ -13,3 +13,5 @@ services:
         sync: false
       - key: DEMO_HOTEL_PASSWORD
         sync: false
+      - key: SHOW_ABN
+        sync: false

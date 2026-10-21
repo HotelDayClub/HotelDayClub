@@ -1,6 +1,6 @@
 const fs = require('fs'); const path = require('path');
 const { ymd, addDays } = require('./util');
-const { parseTime, writeOffering, rulesText } = require('./offering');
+const { parseTime, writeOffering, rulesText, syncLateAddons } = require('./offering');
 const { demoHotelPassword } = require('./passwords');
 
 const CATALOG = [
@@ -9,14 +9,14 @@ const CATALOG = [
   { code: 'food', name: 'Food & drink credit', blurb: 'To spend at the bar or café.', per: 'guest', price: 30, cap: 40 },
   { code: 'cabana', name: 'Cabana upgrade', blurb: 'A reserved cabana for your group.', per: 'booking', price: 80, cap: 6 },
   { code: 'robe', name: 'Towel & robe pack', blurb: 'An extra towel and a robe.', per: 'guest', price: 15, cap: 30 },
-  { code: 'late', name: 'Late access', blurb: 'Stay on after the day-pass hours this hotel has set.', per: 'guest', price: 35, cap: 12 },
+  { code: 'late', name: 'Late access', blurb: 'Stay until the pool closes, after day-pass hours end. It does not run past closing time.', per: 'guest', price: 35, cap: 12 },
 ];
 const PRESETS = {
-  'saltwater-terrace': { gym: { enabled: 1, price: 25, cap: 20 }, parking: { enabled: 1, price: 18, cap: 30 }, food: { enabled: 1, price: 30, cap: 40 }, cabana: { enabled: 1, price: 85, cap: 6 }, robe: { enabled: 0 }, late: { enabled: 1, price: 35, cap: 15 } },
+  'saltwater-terrace': { gym: { enabled: 1, price: 25, cap: 20 }, parking: { enabled: 1, price: 18, cap: 30 }, food: { enabled: 1, price: 30, cap: 40 }, cabana: { enabled: 1, price: 85, cap: 6 }, robe: { enabled: 0 }, late: { enabled: 0, price: 35, cap: 15 } },
   'skyline-rooftop': { gym: { enabled: 1, price: 20, cap: 25 }, parking: { enabled: 1, price: 40, cap: 16 }, food: { enabled: 1, price: 28, cap: 30 }, cabana: { enabled: 1, price: 95, cap: 4 }, robe: { enabled: 1, price: 18, cap: 20 }, late: { enabled: 1, price: 40, cap: 10 } },
-  'harbourside-lido': { gym: { enabled: 1, price: 30, cap: 15 }, parking: { enabled: 1, price: 45, cap: 12 }, food: { enabled: 1, price: 35, cap: 25 }, cabana: { enabled: 0 }, robe: { enabled: 1, price: 22, cap: 20 }, late: { enabled: 1, price: 30, cap: 10 } },
-  'palm-court': { gym: { enabled: 0 }, parking: { enabled: 0 }, food: { enabled: 1, price: 22, cap: 40 }, cabana: { enabled: 1, price: 60, cap: 8 }, robe: { enabled: 1, price: 12, cap: 25 }, late: { enabled: 1, price: 25, cap: 15 } },
-  'manly-sands': { gym: { enabled: 0 }, parking: { enabled: 1, price: 15, cap: 20 }, food: { enabled: 1, price: 28, cap: 35 }, cabana: { enabled: 1, price: 70, cap: 6 }, robe: { enabled: 0 }, late: { enabled: 1, price: 32, cap: 12 } },
+  'harbourside-lido': { gym: { enabled: 1, price: 30, cap: 15 }, parking: { enabled: 1, price: 45, cap: 12 }, food: { enabled: 1, price: 35, cap: 25 }, cabana: { enabled: 0 }, robe: { enabled: 1, price: 22, cap: 20 }, late: { enabled: 0, price: 30, cap: 10 } },
+  'palm-court': { gym: { enabled: 0 }, parking: { enabled: 0 }, food: { enabled: 1, price: 22, cap: 40 }, cabana: { enabled: 1, price: 60, cap: 8 }, robe: { enabled: 1, price: 12, cap: 25 }, late: { enabled: 0, price: 25, cap: 15 } },
+  'manly-sands': { gym: { enabled: 0 }, parking: { enabled: 1, price: 15, cap: 20 }, food: { enabled: 1, price: 28, cap: 35 }, cabana: { enabled: 1, price: 70, cap: 6 }, robe: { enabled: 0 }, late: { enabled: 0, price: 32, cap: 12 } },
   'bayview-spa': { gym: { enabled: 1, price: 25, cap: 12 }, parking: { enabled: 1, price: 28, cap: 18 }, food: { enabled: 1, price: 40, cap: 20 }, cabana: { enabled: 1, price: 110, cap: 5 }, robe: { enabled: 1, price: 20, cap: 20 }, late: { enabled: 0 } },
 };
 
@@ -113,8 +113,9 @@ function ensureSchedules(db) {
       const open = new Set(String(h.open_days || '').split(',').map(n => parseInt(n, 10)));
       for (let wd = 0; wd < 7; wd++) ins.run(h.id, wd, open.has(wd) ? 1 : 0, opens, closes);
     }
-    db.prepare("UPDATE addons SET name=?, blurb=? WHERE code='late'").run('Late access', 'Stay on after the day-pass hours this hotel has set.');
-    db.prepare("UPDATE booking_addons SET name='Late access' WHERE name LIKE 'Late access%'").run();
+    db.prepare("UPDATE booking_addons SET name='Late access' WHERE name LIKE 'Late access until 8%' OR name LIKE 'Late access (until 8%'").run();
+    db.prepare("UPDATE hotels SET blurb=REPLACE(blurb, ' Year-round, rain or shine.', '') WHERE blurb LIKE '%Year-round, rain or shine.%'").run();
+    syncLateAddons(db);
     db.prepare("UPDATE hotels SET status='active' WHERE status IS NULL OR status=''").run();
     db.prepare('UPDATE hotels SET cutoff_hours=2 WHERE cutoff_hours IS NULL').run();
     db.prepare('UPDATE pass_types SET holds=1 WHERE holds IS NULL OR holds < 1').run();
@@ -133,7 +134,7 @@ const hotels = [
    'Swim above the office towers. A heated rooftop pool, cabana daybeds and a bar that opens at noon. Quietest Mon to Thu.',
    ['rooftop-city.jpg', 'hero-loungers.jpg', 'daybed-canopy.jpg', 'cabana-drapes.jpg'], ['Heated pool', 'Rooftop', 'City views', 'Daybeds', 'Gym access'], 'demo-skyline'],
   ['harbourside-lido', 'Harbourside Lido (Demo)', 'CBD & Harbour', 'Glass-roofed pool and day spa in the city',
-   'A light-filled pool under a glass roof, with steam room, sauna and a spa menu. Year-round, rain or shine.',
+   'A light-filled pool under a glass roof, with steam room, sauna and a spa menu.',
    ['glass-roof-pool.jpg', 'spa-steps.jpg', 'indoor-spa-pool.jpg', 'hero-loungers.jpg'], ['Indoor heated pool', 'Sauna', 'Steam room', 'Spa treatments', 'Robes'], 'demo-harbourside'],
   ['palm-court', 'Palm Court Resort (Demo)', 'Parramatta', 'Lagoon pool in leafy palm gardens',
    'A big lagoon pool ringed by palms, with plenty of shade and a family-friendly shallow end. Easy parking.',

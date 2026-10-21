@@ -11,6 +11,7 @@ const { ymd, addDays, esc, money, nice } = require('./util');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText, amenitiesFrom, slugify,
   hoursFor, hoursView, syncHoursLabels, blankJoin, readForm, writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,
+  fmtTime, cancelNote, riskCard, riskText, riskTick, swimNote, hotelLatePossible, lateWindow,
 } = require('./offering');
 const app = express();
 const PORT = process.env.PORT || 3030;
@@ -55,15 +56,27 @@ function availability(hid, date) {
 }
 const getAddons = (hid, enabledOnly = false) => db.prepare(`SELECT * FROM addons WHERE hotel_id=? ${enabledOnly ? 'AND enabled=1' : ''} ORDER BY sort, id`).all(hid);
 const addonSold = (aid, date) => db.prepare("SELECT COALESCE(SUM(ba.qty),0) n FROM booking_addons ba JOIN bookings b ON b.id=ba.booking_id WHERE ba.addon_id=? AND b.date=? AND b.status!='cancelled'").get(aid, date).n;
+function presentAddon(hotel, date, a) {
+  if (!a || a.code !== 'late') return a;
+  const win = lateWindow(db, hotel, date);
+  if (!win) return null;
+  return {
+    ...a,
+    name: `Late access until ${fmtTime(win.until)}`,
+    blurb: `Stay until the pool closes at ${fmtTime(win.until)}. Day passes end at ${fmtTime(win.end)}.`,
+  };
+}
 function addonAvailability(hid, date) {
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(hid);
   const why = hotel ? closureReason(db, hotel, date) : null;
   const past = date < today();
   return getAddons(hid, true).map(a => {
+    const shown = presentAddon(hotel, date, a);
+    if (!shown) return null;
     const s = addonSold(a.id, date);
-    return { id: a.id, code: a.code, name: a.name, blurb: a.blurb, price: a.price, cap: a.daily_cap, per: a.per, sold: s,
-      remaining: why || past ? 0 : Math.max(0, a.daily_cap - s) };
-  });
+    return { id: shown.id, code: shown.code, name: shown.name, blurb: shown.blurb, price: shown.price, cap: shown.daily_cap, per: shown.per, sold: s,
+      remaining: why || past ? 0 : Math.max(0, shown.daily_cap - s) };
+  }).filter(Boolean);
 }
 function addonCodes(q) {
   const raw = q.addon;
@@ -71,14 +84,17 @@ function addonCodes(q) {
   return [...new Set(list.map(s => String(s).trim()).filter(Boolean))];
 }
 function chosenAddons(hid, date, people, q) {
+  const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(hid);
   const rows = [];
   for (const code of addonCodes(q)) {
     const a = db.prepare('SELECT * FROM addons WHERE hotel_id=? AND code=? AND enabled=1').get(hid, code);
     if (!a) return { err: 'That add-on is not available.' };
+    const shown = presentAddon(hotel, date, a);
+    if (!shown) return { err: a.code === 'late' ? "Late access can't run past the pool's closing time." : 'That add-on is not available.' };
     const qty = a.per === 'booking' ? 1 : people;
     const left = Math.max(0, a.daily_cap - addonSold(a.id, date));
-    if (left < qty) return { err: left === 0 ? `${a.name} is sold out that day.` : `Only ${left} ${a.name} left that day.` };
-    rows.push({ id: a.id, code: a.code, name: a.name, price: a.price, per: a.per, qty, line: a.price * qty });
+    if (left < qty) return { err: left === 0 ? `${shown.name} is sold out that day.` : `Only ${left} ${shown.name} left that day.` };
+    rows.push({ id: a.id, code: a.code, name: shown.name, price: a.price, per: a.per, qty, line: a.price * qty });
   }
   return { addons: rows, addonTotal: rows.reduce((s, a) => s + a.line, 0) };
 }
@@ -91,10 +107,12 @@ const ICON = {
   lock: '<svg class="ico sm" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
 };
 const LOGO = '<a class="logo" href="/"><img src="/assets/logo-mark.svg" alt="">Hotel Day <em>Club</em></a>';
+const showAbn = () => /^(1|true|yes|on)$/i.test(String(process.env.SHOW_ABN || '').trim());
 function page(title, body, { nav = 'guest', bare = false } = {}) {
   const right = nav === 'hotel' ? '<a class="hotel-link show" href="/hotel/logout">Log out</a>'
     : nav === 'admin' ? '<a class="hotel-link show" href="/admin/logout">Log out</a>'
     : '<a class="hotel-link show" href="/hotel">Hotel login</a><a class="hotel-link show hide-sm" href="/admin">Admin</a>';
+  const abn = showAbn() ? '<p class="muted small abn-line">ABN: to be added</p>' : '';
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)} · Hotel Day Club</title><link rel="icon" href="/assets/logo-mark.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"></head><body class="${nav === 'guest' ? 'guest' : ''}">
 <div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>
@@ -103,8 +121,8 @@ function page(title, body, { nav = 'guest', bare = false } = {}) {
 <div class="hdr-right">${right}</div></div></header>
 <main>${body}</main>
 ${bare ? '' : `<footer class="app-ftr"><div class="wrap ftr-in"><div>${LOGO}<p class="muted">Hotel life, by the day.</p></div>
-<nav class="ftr-links"><a href="/#explore">Explore</a><a href="/how-it-works">How it works</a><a href="/hotel">Hotel login</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a></nav>
-<p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p></div></footer>`}
+<nav class="ftr-links"><a href="/#explore">Explore</a><a href="/how-it-works">How it works</a><a href="/faq">FAQ</a><a href="/hotel">Hotel login</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a></nav>
+<p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p>${abn}</div></footer>`}
 </body></html>`;
 }
 const card = (h, date) => {
@@ -141,15 +159,15 @@ app.get('/', (req, res) => {
 <div class="hero-copy wrap"><h1>A hotel <em>day</em> out, minutes from home.</h1>
 <p>A pool, daybed or spa. No room needed.</p></div>${WAVE}</div>
 <div class="wrap search-wrap"><form class="search app-search" action="/#explore" method="get">
-<div class="seg"><label for="w">Where</label><select id="w" name="where"><option value="">All of Sydney</option>${areas.map(a => `<option ${a === where ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></div>
+<div class="seg"><label for="w">Where</label><select id="w" name="where"><option value="">All of Australia</option>${areas.map(a => `<option ${a === where ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></div>
 <div class="seg"><label for="d">When</label><input id="d" type="date" name="date" min="${today()}" value="${esc(date)}"></div>
 <div class="seg"><label for="p">Seating</label><select id="p" name="kind"><option value="">Any seating</option>${kinds.map(k => `<option value="${k.code}" ${kind === k.code ? 'selected' : ''}>${k.name}</option>`).join('')}</select></div>
 <button class="search-go" type="submit" aria-label="Search">${ICON.search}<span>Search</span></button></form></div></section>
 <div class="wrap">
-<section id="explore" class="sec"><div class="sec-row"><h2>${filtered ? `${list.length} place${list.length === 1 ? '' : 's'} ${where ? 'in ' + esc(where) : 'around Sydney'}${date ? ' on ' + esc(nice(date)) : ''}` : 'Pools to try this week'}</h2>${filtered ? '<a class="link" href="/#explore">Clear filters</a>' : ''}</div>
+<section id="explore" class="sec"><div class="sec-row"><h2>${filtered ? `${list.length} place${list.length === 1 ? '' : 's'} ${where ? 'in ' + esc(where) : 'around Australia'}${date ? ' on ' + esc(nice(date)) : ''}` : 'Pools to try this week'}</h2>${filtered ? '<a class="link" href="/#explore">Clear filters</a>' : ''}</div>
 <div class="grid">${list.map(h => card(h, date)).join('') || '<p class="muted">Nothing matches. Try another date or seating.</p>'}</div></section>
 <section id="how" class="sec how"><h2>Three steps</h2><div class="how-grid">
-<div><span class="n">1</span><h3>Pick a pool</h3><p class="muted">Browse hotel pools, daybeds and spas across Sydney.</p></div>
+<div><span class="n">1</span><h3>Pick a pool</h3><p class="muted">Browse hotel pools, daybeds and spas across Australia.</p></div>
 <div><span class="n">2</span><h3>Choose your day</h3><p class="muted">See live spots left. Hotels cap numbers to keep it relaxed.</p></div>
 <div><span class="n">3</span><h3>Show your QR</h3><p class="muted">Check in at reception, then the lounger is yours.</p></div></div>
 <p class="how-more"><a class="link" href="/how-it-works">Read how it works</a></p></section></div>`));
@@ -180,6 +198,7 @@ ${rulesCard(h, hoursView(db, h, date))}
 <label class="fl">How many<select name="qty" id="qty">${[1, 2, 3, 4, 5, 6].map(n => `<option>${n}</option>`).join('')}</select></label>
 <details id="addon-block" class="addon-fold" hidden><summary><span>Add-ons</span><span class="muted" id="addon-sum">Optional</span></summary><div class="addon-pick" id="addons-pick"></div></details>
 <div class="bb-total" id="total"></div>
+<p class="cancel-note" id="cancel-note"></p>
 <button class="btn btn-coral full" id="go" type="submit">Reserve</button>
 <p class="muted small center">You won't be charged. Demo payment only.</p>
 ${blocked.length ? `<p class="muted small">Closed: ${blocked.map(nice).join(', ')}</p>` : ''}
@@ -208,7 +227,7 @@ function render(){const q=+$('#qty').value;const prevPass=document.querySelector
  const st=$('#status');st.className='status'+(b||total===0?' out':'');
  st.textContent=b?b:total===0?'Sold out this day':total+' spots left';
  document.querySelectorAll('#passes input, #addons-pick input').forEach(r=>r.onchange=render)}
-async function load(){const r=await fetch('/api/availability?hotel=${h.slug}&date='+$('#date').value);const data=await r.json();av=data.passes;addons=data.addons||[];dayLeft=data.day_left==null?null:data.day_left;render()}
+async function load(){const r=await fetch('/api/availability?hotel=${h.slug}&date='+$('#date').value);const data=await r.json();av=data.passes;addons=data.addons||[];dayLeft=data.day_left==null?null:data.day_left;const note=document.getElementById('cancel-note');if(note)note.textContent=data.cancel||'';render()}
 $('#date').onchange=load;$('#qty').onchange=render;load();setInterval(load,15000);
 </script>`));
 });
@@ -217,7 +236,7 @@ app.get('/api/availability', (req, res) => {
   const h = publicHotel(req.query.hotel); if (!h) return res.status(404).json({ error: 'not found' });
   const date = req.query.date || today();
   const passes = availability(h.id, date);
-  res.json({ hotel: h.slug, date, passes, day_left: passes.day_left ?? null, addons: addonAvailability(h.id, date) });
+  res.json({ hotel: h.slug, date, passes, day_left: passes.day_left ?? null, addons: addonAvailability(h.id, date), cancel: cancelNote(db, h, date) });
 });
 
 function validate(q) {
@@ -243,6 +262,7 @@ app.get('/checkout', (req, res) => {
   const v = validate(req.query); if (v.err) return errPage(v, res);
   const { h, p, date, qty, people, a } = v;
   const grand = p.price * qty + v.addonTotal;
+  const cancel = cancelNote(db, h, date);
   const picked = new Set(v.addons.map(x => x.code));
   const offer = addonAvailability(h.id, date);
   const addonFields = offer.length ? `<details class="addon-fold"${picked.size ? ' open' : ''}><summary><span>Add-ons</span><span class="muted">${picked.size ? picked.size + ' selected' : 'Optional'}</span></summary><div class="addon-pick" id="co-addons">${offer.map(ad => {
@@ -265,12 +285,17 @@ ${addonFields}
 <label class="fl">Card number<input value="4242 4242 4242 4242" disabled></label>
 <div class="two"><label class="fl">Expiry<input value="12 / 30" disabled></label><label class="fl">CVC<input value="123" disabled></label></div></div>
 ${rulesCard(h, hoursView(db, h, date))}
-<label class="tick"><input type="checkbox" name="rules" value="1" required> I've read and accept these pool rules.</label>
-<label class="tick"><input type="checkbox" name="marketing" value="1"> Email me about day passes. Optional, and separate from this booking.</label>
+<p class="cancel-note">${esc(cancel)} <a href="/refunds">Cancellation and refunds</a></p>
+${riskCard(h)}
+<label class="tick"><input type="checkbox" name="rules" value="1" required> <span>I've read and accept these pool rules.</span></label>
+<label class="tick"><input type="checkbox" name="terms" value="1" required> <span>I accept the <a href="/terms">customer terms</a>.</span></label>
+<label class="tick"><input type="checkbox" name="risk" value="1" required> <span>${esc(riskTick(h))}</span></label>
+<label class="tick"><input type="checkbox" name="marketing" value="1"> <span>Email me about day passes. Optional, and separate from this booking.</span></label>
 <p class="privacy-note">We use your name, email and mobile to hold this booking and show it to the hotel. <a href="/privacy">Privacy policy</a></p>
 <button class="btn btn-coral full" id="co-btn" type="submit">Confirm booking · ${money(grand)} (demo)</button></form>
 <aside class="co-sum"><img src="/assets/photos/${h.photos[0]}" alt=""><div class="pad"><h3>${esc(h.name)}</h3><p class="muted small">${esc(h.area)}</p>
 <dl><dt>Date</dt><dd>${esc(nice(date))}</dd><dt>Seating</dt><dd>${esc(spotLabel(p))} × ${qty}</dd><dt>People</dt><dd>${people}</dd><dt>Spots left</dt><dd>${a.remaining}</dd></dl>
+<p class="cancel-note">${esc(cancel)}</p>
 <ul class="addon-lines" id="addon-lines">${v.addons.map(ad => `<li><span>${esc(ad.name)} × ${ad.qty}</span><b>${money(ad.line)}</b></li>`).join('')}</ul>
 <div class="bb-total"><span>Total</span><b id="co-total">${money(grand)}</b></div><p class="muted small">Prices include GST. Demo only.</p></div></aside></div></div>
 <script>
@@ -294,12 +319,16 @@ app.post('/book', (req, res) => {
   let code, v;
   db.transaction(() => {
     v = validate(b); if (v.err) return;
-    if (b.rules !== '1' && b.rules !== 'on') { v = { err: 'Please accept the pool rules.', h: v.h }; return; }
+    const ticked = key => b[key] === '1' || b[key] === 'on';
+    if (!ticked('rules')) { v = { err: 'Please accept the pool rules.', h: v.h }; return; }
+    if (!ticked('terms')) { v = { err: 'Please accept the customer terms.', h: v.h }; return; }
+    if (!ticked('risk')) { v = { err: 'Please accept the risk warning.', h: v.h }; return; }
     code = newCode();
     const seen = hoursView(db, v.h, v.date);
-    const info = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,party,rules_ack_at,rules_text,marketing_opt_in)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),?,?)`)
-      .run(code, v.h.id, v.p.id, v.date, v.qty, v.p.price, v.p.price * v.qty + v.addonTotal, name, email, phone, v.people, rulesText(v.h, seen), b.marketing === '1' ? 1 : 0);
+    const note = cancelNote(db, v.h, v.date);
+    const info = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,party,rules_ack_at,rules_text,marketing_opt_in,terms_ack_at,risk_ack_at,risk_text,cancel_note)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),?,?,datetime('now','localtime'),datetime('now','localtime'),?,?)`)
+      .run(code, v.h.id, v.p.id, v.date, v.qty, v.p.price, v.p.price * v.qty + v.addonTotal, name, email, phone, v.people, rulesText(v.h, seen), b.marketing === '1' ? 1 : 0, riskText(v.h), note);
     const insAdd = db.prepare('INSERT INTO booking_addons(booking_id,addon_id,name,qty,unit_price,total) VALUES (?,?,?,?,?,?)');
     for (const ad of v.addons) insAdd.run(info.lastInsertRowid, ad.id, ad.name, ad.qty, ad.price, ad.line);
   }).immediate();
@@ -317,12 +346,15 @@ app.get('/booking/:code', async (req, res) => {
   const view = hoursView(db, hotel, b.date);
   const when = view.span || view.hoursLine;
   const party = b.party || b.qty * (b.holds || 1);
+  const bookedAt = b.created_at ? new Date(String(b.created_at).replace(' ', 'T')) : new Date();
+  const note = b.cancel_note || cancelNote(db, hotel, b.date, bookedAt);
   res.send(page('Booking ' + b.code, `<div class="wrap sec narrow confirm">
 <div class="ok-badge">${ICON.check}</div><h1 class="l-title center">You're booked in.</h1>
 <p class="center muted">We've sent the details to ${esc(b.email)} (demo: no email is actually sent).</p>
-<div class="ticket"><div class="t-top"><img src="/assets/photos/${JSON.parse(b.photos)[0]}" alt=""><div><h3>${esc(b.hotel)}</h3><p class="muted small">${esc(b.area)}, Sydney</p></div></div>
+<div class="ticket"><div class="t-top"><img src="/assets/photos/${JSON.parse(b.photos)[0]}" alt=""><div><h3>${esc(b.hotel)}</h3><p class="muted small">${esc(b.area)}, Australia</p></div></div>
 <div class="t-mid"><img class="qr" src="${qr}" alt="QR code for ${b.code}"><div class="code">${b.code}</div><p class="muted small">Show this at reception</p></div>
-<dl><dt>Guest</dt><dd>${esc(b.guest_name)}</dd><dt>Date</dt><dd>${esc(nice(b.date))}${when ? ` · ${esc(when)}` : ''}</dd><dt>Seating</dt><dd>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</dd><dt>People</dt><dd>${party}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Rules</dt><dd>${b.rules_ack_at ? 'Accepted' : '—'}</dd><dt>Status</dt><dd>${b.checked_in_at ? 'Checked in ' + esc(b.checked_in_at) : 'Confirmed'}</dd></dl>
+<dl><dt>Guest</dt><dd>${esc(b.guest_name)}</dd><dt>Date</dt><dd>${esc(nice(b.date))}${when ? ` · ${esc(when)}` : ''}</dd><dt>Seating</dt><dd>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</dd><dt>People</dt><dd>${party}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Cancellation</dt><dd>${esc(note)}</dd><dt>Rules</dt><dd>${b.rules_ack_at ? 'Accepted' : '—'}</dd><dt>Terms</dt><dd>${b.terms_ack_at ? 'Accepted' : '—'}</dd><dt>Risk warning</dt><dd>${b.risk_ack_at ? 'Accepted' : '—'}</dd><dt>Status</dt><dd>${b.checked_in_at ? 'Checked in ' + esc(b.checked_in_at) : 'Confirmed'}</dd></dl>
+<p class="swim-note">${esc(swimNote(hotel))}</p>
 ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}</div>
 <div class="center" style="margin-top:20px"><a class="btn btn-line" href="/">Book another day</a></div></div>`));
 });
@@ -537,12 +569,14 @@ ${found ? `<p class="muted small">${found.length} result${found.length === 1 ? '
 <section id="avail" class="panel"><h2 class="ph2">Next 14 days</h2><div class="tbl-wrap"><table class="tbl avail"><thead><tr><th>Seating</th>${days.map(d => `<th>${nice(d).replace(' ', '<br>')}</th>`).join('')}</tr></thead><tbody>
 ${passes.map(p => `<tr><td><b>${esc(spotLabel(p))}</b><div class="muted small">cap ${p.daily_cap}</div></td>${days.map(d => { const a = grid[d].find(x => x.id === p.id); if (a.blocked) return `<td class="bl">${/same-day|closed for today/i.test(a.blocked) ? 'Cutoff' : 'Closed'}</td>`; return `<td class="${a.sold >= p.daily_cap ? 'full' : ''}">${a.sold}/${p.daily_cap}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div><p class="muted small">Booked out of the daily limit. Swipe sideways for later days.</p></section>
 <section id="addons" class="panel"><h2 class="ph2">Add-ons</h2>
-<p class="muted small">Optional extras. Turn one on, then set the price and how many you can take in a day.</p>
+<p class="muted small">Optional extras. Turn one on, then set the price and how many you can take in a day. Late access can only run until the pool closes.</p>
 <form method="post" action="/hotel/addons"><div class="addon-edit">
 ${addonsAll.map(a => {
   const closed = closureReason(db, h, t);
   const left = a.enabled ? (closed ? 0 : Math.max(0, a.daily_cap - addonSold(a.id, t))) : null;
-  return `<div class="addon-row"><label class="addon-on"><input type="checkbox" name="on" value="${a.id}" ${a.enabled ? 'checked' : ''}> Offer</label><div><b>${esc(a.name)}</b><div class="muted small">${esc(a.blurb)} · ${a.per === 'booking' ? 'per booking' : 'per person'}</div><div class="addon-nums"><label>Price<input class="num" type="number" min="0" step="1" name="aprice_${a.id}" value="${a.price}"></label><label>Each day<input class="num" type="number" min="0" step="1" name="acap_${a.id}" value="${a.daily_cap}"></label>${left == null ? '<span class="muted small">Off</span>' : `<span class="muted small">${left} left today</span>`}</div></div></div>`;
+  const lateOk = a.code !== 'late' || hotelLatePossible(db, h);
+  const lateNote = a.code !== 'late' ? '' : `<div class="muted small">${lateOk ? 'Guests stay only until the pool closes, after day-pass hours end.' : 'Leave this off. The pool already closes when day passes end.'}</div>`;
+  return `<div class="addon-row"><label class="addon-on"><input type="checkbox" name="on" value="${a.id}" ${a.enabled ? 'checked' : ''}> Offer</label><div><b>${esc(a.name)}</b><div class="muted small">${esc(a.blurb)} · ${a.per === 'booking' ? 'per booking' : 'per person'}</div>${lateNote}<div class="addon-nums"><label>Price<input class="num" type="number" min="0" step="1" name="aprice_${a.id}" value="${a.price}"></label><label>Each day<input class="num" type="number" min="0" step="1" name="acap_${a.id}" value="${a.daily_cap}"></label>${left == null ? '<span class="muted small">Off</span>' : `<span class="muted small">${left} left today</span>`}</div></div></div>`;
 }).join('')}
 </div><button class="btn btn-navy">Save add-ons</button></form></section>
 <section id="blocked" class="panel"><div class="blk-head"><h2 class="ph2">Blocked dates</h2></div>
@@ -688,12 +722,18 @@ ${rows.map(b => `<tr><td><span class="print-tick"></span></td><td><b>${esc(b.gue
 });
 app.post('/hotel/addons', hotelAuth, (req, res) => {
   const on = new Set((Array.isArray(req.body.on) ? req.body.on : req.body.on ? [req.body.on] : []).map(n => parseInt(n, 10)));
+  const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(req.hotel.id);
+  const allowLate = hotelLatePossible(db, hotel);
   const up = db.prepare('UPDATE addons SET enabled=?, price=?, daily_cap=? WHERE id=? AND hotel_id=?');
+  let blocked = false;
   db.transaction(() => getAddons(req.hotel.id).forEach(a => {
     const price = parseInt(req.body['aprice_' + a.id], 10), cap = parseInt(req.body['acap_' + a.id], 10);
-    up.run(on.has(a.id) ? 1 : 0, Number.isFinite(price) ? Math.max(0, price) : a.price, Number.isFinite(cap) ? Math.max(0, cap) : a.daily_cap, a.id, req.hotel.id);
+    let enabled = on.has(a.id) ? 1 : 0;
+    if (a.code === 'late' && enabled && !allowLate) { enabled = 0; blocked = true; }
+    up.run(enabled, Number.isFinite(price) ? Math.max(0, price) : a.price, Number.isFinite(cap) ? Math.max(0, cap) : a.daily_cap, a.id, req.hotel.id);
   }))();
-  res.redirect(303, '/hotel?msg=' + encodeURIComponent('Add-ons saved. Guests see the changes straight away.') + '#addons');
+  const msg = blocked ? "Late access stays off. It can't run past the pool's closing time." : 'Add-ons saved. Guests see the changes straight away.';
+  res.redirect(303, '/hotel?msg=' + encodeURIComponent(msg) + '#addons');
 });
 app.post('/hotel/block', hotelAuth, (req, res) => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(req.body.date)) db.prepare('INSERT OR REPLACE INTO blocked_dates(hotel_id,date,reason) VALUES (?,?,?)').run(req.hotel.id, req.body.date, String(req.body.reason || 'Closed').slice(0, 80) || 'Closed');
@@ -786,7 +826,7 @@ app.get('/how-it-works', (req, res) => {
 <h2>For guests</h2>
 <div class="how-grid">
 <div><span class="n">1</span><h3>Browse</h3><p class="muted">Search by neighbourhood, date and seating. Each listing shows what's included, the pool rules, and how many spots are left.</p></div>
-<div><span class="n">2</span><h3>Book</h3><p class="muted">Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking, gym access or a food and drink credit if you want. Tick the pool rules. The total updates before you confirm. This demo doesn't charge a card.</p></div>
+<div><span class="n">2</span><h3>Book</h3><p class="muted">Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking, gym access or a food and drink credit if you want. Tick the pool rules, the terms and the risk warning. The total updates before you confirm. This demo doesn't charge a card.</p></div>
 <div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">At the front desk when the hotel opens for day passes. The hours are on your confirmation. Reception checks you in and hands you a wristband.</p></div>
 <div><span class="n">4</span><h3>Enjoy</h3><p class="muted">Your spot, for the hours that hotel has set. Add-ons stay optional.</p></div>
 </div>
@@ -807,10 +847,10 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <div class="wrap hiw-block" id="faq">
 <h2>Questions</h2>
 <div class="faq">
-<details open><summary>Cancellations</summary><p>Free cancellation up to 24 hours before (hotel terms apply).</p></details>
+<details open><summary>Cancellations</summary><p>Free cancellation until 24 hours before your access hours start. Checkout and your confirmation show that time for the date you chose. A booking made inside that window can't be cancelled for free. <a href="/refunds">Cancellation and refunds</a>.</p></details>
 <details><summary>What to bring</summary><p>Photo ID when the hotel asks for it, swimwear and sunscreen. The listing says whether a towel is included.</p></details>
-<details><summary>Age limits</summary><p>Each hotel sets its own age policy and kids' hours. They're on the listing, and you accept them at checkout.</p></details>
-<details><summary>Weather</summary><p>Indoor pools and pools under a roof stay open in the rain. If a hotel has to close for weather, the day can be moved or the booking cancelled. Dates a hotel has blocked can't be booked.</p></details>
+<details><summary>Age limits</summary><p>You need to be 18 or over to book. Each hotel sets its own age policy and kids' hours. They're on the listing, and in the risk warning, before you pay.</p></details>
+<details><summary>Weather</summary><p>Rain on its own is not a closure. If the hotel closes the pool, you choose a full refund or a free rebooking. <a href="/faq">All questions</a>.</p></details>
 </div>
 </div>`));
 });
@@ -898,5 +938,22 @@ function legalDoc(heading, file) {
 app.get('/privacy', (req, res) => res.send(legalDoc('Privacy policy (draft)', 'privacy-policy.md')));
 app.get('/terms', (req, res) => res.send(legalDoc('Customer terms (draft)', 'customer-terms.md')));
 app.get('/refunds', (req, res) => res.send(legalDoc('Cancellation and refunds (draft)', 'cancellation-refund-policy.md')));
+app.get('/risk', (req, res) => res.send(legalDoc('Risk warning (draft)', 'guest-risk-acknowledgement.md')));
+app.get('/faq', (req, res) => {
+  res.send(page('Questions', `<div class="wrap sec"><h1 class="l-title">Questions</h1>
+<p class="lead">Short answers, in line with the <a href="/terms">customer terms</a> and the <a href="/refunds">cancellation and refund policy</a>. Both of those pages are drafts.</p>
+<div class="faq">
+<details open><summary>Is this a real booking site?</summary><p>No. This is a demo. Listings are examples. No real bookings or payments are taken.</p></details>
+<details><summary>Are these partner hotels?</summary><p>No. The example listings use neighbourhood names in Australia. Hotel Day Club is not partnered with them, and the photos are stock photos.</p></details>
+<details><summary>Can I cancel for free?</summary><p>Yes, if you cancel at least 24 hours before your access hours start. Checkout and your confirmation show the time for the date you chose. If you book inside that 24 hours, there is no free-cancellation window. If the hotel closes or limits the facility you booked, you choose a full refund or a free rebooking. Nothing in the policy limits your rights under the Australian Consumer Law.</p></details>
+<details><summary>What if it rains?</summary><p>Rain on its own is not a closure. The listing says whether the pool is indoor, outdoor, heated or unheated. If the hotel decides to close, you get the choice above.</p></details>
+<details><summary>Who can book, and can children come?</summary><p>The person booking needs to be 18 or over. Each hotel sets its own age rules and kids' hours. They are on the listing and in the risk warning before you pay. An adult on the booking supervises each child.</p></details>
+<details><summary>What do I accept at checkout?</summary><p>Three separate boxes: the hotel's pool rules, the <a href="/terms">customer terms</a>, and the <a href="/risk">risk warning</a> for that hotel. The warning is shown in full on checkout. Marketing email is optional and is not required.</p></details>
+<details><summary>What are the hours?</summary><p>Each hotel sets its own hours. A day pass is not sold past the time a room-guests-only period starts. Late access, where a hotel offers it, ends when the pool closes and does not run later than that.</p></details>
+<details><summary>What should I bring?</summary><p>Swimwear, and sunscreen if the pool is outdoors. The listing says if a towel is included and if photo ID is required.</p></details>
+<details><summary>Do you sell gift cards or pass packs?</summary><p>Not on this demo. Any gift card offered later is valid for at least 3 years from the date of issue. A 5-pass pack is not offered, and it is not sold as a gift.</p></details>
+<details><summary>Do you show ratings or reviews?</summary><p>No. Listings say New. This site does not publish star ratings or review counts.</p></details>
+</div></div>`));
+});
 
 app.listen(PORT, () => console.log(`Hotel Day Club demo on http://localhost:${PORT}`));
