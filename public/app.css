@@ -348,7 +348,7 @@ form.check-code input,form.check-code .btn{width:100%}
 .wrap.print-sheet{max-width:860px;overflow-x:auto}
 .print-tick{width:16px;height:16px;border:1.5px solid var(--navy);border-radius:3px;display:inline-block}
 @media print{
-  .hdr,.concept,.app-ftr,.no-print,.dash .side{display:none!important}
+  .hdr,.concept,.demo-banner,.app-ftr,.no-print,.dash .side{display:none!important}
   body{background:#fff}
   .print-sheet{max-width:none;padding-top:0}
 }
