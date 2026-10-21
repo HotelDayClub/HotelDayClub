@@ -823,34 +823,72 @@ db.prepare("UPDATE hotels SET password=? WHERE login LIKE 'demo-%'").run(demoHot
 adminPassword();
 
 function inlineMd(text) {
-  return esc(text)
-    .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)/g, '<a href="$2">$1</a>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  let s = esc(text);
+  s = s.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)/g, '<a href="$2">$1</a>');
+  s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+?)([.,;:]?)(?=\s|$)/g, '$1<a href="$2">$2</a>$3');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  return s;
+}
+function tableCells(row) {
+  return row.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+}
+function isRuleRow(row) {
+  return tableCells(row).every(c => /^:?-+:?$/.test(c));
 }
 function mdToHtml(src) {
   const lines = String(src).replace(/\r\n/g, '\n').split('\n');
-  let html = '', list = false;
-  const close = () => { if (list) { html += '</ul>'; list = false; } };
-  for (const line of lines) {
-    const t = line.trim();
-    if (!t) { close(); continue; }
-    const h = t.match(/^(#{1,3})\s+(.*)$/);
+  let html = '', list = false, i = 0;
+  const endList = () => { if (list) { html += '</ul>'; list = false; } };
+  while (i < lines.length) {
+    const t = lines[i].trim();
+    if (!t) { endList(); i++; continue; }
+    if (t === '---' || t === '***') { endList(); html += '<hr>'; i++; continue; }
+    if (t.startsWith('>')) {
+      endList();
+      const parts = [];
+      while (i < lines.length && lines[i].trim().startsWith('>')) {
+        parts.push(lines[i].trim().replace(/^>\s?/, ''));
+        i++;
+      }
+      const paras = [];
+      let buf = [];
+      for (const part of parts) {
+        if (!part) { if (buf.length) paras.push(buf.join(' ')); buf = []; }
+        else buf.push(part);
+      }
+      if (buf.length) paras.push(buf.join(' '));
+      html += `<blockquote>${paras.map(p => `<p>${inlineMd(p)}</p>`).join('')}</blockquote>`;
+      continue;
+    }
+    if (t.startsWith('|')) {
+      endList();
+      const rows = [];
+      while (i < lines.length && lines[i].trim().startsWith('|')) rows.push(lines[i++].trim());
+      const head = tableCells(rows[0] || '');
+      const body = rows.slice(1).filter(r => !isRuleRow(r));
+      html += `<div class="tbl-wrap"><table><thead><tr>${head.map(c => `<th>${inlineMd(c)}</th>`).join('')}</tr></thead><tbody>${body.map(r => `<tr>${tableCells(r).map(c => `<td>${inlineMd(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+      continue;
+    }
+    const h = t.match(/^(#{1,4})\s+(.*)$/);
     if (h) {
-      close();
-      const level = Math.min(3, h[1].length + 1);
-      html += `<h${level}>${inlineMd(h[2])}</h${level}>`;
+      endList();
+      html += `<h${Math.min(4, h[1].length + 1)}>${inlineMd(h[2])}</h${Math.min(4, h[1].length + 1)}>`;
+      i++;
       continue;
     }
     const li = t.match(/^[-*]\s+(.*)$/);
     if (li) {
       if (!list) { html += '<ul>'; list = true; }
       html += `<li>${inlineMd(li[1])}</li>`;
+      i++;
       continue;
     }
-    close();
+    endList();
     html += `<p>${inlineMd(t)}</p>`;
+    i++;
   }
-  close();
+  endList();
   return html;
 }
 function legalDoc(heading, file) {
