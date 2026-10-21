@@ -3,7 +3,7 @@
    Brand tokens live in :root. To rebrand: edit tokens here and
    BRAND / DOMAIN / TAGLINE / WORDMARK in build_pages.py, then rebuild (see ../README.md)
    ========================================================== */
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,560;0,9..144,640;1,9..144,560&display=swap");
 :root{
   --navy:#0B2545;  --aqua:#19C3C9; --lagoon:#0FA3B1; --coral:#FF6B5B; --coral-dk:#E9503F;
   --sun:#FFD166;   --sand:#F6EFE6; --ink:#1B2433; --muted:#667085; --line:#EAECF0; --soft:#F7F8FA;

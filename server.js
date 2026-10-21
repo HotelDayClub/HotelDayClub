@@ -76,10 +76,10 @@ function page(title, body, { nav = 'guest', bare = false } = {}) {
     : nav === 'admin' ? '<a class="hotel-link show" href="/admin/logout">Log out</a>'
     : '<a class="hotel-link show" href="/hotel">Hotel login</a><a class="hotel-link show hide-sm" href="/admin">Admin</a>';
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)} · Hotel Day Club</title><link rel="icon" href="/assets/logo-mark.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"></head><body>
-<div class="concept"><b>Demo build</b> · fictional example listings, stock photos, no real payments</div>
+<title>${esc(title)} · Hotel Day Club</title><link rel="icon" href="/assets/logo-mark.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"></head><body class="${nav === 'guest' ? 'guest' : ''}">
+${nav === 'guest' ? '' : '<div class="concept"><b>Demo build</b> · fictional example listings, stock photos, no real payments</div>'}
 <header class="hdr"><div class="wrap hdr-in">${LOGO}
-<nav class="hdr-nav"><a class="nav-explore" href="/#explore">Explore</a><a href="/how-it-works">How it works</a></nav>
+<nav class="hdr-nav"><a href="/how-it-works">How it works</a></nav>
 <div class="hdr-right">${right}</div></div></header>
 <main>${body}</main>
 ${bare ? '' : `<footer class="app-ftr"><div class="wrap ftr-in"><div>${LOGO}<p class="muted">Hotel life, by the day.</p></div>
@@ -91,12 +91,13 @@ const card = (h, date) => {
   const av = date ? availability(h.id, date) : null;
   const from = Math.min(...getPasses(h.id).map(p => p.price));
   let spots = '';
-  if (av) { const left = av.reduce((a, p) => a + p.remaining, 0); spots = av[0].blocked ? '<span class="spots out">· Closed this day</span>' : left === 0 ? '<span class="spots out">· Sold out</span>' : `<span class="spots">· ${left} spots left ${esc(nice(date))}</span>`; }
-  return `<a class="card" href="/h/${h.slug}${date ? '?date=' + date : ''}"><div class="ph"><img src="/assets/photos/${h.photos[0]}" alt="" loading="lazy"><span class="badge">Demo listing</span></div>
-<div><div class="c-top"><h3>${esc(h.name)}</h3><span class="rate">${ICON.star}${h.rating.toFixed(2)}</span></div>
-<div class="c-sub">${esc(h.tagline)}</div><div class="c-sub">${esc(h.area)} · ${esc(h.hours)}</div>
-<div class="c-price" style="margin-top:4px">From <b>${money(from)}</b> per person ${spots}</div></div></a>`;
+  if (av) { const left = av.reduce((a, p) => a + p.remaining, 0); spots = av[0].blocked ? '<span class="spots out">Closed</span>' : left === 0 ? '<span class="spots out">Sold out</span>' : `<span class="spots">${left} left</span>`; }
+  return `<a class="card" href="/h/${h.slug}${date ? '?date=' + date : ''}"><div class="ph"><img src="/assets/photos/${h.photos[0]}" alt="" loading="lazy"></div>
+<div class="c-body"><div class="c-top"><h3>${esc(h.name)}</h3><span class="rate">${ICON.star}${h.rating.toFixed(2)}</span></div>
+<div class="c-sub">${esc(h.area)}</div>
+<div class="c-price">From <b>${money(from)}</b> ${spots}</div></div></a>`;
 };
+const WAVE = '<svg class="wave" viewBox="0 0 1440 72" preserveAspectRatio="none" aria-hidden="true"><path fill="#fff" d="M0 40c180 28 320-36 520-20s340 48 520 20 280-40 400-16V72H0Z"/></svg>';
 
 // ---------- guest ----------
 app.get('/', (req, res) => {
@@ -106,24 +107,23 @@ app.get('/', (req, res) => {
   let list = hotels.filter(h => !where || h.area === where);
   if (pass) list = list.filter(h => !date || availability(h.id, date).find(p => p.code === pass && p.remaining > 0));
   const filtered = where || date || pass;
-  res.send(page('Hotel pools & spas by the day', `<div class="wrap">
-<section class="hero"><div class="hero-card" style="background-image:url(/assets/photos/beach-resort-pool.jpg)">
+  res.send(page('Hotel pools & spas by the day', `<section class="hero"><div class="hero-card" style="background-image:url(/assets/photos/beach-resort-pool.jpg)">
 <span class="photo-credit">Stock photo · not a partner hotel</span>
-<div class="hero-copy"><span class="kicker">Sydney · weekdays · no room needed</span><h1>A hotel day out,<br>minutes from home.</h1>
-<p>Book a day pass to a hotel pool, daybed or spa near you. Show your QR code at reception, grab a wristband and claim your lounger.</p></div></div>
-<div class="search-wrap"><form class="search app-search" action="/#explore" method="get">
+<div class="hero-copy wrap"><h1>A hotel <em>day</em> out, minutes from home.</h1>
+<p>A pool, daybed or spa. No room needed.</p></div>${WAVE}</div>
+<div class="wrap search-wrap"><form class="search app-search" action="/#explore" method="get">
 <div class="seg"><label for="w">Where</label><select id="w" name="where"><option value="">All of Sydney</option>${areas.map(a => `<option ${a === where ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></div>
 <div class="seg"><label for="d">When</label><input id="d" type="date" name="date" min="${today()}" value="${esc(date)}"></div>
 <div class="seg"><label for="p">Pass</label><select id="p" name="pass"><option value="">Any pass</option><option value="pool" ${pass === 'pool' ? 'selected' : ''}>Pool Pass</option><option value="daybed" ${pass === 'daybed' ? 'selected' : ''}>Pool + Daybed</option><option value="spa" ${pass === 'spa' ? 'selected' : ''}>Spa + Pool</option></select></div>
-<button class="search-go" type="submit">${ICON.search} Search</button></form></div></section>
+<button class="search-go" type="submit" aria-label="Search">${ICON.search}<span>Search</span></button></form></div></section>
+<div class="wrap">
 <section id="explore" class="sec"><div class="sec-row"><h2>${filtered ? `${list.length} place${list.length === 1 ? '' : 's'} ${where ? 'in ' + esc(where) : 'around Sydney'}${date ? ' on ' + esc(nice(date)) : ''}` : 'Pools to try this week'}</h2>${filtered ? '<a class="link" href="/#explore">Clear filters</a>' : ''}</div>
 <div class="grid">${list.map(h => card(h, date)).join('') || '<p class="muted">Nothing matches. Try another date or pass.</p>'}</div></section>
-<section id="how" class="sec how"><h2>How it works</h2><div class="how-grid">
-<div><span class="n">1</span><h3>Pick a pool</h3><p class="muted">Browse hotel pools, daybeds and spas across Sydney. Prices are per person, all in.</p></div>
+<section id="how" class="sec how"><h2>Three steps</h2><div class="how-grid">
+<div><span class="n">1</span><h3>Pick a pool</h3><p class="muted">Browse hotel pools, daybeds and spas across Sydney.</p></div>
 <div><span class="n">2</span><h3>Choose your day</h3><p class="muted">See live spots left. Hotels cap numbers so it never feels crowded.</p></div>
-<div><span class="n">3</span><h3>Show your QR</h3><p class="muted">Check in at reception from 10am, grab a wristband and a towel. Out by 4pm.</p></div></div>
-<p class="muted small" style="margin-top:14px">18+ for spa passes. Bring photo ID. No lifeguard on duty. Free cancellation up to 24 hours before (demo policy).</p>
-<p style="margin-top:14px"><a class="link" href="/how-it-works">Read how it works</a></p></section></div>`));
+<div><span class="n">3</span><h3>Show your QR</h3><p class="muted">Check in at reception, then the lounger is yours.</p></div></div>
+<p class="how-more"><a class="link" href="/how-it-works">Read how it works</a></p></section></div>`));
 });
 
 app.get('/h/:slug', (req, res) => {
@@ -132,8 +132,8 @@ app.get('/h/:slug', (req, res) => {
   const passes = getPasses(h.id);
   const blocked = db.prepare('SELECT date FROM blocked_dates WHERE hotel_id=? AND date>=? ORDER BY date').all(h.id, today()).map(b => b.date);
   res.send(page(h.name, `<div class="wrap listing">
-<div class="l-hd"><span class="badge-inline">Demo listing · fictional hotel</span><h1 class="l-title">${esc(h.name)}</h1>
-<div class="muted l-meta">${ICON.star} ${h.rating.toFixed(2)} (example rating) · ${ICON.pin} ${esc(h.area)}, Sydney · ${esc(h.hours)}</div></div>
+<div class="l-hd"><p class="eyebrow-s">Fictional demo listing</p><h1 class="l-title">${esc(h.name)}</h1>
+<div class="muted l-meta">${ICON.star} ${h.rating.toFixed(2)} · ${esc(h.area)} · ${esc(h.hours)}</div></div>
 <div class="gallery">${h.photos.map((p, i) => `<img class="g${i}" src="/assets/photos/${p}" alt="">`).join('')}<span class="photo-credit">Stock photos · not this hotel</span></div>
 <div class="l-body"><div class="l-main">
 <h2>${esc(h.tagline)}</h2><p class="lead">${esc(h.blurb)}</p>
@@ -148,7 +148,7 @@ app.get('/h/:slug', (req, res) => {
 <div id="status" class="status"></div>
 <div class="pass-pick" id="passes"></div>
 <label class="fl">Guests<select name="qty" id="qty">${[1, 2, 3, 4, 5, 6].map(n => `<option>${n}</option>`).join('')}</select></label>
-<div id="addon-block" hidden><div class="addon-note">Add-ons</div><div class="addon-pick" id="addons-pick"></div></div>
+<details id="addon-block" class="addon-fold" hidden><summary><span>Add-ons</span><span class="muted" id="addon-sum">Optional</span></summary><div class="addon-pick" id="addons-pick"></div></details>
 <div class="bb-total" id="total"></div>
 <button class="btn btn-coral full" id="go" type="submit">Reserve</button>
 <p class="muted small center">You won't be charged. Demo payment only.</p>
@@ -162,15 +162,19 @@ function need(a,q){return a.per==='booking'?1:q}
 function render(){const q=+$('#qty').value;const sel=document.querySelector('input[name=pass]:checked');
  $('#passes').innerHTML=av.map(p=>{const dis=p.remaining<q;return '<label class="pp'+(dis?' dis':'')+'"><input type="radio" name="pass" value="'+p.code+'" '+(dis?'disabled':'')+' '+((sel&&sel.value===p.code&&!dis)?'checked':'')+'><span><b>'+p.name+'</b><small>'+(p.remaining===0?'Sold out':p.remaining+' left')+'</small></span><b>'+fmt(p.price)+'</b></label>'}).join('');
  if(!document.querySelector('input[name=pass]:checked')){const f=document.querySelector('input[name=pass]:not([disabled])');if(f)f.checked=true}
+ const fold=$('#addon-block');const wasOpen=fold.open;
  const prev=[...document.querySelectorAll('#addons-pick input:checked')].map(i=>i.value);
- $('#addon-block').hidden=!addons.length;
- $('#addons-pick').innerHTML=addons.map(a=>{const dis=a.remaining<need(a,q);const on=!dis&&prev.indexOf(a.code)>=0;return '<label class="pp'+(dis?' dis':'')+'"><input type="checkbox" name="addon" value="'+a.code+'" '+(dis?'disabled':'')+(on?' checked':'')+'><span><b>'+h(a.name)+'</b><small>'+(dis?'Sold out':a.remaining+' left')+' · '+(a.per==='booking'?'per booking':'per guest')+'</small></span><b>'+fmt(a.price)+'</b></label>'}).join('');
+ fold.hidden=!addons.length;
+ $('#addons-pick').innerHTML=addons.map(a=>{const dis=a.remaining<need(a,q);const on=!dis&&prev.indexOf(a.code)>=0;return '<label class="tog'+(dis?' dis':'')+'"><span><b>'+h(a.name)+'</b><small>'+(dis?'Sold out':fmt(a.price)+(a.per==='booking'?' per booking':' per guest'))+'</small></span><input type="checkbox" name="addon" value="'+a.code+'" '+(dis?'disabled':'')+(on?' checked':'')+'></label>'}).join('');
+ const picked=document.querySelectorAll('#addons-pick input:checked').length;
+ fold.open=wasOpen||picked>0;const sum=$('#addon-sum');if(sum)sum.textContent=picked?picked+' selected':'Optional';
  const c=document.querySelector('input[name=pass]:checked');const p=c&&av.find(x=>x.code===c.value);
  let extra=0;document.querySelectorAll('#addons-pick input:checked').forEach(i=>{const a=addons.find(x=>x.code===i.value);if(a)extra+=a.price*need(a,q)});
  $('#total').innerHTML=p?'<span>'+fmt(p.price)+' × '+q+(extra?' + add-ons':'')+'</span><b>'+fmt(p.price*q+extra)+'</b>':'';
  $('#go').disabled=!p;$('#go').textContent=p?'Reserve':'Not available';
  const b=av[0]&&av[0].blocked;const total=av.reduce((s,x)=>s+x.remaining,0);
- $('#status').innerHTML=b?'<span class="pill out">Closed: '+b+'</span>':total===0?'<span class="pill out">Sold out this day</span>':'<span class="pill ok">'+total+' spots left on this day</span>';
+ const st=$('#status');st.className='status'+(b||total===0?' out':'');
+ st.textContent=b?'Closed: '+b:total===0?'Sold out this day':total+' spots left';
  document.querySelectorAll('#passes input, #addons-pick input').forEach(r=>r.onchange=render)}
 async function load(){const r=await fetch('/api/availability?hotel=${h.slug}&date='+$('#date').value);const data=await r.json();av=data.passes;addons=data.addons||[];render()}
 $('#date').onchange=load;$('#qty').onchange=render;load();setInterval(load,15000);
@@ -204,12 +208,12 @@ app.get('/checkout', (req, res) => {
   const grand = p.price * qty + v.addonTotal;
   const picked = new Set(v.addons.map(x => x.code));
   const offer = addonAvailability(h.id, date);
-  const addonFields = offer.length ? `<h3>Add-ons</h3><div class="addon-pick" id="co-addons">${offer.map(ad => {
+  const addonFields = offer.length ? `<div class="addon-fold open"><p class="addon-note">Add-ons</p><div class="addon-pick" id="co-addons">${offer.map(ad => {
     const need = ad.per === 'booking' ? 1 : qty;
     const dis = ad.remaining < need;
     const on = !dis && picked.has(ad.code);
-    return `<label class="pp${dis ? ' dis' : ''}"><input type="checkbox" name="addon" value="${esc(ad.code)}" data-price="${ad.price}" data-per="${esc(ad.per)}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}><span><b>${esc(ad.name)}</b><small>${esc(ad.blurb)} · ${dis ? 'Sold out' : ad.remaining + ' left'} · ${ad.per === 'booking' ? 'per booking' : 'per guest'}</small></span><b>${money(ad.price)}</b></label>`;
-  }).join('')}</div>` : '';
+    return `<label class="tog${dis ? ' dis' : ''}"><span><b>${esc(ad.name)}</b><small>${dis ? 'Sold out' : `${money(ad.price)} ${ad.per === 'booking' ? 'per booking' : 'per guest'}`}</small></span><input type="checkbox" name="addon" value="${esc(ad.code)}" data-price="${ad.price}" data-per="${esc(ad.per)}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}></label>`;
+  }).join('')}</div></div>` : '';
   res.send(page('Checkout', `<div class="wrap sec checkout">
 <a class="link small" href="/h/${h.slug}?date=${date}">← Back to listing</a><h1 class="l-title">Confirm and pay</h1>
 <div class="co-grid"><form class="co-form" method="post" action="/book">
@@ -225,7 +229,7 @@ ${addonFields}
 <div class="two"><label class="fl">Expiry<input value="12 / 30" disabled></label><label class="fl">CVC<input value="123" disabled></label></div></div>
 <label class="tick"><input type="checkbox" required> I'm happy with the pool rules (photo ID, 10am–4pm, no lifeguard).</label>
 <button class="btn btn-coral full" id="co-btn" type="submit">Confirm booking · ${money(grand)} (demo)</button></form>
-<aside class="co-sum"><img src="/assets/photos/${h.photos[0]}" alt=""><div class="pad"><span class="badge-inline">Demo listing</span><h3>${esc(h.name)}</h3><p class="muted small">${esc(h.area)}</p>
+<aside class="co-sum"><img src="/assets/photos/${h.photos[0]}" alt=""><div class="pad"><h3>${esc(h.name)}</h3><p class="muted small">${esc(h.area)}</p>
 <dl><dt>Date</dt><dd>${esc(nice(date))}</dd><dt>Pass</dt><dd>${esc(p.name)} × ${qty}</dd><dt>Guests</dt><dd>${qty}</dd><dt>Spots left</dt><dd>${a.remaining}</dd></dl>
 <ul class="addon-lines" id="addon-lines">${v.addons.map(ad => `<li><span>${esc(ad.name)} × ${ad.qty}</span><b>${money(ad.line)}</b></li>`).join('')}</ul>
 <div class="bb-total"><span>Total</span><b id="co-total">${money(grand)}</b></div><p class="muted small">Prices include GST. Demo only.</p></div></aside></div></div>
@@ -270,7 +274,7 @@ app.get('/booking/:code', async (req, res) => {
   res.send(page('Booking ' + b.code, `<div class="wrap sec narrow confirm">
 <div class="ok-badge">${ICON.check}</div><h1 class="l-title center">You're booked in.</h1>
 <p class="center muted">We've sent the details to ${esc(b.email)} (demo: no email is actually sent).</p>
-<div class="ticket"><div class="t-top"><img src="/assets/photos/${JSON.parse(b.photos)[0]}" alt=""><div><span class="badge-inline">Demo listing</span><h3>${esc(b.hotel)}</h3><p class="muted small">${esc(b.area)}, Sydney</p></div></div>
+<div class="ticket"><div class="t-top"><img src="/assets/photos/${JSON.parse(b.photos)[0]}" alt=""><div><h3>${esc(b.hotel)}</h3><p class="muted small">${esc(b.area)}, Sydney</p></div></div>
 <div class="t-mid"><img class="qr" src="${qr}" alt="QR code for ${b.code}"><div class="code">${b.code}</div><p class="muted small">Show this at reception</p></div>
 <dl><dt>Guest</dt><dd>${esc(b.guest_name)}</dd><dt>Date</dt><dd>${esc(nice(b.date))} · 10am–${until}</dd><dt>Pass</dt><dd>${esc(b.pass)} × ${b.qty}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Status</dt><dd>${b.checked_in_at ? 'Checked in ' + esc(b.checked_in_at) : 'Confirmed'}</dd></dl>
 ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}</div>
@@ -457,7 +461,7 @@ app.get('/how-it-works', (req, res) => {
 </div>
 <p style="margin-top:18px"><a class="btn btn-coral" href="/#explore">Browse pools</a></p>
 </div>
-<section class="hiw-band" id="partners"><div class="wrap">
+${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="wave wave-band"')}<section class="hiw-band" id="partners"><div class="wrap">
 <h2>For hotel partners</h2>
 <p class="hiw-lead">Free to join. You decide the prices and the numbers, and you get paid monthly.</p>
 <div class="partner-grid">
