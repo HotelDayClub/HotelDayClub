@@ -72,7 +72,10 @@ assert.strictEqual(offering.hotelLatePossible(db, sky.h), false);
 const lateRows = db.prepare("SELECT h.slug, a.enabled FROM addons a JOIN hotels h ON h.id=a.hotel_id WHERE a.code='late' ORDER BY h.slug").all();
 for (const row of lateRows) assert.strictEqual(row.enabled, 0, row.slug);
 assert.ok(offering.hoursView(db, sky.h, sky.date).hoursLine.includes('Mon–Thu'), offering.hoursView(db, sky.h, sky.date).hoursLine);
-assert.ok(offering.hoursView(db, salt.h, salt.date).hoursLine.includes('Mon–Fri'), offering.hoursView(db, salt.h, salt.date).hoursLine);
+assert.ok(offering.hoursView(db, salt.h, salt.date).hoursLine.includes('Daily · 10am–4pm'), offering.hoursView(db, salt.h, salt.date).hoursLine);
+assert.ok(offering.hoursView(db, sky.h, sky.date).hoursLine.includes('Sat–Sun'), offering.hoursView(db, sky.h, sky.date).hoursLine);
+const joinHours = offering.blankJoin().hours;
+assert.ok(joinHours.find(r => r.weekday === 0).open && joinHours.find(r => r.weekday === 6).open, 'new hotels start with Saturday and Sunday open');
 
 const earlyRoom = offering.readForm({
   hotel_name: 'Test', area: 'CBD', spot_name: 'Sun lounger', kind: 'lounger', holds: '1', price: '40', cap: '10',
@@ -222,7 +225,7 @@ function start(port, extra = {}) {
     assert.ok(listing.body.includes('Mon–Thu · 11am–4pm'), listing.body.slice(listing.body.indexOf('l-meta'), listing.body.indexOf('l-meta') + 180));
     assert.ok(!listing.body.includes('Wed ·'));
     const saltListing = await get(port, `/h/saltwater-terrace?date=${salt.date}`);
-    assert.ok(saltListing.body.includes('Mon–Fri · 10am–4pm'));
+    assert.ok(saltListing.body.includes('Daily · 10am–4pm'));
 
     const avail = await get(port, `/api/availability?hotel=skyline-rooftop&date=${freeSky.date}`);
     const data = JSON.parse(avail.body);

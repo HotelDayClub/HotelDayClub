@@ -16,6 +16,7 @@ const { seed, ensureSchedules, seedPerformance } = require('../seed');
 const {
   buildAnalytics, renderAnalytics, recordListingView, normalRange, share, HOTEL_SHARE,
 } = require('../analytics');
+const offering = require('../offering');
 
 seed(db);
 ensureSchedules(db);
@@ -71,7 +72,23 @@ assert.ok(Math.min(...recent.map(d => d.fill)) >= 0.35, recent.map(d => `${d.dat
 assert.ok(avgFill(recent) >= avgFill(earlier) * 0.8, `${avgFill(recent)} vs ${avgFill(earlier)}`);
 assert.ok(avgFill(recent) <= 0.9);
 for (const day of r90.days) if (!day.open) assert.strictEqual(day.spots, 0, day.date);
+const weekend = r90.days.filter(d => d.open && (d.weekday === 0 || d.weekday === 6));
+const midweek = r90.days.filter(d => d.open && d.weekday >= 1 && d.weekday <= 4);
+assert.ok(weekend.length >= 8 && midweek.length >= 20);
+assert.ok(avgFill(weekend) > avgFill(midweek), `${avgFill(weekend)} vs ${avgFill(midweek)}`);
+assert.ok(Math.min(...weekend.map(d => d.fill)) > avgFill(midweek));
+assert.ok(Math.max(...weekend.map(d => d.fill)) < 0.95);
+const palm = db.prepare("SELECT * FROM hotels WHERE slug='palm-court'").get();
+const palm90 = buildAnalytics(db, palm, { days: 90, today });
+for (const day of palm90.days.filter(d => d.weekday === 1)) {
+  assert.strictEqual(day.open, false, day.date);
+  assert.strictEqual(day.spots, 0, day.date);
+}
 const sky = db.prepare("SELECT id FROM hotels WHERE slug='skyline-rooftop'").get();
+const skyHours = db.prepare('SELECT weekday, open FROM hotel_hours WHERE hotel_id=?').all(sky.id);
+assert.strictEqual(skyHours.find(row => row.weekday === 5).open, 0);
+assert.strictEqual(skyHours.find(row => row.weekday === 6).open, 1);
+assert.strictEqual(skyHours.find(row => row.weekday === 0).open, 1);
 const chair = db.prepare("SELECT id, daily_cap FROM pass_types WHERE hotel_id=? AND code='chair'").get(sky.id);
 const chairSold = db.prepare("SELECT COALESCE(SUM(qty),0) n FROM bookings WHERE pass_type_id=? AND date=? AND status!='cancelled'").get(chair.id, today).n;
 assert.ok(chair.daily_cap - chairSold >= 2, `skyline chair left ${chair.daily_cap - chairSold}`);
@@ -81,6 +98,9 @@ assert.strictEqual(normalRange('90'), 90);
 const html30 = renderAnalytics(r30);
 assert.ok(html30.includes('Example data'));
 assert.ok(html30.includes('Your payout'));
+assert.ok(html30.includes('What you receive'));
+assert.ok(!/commission/i.test(html30));
+assert.ok(!/25%|75% of|hotel share|before commission/i.test(html30));
 assert.ok(html30.includes('Fill rate'));
 assert.ok(html30.includes('No-shows'));
 assert.ok(html30.includes('Listing views'));
@@ -135,6 +155,20 @@ assert.strictEqual(indieReport.refundValue, 40);
 assert.strictEqual(indieReport.views, 0);
 assert.strictEqual(indieReport.conversion, null);
 assert.ok(!renderAnalytics(indieReport).includes('Example data'));
+const closedWeekend = offering.saveOffering(db, id, {
+  hotel_name: 'Independent Pool', area: 'CBD',
+  spot_id: String(pid), code: 'lounger', spot_name: 'Sun lounger', kind: 'lounger', holds: '1', price: '80', cap: '10',
+  day_open: ['1', '2', '3', '4', '5'], cutoff_hours: '2',
+  opens_1: '10:00', closes_1: '16:00', opens_2: '10:00', closes_2: '16:00', opens_3: '10:00', closes_3: '16:00',
+  opens_4: '10:00', closes_4: '16:00', opens_5: '10:00', closes_5: '16:00',
+});
+assert.ok(!closedWeekend.err, closedWeekend.err);
+const chosen = buildAnalytics(db, db.prepare('SELECT * FROM hotels WHERE id=?').get(id), { days: 30, today });
+for (const day of chosen.days.filter(d => d.weekday === 0 || d.weekday === 6)) {
+  assert.strictEqual(day.open, false, day.date);
+  assert.strictEqual(day.fill, null, day.date);
+}
+assert.ok(chosen.days.some(d => d.weekday === 1 && d.open));
 db.prepare("UPDATE bookings SET seeded=1 WHERE code='HDC-OWN2'").run();
 assert.strictEqual(buildAnalytics(db, indie, { days: 7, today }).example, true);
 db.prepare("DELETE FROM bookings WHERE code='HDC-OWN2'").run();
@@ -229,6 +263,13 @@ function cookieFrom(res) {
     assert.ok(page.body.includes('href="/hotel/analytics?range=7"'));
     assert.ok(page.body.includes('href="/hotel/analytics?range=90"'));
     assert.ok(!/guest rating|average rating|star rating/i.test(page.body));
+    assert.ok(page.body.includes('What you receive'));
+    assert.ok(!/commission/i.test(page.body));
+    assert.ok(!/25%|75% of|hotel share|before commission/i.test(page.body));
+    const settings = await get(port, '/hotel/settings', { Cookie: cookie });
+    assert.strictEqual(settings.status, 200);
+    assert.ok(/name="day_open" value="6" checked/.test(settings.body));
+    assert.ok(/name="day_open" value="0" checked/.test(settings.body));
     assert.strictEqual(viewsOf(page.body), saltViews);
     assert.ok(page.headers['cache-control'] === 'no-store');
 

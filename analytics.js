@@ -237,14 +237,13 @@ function renderAnalytics(report) {
 <p class="an-lead">Last ${report.range} days, ${esc(nice(report.start))} to ${esc(nice(report.end))}. Figures use the day of the visit.</p></div>${badge}</div>
 ${note}
 <nav class="range-pick" aria-label="Date range">${rangeNav}</nav>
-<div class="stats">
+<div class="stats three">
 <div class="stat"><span>Bookings</span><b>${report.bookings.toLocaleString('en-AU')}</b><small>${report.spots.toLocaleString('en-AU')} spots. Cancelled visits are not included.</small></div>
-<div class="stat"><span>Gross revenue</span><b>${money(report.gross)}</b><small>Seating and add-ons, before commission.</small></div>
-<div class="stat payout"><span>Your payout</span><b>${money(report.payout)}</b><small>75% of gross. This is the hotel share.</small></div>
-<div class="stat"><span>Commission</span><b>${money(report.fee)}</b><small>25% kept by Hotel Day Club.</small></div>
+<div class="stat"><span>Gross revenue</span><b>${money(report.gross)}</b><small>Seating and add-ons on confirmed visits.</small></div>
+<div class="stat payout"><span>Your payout</span><b>${money(report.payout)}</b><small>What you receive.</small></div>
 </div>
 <section class="panel"><h2 class="ph2">Revenue over time</h2>
-<p class="an-note">Each bar is gross revenue for that day. Your payout is 75% of the same days. A hatched bar is a day the pool is closed. Amounts for every day are in the table below.</p>
+<p class="an-note">Each bar is gross revenue for that day. Your payout is what you receive for the same days. A hatched bar is a day the pool is closed. Amounts for every day are in the table below.</p>
 ${revenueChart}
 ${report.range > 7 ? '<p class="an-note">Scroll sideways to see each day. Amounts are in the table below.</p>' : ''}</section>
 <section class="panel"><h2 class="ph2">Fill rate</h2>
