@@ -1,7 +1,7 @@
 # Hotel Day Club: Customer Terms
 
 ## 1. Who we are and who supplies your pass
-1.1 Jason Baranov (trading as Hotel Day Club, business name registration pending) ("**Hotel Day Club**", "**we**", "**us**").
+1.1 Hotel Day Club is a registered business name (ABN {{ABN}}). In these terms, 'we' means the owner of that business name. Contact: {{CONTACT_EMAIL}}.
 1.2 **We are a booking agent.** We sell day passes and add-ons on behalf of the hotel named in your booking (the "**Hotel**"). The Hotel supplies the pool, spa, seating and any add-ons, runs the facilities and is the supplier for GST purposes. Your receipt names the Hotel and its ABN.
 1.3 By ticking the boxes at checkout and paying, you accept these Terms, our [Cancellation & Refund Policy](/refunds), the Hotel's rules for your booking, and our risk warning. The [privacy notice](/privacy) explains what we collect. If you book for others, you confirm that you have their authority and will show them these Terms, the rules and the risk warning before the visit.
 

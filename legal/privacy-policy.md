@@ -1,6 +1,6 @@
 # Hotel Day Club Privacy Policy
 
-Jason Baranov (trading as Hotel Day Club, business name registration pending) ("we", "us"). We run an online booking service for day passes to hotel pools and spas, acting as booking agent for participating hotels. This policy explains how we handle personal information. We aim to follow the Australian Privacy Principles in the *Privacy Act 1988* (Cth).
+Hotel Day Club is a registered business name (ABN {{ABN}}). In this policy, 'we' means the owner of that business name. Contact: {{CONTACT_EMAIL}}. We run an online booking service for day passes to hotel pools and spas, acting as booking agent for participating hotels. This policy explains how we handle personal information. We aim to follow the Australian Privacy Principles in the *Privacy Act 1988* (Cth).
 
 ## 1. What we collect
 - **Booking details:** your name, email, mobile number, booking date, hotel, pass, add-ons, party size, and whether you checked in.

@@ -12,6 +12,7 @@ process.env.DB_PATH = dbPath;
 process.env.ADMIN_PASSWORD = 'legal-admin-test';
 process.env.DEMO_HOTEL_PASSWORD = 'legal-hotel-test';
 delete process.env.SHOW_ABN;
+delete process.env.ABN;
 delete process.env.CONTACT_EMAIL;
 
 const db = require('../db');
@@ -148,7 +149,10 @@ function start(port, extra = {}) {
     assert.ok(home.body.includes('All of Australia'));
     assert.ok(!home.body.includes('All of Sydney') && !home.body.includes('around Sydney') && !home.body.includes('across Sydney'));
     assert.ok(home.body.includes('href="/faq"'));
+    assert.ok(home.body.includes('Hotel Day Club · ABN 98 227 458 028'));
+    assert.ok(home.body.includes('Demo site — listings are examples, no real bookings or payments.'));
     assert.ok(!home.body.includes('ABN: to be added'));
+    assert.ok(!home.body.includes('Jason Baranov') && !home.body.includes('registration pending'));
     assert.ok(!/usually sells out|partners with Sydney hotels|star rating/i.test(home.body));
 
     const faq = await get(port, '/faq');
@@ -164,22 +168,24 @@ function start(port, extra = {}) {
     assert.ok(/User-agent:\s*\*/.test(robots.body) && /Disallow:\s*\//.test(robots.body), robots.body);
 
     const draft = 'Draft terms for demo purposes, pending legal review.';
-    const trading = 'Jason Baranov (trading as Hotel Day Club, business name registration pending)';
     for (const pathName of ['/terms', '/privacy', '/refunds', '/risk']) {
       const doc = await get(port, pathName);
       assert.strictEqual(doc.status, 200, pathName);
       assert.ok(doc.body.includes(draft), pathName);
+      assert.ok(doc.body.includes('Hotel Day Club · ABN 98 227 458 028'), pathName);
       assert.ok(doc.body.includes('noindex'), pathName);
       assert.ok(!doc.body.includes('DRAFT: NOT FOR PUBLICATION'), pathName);
       assert.ok(!/LAWYER/.test(doc.body), pathName);
       assert.ok(!/partner hotels?/i.test(doc.body), pathName);
       assert.ok(!doc.body.includes('">http'), pathName);
+      assert.ok(!doc.body.includes('Jason Baranov') && !doc.body.includes('registration pending'), pathName);
+      assert.ok(!doc.body.includes('{{ABN}}') && !doc.body.includes('{{CONTACT_EMAIL}}'), pathName);
       assert.ok(!/\[[^\]]+\]/.test(doc.body.replace(/<[^>]+>/g, '')), pathName + ' still has a placeholder');
     }
     const terms = await get(port, '/terms');
     assert.ok(terms.body.includes('Customer terms (draft)'));
     assert.ok(terms.body.includes('We are a booking agent.'));
-    assert.ok(terms.body.includes(trading));
+    assert.ok(terms.body.includes('Hotel Day Club is a registered business name (ABN 98 227 458 028). In these terms, &#39;we&#39; means the owner of that business name.'));
     assert.ok(terms.body.includes('ticking the boxes'));
     assert.ok(terms.body.includes('A free date change may be available once, subject to availability.'));
     assert.ok(terms.body.includes('href="https://www.legislation.gov.au/C2004A00109/latest/text"'));
@@ -189,6 +195,7 @@ function start(port, extra = {}) {
     assert.ok(risk.body.includes('Risk warning (draft)'));
     assert.ok(!risk.body.includes('NOT LEGAL ADVICE'));
     const privacy = await get(port, '/privacy');
+    assert.ok(privacy.body.includes('In this policy, &#39;we&#39; means the owner of that business name.'));
     assert.ok(privacy.body.includes('participating hotels'));
     assert.ok(privacy.body.includes('Some of our service providers store data overseas, including in the United States.'));
     const mail = 'mailto:hello@hoteldayclub.com.au';
@@ -206,6 +213,7 @@ function start(port, extra = {}) {
     assert.ok(refunds.body.includes('Contact and complaints') && refunds.body.includes('contact us at ' + link));
     onlyThisMail(faq.body, 'faq');
     assert.ok(faq.body.includes('How do I contact you?') && faq.body.includes('Email ' + link));
+    assert.ok(!faq.body.includes('Jason Baranov') && !faq.body.includes('registration pending'));
     onlyThisMail(home.body, 'home');
     assert.ok(home.body.includes('Contact ' + link));
     assert.ok(!risk.body.includes('{{CONTACT_EMAIL}}'));
@@ -274,6 +282,16 @@ function start(port, extra = {}) {
     });
     assert.strictEqual(addonSave.status, 303, addonSave.body.slice(0, 200));
     assert.ok(decodeURIComponent(addonSave.headers.location || '').includes("can't overlap room guests only"));
+    const preview = await new Promise((resolve, reject) => {
+      http.get({ hostname: '127.0.0.1', port, path: '/hotel/email-preview', headers: { Cookie: hotelCookie } }, res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString() }));
+      }).on('error', reject);
+    });
+    assert.strictEqual(preview.status, 200);
+    assert.ok(preview.body.includes("Tonight's email"));
+    assert.ok(!preview.body.includes('Jason Baranov') && !preview.body.includes('registration pending'));
     const stillOff = new Database(dbPath, { readonly: true });
     assert.strictEqual(stillOff.prepare("SELECT enabled FROM addons WHERE id=?").get(lateAddon.id).enabled, 0);
     stillOff.close();
@@ -288,23 +306,36 @@ function start(port, extra = {}) {
     assert.ok(!page.body.includes(', Sydney'));
     assert.ok(page.body.includes('Before you swim'));
     assert.ok(page.body.includes('Terms') && page.body.includes('Accepted'));
+    assert.ok(page.body.includes('Hotel Day Club · ABN 98 227 458 028'));
+    assert.ok(!page.body.includes('Jason Baranov') && !page.body.includes('registration pending'));
   } finally {
     child.kill('SIGTERM');
   }
 
   const abnPort = 3192;
-  const abn = await start(abnPort, { SHOW_ABN: '1', CONTACT_EMAIL: 'desk@example.com' });
+  const abn = await start(abnPort, { ABN: '11222333444', CONTACT_EMAIL: 'desk@example.com' });
   try {
     const home = await get(abnPort, '/');
-    assert.ok(home.body.includes('ABN: to be added'));
+    assert.ok(home.body.includes('Hotel Day Club · ABN 11 222 333 444'));
+    assert.ok(!home.body.includes('98 227 458 028'));
     assert.ok(home.body.includes('mailto:desk@example.com'));
     assert.ok(!home.body.includes('hello@hoteldayclub.com.au'));
     const terms = await get(abnPort, '/terms');
     const found = [...terms.body.matchAll(/mailto:([^"'?\s]+)/g)].map(m => m[1]);
     assert.ok(found.length >= 2 && found.every(m => m === 'desk@example.com'), found.join(','));
-    assert.ok(!terms.body.includes('{{CONTACT_EMAIL}}'));
+    assert.ok(terms.body.includes('ABN 11 222 333 444'));
+    assert.ok(!terms.body.includes('{{CONTACT_EMAIL}}') && !terms.body.includes('{{ABN}}'));
+    assert.ok(!terms.body.includes('Jason Baranov'));
   } finally {
     abn.kill('SIGTERM');
+  }
+  const badPort = 3193;
+  const bad = await start(badPort, { ABN: 'not-an-abn' });
+  try {
+    const home = await get(badPort, '/');
+    assert.ok(home.body.includes('Hotel Day Club · ABN 98 227 458 028'));
+  } finally {
+    bad.kill('SIGTERM');
   }
   console.log('legal checks passed');
 })().catch(err => {
