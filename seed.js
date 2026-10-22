@@ -1,6 +1,6 @@
 const fs = require('fs'); const path = require('path');
 const { ymd, addDays } = require('./util');
-const { parseTime, writeOffering, rulesText, syncLateAddons } = require('./offering');
+const { parseTime, writeOffering, rulesText, syncLateAddons, dayPlan } = require('./offering');
 const { demoHotelPassword } = require('./passwords');
 
 const CATALOG = [
@@ -148,8 +148,8 @@ const hotels = [
 ];
 const insH = db.prepare('INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
 const insB = db.prepare('INSERT INTO blocked_dates(hotel_id,date,reason) VALUES (?,?,?)');
-const insBk = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,status,checked_in_at,created_at,party,rules_ack_at,rules_text)
-  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+const insBk = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,status,checked_in_at,created_at,party,rules_ack_at,rules_text,seeded,refunded)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,0)`);
 const insA = db.prepare('INSERT INTO addons(hotel_id,code,name,blurb,price,daily_cap,per,enabled,sort) VALUES (?,?,?,?,?,?,?,?,?)');
 const insBA = db.prepare('INSERT INTO booking_addons(booking_id,addon_id,name,qty,unit_price,total) VALUES (?,?,?,?,?,?)');
 const bump = db.prepare('UPDATE bookings SET total=total+? WHERE id=?');
@@ -224,7 +224,177 @@ db.transaction(() => {
     insBk.run('HDC-' + (seq++), 1, st.id, date, 1, st.price, st.price, names[k % 15], 'guest' + k + '@example.com', '0400000' + (100 + k), 'confirmed', null, created, st.holds || 2, created, rules);
   }
 })();
+seedPerformance(db);
 console.log('Seeded', db.prepare('SELECT COUNT(*) n FROM bookings').get().n, 'bookings');
+}
+
+function hashString(text) {
+  let h = 2166136261;
+  for (const c of String(text)) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  return h >>> 0;
+}
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const SAMPLE_NAMES = ['Mia Thompson', 'Jack Nguyen', 'Olivia Smith', 'Noah Williams', 'Chloe Brown', 'Liam Patel', 'Zoe Martin', 'Ethan Lee', 'Grace Kelly', 'Lucas Rossi', 'Ava Chen', 'Henry Wilson', 'Isla Jones', 'Leo Garcia', 'Ruby Taylor', 'Sophie Clark', 'Oscar Nguyen', 'Harper Singh'];
+let analyticsCovered = '';
+
+function seedPerformance(db) {
+  const today = new Date();
+  const todayStr = ymd(today);
+  const hotels = db.prepare("SELECT * FROM hotels WHERE login LIKE 'demo-%' ORDER BY id").all();
+  if (!hotels.length) return;
+  const stamp = todayStr + ':' + hotels.map(h => h.id).join(',');
+  if (analyticsCovered === stamp) return;
+  const passStmt = db.prepare('SELECT * FROM pass_types WHERE hotel_id=? ORDER BY sort, id');
+  const addonStmt = db.prepare('SELECT * FROM addons WHERE hotel_id=? AND enabled=1 ORDER BY sort, id');
+  const blockedStmt = db.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?');
+  const hasHistory = db.prepare("SELECT 1 AS ok FROM bookings WHERE hotel_id=? AND COALESCE(seeded,0)=1 AND CAST(substr(code,5) AS INTEGER)>=180000");
+  const hasRecent = db.prepare("SELECT 1 AS ok FROM bookings WHERE hotel_id=? AND COALESCE(seeded,0)=1 AND CAST(substr(code,5) AS INTEGER)>=170000 AND CAST(substr(code,5) AS INTEGER)<180000");
+  const codeTaken = db.prepare('SELECT 1 FROM bookings WHERE code=?');
+  const insBk = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,status,checked_in_at,created_at,party,rules_ack_at,rules_text,seeded,refunded)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)`);
+  const insNote = db.prepare("INSERT INTO guest_notes(booking_id,hotel_id,kind,note,created_at,seeded) VALUES (?,?, 'no_show', 'Did not arrive', ?, 1)");
+  const insAdd = db.prepare('INSERT INTO booking_addons(booking_id,addon_id,name,qty,unit_price,total) VALUES (?,?,?,?,?,?)');
+  const bump = db.prepare('UPDATE bookings SET total=total+? WHERE id=?');
+  const clearCheckin = db.prepare('UPDATE bookings SET checked_in_at=NULL WHERE id=?');
+  const insView = db.prepare('INSERT OR IGNORE INTO listing_views(hotel_id, day, views, seeded) VALUES (?,?,?,1)');
+  const bookedOn = db.prepare("SELECT COUNT(*) n FROM bookings WHERE hotel_id=? AND date=? AND status!='cancelled'");
+  const pastBooking = db.prepare(`SELECT id FROM bookings WHERE hotel_id=? AND status!='cancelled' AND date>=? AND date<?
+    AND NOT EXISTS (SELECT 1 FROM guest_notes g WHERE g.booking_id=bookings.id AND g.kind='no_show')
+    ORDER BY date DESC, id DESC LIMIT 1`);
+
+  function codeFactory(base) {
+    let n = base;
+    return () => {
+      let code;
+      do { code = 'HDC-' + (n++); } while (codeTaken.get(code));
+      return code;
+    };
+  }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function localWeekday(date) { return new Date(date + 'T00:00:00').getDay(); }
+
+  db.transaction(() => {
+    hotels.forEach((hotel, index) => {
+      const passes = passStmt.all(hotel.id);
+      if (!passes.length) return;
+      const addons = addonStmt.all(hotel.id);
+      const rules = rulesText(hotel);
+      const rand = mulberry32(hashString(hotel.slug + ':history'));
+      const nextCode = codeFactory(180000 + index * 20000);
+      const place = (spot, date, qty, status, refunded, noShow) => {
+        const people = qty * (spot.holds || 1);
+        const back = 1 + Math.floor(rand() * 4);
+        const createdDate = ymd(addDays(new Date(date + 'T00:00:00'), -back));
+        const created = `${createdDate} ${pad(8 + Math.floor(rand() * 10))}:${pad(Math.floor(rand() * 60))}`;
+        const ci = status === 'confirmed' && !noShow ? `${date} ${pad(10 + Math.floor(rand() * 5))}:${pad(Math.floor(rand() * 60))}` : null;
+        const nm = SAMPLE_NAMES[Math.floor(rand() * SAMPLE_NAMES.length)];
+        const email = nm.toLowerCase().replace(/[^a-z]+/g, '.') + '@example.com';
+        const phone = '04' + String(Math.floor(10000000 + rand() * 90000000));
+        const id = insBk.run(nextCode(), hotel.id, spot.id, date, qty, spot.price, spot.price * qty, nm, email, phone, status, ci, created, people, created, rules, refunded ? 1 : 0).lastInsertRowid;
+        if (addons.length && rand() < 0.38) {
+          const a = addons[Math.floor(rand() * addons.length)];
+          const aq = a.per === 'booking' ? 1 : people;
+          insAdd.run(id, a.id, a.name, aq, a.price, a.price * aq);
+          bump.run(a.price * aq, id);
+        }
+        if (noShow) insNote.run(id, hotel.id, `${date} 16:10`);
+        return id;
+      };
+
+      if (!hasHistory.get(hotel.id)) {
+        for (let offset = -90; offset <= -15; offset++) {
+          const date = ymd(addDays(today, offset));
+          const plan = dayPlan(db, hotel, date);
+          if (!plan || !plan.open || blockedStmt.get(hotel.id, date)) continue;
+          const wd = localWeekday(date);
+          const busy = wd === 0 || wd === 5 || wd === 6 ? 0.62 : 0.46;
+          const target = Math.min(0.9, busy + rand() * 0.2);
+          const caps = new Map(passes.map(p => [p.id, p.daily_cap]));
+          const goal = Math.max(1, Math.round(passes.reduce((sum, p) => sum + p.daily_cap, 0) * target));
+          let spots = 0;
+          let guard = 0;
+          while (spots < goal && guard++ < 400) {
+            if (rand() < 0.1) {
+              const spot = passes[Math.floor(rand() * passes.length)];
+              place(spot, date, 1, 'cancelled', rand() < 0.72, false);
+              continue;
+            }
+            const options = passes.filter(p => caps.get(p.id) > 0);
+            if (!options.length) break;
+            const spot = options[Math.floor(rand() * options.length)];
+            const room = caps.get(spot.id);
+            const qty = Math.min(room, rand() < 0.22 ? 2 : 1);
+            caps.set(spot.id, room - qty);
+            spots += qty;
+            place(spot, date, qty, 'confirmed', false, rand() < 0.045);
+          }
+        }
+      }
+
+      if (!hasRecent.get(hotel.id)) {
+        const recentCode = codeFactory(170000 + index * 400);
+        const openDays = (from, to) => {
+          const out = [];
+          for (let offset = from; offset <= to; offset++) {
+            const date = ymd(addDays(today, offset));
+            const plan = dayPlan(db, hotel, date);
+            if (!plan || !plan.open || blockedStmt.get(hotel.id, date)) continue;
+            out.push(date);
+          }
+          return out;
+        };
+        const addCancel = (date, refunded) => {
+          if (!date) return;
+          const spot = passes[Math.floor(rand() * passes.length)];
+          const people = spot.holds || 1;
+          const created = `${ymd(addDays(new Date(date + 'T00:00:00'), -2))} 11:00`;
+          const nm = SAMPLE_NAMES[Math.floor(rand() * SAMPLE_NAMES.length)];
+          const id = insBk.run(recentCode(), hotel.id, spot.id, date, 1, spot.price, spot.price, nm, nm.toLowerCase().replace(/[^a-z]+/g, '.') + '@example.com', '0400000000', 'cancelled', null, created, people, created, rules, refunded ? 1 : 0).lastInsertRowid;
+          return id;
+        };
+        const recent = openDays(-7, -1);
+        const older = openDays(-14, -8);
+        if (recent.length) {
+          addCancel(recent[recent.length - 1], true);
+          addCancel(recent[Math.max(0, recent.length - 2)], false);
+        }
+        older.forEach((date, i) => { if (i % 2 === 0) addCancel(date, i % 4 === 0); });
+        const weekAgo = ymd(addDays(today, -7));
+        let noted = pastBooking.get(hotel.id, weekAgo, todayStr);
+        if (!noted && recent.length) {
+          const date = recent[recent.length - 1];
+          const spot = passes[0];
+          const created = `${ymd(addDays(new Date(date + 'T00:00:00'), -1))} 08:00`;
+          const nm = SAMPLE_NAMES[0];
+          const id = insBk.run(recentCode(), hotel.id, spot.id, date, 1, spot.price, spot.price, nm, 'sample.noshow@example.com', '0400000001', 'confirmed', null, created, spot.holds || 1, created, rules, 0).lastInsertRowid;
+          noted = { id };
+        }
+        if (noted) {
+          insNote.run(noted.id, hotel.id, todayStr + ' 09:00');
+          clearCheckin.run(noted.id);
+        }
+      }
+
+      for (let offset = -90; offset <= 0; offset++) {
+        const date = ymd(addDays(today, offset));
+        const booked = bookedOn.get(hotel.id, date).n;
+        const viewRand = mulberry32(hashString(hotel.slug + '|' + date));
+        const a = viewRand();
+        const b = viewRand();
+        const views = booked <= 0 ? 5 + Math.floor(a * 24) : Math.max(booked + 4, Math.round(booked / (0.09 + b * 0.06)));
+        insView.run(hotel.id, date, views);
+      }
+    });
+  })();
+  analyticsCovered = stamp;
 }
 
 function resetAndSeed() {
@@ -236,4 +406,4 @@ function resetAndSeed() {
 }
 
 if (require.main === module) resetAndSeed();
-module.exports = { seed, ensureAddons, ensureSchedules };
+module.exports = { seed, ensureAddons, ensureSchedules, seedPerformance };

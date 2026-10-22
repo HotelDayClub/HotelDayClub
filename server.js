@@ -5,7 +5,8 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
 const db = require('./db');
-const { seed, ensureAddons, ensureSchedules } = require('./seed');
+const { seed, ensureAddons, ensureSchedules, seedPerformance } = require('./seed');
+const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
 const { adminPassword, demoHotelPassword } = require('./passwords');
 const { ymd, addDays, esc, money, nice } = require('./util');
 const {
@@ -190,6 +191,7 @@ app.get('/', (req, res) => {
 
 app.get('/h/:slug', (req, res) => {
   const h = publicHotel(req.params.slug); if (!h) return res.status(404).send(page('Not found', '<div class="wrap sec"><h2>Listing not found</h2></div>'));
+  recordListingView(db, h.id, today(), req);
   const date = req.query.date && req.query.date >= today() ? req.query.date : today();
   const passes = getPasses(h.id);
   const from = passes.length ? Math.min(...passes.map(p => p.price)) : 0;
@@ -497,7 +499,7 @@ function todaySection(h, { big = false, live = '/hotel/today-list' } = {}) {
   return `<section id="today" class="panel" data-live="${esc(live)}"><h2 class="ph2">Today's guests <span class="muted small">${rows.length} booking${rows.length === 1 ? '' : 's'} · ${spots} spots · ${people} people</span> <a class="link small no-print" href="/hotel/print">Print list</a></h2>${body}</section>`;
 }
 function dashShell(h, inner, { here = '', live = false } = {}) {
-  const links = [['/hotel#today', 'Today'], ['/hotel/checkin', 'Check in'], ['/hotel/settings', 'Settings'], ['/hotel#lookup', 'Lookup'], ['/hotel#upcoming', 'Upcoming'], ['/hotel#avail', 'Availability'], ['/hotel#addons', 'Add-ons'], ['/hotel#blocked', 'Blocked dates']];
+  const links = [['/hotel#today', 'Today'], ['/hotel/analytics', 'Analytics'], ['/hotel/checkin', 'Check in'], ['/hotel/settings', 'Settings'], ['/hotel#lookup', 'Lookup'], ['/hotel#upcoming', 'Upcoming'], ['/hotel#avail', 'Availability'], ['/hotel#addons', 'Add-ons'], ['/hotel#blocked', 'Blocked dates']];
   return page(h.name, `<div class="dash"><aside class="side"><div class="side-h"><span class="badge-inline">${h.status === 'pending' ? 'Pending approval' : 'Demo listing'}</span><h3>${esc(h.name)}</h3><p class="small">${esc(h.area)}</p></div>
 <nav>${links.map(([href, label]) => `<a href="${href}" class="${here === href ? 'on' : ''}">${label}</a>`).join('')}${h.status === 'pending' ? '' : `<a href="/h/${h.slug}" target="_blank">View listing</a>`}</nav></aside>
 <div class="dash-main">${h.status === 'pending' ? '<div class="pending-note"><b>Pending approval.</b> This hotel appears on the site once an admin approves it.</div>' : ''}${inner}</div></div>${live ? LIVE_LIST : ''}`, { nav: 'hotel', bare: true });
@@ -555,6 +557,13 @@ app.post('/hotel/settings', hotelAuth, (req, res) => {
   res.redirect('/hotel/settings?msg=' + encodeURIComponent('Saved. Guests see this on the listing.' + extra));
 });
 
+app.get('/hotel/analytics', hotelAuth, (req, res) => {
+  seedPerformance(db);
+  const report = buildAnalytics(db, req.hotel, { days: normalRange(req.query.range), today: today() });
+  res.set('Cache-Control', 'no-store');
+  res.send(dashShell(req.hotel, renderAnalytics(report), { here: '/hotel/analytics' }));
+});
+
 app.get('/hotel', hotelAuth, (req, res) => {
   const h = req.hotel, t = today(), q = String(req.query.q || '').trim();
   const todayRows = db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? ORDER BY b.checked_in_at IS NOT NULL, b.guest_name`).all(h.id, t);
@@ -574,7 +583,7 @@ app.get('/hotel', hotelAuth, (req, res) => {
   res.send(dashShell(h, `
 ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <div class="dash-head"><div><p class="eyebrow-s">Hotel dashboard</p><h1 class="l-title">G'day, ${esc(h.name.replace(' (Demo)', ''))}</h1><p class="muted">${esc(nice(t))} · ${inToday} of ${dueToday} spots checked in today</p></div>
-<a class="btn btn-navy" href="/hotel/checkin">Check in a guest</a></div>
+<div class="dash-actions"><a class="btn btn-line" href="/hotel/analytics">Analytics</a><a class="btn btn-navy" href="/hotel/checkin">Check in a guest</a></div></div>
 ${opsBar(h, passes)}
 <div class="stats">${stat('Spots booked', s.spots, `${s.n} bookings · ${s.people} people`)}${stat('Gross sales', money(s.gross), `Includes ${money(addonGross)} add-ons · last 30 days ${money(s30.gross)}`)}${stat('Hotel share (75%)', money(s.gross * HOTEL_SHARE), 'Paid out to you')}${stat('Platform commission (25%)', money(s.gross * (1 - HOTEL_SHARE)), 'Hotel Day Club fee')}</div>
 <div class="seat-stats">${bySeat.map(r => `<span><b>${esc(spotLabel(r))}</b> ${r.spots} booked · ${r.people} people</span>`).join('')}</div>
@@ -874,6 +883,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 if (db.prepare('SELECT COUNT(*) n FROM hotels').get().n === 0) seed(db);
 else ensureAddons(db);
 ensureSchedules(db);
+seedPerformance(db);
 syncHoursLabels(db);
 db.prepare("UPDATE hotels SET password=? WHERE login LIKE 'demo-%'").run(demoHotelPassword());
 adminPassword();
