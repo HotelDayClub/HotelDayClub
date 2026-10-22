@@ -123,14 +123,33 @@ function businessAbn() {
   const use = /^\d{11}$/.test(digits) ? digits : DEFAULT_ABN.replace(/\D/g, '');
   return `${use.slice(0, 2)} ${use.slice(2, 5)} ${use.slice(5, 8)} ${use.slice(8)}`;
 }
-function page(title, body, { nav = 'guest', bare = false } = {}) {
+const DEFAULT_GA_ID = 'G-9F5ZH1T4YN';
+function gaMeasurementId() {
+  if (Object.prototype.hasOwnProperty.call(process.env, 'GA_MEASUREMENT_ID')) {
+    const raw = String(process.env.GA_MEASUREMENT_ID).trim();
+    if (!raw || /^(0|false|off|none)$/i.test(raw)) return '';
+    return /^G-[A-Z0-9]+$/.test(raw) ? raw : '';
+  }
+  return process.env.NODE_ENV === 'production' ? DEFAULT_GA_ID : '';
+}
+function gaSnippet(safePath) {
+  const id = gaMeasurementId();
+  if (!id) return '';
+  // Booking pages keep the code in the address bar for the guest. The hit sent to Google uses a fixed path and title so the code is not collected.
+  const config = safePath
+    ? `gtag('config','${id}',{page_path:'${safePath}',page_location:location.origin+'${safePath}',page_title:'Booking'});`
+    : `gtag('config','${id}');`;
+  return `<script async src="https://www.googletagmanager.com/gtag/js?id=${id}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());${config}</script>`;
+}
+function page(title, body, { nav = 'guest', bare = false, analytics = false, analyticsPath = '' } = {}) {
   const right = nav === 'hotel' ? '<a class="hotel-link show" href="/hotel/logout">Log out</a>'
     : nav === 'admin' ? '<a class="hotel-link show" href="/admin/logout">Log out</a>'
     : '<a class="hotel-link show" href="/hotel">Hotel login</a><a class="hotel-link show hide-sm" href="/admin">Admin</a>';
   const abn = `<p class="muted small abn-line">Hotel Day Club · ABN ${esc(businessAbn())}</p>`;
   const mail = contactMail();
+  const tags = analytics && nav === 'guest' ? gaSnippet(analyticsPath) : '';
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)} · Hotel Day Club</title><meta name="robots" content="noindex, nofollow"><link rel="icon" href="/assets/logo-mark.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"></head><body class="${nav === 'guest' ? 'guest' : ''}">
+${tags}<title>${esc(title)} · Hotel Day Club</title><meta name="robots" content="noindex, nofollow"><link rel="icon" href="/assets/logo-mark.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"></head><body class="${nav === 'guest' ? 'guest' : ''}">
 <div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>
 <header class="hdr"><div class="wrap hdr-in">${LOGO}
 <nav class="hdr-nav"><a href="/how-it-works">How it works</a></nav>
@@ -186,11 +205,11 @@ app.get('/', (req, res) => {
 <div><span class="n">1</span><h3>Pick a pool</h3><p class="muted">Browse hotel pools, daybeds and spas across Australia.</p></div>
 <div><span class="n">2</span><h3>Choose your day</h3><p class="muted">See live spots left. Hotels cap numbers to keep it relaxed.</p></div>
 <div><span class="n">3</span><h3>Show your QR</h3><p class="muted">Check in at reception, then the lounger is yours.</p></div></div>
-<p class="how-more"><a class="link" href="/how-it-works">Read how it works</a></p></section></div>`));
+<p class="how-more"><a class="link" href="/how-it-works">Read how it works</a></p></section></div>`, { analytics: true }));
 });
 
 app.get('/h/:slug', (req, res) => {
-  const h = publicHotel(req.params.slug); if (!h) return res.status(404).send(page('Not found', '<div class="wrap sec"><h2>Listing not found</h2></div>'));
+  const h = publicHotel(req.params.slug); if (!h) return res.status(404).send(page('Not found', '<div class="wrap sec"><h2>Listing not found</h2></div>', { analytics: true }));
   recordListingView(db, h.id, today(), req);
   const date = req.query.date && req.query.date >= today() ? req.query.date : today();
   const passes = getPasses(h.id);
@@ -246,7 +265,7 @@ function render(){const q=+$('#qty').value;const prevPass=document.querySelector
  document.querySelectorAll('#passes input, #addons-pick input').forEach(r=>r.onchange=render)}
 async function load(){const r=await fetch('/api/availability?hotel=${h.slug}&date='+$('#date').value);const data=await r.json();av=data.passes;addons=data.addons||[];dayLeft=data.day_left==null?null:data.day_left;const note=document.getElementById('cancel-note');if(note)note.textContent=data.cancel||'';render()}
 $('#date').onchange=load;$('#qty').onchange=render;load();setInterval(load,15000);
-</script>`));
+</script>`, { analytics: true }));
 });
 
 app.get('/api/availability', (req, res) => {
@@ -273,7 +292,7 @@ function validate(q) {
   if (add.err) return { err: add.err, h };
   return { h, p, date, qty, people, a, addons: add.addons, addonTotal: add.addonTotal };
 }
-const errPage = (v, res) => res.status(409).send(page('Not available', `<div class="wrap sec narrow"><div class="alert">${esc(v.err)}</div>${v.h ? `<a class="btn btn-navy" href="/h/${v.h.slug}">Back to ${esc(v.h.name)}</a>` : ''}</div>`));
+const errPage = (v, res) => res.status(409).send(page('Not available', `<div class="wrap sec narrow"><div class="alert">${esc(v.err)}</div>${v.h ? `<a class="btn btn-navy" href="/h/${v.h.slug}">Back to ${esc(v.h.name)}</a>` : ''}</div>`, { analytics: true }));
 
 app.get('/checkout', (req, res) => {
   const v = validate(req.query); if (v.err) return errPage(v, res);
@@ -327,7 +346,7 @@ function paint(){let extra=0;const lines=[];
  const btn=document.getElementById('co-btn'); if(btn) btn.textContent='Confirm booking · '+fmt(total)+' (demo)';
 }
 document.querySelectorAll('#co-addons input').forEach(i=>i.onchange=paint);paint();
-</script>`));
+</script>`, { analytics: true }));
 });
 
 app.post('/book', (req, res) => {
@@ -357,7 +376,7 @@ app.post('/book', (req, res) => {
 const bookingFull = code => db.prepare(`SELECT b.*, h.name hotel, h.slug, h.area, h.photos, h.id hotel_id_join, p.name pass, p.holds FROM bookings b JOIN hotels h ON h.id=b.hotel_id JOIN pass_types p ON p.id=b.pass_type_id WHERE b.code=?`).get(code);
 app.get('/booking/:code', async (req, res) => {
   const b = bookingFull(req.params.code.toUpperCase());
-  if (!b) return res.status(404).send(page('Not found', '<div class="wrap sec"><h2>Booking not found</h2></div>'));
+  if (!b) return res.status(404).send(page('Not found', '<div class="wrap sec"><h2>Booking not found</h2></div>', { analytics: true, analyticsPath: '/booking' }));
   const qr = await QRCode.toDataURL(`HDC:${b.code}`, { margin: 1, width: 260, color: { dark: '#0B2545' } });
   const adds = bookingAddons(b.id);
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(b.hotel_id);
@@ -374,7 +393,7 @@ app.get('/booking/:code', async (req, res) => {
 <dl><dt>Guest</dt><dd>${esc(b.guest_name)}</dd><dt>Date</dt><dd>${esc(nice(b.date))}${when ? ` · ${esc(when)}` : ''}</dd><dt>Seating</dt><dd>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</dd><dt>People</dt><dd>${party}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Cancellation</dt><dd>${esc(note)}</dd><dt>Rules</dt><dd>${b.rules_ack_at ? 'Accepted' : '—'}</dd><dt>Terms</dt><dd>${b.terms_ack_at ? 'Accepted' : '—'}</dd><dt>Risk warning</dt><dd>${b.risk_ack_at ? 'Accepted' : '—'}</dd><dt>Status</dt><dd>${b.checked_in_at ? 'Checked in ' + esc(b.checked_in_at) : 'Confirmed'}</dd></dl>
 <p class="swim-note">${esc(swimNote(hotel))}</p>
 ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}</div>
-<div class="center" style="margin-top:20px"><a class="btn btn-line" href="/">Book another day</a></div></div>`));
+<div class="center" style="margin-top:20px"><a class="btn btn-line" href="/">Book another day</a></div></div>`, { analytics: true, analyticsPath: '/booking' }));
 });
 
 const hotelAuth = (req, res, next) => { const id = req.signedCookies.hotel; const h = id && db.prepare('SELECT * FROM hotels WHERE id=?').get(id); if (!h) return res.redirect('/hotel/login'); req.hotel = hotelRow(h); next(); };
@@ -877,7 +896,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <details><summary>Age limits</summary><p>You need to be 18 or over to book. Each hotel sets its own age policy and kids' hours. They're on the listing, and in the risk warning, before you pay.</p></details>
 <details><summary>Weather</summary><p>Rain on its own is not a closure. If the hotel closes the pool, you choose a full refund or a free rebooking. <a href="/faq">All questions</a>.</p></details>
 </div>
-</div>`));
+</div>`, { analytics: true }));
 });
 
 if (db.prepare('SELECT COUNT(*) n FROM hotels').get().n === 0) seed(db);
@@ -960,7 +979,7 @@ function mdToHtml(src) {
 function legalDoc(heading, file) {
   const raw = fs.readFileSync(path.join(__dirname, 'legal', file), 'utf8');
   const article = mdToHtml(raw).split('{{CONTACT_EMAIL}}').join(contactMail()).split('{{ABN}}').join(esc(businessAbn()));
-  return page(heading, `<div class="wrap sec"><h1 class="l-title">${esc(heading)}</h1><p class="draft-notice">Draft terms for demo purposes, pending legal review.</p><article class="legal-doc">${article}</article></div>`);
+  return page(heading, `<div class="wrap sec"><h1 class="l-title">${esc(heading)}</h1><p class="draft-notice">Draft terms for demo purposes, pending legal review.</p><article class="legal-doc">${article}</article></div>`, { analytics: true });
 }
 app.get('/privacy', (req, res) => res.send(legalDoc('Privacy policy (draft)', 'privacy-policy.md')));
 app.get('/terms', (req, res) => res.send(legalDoc('Customer terms (draft)', 'customer-terms.md')));
@@ -981,7 +1000,7 @@ app.get('/faq', (req, res) => {
 <details><summary>Do you sell gift cards or pass packs?</summary><p>Not on this demo. Any gift card offered later is valid for at least 3 years from the date of issue. A 5-pass pack is not offered, and it is not sold as a gift.</p></details>
 <details><summary>Do you show ratings or reviews?</summary><p>No. Listings say New. This site does not publish star ratings or review counts.</p></details>
 <details><summary>How do I contact you?</summary><p>Email ${contactMail()} for a booking, a complaint, or a privacy request.</p></details>
-</div></div>`));
+</div></div>`, { analytics: true }));
 });
 
 app.listen(PORT, () => console.log(`Hotel Day Club demo on http://localhost:${PORT}`));
