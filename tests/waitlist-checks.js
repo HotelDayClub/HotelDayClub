@@ -95,6 +95,11 @@ function cookie(res) {
     assert.ok(home.body.includes('Book a pass'));
     assert.ok(home.body.includes('Show up and relax'));
     assert.ok(home.body.includes('Example listings'));
+    for (const photo of ['infinity-ocean.jpg', 'rooftop-city.jpg', 'glass-roof-pool.jpg', 'tropical-resort.jpg', 'daybed-canopy.jpg', 'cabana-drapes.jpg']) {
+      assert.ok(home.body.includes('/assets/photos/' + photo), photo);
+      assert.ok(fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'photos', photo)), photo);
+      assert.ok(!home.body.includes('loading="lazy"'), 'example cards should not lazy-load their photos');
+    }
     assert.ok(home.body.includes('Only what that hotel lists'));
     assert.ok(home.body.includes('A weekday escape'));
     assert.ok(home.body.includes('A staycation without the stay'));

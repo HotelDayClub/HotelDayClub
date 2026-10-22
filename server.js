@@ -169,7 +169,8 @@ const card = (h, date) => {
   const from = prices.length ? Math.min(...prices) : 0;
   let spots = '';
   if (av) { const left = av.day_left != null ? av.day_left : av.reduce((a, p) => a + p.remaining, 0); spots = av[0] && av[0].blocked ? '<span class="spots out">Closed</span>' : left === 0 ? '<span class="spots out">Sold out</span>' : `<span class="spots">${left} left</span>`; }
-  return `<a class="card" href="/h/${h.slug}${date ? '?date=' + date : ''}"><div class="ph"><img src="/assets/photos/${h.photos[0]}" alt="" loading="lazy"></div>
+  const photo = h.photos[0] || '';
+  return `<a class="card" href="/h/${h.slug}${date ? '?date=' + date : ''}"><div class="ph">${photo ? `<img src="/assets/photos/${esc(photo)}" alt="" width="1200" height="900">` : ''}</div>
 <div class="c-body"><div class="c-top"><h3>${esc(h.name)}</h3><span class="rate">New</span></div>
 <div class="c-sub">${esc(h.area)}</div>
 <div class="c-price">From <b>${money(from)}</b> ${spots}</div></div></a>`;
