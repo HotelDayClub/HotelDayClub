@@ -12,6 +12,7 @@ process.env.DB_PATH = dbPath;
 process.env.ADMIN_PASSWORD = 'legal-admin-test';
 process.env.DEMO_HOTEL_PASSWORD = 'legal-hotel-test';
 delete process.env.SHOW_ABN;
+delete process.env.CONTACT_EMAIL;
 
 const db = require('../db');
 const { seed, ensureSchedules } = require('../seed');
@@ -61,6 +62,8 @@ assert.strictEqual(offering.lateWindow(db, db.prepare('SELECT * FROM hotels WHER
 
 const salt = nextOpen('saltwater-terrace');
 const freeSky = nextOpen('skyline-rooftop', 3);
+const insideDay = nextOpen('skyline-rooftop', 0);
+const insideWindow = /can't be cancelled for free/.test(offering.cancelNote(db, insideDay.h, insideDay.date));
 assert.ok(/^Free cancellation until 11am /.test(offering.cancelNote(db, freeSky.h, freeSky.date)), offering.cancelNote(db, freeSky.h, freeSky.date));
 assert.strictEqual(offering.lateWindow(db, salt.h, salt.date), null);
 assert.strictEqual(offering.hotelLatePossible(db, salt.h), false);
@@ -188,6 +191,24 @@ function start(port, extra = {}) {
     const privacy = await get(port, '/privacy');
     assert.ok(privacy.body.includes('participating hotels'));
     assert.ok(privacy.body.includes('Some of our service providers store data overseas, including in the United States.'));
+    const mail = 'mailto:hello@hoteldayclub.com.au';
+    function onlyThisMail(body, where) {
+      const found = [...body.matchAll(/mailto:([^"'?\s]+)/g)].map(m => m[1]);
+      assert.ok(found.length >= 1 && found.every(m => m === 'hello@hoteldayclub.com.au'), where + ' ' + found.join(','));
+    }
+    const link = '<a href="' + mail + '">hello@hoteldayclub.com.au</a>';
+    onlyThisMail(terms.body, 'terms');
+    assert.ok(terms.body.includes('14. Complaints') && terms.body.includes('Contact us at ' + link));
+    onlyThisMail(privacy.body, 'privacy');
+    assert.ok(privacy.body.includes('Access, correction and complaints') && privacy.body.includes('contacting us at ' + link) && privacy.body.includes('email ' + link));
+    const refunds = await get(port, '/refunds');
+    onlyThisMail(refunds.body, 'refunds');
+    assert.ok(refunds.body.includes('Contact and complaints') && refunds.body.includes('contact us at ' + link));
+    onlyThisMail(faq.body, 'faq');
+    assert.ok(faq.body.includes('How do I contact you?') && faq.body.includes('Email ' + link));
+    onlyThisMail(home.body, 'home');
+    assert.ok(home.body.includes('Contact ' + link));
+    assert.ok(!risk.body.includes('{{CONTACT_EMAIL}}'));
 
     const listing = await get(port, `/h/skyline-rooftop?date=${freeSky.date}`);
     assert.ok(listing.body.includes('Mon–Thu · 11am–4pm'), listing.body.slice(listing.body.indexOf('l-meta'), listing.body.indexOf('l-meta') + 180));
@@ -199,8 +220,10 @@ function start(port, extra = {}) {
     const data = JSON.parse(avail.body);
     assert.ok(!data.addons.some(a => a.code === 'late'), JSON.stringify(data.addons));
     assert.ok(/Free cancellation until 11am /.test(data.cancel), data.cancel);
-    const soon = JSON.parse((await get(port, `/api/availability?hotel=skyline-rooftop&date=${sky.date}`)).body);
-    assert.ok(/can't be cancelled for free/.test(soon.cancel), soon.cancel);
+    if (insideWindow) {
+      const soon = JSON.parse((await get(port, `/api/availability?hotel=skyline-rooftop&date=${insideDay.date}`)).body);
+      assert.ok(/can't be cancelled for free/.test(soon.cancel), soon.cancel);
+    }
     const saltAvail = JSON.parse((await get(port, `/api/availability?hotel=saltwater-terrace&date=${salt.date}`)).body);
     assert.ok(!saltAvail.addons.some(a => a.code === 'late'));
 
@@ -270,10 +293,16 @@ function start(port, extra = {}) {
   }
 
   const abnPort = 3192;
-  const abn = await start(abnPort, { SHOW_ABN: '1' });
+  const abn = await start(abnPort, { SHOW_ABN: '1', CONTACT_EMAIL: 'desk@example.com' });
   try {
     const home = await get(abnPort, '/');
     assert.ok(home.body.includes('ABN: to be added'));
+    assert.ok(home.body.includes('mailto:desk@example.com'));
+    assert.ok(!home.body.includes('hello@hoteldayclub.com.au'));
+    const terms = await get(abnPort, '/terms');
+    const found = [...terms.body.matchAll(/mailto:([^"'?\s]+)/g)].map(m => m[1]);
+    assert.ok(found.length >= 2 && found.every(m => m === 'desk@example.com'), found.join(','));
+    assert.ok(!terms.body.includes('{{CONTACT_EMAIL}}'));
   } finally {
     abn.kill('SIGTERM');
   }

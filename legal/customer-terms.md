@@ -57,7 +57,7 @@
 13.1 We collect your name, email, mobile and booking details to make and manage your booking, and share your name, booking code and party size with the Hotel so it can check you in. See our [Privacy Policy](/privacy). Marketing emails and SMS are sent only if you opt in, and you can unsubscribe at any time.
 
 ## 14. Complaints
-14.1 Contact us using the details published for this service. If it's about the Hotel's facilities, we will raise it with the Hotel for you. You can also contact NSW Fair Trading.
+14.1 Contact us at {{CONTACT_EMAIL}}. If it's about the Hotel's facilities, we will raise it with the Hotel for you. You can also contact NSW Fair Trading.
 
 ## 15. Changes to these Terms
 15.1 We may update these Terms for future bookings. The version you accepted applies to your booking.

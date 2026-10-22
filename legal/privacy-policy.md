@@ -35,7 +35,7 @@ We use reasonable steps to protect personal information: access controls, strong
 If we become aware of a data breach that's likely to cause you serious harm, we'll tell you and recommend steps you can take, and we'll notify the Office of the Australian Information Commissioner where the law requires.
 
 ## 8. Access, correction and complaints
-You can ask to see or correct the personal information we hold about you, or to delete it where we don't need to keep it, by contacting us. There's no fee to ask. If you have a privacy complaint, contact us. If you're not satisfied, you can contact the **Office of the Australian Information Commissioner** at [oaic.gov.au](https://www.oaic.gov.au).
+You can ask to see or correct the personal information we hold about you, or to delete it where we don't need to keep it, by contacting us at {{CONTACT_EMAIL}}. There's no fee to ask. If you have a privacy complaint, email {{CONTACT_EMAIL}}. If you're not satisfied, you can contact the **Office of the Australian Information Commissioner** at [oaic.gov.au](https://www.oaic.gov.au).
 
 ## 9. Changes
 We may update this policy and will post the new version here with its date.

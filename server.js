@@ -108,11 +108,21 @@ const ICON = {
 };
 const LOGO = '<a class="logo" href="/"><img src="/assets/logo-mark.svg" alt="">Hotel Day <em>Club</em></a>';
 const showAbn = () => /^(1|true|yes|on)$/i.test(String(process.env.SHOW_ABN || '').trim());
+const DEFAULT_CONTACT_EMAIL = 'hello@hoteldayclub.com.au';
+function contactEmail() {
+  const raw = String(process.env.CONTACT_EMAIL || DEFAULT_CONTACT_EMAIL).trim();
+  return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(raw) ? raw : DEFAULT_CONTACT_EMAIL;
+}
+function contactMail() {
+  const email = esc(contactEmail());
+  return `<a href="mailto:${email}">${email}</a>`;
+}
 function page(title, body, { nav = 'guest', bare = false } = {}) {
   const right = nav === 'hotel' ? '<a class="hotel-link show" href="/hotel/logout">Log out</a>'
     : nav === 'admin' ? '<a class="hotel-link show" href="/admin/logout">Log out</a>'
     : '<a class="hotel-link show" href="/hotel">Hotel login</a><a class="hotel-link show hide-sm" href="/admin">Admin</a>';
   const abn = showAbn() ? '<p class="muted small abn-line">ABN: to be added</p>' : '';
+  const mail = contactMail();
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)} · Hotel Day Club</title><meta name="robots" content="noindex, nofollow"><link rel="icon" href="/assets/logo-mark.svg"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"></head><body class="${nav === 'guest' ? 'guest' : ''}">
 <div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>
@@ -120,7 +130,7 @@ function page(title, body, { nav = 'guest', bare = false } = {}) {
 <nav class="hdr-nav"><a href="/how-it-works">How it works</a></nav>
 <div class="hdr-right">${right}</div></div></header>
 <main>${body}</main>
-${bare ? '' : `<footer class="app-ftr"><div class="wrap ftr-in"><div>${LOGO}<p class="muted">Hotel life, by the day.</p></div>
+${bare ? '' : `<footer class="app-ftr"><div class="wrap ftr-in"><div>${LOGO}<p class="muted">Hotel life, by the day.</p><p class="muted small">Contact ${mail}</p></div>
 <nav class="ftr-links"><a href="/#explore">Explore</a><a href="/how-it-works">How it works</a><a href="/faq">FAQ</a><a href="/hotel">Hotel login</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a></nav>
 <p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p>${abn}</div></footer>`}
 </body></html>`;
@@ -934,7 +944,8 @@ function mdToHtml(src) {
 }
 function legalDoc(heading, file) {
   const raw = fs.readFileSync(path.join(__dirname, 'legal', file), 'utf8');
-  return page(heading, `<div class="wrap sec"><h1 class="l-title">${esc(heading)}</h1><p class="draft-notice">Draft terms for demo purposes, pending legal review.</p><article class="legal-doc">${mdToHtml(raw)}</article></div>`);
+  const article = mdToHtml(raw).split('{{CONTACT_EMAIL}}').join(contactMail());
+  return page(heading, `<div class="wrap sec"><h1 class="l-title">${esc(heading)}</h1><p class="draft-notice">Draft terms for demo purposes, pending legal review.</p><article class="legal-doc">${article}</article></div>`);
 }
 app.get('/privacy', (req, res) => res.send(legalDoc('Privacy policy (draft)', 'privacy-policy.md')));
 app.get('/terms', (req, res) => res.send(legalDoc('Customer terms (draft)', 'customer-terms.md')));
@@ -954,6 +965,7 @@ app.get('/faq', (req, res) => {
 <details><summary>What should I bring?</summary><p>Swimwear, and sunscreen if the pool is outdoors. The listing says if a towel is included and if photo ID is required.</p></details>
 <details><summary>Do you sell gift cards or pass packs?</summary><p>Not on this demo. Any gift card offered later is valid for at least 3 years from the date of issue. A 5-pass pack is not offered, and it is not sold as a gift.</p></details>
 <details><summary>Do you show ratings or reviews?</summary><p>No. Listings say New. This site does not publish star ratings or review counts.</p></details>
+<details><summary>How do I contact you?</summary><p>Email ${contactMail()} for a booking, a complaint, or a privacy request.</p></details>
 </div></div>`));
 });
 
