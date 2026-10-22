@@ -7,7 +7,8 @@
     "start": "node server.js",
     "seed": "node seed.js",
     "bg": "./start.sh",
-    "test": "python3 e2e_test.py"
+    "test": "python3 e2e_test.py",
+    "test:analytics": "node tests/analytics-checks.js"
   },
   "keywords": [],
   "author": "",

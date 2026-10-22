@@ -29,6 +29,14 @@ CREATE TABLE IF NOT EXISTS booking_addons(booking_id INTEGER REFERENCES bookings
 CREATE TABLE IF NOT EXISTS guest_notes(id INTEGER PRIMARY KEY, booking_id INTEGER REFERENCES bookings(id),
   hotel_id INTEGER, kind TEXT, note TEXT, created_at TEXT DEFAULT (datetime('now','localtime')));
 CREATE TABLE IF NOT EXISTS day_caps(hotel_id INTEGER, date TEXT, cap INTEGER, PRIMARY KEY(hotel_id, date));
+CREATE TABLE IF NOT EXISTS listing_views(
+  hotel_id INTEGER NOT NULL REFERENCES hotels(id),
+  day TEXT NOT NULL,
+  views INTEGER NOT NULL DEFAULT 0,
+  seeded INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY(hotel_id, day, seeded)
+);
+CREATE INDEX IF NOT EXISTS idx_bookings_hotel_date ON bookings(hotel_id, date);
 `);
 function ensureCols(table, cols) {
   const have = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name));
@@ -43,5 +51,6 @@ ensureCols('hotels', [
   ['room_only_from', 'TEXT'], ['room_only_to', 'TEXT'], ['marketing_opt_in', 'INTEGER DEFAULT 0'],
 ]);
 ensureCols('pass_types', [['holds', 'INTEGER DEFAULT 1'], ['photo', 'TEXT'], ['kind', 'TEXT']]);
-ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0'], ['terms_ack_at', 'TEXT'], ['risk_ack_at', 'TEXT'], ['risk_text', 'TEXT'], ['cancel_note', 'TEXT']]);
+ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0'], ['terms_ack_at', 'TEXT'], ['risk_ack_at', 'TEXT'], ['risk_text', 'TEXT'], ['cancel_note', 'TEXT'], ['seeded', 'INTEGER NOT NULL DEFAULT 0'], ['refunded', 'INTEGER NOT NULL DEFAULT 0']]);
+ensureCols('guest_notes', [['seeded', 'INTEGER NOT NULL DEFAULT 0']]);
 module.exports = db;
