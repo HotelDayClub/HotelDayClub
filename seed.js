@@ -20,14 +20,14 @@ const PRESETS = {
   'bayview-spa': { gym: { enabled: 1, price: 25, cap: 12 }, parking: { enabled: 1, price: 28, cap: 18 }, food: { enabled: 1, price: 40, cap: 20 }, cabana: { enabled: 1, price: 110, cap: 5 }, robe: { enabled: 1, price: 20, cap: 20 }, late: { enabled: 0 } },
 };
 
-const WEEKDAYS = '1,2,3,4,5';
+const ALL_WEEK = '0,1,2,3,4,5,6';
 function week(days, opens, closes) {
   const open = new Set(String(days).split(',').map(Number));
   return [0, 1, 2, 3, 4, 5, 6].map(weekday => ({ weekday, open: open.has(weekday) ? 1 : 0, opens, closes }));
 }
 const OFFERINGS = {
   'saltwater-terrace': {
-    hours: week(WEEKDAYS, '10:00', '16:00'), cutoff_hours: 2, heated: 1, setting: 'outdoor',
+    hours: week(ALL_WEEK, '10:00', '16:00'), cutoff_hours: 2, heated: 1, setting: 'outdoor',
     age_policy: 'All ages', kids_hours: 'All open hours', towels: 1, food_rule: 'Food and drink from the pool bar only',
     id_required: 1, lifeguard: 0,
     spots: [
@@ -37,7 +37,7 @@ const OFFERINGS = {
     ],
   },
   'skyline-rooftop': {
-    hours: week('1,2,3,4', '11:00', '17:00'), cutoff_hours: 1, heated: 1, setting: 'outdoor',
+    hours: week('0,1,2,3,4,6', '11:00', '17:00'), cutoff_hours: 1, heated: 1, setting: 'outdoor',
     age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: 'Bar from noon. No outside food or drink.',
     id_required: 1, lifeguard: 0, room_only_from: '16:00', room_only_to: '17:00',
     spots: [
@@ -47,7 +47,7 @@ const OFFERINGS = {
     ],
   },
   'harbourside-lido': {
-    hours: week(WEEKDAYS, '09:00', '18:00'), cutoff_hours: 2, heated: 1, setting: 'indoor',
+    hours: week(ALL_WEEK, '09:00', '18:00'), cutoff_hours: 2, heated: 1, setting: 'indoor',
     age_policy: '16+', kids_hours: '16 and over only', towels: 1, food_rule: 'No outside food. Café on site.',
     id_required: 1, lifeguard: 0,
     season_start: '12-01', season_end: '03-31', season_opens: '08:00', season_closes: '19:00',
@@ -68,7 +68,7 @@ const OFFERINGS = {
     ],
   },
   'manly-sands': {
-    hours: week(WEEKDAYS, '10:00', '16:00'), cutoff_hours: 2, heated: 0, setting: 'outdoor',
+    hours: week(ALL_WEEK, '10:00', '16:00'), cutoff_hours: 2, heated: 0, setting: 'outdoor',
     age_policy: 'All ages', kids_hours: 'Until 2pm', towels: 1, food_rule: 'Kiosk on site. No glass.',
     id_required: 1, lifeguard: 0,
     spots: [
@@ -77,7 +77,7 @@ const OFFERINGS = {
     ],
   },
   'bayview-spa': {
-    hours: week('2,3,4,5', '09:00', '16:00'), cutoff_hours: 3, heated: 1, setting: 'both',
+    hours: week('0,2,3,4,5,6', '09:00', '16:00'), cutoff_hours: 3, heated: 1, setting: 'both',
     age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: 'No outside food or drink.',
     id_required: 1, lifeguard: 0,
     spots: [
@@ -311,18 +311,18 @@ function seedPerformance(db) {
         return id;
       };
 
-      // Top up every open day from 90 days ago through today. The original sample
-      // only scatters a few bookings over the last fortnight, which reads as a collapse.
-      // Closed and blocked days are left empty. Today keeps two spots free on each
-      // seating type so a same-day demo booking can still go through.
+      // Top up every open day from 90 days ago through today. Closed days are only
+      // the ones this hotel has switched off, plus blocked dates. Saturday and Sunday
+      // are the busiest, then Friday, and they stay under the cap. Today keeps two
+      // spots free on each seating type so a same-day demo booking can still go through.
       for (let offset = -90; offset <= 0; offset++) {
         const date = ymd(addDays(today, offset));
         const plan = dayPlan(db, hotel, date);
         if (!plan || !plan.open || blockedStmt.get(hotel.id, date)) continue;
         const wd = localWeekday(date);
         const dayRand = mulberry32(hashString(hotel.slug + ':fill:' + date));
-        const busy = wd === 0 || wd === 6 ? 0.66 : wd === 5 ? 0.60 : 0.52;
-        const target = Math.min(0.86, busy + dayRand() * 0.14);
+        const busy = wd === 0 || wd === 6 ? 0.78 : wd === 5 ? 0.62 : 0.50;
+        const target = Math.min(0.90, busy + dayRand() * 0.10);
         const totalCap = passes.reduce((sum, p) => sum + p.daily_cap, 0);
         const caps = new Map();
         let spots = 0;

@@ -353,7 +353,7 @@ function slugify(name) {
   return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'hotel';
 }
 function defaultHours() {
-  return [0, 1, 2, 3, 4, 5, 6].map(wd => ({ weekday: wd, open: wd >= 1 && wd <= 5 ? 1 : 0, opens: '10:00', closes: '16:00' }));
+  return [0, 1, 2, 3, 4, 5, 6].map(wd => ({ weekday: wd, open: 1, opens: '10:00', closes: '16:00' }));
 }
 function hoursFor(db, hotelId) {
   const rows = db.prepare('SELECT weekday, open, opens, closes FROM hotel_hours WHERE hotel_id=?').all(hotelId);
@@ -590,7 +590,7 @@ ${account ? `<div class="two"><label class="fl">Username<input name="login" requ
 <p class="offer-actions"><button type="button" class="btn btn-line" id="add-spot">Add a seating type</button></p>
 <template id="spot-tpl">${spotCard({ kind: 'lounger', name: 'Sun lounger', holds: 1, price: 45, daily_cap: 10, description: '' }, 0, false)}</template>
 <h2 id="sec-hours">Hours</h2>
-<p class="muted small lead-in">Days you take day-pass guests, and the times the pool is open.</p>
+<p class="muted small lead-in">Every day starts open. Untick a day you are closed to day-pass guests, and set the times the pool is open.</p>
 ${DAY_ORDER.map(wd => {
     const r = rows.find(x => x.weekday === wd) || { open: 0, opens: '10:00', closes: '16:00' };
     return `<div class="hours-row"><input type="checkbox" name="day_open" value="${wd}" ${r.open ? 'checked' : ''} aria-label="${DAY_LONG[wd]} open"><span>${DAY_SHORT[wd]}</span>
