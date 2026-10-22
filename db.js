@@ -37,6 +37,17 @@ CREATE TABLE IF NOT EXISTS listing_views(
   PRIMARY KEY(hotel_id, day, seeded)
 );
 CREATE INDEX IF NOT EXISTS idx_bookings_hotel_date ON bookings(hotel_id, date);
+CREATE TABLE IF NOT EXISTS waitlist(
+  id INTEGER PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  first_name TEXT NOT NULL DEFAULT '',
+  place TEXT NOT NULL DEFAULT '',
+  role TEXT NOT NULL,
+  hotel_name TEXT NOT NULL DEFAULT '',
+  destination TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `);
 function ensureCols(table, cols) {
   const have = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name));

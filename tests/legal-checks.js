@@ -209,6 +209,12 @@ function start(port, extra = {}) {
     assert.ok(privacy.body.includes('We do not send your name, email, phone number or booking code to Google Analytics.'));
     assert.ok(privacy.body.includes('href="https://tools.google.com/dlpage/gaoptout"'));
     assert.ok(privacy.body.includes('blocking cookies in your browser'));
+    assert.ok(privacy.body.includes('If you join the waitlist we collect your email address.'));
+    assert.ok(privacy.body.includes('a destination you want to hear about'));
+    assert.ok(privacy.body.includes('We do not sell this information.'));
+    assert.ok(privacy.body.includes('delete your waitlist details'));
+    assert.ok(privacy.body.includes('lead event with no name, email or other personal details'));
+    assert.ok(privacy.body.includes('That event does not include your name, email or other personal details.'));
     assert.ok(!home.body.includes('googletagmanager.com'));
     const mail = 'mailto:hello@hoteldayclub.com.au';
     function onlyThisMail(body, where) {
