@@ -255,7 +255,7 @@ function seedPerformance(db) {
   const passStmt = db.prepare('SELECT * FROM pass_types WHERE hotel_id=? ORDER BY sort, id');
   const addonStmt = db.prepare('SELECT * FROM addons WHERE hotel_id=? AND enabled=1 ORDER BY sort, id');
   const blockedStmt = db.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?');
-  const hasHistory = db.prepare("SELECT 1 AS ok FROM bookings WHERE hotel_id=? AND COALESCE(seeded,0)=1 AND CAST(substr(code,5) AS INTEGER)>=180000");
+  const soldPass = db.prepare("SELECT COALESCE(SUM(qty),0) n FROM bookings WHERE pass_type_id=? AND date=? AND status!='cancelled'");
   const hasRecent = db.prepare("SELECT 1 AS ok FROM bookings WHERE hotel_id=? AND COALESCE(seeded,0)=1 AND CAST(substr(code,5) AS INTEGER)>=170000 AND CAST(substr(code,5) AS INTEGER)<180000");
   const codeTaken = db.prepare('SELECT 1 FROM bookings WHERE code=?');
   const insBk = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,status,checked_in_at,created_at,party,rules_ack_at,rules_text,seeded,refunded)
@@ -264,8 +264,10 @@ function seedPerformance(db) {
   const insAdd = db.prepare('INSERT INTO booking_addons(booking_id,addon_id,name,qty,unit_price,total) VALUES (?,?,?,?,?,?)');
   const bump = db.prepare('UPDATE bookings SET total=total+? WHERE id=?');
   const clearCheckin = db.prepare('UPDATE bookings SET checked_in_at=NULL WHERE id=?');
-  const insView = db.prepare('INSERT OR IGNORE INTO listing_views(hotel_id, day, views, seeded) VALUES (?,?,?,1)');
-  const bookedOn = db.prepare("SELECT COUNT(*) n FROM bookings WHERE hotel_id=? AND date=? AND status!='cancelled'");
+  // Sample views are written once. A later restart must not rewrite them from live bookings.
+  const insView = db.prepare(`INSERT INTO listing_views(hotel_id, day, views, seeded) VALUES (?,?,?,1)
+    ON CONFLICT(hotel_id, day, seeded) DO NOTHING`);
+  const bookedOn = db.prepare("SELECT COUNT(*) n FROM bookings WHERE hotel_id=? AND date=? AND status!='cancelled' AND COALESCE(seeded,0)=1");
   const pastBooking = db.prepare(`SELECT id FROM bookings WHERE hotel_id=? AND status!='cancelled' AND date>=? AND date<?
     AND NOT EXISTS (SELECT 1 FROM guest_notes g WHERE g.booking_id=bookings.id AND g.kind='no_show')
     ORDER BY date DESC, id DESC LIMIT 1`);
@@ -289,18 +291,18 @@ function seedPerformance(db) {
       const rules = rulesText(hotel);
       const rand = mulberry32(hashString(hotel.slug + ':history'));
       const nextCode = codeFactory(180000 + index * 20000);
-      const place = (spot, date, qty, status, refunded, noShow) => {
+      const place = (spot, date, qty, status, refunded, noShow, rng = rand) => {
         const people = qty * (spot.holds || 1);
-        const back = 1 + Math.floor(rand() * 4);
+        const back = 1 + Math.floor(rng() * 4);
         const createdDate = ymd(addDays(new Date(date + 'T00:00:00'), -back));
-        const created = `${createdDate} ${pad(8 + Math.floor(rand() * 10))}:${pad(Math.floor(rand() * 60))}`;
-        const ci = status === 'confirmed' && !noShow ? `${date} ${pad(10 + Math.floor(rand() * 5))}:${pad(Math.floor(rand() * 60))}` : null;
-        const nm = SAMPLE_NAMES[Math.floor(rand() * SAMPLE_NAMES.length)];
+        const created = `${createdDate} ${pad(8 + Math.floor(rng() * 10))}:${pad(Math.floor(rng() * 60))}`;
+        const ci = status === 'confirmed' && !noShow ? `${date} ${pad(10 + Math.floor(rng() * 5))}:${pad(Math.floor(rng() * 60))}` : null;
+        const nm = SAMPLE_NAMES[Math.floor(rng() * SAMPLE_NAMES.length)];
         const email = nm.toLowerCase().replace(/[^a-z]+/g, '.') + '@example.com';
-        const phone = '04' + String(Math.floor(10000000 + rand() * 90000000));
+        const phone = '04' + String(Math.floor(10000000 + rng() * 90000000));
         const id = insBk.run(nextCode(), hotel.id, spot.id, date, qty, spot.price, spot.price * qty, nm, email, phone, status, ci, created, people, created, rules, refunded ? 1 : 0).lastInsertRowid;
-        if (addons.length && rand() < 0.38) {
-          const a = addons[Math.floor(rand() * addons.length)];
+        if (addons.length && rng() < 0.38) {
+          const a = addons[Math.floor(rng() * addons.length)];
           const aq = a.per === 'booking' ? 1 : people;
           insAdd.run(id, a.id, a.name, aq, a.price, a.price * aq);
           bump.run(a.price * aq, id);
@@ -309,33 +311,43 @@ function seedPerformance(db) {
         return id;
       };
 
-      if (!hasHistory.get(hotel.id)) {
-        for (let offset = -90; offset <= -15; offset++) {
-          const date = ymd(addDays(today, offset));
-          const plan = dayPlan(db, hotel, date);
-          if (!plan || !plan.open || blockedStmt.get(hotel.id, date)) continue;
-          const wd = localWeekday(date);
-          const busy = wd === 0 || wd === 5 || wd === 6 ? 0.62 : 0.46;
-          const target = Math.min(0.9, busy + rand() * 0.2);
-          const caps = new Map(passes.map(p => [p.id, p.daily_cap]));
-          const goal = Math.max(1, Math.round(passes.reduce((sum, p) => sum + p.daily_cap, 0) * target));
-          let spots = 0;
-          let guard = 0;
-          while (spots < goal && guard++ < 400) {
-            if (rand() < 0.1) {
-              const spot = passes[Math.floor(rand() * passes.length)];
-              place(spot, date, 1, 'cancelled', rand() < 0.72, false);
-              continue;
-            }
-            const options = passes.filter(p => caps.get(p.id) > 0);
-            if (!options.length) break;
-            const spot = options[Math.floor(rand() * options.length)];
-            const room = caps.get(spot.id);
-            const qty = Math.min(room, rand() < 0.22 ? 2 : 1);
-            caps.set(spot.id, room - qty);
-            spots += qty;
-            place(spot, date, qty, 'confirmed', false, rand() < 0.045);
+      // Top up every open day from 90 days ago through today. The original sample
+      // only scatters a few bookings over the last fortnight, which reads as a collapse.
+      // Closed and blocked days are left empty. Today keeps two spots free on each
+      // seating type so a same-day demo booking can still go through.
+      for (let offset = -90; offset <= 0; offset++) {
+        const date = ymd(addDays(today, offset));
+        const plan = dayPlan(db, hotel, date);
+        if (!plan || !plan.open || blockedStmt.get(hotel.id, date)) continue;
+        const wd = localWeekday(date);
+        const dayRand = mulberry32(hashString(hotel.slug + ':fill:' + date));
+        const busy = wd === 0 || wd === 6 ? 0.66 : wd === 5 ? 0.60 : 0.52;
+        const target = Math.min(0.86, busy + dayRand() * 0.14);
+        const totalCap = passes.reduce((sum, p) => sum + p.daily_cap, 0);
+        const caps = new Map();
+        let spots = 0;
+        for (const p of passes) {
+          const sold = soldPass.get(p.id, date).n;
+          spots += sold;
+          const reserve = date === todayStr ? Math.min(2, p.daily_cap) : 0;
+          caps.set(p.id, Math.max(0, p.daily_cap - reserve - sold));
+        }
+        const goal = Math.max(1, Math.round(totalCap * target));
+        let guard = 0;
+        while (spots < goal && guard++ < 400) {
+          const options = passes.filter(p => caps.get(p.id) > 0);
+          if (!options.length) break;
+          if (dayRand() < 0.08) {
+            const spot = passes[Math.floor(dayRand() * passes.length)];
+            place(spot, date, 1, 'cancelled', dayRand() < 0.72, false, dayRand);
+            continue;
           }
+          const spot = options[Math.floor(dayRand() * options.length)];
+          const room = caps.get(spot.id);
+          const qty = Math.min(room, dayRand() < 0.2 ? 2 : 1);
+          caps.set(spot.id, room - qty);
+          spots += qty;
+          place(spot, date, qty, 'confirmed', false, date < todayStr && dayRand() < 0.04, dayRand);
         }
       }
 

@@ -62,6 +62,19 @@ for (const day of r30.days) {
   else assert.strictEqual(day.fill, null);
 }
 assert.ok(r30.fill.openDays > 0 && r30.fill.rate > 0);
+const recentStart = r90.days[r90.days.length - 14].date;
+const earlier = r90.days.filter(d => d.open && d.fill != null && d.date < recentStart);
+const recent = r90.days.filter(d => d.open && d.fill != null && d.date >= recentStart);
+const avgFill = rows => rows.reduce((sum, day) => sum + day.fill, 0) / rows.length;
+assert.ok(recent.length >= 3 && earlier.length >= 20);
+assert.ok(Math.min(...recent.map(d => d.fill)) >= 0.35, recent.map(d => `${d.date} ${d.fill.toFixed(2)}`).join(', '));
+assert.ok(avgFill(recent) >= avgFill(earlier) * 0.8, `${avgFill(recent)} vs ${avgFill(earlier)}`);
+assert.ok(avgFill(recent) <= 0.9);
+for (const day of r90.days) if (!day.open) assert.strictEqual(day.spots, 0, day.date);
+const sky = db.prepare("SELECT id FROM hotels WHERE slug='skyline-rooftop'").get();
+const chair = db.prepare("SELECT id, daily_cap FROM pass_types WHERE hotel_id=? AND code='chair'").get(sky.id);
+const chairSold = db.prepare("SELECT COALESCE(SUM(qty),0) n FROM bookings WHERE pass_type_id=? AND date=? AND status!='cancelled'").get(chair.id, today).n;
+assert.ok(chair.daily_cap - chairSold >= 2, `skyline chair left ${chair.daily_cap - chairSold}`);
 assert.strictEqual(normalRange('nope'), 30);
 assert.strictEqual(normalRange('90'), 90);
 
