@@ -2,7 +2,7 @@
 
 *Hotel life, by the day.* This is a working demo of a day-pass product. Every hotel is a **fictional example listing** shown with stock mood photos (credits are in `public/assets/CREDITS.md`). Nothing here is a real hotel, and no real payments are taken.
 
-**Stack:** Node 20, Express, server-rendered HTML, and SQLite via `better-sqlite3`. The QR codes come from the `qrcode` package. There are no external accounts and no build step. The styles reuse the brand mockup's `styles.css`, with `public/app.css` added on top.
+**Stack:** Node 20, Express, server-rendered HTML, and SQLite via `better-sqlite3`. The QR codes come from the `qrcode` package. There is no build step. The styles reuse the brand mockup's `styles.css`, with `public/app.css` added on top.
 
 ## Run it
 ```bash
@@ -18,6 +18,8 @@ Run `npm run seed` before each pitch to reset the data. Sample bookings are date
 `render.yaml` is a Blueprint for a free Node web service. The build command is `npm install` and the start command is `npm start`. Render sets `PORT`; the app listens on that port and the health check path is `/`. The free tier disk is ephemeral, so a missing or empty SQLite database is seeded automatically on startup. Listing view counts and the analytics history live in that same database, so they reset when the disk does. Sample figures on a demo hotel are marked Example data.
 
 Set `ADMIN_PASSWORD` and `DEMO_HOTEL_PASSWORD` in the Render dashboard. Both are listed in `render.yaml` with `sync: false`, so a blueprint sync does not overwrite them. The public login pages do not show these passwords.
+
+Public guest pages load Google Analytics 4. `GA_MEASUREMENT_ID` sets the measurement ID and defaults to `G-9F5ZH1T4YN` when the app runs with `NODE_ENV=production`. An empty value turns it off. It is not loaded on hotel or admin pages, and a booking confirmation is reported as `/booking` so the booking code is not sent. Local and test runs skip it unless `GA_MEASUREMENT_ID` is set.
 
 ## Logins
 Demo hotel usernames are `demo-saltwater`, `demo-skyline`, `demo-harbourside`, `demo-palmcourt`, `demo-manly` and `demo-bayview`. The admin username is `jason`.

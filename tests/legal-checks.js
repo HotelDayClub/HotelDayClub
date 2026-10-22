@@ -107,9 +107,9 @@ assert.ok(!db.prepare("SELECT blurb FROM hotels WHERE slug='harbourside-lido'").
 
 db.close();
 
-function get(port, urlPath) {
+function get(port, urlPath, headers = {}) {
   return new Promise((resolve, reject) => {
-    http.get({ hostname: '127.0.0.1', port, path: urlPath }, res => {
+    http.get({ hostname: '127.0.0.1', port, path: urlPath, headers }, res => {
       const chunks = [];
       res.on('data', c => chunks.push(c));
       res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString() }));
@@ -201,6 +201,15 @@ function start(port, extra = {}) {
     assert.ok(privacy.body.includes('In this policy, &#39;we&#39; means the owner of that business name.'));
     assert.ok(privacy.body.includes('participating hotels'));
     assert.ok(privacy.body.includes('Some of our service providers store data overseas, including in the United States.'));
+    assert.ok(privacy.body.includes('Last updated: 23 October 2026'));
+    assert.ok(privacy.body.includes('We use Google Analytics to understand how visitors use the public pages of this site'));
+    assert.ok(privacy.body.includes('which pages are viewed, and the approximate location, device and browser'));
+    assert.ok(privacy.body.includes('Google Analytics uses cookies'));
+    assert.ok(privacy.body.includes('may store it overseas, including in the United States'));
+    assert.ok(privacy.body.includes('We do not send your name, email, phone number or booking code to Google Analytics.'));
+    assert.ok(privacy.body.includes('href="https://tools.google.com/dlpage/gaoptout"'));
+    assert.ok(privacy.body.includes('blocking cookies in your browser'));
+    assert.ok(!home.body.includes('googletagmanager.com'));
     const mail = 'mailto:hello@hoteldayclub.com.au';
     function onlyThisMail(body, where) {
       const found = [...body.matchAll(/mailto:([^"'?\s]+)/g)].map(m => m[1]);
@@ -311,6 +320,7 @@ function start(port, extra = {}) {
     assert.ok(page.body.includes('Terms') && page.body.includes('Accepted'));
     assert.ok(page.body.includes('Hotel Day Club · ABN 98 227 458 028'));
     assert.ok(!page.body.includes('Jason Baranov') && !page.body.includes('registration pending'));
+    assert.ok(!page.body.includes('googletagmanager.com'));
   } finally {
     child.kill('SIGTERM');
   }
@@ -339,6 +349,51 @@ function start(port, extra = {}) {
     assert.ok(home.body.includes('Hotel Day Club · ABN 98 227 458 028'));
   } finally {
     bad.kill('SIGTERM');
+  }
+  const gaSnippet = '<script async src="https://www.googletagmanager.com/gtag/js?id=G-9F5ZH1T4YN"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag(\'js\',new Date());gtag(\'config\',\'G-9F5ZH1T4YN\');</script>';
+  const gaPort = 3194;
+  const ga = await start(gaPort, { NODE_ENV: 'production' });
+  try {
+    const home = await get(gaPort, '/');
+    assert.ok(home.body.includes(gaSnippet), 'homepage should include the standard gtag snippet');
+    assert.ok(home.body.indexOf(gaSnippet) < home.body.indexOf('</head>'));
+    const guestPages = ['/how-it-works', '/faq', '/privacy', '/terms', '/refunds', '/risk', '/h/saltwater-terrace', '/checkout?hotel=skyline-rooftop&date=' + encodeURIComponent(freeSky.date) + '&pass=chair&qty=1'];
+    for (const pathName of guestPages) {
+      const doc = await get(gaPort, pathName);
+      assert.strictEqual(doc.status, 200, pathName);
+      assert.ok(doc.body.includes(gaSnippet), pathName);
+    }
+    const missing = await get(gaPort, '/booking/HDC-99999');
+    const head = missing.body.slice(0, missing.body.indexOf('</head>'));
+    assert.ok(head.includes("gtag('config','G-9F5ZH1T4YN',{page_path:'/booking',page_location:location.origin+'/booking',page_title:'Booking'});"));
+    assert.ok(!head.includes('HDC-99999'));
+    for (const pathName of ['/hotel/login', '/admin/login', '/hotel/join']) {
+      const doc = await get(gaPort, pathName);
+      assert.strictEqual(doc.status, 200, pathName);
+      assert.ok(!doc.body.includes('googletagmanager.com'), pathName);
+      assert.ok(!doc.body.includes('G-9F5ZH1T4YN'), pathName);
+    }
+    const login = await post(gaPort, '/hotel/login', { user: 'demo-saltwater', pass: 'legal-hotel-test' });
+    assert.strictEqual(login.status, 302);
+    const cookie = (login.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
+    for (const pathName of ['/hotel', '/hotel/analytics']) {
+      const doc = await get(gaPort, pathName, { Cookie: cookie });
+      assert.strictEqual(doc.status, 200, pathName);
+      assert.ok(!doc.body.includes('googletagmanager.com'), pathName);
+      assert.ok(!doc.body.includes('G-9F5ZH1T4YN'), pathName);
+    }
+  } finally {
+    ga.kill('SIGTERM');
+  }
+  const offPort = 3195;
+  const off = await start(offPort, { NODE_ENV: 'production', GA_MEASUREMENT_ID: '' });
+  try {
+    const home = await get(offPort, '/');
+    assert.strictEqual(home.status, 200);
+    assert.ok(!home.body.includes('googletagmanager.com'));
+    assert.ok(!home.body.includes('G-9F5ZH1T4YN'));
+  } finally {
+    off.kill('SIGTERM');
   }
   console.log('legal checks passed');
 })().catch(err => {

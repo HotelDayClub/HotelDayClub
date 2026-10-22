@@ -17,3 +17,5 @@ services:
         sync: false
       - key: CONTACT_EMAIL
         sync: false
+      - key: GA_MEASUREMENT_ID
+        value: G-9F5ZH1T4YN
