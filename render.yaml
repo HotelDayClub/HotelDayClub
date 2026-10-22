@@ -19,3 +19,7 @@ services:
         sync: false
       - key: GA_MEASUREMENT_ID
         value: G-9F5ZH1T4YN
+      - key: WAITLIST_WEBHOOK_URL
+        sync: false
+      - key: WAITLIST_WEBHOOK_TOKEN
+        sync: false

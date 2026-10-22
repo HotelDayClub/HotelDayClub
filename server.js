@@ -9,12 +9,15 @@ const { seed, ensureAddons, ensureSchedules, seedPerformance } = require('./seed
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
 const { adminPassword, demoHotelPassword } = require('./passwords');
 const { ymd, addDays, esc, money, nice } = require('./util');
+const { DESTINATIONS, destIcon } = require('./destinations');
+const { parseSignup, saveSignup, notifyWebhook, rateLimited, waitlistCsv } = require('./waitlist');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText, amenitiesFrom, slugify,
   hoursFor, hoursView, syncHoursLabels, blankJoin, readForm, writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,
   fmtTime, cancelNote, riskCard, riskText, riskTick, swimNote, hotelLatePossible, lateWindow,
 } = require('./offering');
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3030;
 const SECRET = process.env.COOKIE_SECRET || 'hdc-demo-secret';
 const ADMIN_USER = 'jason';
@@ -176,36 +179,165 @@ const seatList = passes => `<div class="seat-list">${passes.map(p => `<div class
 <div><b>${esc(spotLabel(p))}</b><div class="muted small">${esc(p.description || '')}</div></div>
 <div class="seat-price"><b>${money(p.price)}</b><div class="muted small">${p.daily_cap} a day</div></div></div>`).join('')}</div>`;
 
-app.get('/', (req, res) => {
+function exampleCount(n) {
+  return `${n} example listing${n === 1 ? '' : 's'}`;
+}
+function homePage({ where = '', date = '', kind = '', dest = '', destination = '', joined = false, error = '', values = {} } = {}) {
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) date = '';
   const hotels = getHotels();
   const areas = [...new Set(hotels.map(h => h.area))];
-  const { where = '', date = '', kind = '' } = req.query;
+  const destObj = DESTINATIONS.find(d => d.id === dest) || null;
+  const pickedDest = Object.prototype.hasOwnProperty.call(values, 'destination') && values.destination !== undefined
+    ? values.destination
+    : destination;
   let list = hotels.filter(h => !where || h.area === where);
+  if (destObj) list = list.filter(h => destObj.areas.includes(h.area));
   if (kind) list = list.filter(h => {
     const spots = getPasses(h.id);
     if (!spots.some(p => p.kind === kind)) return false;
     if (!date) return true;
     return availability(h.id, date).some(p => p.kind === kind && p.remaining > 0);
   });
-  const filtered = where || date || kind;
+  const filtered = Boolean(where || date || kind || destObj);
   const kinds = KINDS.filter(k => k.code !== 'custom');
-  res.send(page('Hotel pools & spas by the day', `<section class="hero"><div class="hero-card" style="background-image:url(/assets/photos/beach-resort-pool.jpg)">
+  const counts = DESTINATIONS.map(d => ({ ...d, count: hotels.filter(h => d.areas.includes(h.area)).length }));
+  const destCards = counts.map(d => {
+    const href = d.count
+      ? `/?dest=${encodeURIComponent(d.id)}#explore`
+      : `/?destination=${encodeURIComponent(d.id)}#waitlist`;
+    const status = d.count
+      ? `<span class="dest-count">${exampleCount(d.count)}</span>`
+      : '<span class="dest-soon">Coming soon</span><span class="dest-none">No listings yet</span>';
+    const go = d.count ? 'View example listings' : 'Join the waitlist';
+    return `<li><a class="dest-card" href="${href}"${destObj && destObj.id === d.id ? ' aria-current="true"' : ''}>
+<span class="dest-ico">${destIcon(d.icon)}</span>
+<span class="dest-name">${esc(d.name)}</span>
+<span class="dest-status">${status}</span>
+<span class="dest-go">${go}</span>
+</a></li>`;
+  }).join('');
+  let exploreTitle = 'Example listings';
+  if (destObj && !list.length) exploreTitle = `No example listings in ${esc(destObj.name)} yet`;
+  else if (destObj) exploreTitle = `${exampleCount(list.length)} · ${esc(destObj.name)}`;
+  else if (where || date || kind) exploreTitle = `${list.length} place${list.length === 1 ? '' : 's'} ${where ? 'in ' + esc(where) : 'around Australia'}${date ? ' on ' + esc(nice(date)) : ''}`;
+  const emptyCopy = destObj
+    ? `There are no example listings in ${esc(destObj.name)} yet. <a class="link" href="/?destination=${encodeURIComponent(destObj.id)}#waitlist">Join the waitlist</a>`
+    : 'Nothing matches. Try another date or seating.';
+  const form = values || {};
+  const destOptions = DESTINATIONS.map(d => `<option value="${esc(d.id)}"${pickedDest === d.id ? ' selected' : ''}>${esc(d.name)}</option>`).join('');
+  const lead = joined ? `<script>if(typeof gtag==='function')gtag('event','generate_lead');</script>` : '';
+  return page('Hotel pools & spas by the day', `<div class="home">
+<section class="hero"><div class="hero-card" style="background-image:url(/assets/photos/beach-resort-pool.jpg)">
 <span class="photo-credit">Stock photo · example listing</span>
 <div class="hero-copy wrap"><h1>A hotel <em>day</em> out, minutes from home.</h1>
-<p>A pool, daybed or spa. No room needed.</p></div>${WAVE}</div>
+<p>A pool, daybed or spa in Australia. No room needed.</p>
+<p class="hero-actions"><a class="btn hero-wait" href="#waitlist">Join the waitlist</a></p></div>${WAVE}</div>
 <div class="wrap search-wrap"><form class="search app-search" action="/#explore" method="get">
 <div class="seg"><label for="w">Where</label><select id="w" name="where"><option value="">All of Australia</option>${areas.map(a => `<option ${a === where ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></div>
 <div class="seg"><label for="d">When</label><input id="d" type="date" name="date" min="${today()}" value="${esc(date)}"></div>
-<div class="seg"><label for="p">Seating</label><select id="p" name="kind"><option value="">Any seating</option>${kinds.map(k => `<option value="${k.code}" ${kind === k.code ? 'selected' : ''}>${k.name}</option>`).join('')}</select></div>
+<div class="seg"><label for="p">Seating</label><select id="p" name="kind"><option value="">Any seating</option>${kinds.map(k => `<option value="${k.code}" ${kind === k.code ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select></div>
 <button class="search-go" type="submit" aria-label="Search">${ICON.search}<span>Search</span></button></form></div></section>
+<section id="waitlist" class="home-wait"><div class="wrap wl-grid">
+<div><p class="home-kicker">Launch list</p><h2>Join the waitlist</h2>
+<p class="home-lead">Hotel Day Club is not taking real bookings yet. Leave your email and we will write when day passes are available near you. Hotels can use the same list to hear about listing spare pool or spa capacity.</p>
+<p class="home-lead">No fee to join. We do not sell this list.</p></div>
+<div>
+${error ? `<div class="alert" role="alert">${esc(error)}</div>` : ''}
+${joined ? `<div class="wl-ok" role="status"><h3>You're on the list</h3><p>Thanks. We'll email you when we have news about day passes near you, or about listing a hotel.</p></div>${lead}` : ''}
+<form class="wl" method="post" action="/waitlist">
+<div class="hp" aria-hidden="true"><label>Company website<input name="company_website" tabindex="-1" autocomplete="off" value=""></label></div>
+<label class="fl">Email<input name="email" type="email" required autocomplete="email" maxlength="254" value="${esc(form.email || '')}"></label>
+<label class="fl">First name <span class="opt">(optional)</span><input name="first_name" autocomplete="given-name" maxlength="60" value="${esc(form.first_name || '')}"></label>
+<label class="fl">Suburb or postcode <span class="opt">(optional)</span><input name="place" maxlength="80" value="${esc(form.place || '')}"></label>
+<label class="fl">Destination <span class="opt">(optional)</span><select name="destination"><option value="">No particular place</option>${destOptions}</select></label>
+<fieldset class="wl-roles"><legend>Joining as</legend>
+<label class="wl-choice"><input type="radio" name="role" value="guest" ${form.role === 'guest' ? 'checked' : ''} required> I'm a guest</label>
+<label class="wl-choice"><input type="radio" name="role" value="hotel" ${form.role === 'hotel' ? 'checked' : ''}> I'm a hotel</label>
+</fieldset>
+<label class="fl">Hotel name <span class="opt">(optional, hotels only)</span><input name="hotel_name" maxlength="120" value="${esc(form.hotel_name || '')}"></label>
+<button class="btn btn-coral" type="submit">Join the waitlist</button>
+<p class="wl-note">We use this to contact you about day passes near you, or about listing a hotel. To unsubscribe or ask us to delete it, email ${contactMail()}. <a href="/privacy">Privacy policy</a>.</p>
+</form></div></div></section>
 <div class="wrap">
-<section id="explore" class="sec"><div class="sec-row"><h2>${filtered ? `${list.length} place${list.length === 1 ? '' : 's'} ${where ? 'in ' + esc(where) : 'around Australia'}${date ? ' on ' + esc(nice(date)) : ''}` : 'Pools to try this week'}</h2>${filtered ? '<a class="link" href="/#explore">Clear filters</a>' : ''}</div>
-<div class="grid">${list.map(h => card(h, date)).join('') || '<p class="muted">Nothing matches. Try another date or seating.</p>'}</div></section>
-<section id="how" class="sec how"><h2>Three steps</h2><div class="how-grid">
-<div><span class="n">1</span><h3>Pick a pool</h3><p class="muted">Browse hotel pools, daybeds and spas across Australia.</p></div>
-<div><span class="n">2</span><h3>Choose your day</h3><p class="muted">See live spots left. Hotels cap numbers to keep it relaxed.</p></div>
-<div><span class="n">3</span><h3>Show your QR</h3><p class="muted">Check in at reception, then the lounger is yours.</p></div></div>
-<p class="how-more"><a class="link" href="/how-it-works">Read how it works</a></p></section></div>`, { analytics: true }));
+<section id="how" class="home-sec how"><p class="home-kicker">How it works</p><h2>Three steps</h2>
+<div class="how-grid">
+<div><span class="n">1</span><h3>Find a hotel</h3><p>Search pools and spas across Australia. Each listing shows the hours, the seating and what that hotel includes.</p></div>
+<div><span class="n">2</span><h3>Book a pass</h3><p>Choose a day and a seat the hotel offers. You see the price and how many spots are left before you confirm.</p></div>
+<div><span class="n">3</span><h3>Show up and relax</h3><p>Check in when you arrive, then use the pool or spa for the hours on your pass.</p></div>
+</div>
+<p class="how-more"><a class="link" href="/how-it-works">Read how it works</a></p></section>
+<section id="destinations" class="home-sec"><p class="home-kicker">Explore by destination</p><h2>Popular destinations</h2>
+<p class="home-lead">The number on a card counts fictional example listings in this demo for that area. It does not mean a hotel has signed up. Coming soon means there is nothing listed there yet.</p>
+<ul class="dest-strip">${destCards}</ul></section>
+<section id="explore" class="home-sec"><div class="sec-row"><div><p class="home-kicker">Example listings</p><h2>${exploreTitle}</h2></div>${filtered ? '<a class="link" href="/#explore">Clear filters</a>' : ''}</div>
+<p class="home-lead">Shown while the site is in demo mode. These hotels are fictional. No real bookings are taken.</p>
+<div class="home-strip">${list.map(h => card(h, date)).join('') || `<p>${emptyCopy}</p>`}</div></section>
+<section class="home-sec" id="included"><p class="home-kicker">What you get</p><h2>Only what that hotel lists</h2>
+<p class="home-lead">A day pass is time at that hotel's pool or spa. Each hotel chooses what is included. The listing is the list that counts.</p>
+<div class="perk-grid">
+<article class="perk"><span class="dest-ico" aria-hidden="true">${destIcon('wave')}</span><h3>Pool access</h3><p>Time in the pool during the hours that hotel has set.</p></article>
+<article class="perk"><span class="dest-ico" aria-hidden="true">${destIcon('beach')}</span><h3>Sun loungers, daybeds, cabanas</h3><p>Where the hotel offers that seating. Not every hotel has every type.</p></article>
+<article class="perk"><span class="dest-ico" aria-hidden="true">${destIcon('reef')}</span><h3>Spa or gym, where offered</h3><p>Only where the hotel lists a spa, sauna, steam room or gym.</p></article>
+<article class="perk"><span class="dest-ico" aria-hidden="true">${destIcon('sun')}</span><h3>Towels, where included</h3><p>Only where the listing says towels are included. Bring one if it does not.</p></article>
+</div>
+<p class="home-lead home-follow">If it is not on the listing, it is not included.</p></section>
+<section class="home-sec" id="occasions"><p class="home-kicker">Perfect for</p><h2>A day, not a stay</h2>
+<div class="occasion-grid">
+<article class="occasion"><h3>A weekday escape</h3><p>A few hours out, and home again the same day.</p></article>
+<article class="occasion"><h3>Birthdays</h3><p>A day by the pool with the people you are celebrating.</p></article>
+<article class="occasion"><h3>A staycation without the stay</h3><p>Hotel facilities for the day, without booking a room.</p></article>
+<article class="occasion"><h3>Working from the pool</h3><p>A quieter weekday seat, where that hotel allows laptops and the listing says so.</p></article>
+</div></section>
+<section class="home-sec" id="questions"><p class="home-kicker">Questions</p><h2>Before you join</h2>
+<div class="faq">
+<details><summary>Is this a real booking site?</summary><p>No. This is a demo. Listings are examples. No real bookings or payments are taken.</p></details>
+<details><summary>Are these real hotels?</summary><p>No. The example listings use place names in Australia. They are not hotels that have joined, and the photos are stock photos.</p></details>
+<details><summary>Can I cancel for free?</summary><p>The draft policy allows free cancellation until 24 hours before access starts. Checkout shows the time for the date you choose. <a href="/faq">Read the full answer</a>.</p></details>
+</div>
+<p class="how-more"><a class="link" href="/faq">All questions</a></p></section>
+</div>
+<section class="home-hotels" id="hotels"><div class="wrap">
+<p class="home-kicker light">For hotels</p>
+<h2>Spare pool and spa capacity</h2>
+<p>Have space that sits empty on quiet days? Hotels can list that spare capacity and earn from day passes. You choose the hours, the prices and how many guests you take.</p>
+<p class="home-hotels-cta"><a class="btn btn-coral" href="/hotel/join">List a hotel</a> <a class="btn btn-line light" href="/how-it-works#partners">How it works for hotels</a></p>
+<p class="home-mail">Or email ${contactMail()}.</p>
+</div></section></div>`, { analytics: true });
+}
+app.get('/', (req, res) => {
+  const { where = '', date = '', kind = '', dest = '', destination = '' } = req.query;
+  res.send(homePage({
+    where: String(where),
+    date: String(date),
+    kind: String(kind),
+    dest: String(dest),
+    destination: String(destination),
+    joined: req.query.waitlist === '1',
+  }));
+});
+app.post('/waitlist', async (req, res) => {
+  const parsed = parseSignup(req.body || {}, DESTINATIONS);
+  const sendForm = (status, extra) => res.status(status).send(homePage({ error: extra.error, values: parsed.values || {} }));
+  if (rateLimited(req.ip || 'unknown')) {
+    if (parsed.honeypot) return res.redirect(303, '/?waitlist=1#waitlist');
+    return sendForm(429, { error: 'Please wait a few minutes, then try the form again.' });
+  }
+  if (parsed.honeypot) return res.redirect(303, '/?waitlist=1#waitlist');
+  if (parsed.error) return sendForm(400, parsed);
+  try {
+    saveSignup(db, parsed.row);
+  } catch (err) {
+    console.error('waitlist: database save failed ' + err.message + ' ' + JSON.stringify({
+      email: parsed.row.email,
+      first_name: parsed.row.first_name,
+      place: parsed.row.place,
+      role: parsed.row.role,
+      hotel_name: parsed.row.hotel_name,
+      destination: parsed.row.destination,
+    }));
+  }
+  await notifyWebhook(parsed.row);
+  res.redirect(303, '/?waitlist=1#waitlist');
 });
 
 app.get('/h/:slug', (req, res) => {
@@ -839,6 +971,7 @@ app.get('/admin', adminAuth, (req, res) => {
   const where = [], args = []; if (hid) { where.push('b.hotel_id=?'); args.push(hid); } if (q) { where.push('(b.code LIKE ? OR b.guest_name LIKE ? OR b.email LIKE ?)'); args.push(...Array(3).fill('%' + q + '%')); }
   const rows = db.prepare(`${BQ} ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY b.created_at DESC, b.id DESC LIMIT 100`).all(...args);
   const notes = db.prepare(`SELECT n.*, b.code, b.guest_name, b.date, h.name hotel FROM guest_notes n JOIN bookings b ON b.id=n.booking_id JOIN hotels h ON h.id=n.hotel_id ORDER BY n.id DESC LIMIT 40`).all();
+  const waitRows = db.prepare('SELECT * FROM waitlist ORDER BY id DESC LIMIT 500').all();
   const pendingHtml = pending.map(h => {
     const spots = getPasses(h.id);
     return `<div class="pending-row"><div><b>${esc(h.name)}</b><div class="muted small">${esc(h.area)} · ${esc(h.contact_name || 'No contact name')} · ${esc(h.contact_email || '')}</div>
@@ -856,7 +989,25 @@ ${per.map(r => `<tr><td><a class="link" href="/admin?hotel=${r.id}#all"><b>${esc
 <tr class="tot"><td>Total</td><td>${tot.n}</td><td>${tot.passes}</td><td>${tot.today}</td><td>${money(tot.gross)}</td><td>${money(tot.gross * HOTEL_SHARE)}</td><td>${money(tot.gross * (1 - HOTEL_SHARE))}</td></tr></tbody></table></div></section>
 <section class="panel" id="all"><h2 class="ph2">Latest bookings</h2><form class="lookup" method="get" action="/admin#all"><select name="hotel"><option value="">All hotels</option>${per.map(r => `<option value="${r.id}" ${r.id === hid ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select><input name="q" value="${esc(q)}" placeholder="Code, name or email"><button class="btn btn-navy">Filter</button></form>
 ${guestList(rows, { checkin: false, hotelCol: true, log: false })}<p class="muted small">Showing the latest ${rows.length} (max 100).</p></section>
-<section class="panel"><h2 class="ph2">Guest notes</h2>${notes.length ? notes.map(n => `<div class="pending-row"><div><b>${n.kind === 'incident' ? 'Incident' : 'No-show'}</b> · ${esc(n.guest_name)} · ${esc(n.code)}<div class="muted small">${esc(n.hotel)} · ${esc(nice(n.date))} · ${esc(hhmm(n.created_at))}${n.note ? ' · ' + esc(n.note) : ''}</div></div></div>`).join('') : '<p class="muted">No notes yet. Hotels log a no-show or an incident from the guest list.</p>'}</section></div>`, { nav: 'admin' }));
+<section class="panel"><h2 class="ph2">Guest notes</h2>${notes.length ? notes.map(n => `<div class="pending-row"><div><b>${n.kind === 'incident' ? 'Incident' : 'No-show'}</b> · ${esc(n.guest_name)} · ${esc(n.code)}<div class="muted small">${esc(n.hotel)} · ${esc(nice(n.date))} · ${esc(hhmm(n.created_at))}${n.note ? ' · ' + esc(n.note) : ''}</div></div></div>`).join('') : '<p class="muted">No notes yet. Hotels log a no-show or an incident from the guest list.</p>'}</section>
+<section class="panel" id="waitlist"><h2 class="ph2">Waitlist</h2>
+<p class="muted small">These rows are stored on this server only. They are not shown on the public site. Download the CSV before a redeploy if the spreadsheet connection is not set up. This disk is cleared when the app is redeployed.</p>
+<p><a class="btn btn-navy" href="/admin/waitlist.csv">Download CSV</a></p>
+${waitRows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Email</th><th>Name</th><th>Place</th><th>Role</th><th>Hotel</th><th>Destination</th><th>Added</th><th></th></tr></thead><tbody>
+${waitRows.map(w => `<tr><td>${esc(w.email)}</td><td>${esc(w.first_name)}</td><td>${esc(w.place)}</td><td>${esc(w.role)}</td><td>${esc(w.hotel_name)}</td><td>${esc(w.destination)}</td><td>${esc(w.created_at)}</td><td><form method="post" action="/admin/waitlist/delete"><input type="hidden" name="id" value="${w.id}"><button class="btn btn-line">Delete</button></form></td></tr>`).join('')}
+</tbody></table></div>` : '<p class="muted">No waitlist signups stored on this server.</p>'}
+</section></div>`, { nav: 'admin' }));
+});
+app.get('/admin/waitlist.csv', adminAuth, (req, res) => {
+  const rows = db.prepare('SELECT email, first_name, place, role, hotel_name, destination, created_at, updated_at FROM waitlist ORDER BY id').all();
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="waitlist.csv"');
+  res.send(waitlistCsv(rows));
+});
+app.post('/admin/waitlist/delete', adminAuth, (req, res) => {
+  const id = parseInt(req.body.id, 10);
+  if (id) db.prepare('DELETE FROM waitlist WHERE id=?').run(id);
+  res.redirect('/admin?msg=' + encodeURIComponent(id ? 'Removed that waitlist signup.' : 'Nothing to remove.') + '#waitlist');
 });
 
 app.get('/how-it-works', (req, res) => {
