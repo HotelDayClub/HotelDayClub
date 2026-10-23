@@ -12,8 +12,8 @@ const { ymd, addDays, esc, money, nice } = require('./util');
 const { DESTINATIONS, destIcon } = require('./destinations');
 const { parseSignup, saveSignup, notifyWebhook, rateLimited, waitlistCsv } = require('./waitlist');
 const {
-  KINDS, spotLabel, closureReason, rulesCard, rulesText, amenitiesFrom, slugify,
-  hoursFor, hoursView, syncHoursLabels, blankJoin, readForm, writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,
+  KINDS, spotLabel, closureReason, rulesCard, rulesText,
+  hoursFor, hoursView, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST,
   fmtTime, cancelNote, riskCard, riskText, riskTick, swimNote, hotelLatePossible, lateWindow,
 } = require('./offering');
 const app = express();
@@ -121,6 +121,9 @@ function contactMail() {
   const email = esc(contactEmail());
   return `<a href="mailto:${email}">${email}</a>`;
 }
+function talkHref() {
+  return `mailto:${contactEmail()}?subject=${encodeURIComponent('Hotel Day Club - partnership enquiry')}`;
+}
 function businessAbn() {
   const digits = String(process.env.ABN || '').replace(/\D/g, '');
   const use = /^\d{11}$/.test(digits) ? digits : DEFAULT_ABN.replace(/\D/g, '');
@@ -147,7 +150,7 @@ function gaSnippet(safePath) {
 function siteFooter() {
   const abn = `<p class="muted small abn-line">Hotel Day Club · ABN ${esc(businessAbn())}</p>`;
   return `<footer class="app-ftr"><div class="wrap ftr-in"><div>${LOGO}<p class="muted small">Contact ${contactMail()}</p></div>
-<nav class="ftr-links"><a href="/#explore">Explore</a><a href="/how-it-works">How it works</a><a href="/faq">FAQ</a><a href="/hotel/join">For hotels</a><a href="/hotel">Hotel login</a><a href="/admin">Admin</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a></nav>
+<nav class="ftr-links"><a href="/#explore">Explore</a><a href="/how-it-works">How it works</a><a href="/faq">FAQ</a><a href="/for-hotels">For hotels</a><a href="/hotel">Hotel login</a><a href="/admin">Admin</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a></nav>
 <p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p>${abn}</div></footer>`;
 }
 const FONT_LINKS = `<link rel="preload" href="/golden/fonts/f3.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/golden/fonts/f5.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/golden/fonts.css">`;
@@ -192,7 +195,7 @@ window.__set=set;
 function page(title, body, { nav = 'guest', bare = false, analytics = false, analyticsPath = '', home = false } = {}) {
   const right = nav === 'hotel' ? '<a class="hotel-link show" href="/hotel/logout">Log out</a>'
     : nav === 'admin' ? '<a class="hotel-link show" href="/admin/logout">Log out</a>' : '';
-  const guestNav = `<nav class="hdr-nav"><a href="/how-it-works">How it works</a><a href="/hotel/join">For hotels</a><a class="pill" href="${home ? '#waitlist' : '/#waitlist'}">Join the waitlist</a></nav>`;
+  const guestNav = `<nav class="hdr-nav"><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a><a class="pill" href="${home ? '#waitlist' : '/#waitlist'}">Join the waitlist</a></nav>`;
   const tags = analytics && nav === 'guest' ? gaSnippet(analyticsPath) : '';
   const css = home
     ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-poster.webp" type="image/webp" fetchpriority="high"><link rel="stylesheet" href="/golden/home.css">`
@@ -283,7 +286,7 @@ function homePage({ where = '', date = '', kind = '', dest = '', destination = '
     return `<a class="ex" href="/h/${h.slug}${date ? '?date=' + encodeURIComponent(date) : ''}">${img}<span class="tag">Example</span><h3>${esc(h.name)}</h3><p>${esc(h.area)} · From ${money(from)} · Demo</p></a>`;
   }).join('');
   const slot = (src, alt, time, title, copy) => `<div class="slot"><picture><source type="image/webp" srcset="/golden/img/${src}.webp"><img src="/golden/img/${src}.jpg" alt="${alt}" width="900" height="600" loading="lazy" decoding="async"></picture><span class="t">${time}</span><div class="b"><h3>${title}</h3><p>${copy}</p></div></div>`;
-  return page('Take the day off', `<nav class="top"><a class="logo" href="/">Hotel Day <i>Club</i></a><div class="links"><a href="/how-it-works">How it works</a><a href="/hotel/join">For hotels</a><a class="pill" href="#waitlist">Join the waitlist</a></div></nav>
+  return page('Take the day off', `<nav class="top"><a class="logo" href="/">Hotel Day <i>Club</i></a><div class="links"><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a><a class="pill" href="#waitlist">Join the waitlist</a></div></nav>
 <header class="hero" data-slot="1"><div class="ph"><div class="media">
 <picture class="layer on" data-slot="0"><source type="image/webp" srcset="/golden/img/hero-poster.webp"><img fetchpriority="high" src="/golden/img/hero-poster.jpg" alt="Sunlit hotel pool water" width="1280" height="720" decoding="async"></picture>
 <picture class="layer zoom" data-slot="2"><source type="image/webp" srcset="/golden/img/3-sm.webp"><img src="/golden/img/3-sm.jpg" alt="" width="900" height="600" loading="lazy" decoding="async"></picture>
@@ -322,14 +325,14 @@ ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the li
 <details><summary>Is Hotel Day Club taking bookings?</summary><p>Not yet. Join the waitlist and we'll email you when passes open near you.</p></details>
 <details><summary>What's included?</summary><p>Each hotel sets its own inclusions — pool, gym, spa, towels, seating — and every listing spells out what your pass covers.</p></details>
 <p class="faq-more"><a href="/faq">All questions</a></p></div></section>
-<div class="hotels" id="hotels"><div><span class="kicker">For hotels</span><h2>Quiet pool on a Tuesday? <em>Fill it.</em></h2><p>List spare pool, gym and spa capacity for local day guests, on your terms. You choose the hours, the prices and how many guests you take.</p></div><a class="btn" href="/hotel/join">Talk to us</a></div>
+<div class="hotels" id="hotels"><div><span class="kicker">For hotels</span><h2>Quiet pool on a Tuesday? <em>Fill it.</em></h2><p>List spare pool, gym and spa capacity for local day guests, on your terms. You choose the hours, the prices and how many guests you take.</p></div><a class="btn" href="/for-hotels">Talk to us</a></div>
 <noscript><style>#waitlist{display:block;position:static;margin:24px auto 40px}</style></noscript>
 <dialog id="waitlist" aria-labelledby="wl-title" data-open="${openWait ? '1' : '0'}"><div class="wl-in">
 <button type="button" class="wl-x" data-close>Close</button>
 <h2 id="wl-title">Join the waitlist</h2>
-<p class="wl-lead">Hotel Day Club is not taking real bookings yet. Leave your email and we will write when day passes are available near you. Hotels can use the same list to hear about listing spare pool, gym or spa capacity. No fee to join. We do not sell this list.</p>
+<p class="wl-lead">Hotel Day Club is not taking real bookings yet. Leave your email and we will write when day passes are available near you. If you run a hotel, talk to us on the <a href="/for-hotels">For hotels</a> page. No fee to join. We do not sell this list.</p>
 ${error ? `<div class="alert" role="alert">${esc(error)}</div>` : ''}
-${joined ? `<div class="wl-ok" role="status"><h3>You're on the list</h3><p>Thanks. We'll email you when we have news about day passes near you, or about listing a hotel.</p></div>${lead}` : ''}
+${joined ? `<div class="wl-ok" role="status"><h3>You're on the list</h3><p>Thanks. We'll email you when we have news about day passes near you. If you run a hotel, the <a href="/for-hotels">For hotels</a> page is the way to reach us.</p></div>${lead}` : ''}
 <form class="wl" method="post" action="/waitlist">
 <div class="hp" aria-hidden="true"><label>Company website<input name="company_website" tabindex="-1" autocomplete="off" value=""></label></div>
 <label class="fl">Email<input name="email" type="email" required autocomplete="email" maxlength="254" value="${esc(form.email || '')}"></label>
@@ -342,7 +345,7 @@ ${joined ? `<div class="wl-ok" role="status"><h3>You're on the list</h3><p>Thank
 </fieldset>
 <label class="fl">Hotel name <span class="opt">(optional, hotels only)</span><input name="hotel_name" maxlength="120" value="${esc(form.hotel_name || '')}"></label>
 <button class="btn" type="submit">Join the waitlist</button>
-<p class="wl-note">We use this to contact you about day passes near you, or about listing a hotel. To unsubscribe or ask us to delete it, email ${contactMail()}. <a href="/privacy">Privacy policy</a>.</p>
+<p class="wl-note">We use this to contact you about day passes near you. To unsubscribe or ask us to delete it, email ${contactMail()}. <a href="/privacy">Privacy policy</a>.</p>
 </form></div></dialog>`, { analytics: true, home: true });
 }
 app.get('/', (req, res) => {
@@ -570,57 +573,35 @@ ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li
 });
 
 const hotelAuth = (req, res, next) => { const id = req.signedCookies.hotel; const h = id && db.prepare('SELECT * FROM hotels WHERE id=?').get(id); if (!h) return res.redirect('/hotel/login'); req.hotel = hotelRow(h); next(); };
-function joinPage(error, body) {
-  const state = body ? echoForm(body) : blankJoin();
-  return page('List a hotel', `<div class="wrap sec offer-page"><p class="eyebrow-s">For hotels</p>
-<h1 class="l-title">List a hotel</h1>
-<p class="lead">Free to list. Set your seating, hours and pool rules. This demo keeps a new hotel pending until an admin approves it.</p>
-${offeringForm({ action: '/hotel/join', hotel: state.hotel, spots: state.spots, hours: state.hours, account: true, error })}
-<p class="muted small">Already joined? <a href="/hotel/login">Hotel login</a></p></div>`);
-}
-app.get('/hotel/join', (req, res) => res.send(joinPage('', null)));
-app.post('/hotel/join', (req, res) => {
-  const b = req.body;
-  const login = String(b.login || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
-  const password = String(b.password || '');
-  const email = String(b.contact_email || '').trim();
-  let hid;
-  try {
-    hid = db.transaction(() => {
-      const bad = msg => { const e = new Error(msg); e.validation = true; throw e; };
-      if (login.length < 3) bad('Choose a username of at least 3 letters.');
-      if (password.length < 4) bad('Choose a password of at least 4 characters.');
-      if (!/^\S+@\S+\.\S+$/.test(email)) bad('Enter a contact email.');
-      if (db.prepare('SELECT 1 FROM hotels WHERE login=?').get(login)) bad('That username is taken.');
-      const parsed = readForm(b);
-      if (parsed.err) bad(parsed.err);
-      let slug = slugify(parsed.profile.name), n = 2; const base = slug;
-      while (db.prepare('SELECT 1 FROM hotels WHERE slug=?').get(slug)) slug = (base + '-' + (n++)).slice(0, 48);
-      const photo = parsed.spots.map(s => s.photo).find(Boolean) || 'beach-resort-pool.jpg';
-      const photos = [...new Set([safePhoto(photo) || 'beach-resort-pool.jpg', 'hero-loungers.jpg', 'infinity-palms.jpg'])];
-      const id = db.prepare(`INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status,contact_name,contact_email,marketing_opt_in)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(slug, parsed.profile.name, parsed.profile.area, parsed.profile.tagline, parsed.profile.blurb,
-        JSON.stringify(photos), JSON.stringify(amenitiesFrom(parsed)), '', null, login, password, 'pending', parsed.profile.contact_name, email, b.marketing === '1' ? 1 : 0).lastInsertRowid;
-      const saved = writeOffering(db, id, parsed);
-      if (saved && saved.err) bad(saved.err);
-      return id;
-    })();
-  } catch (e) {
-    if (e.validation) return res.status(400).send(joinPage(e.message, b));
-    if (/UNIQUE/i.test(e.message || '')) return res.status(400).send(joinPage('That username is taken.', b));
-    throw e;
-  }
-  ensureAddons(db);
-  res.cookie('hotel', hid, { signed: true, httpOnly: true, sameSite: 'lax' });
-  res.redirect('/hotel?msg=' + encodeURIComponent('Thanks. Your hotel is pending approval.'));
+app.get('/for-hotels', (req, res) => {
+  const href = esc(talkHref());
+  res.send(page('For hotels', `<div class="wrap fh">
+<p class="fh-kicker">For hotels</p>
+<h1>A quiet pool, <em>put to use.</em></h1>
+<p class="fh-lead">Hotel Day Club is for hotels in Australia. Local guests come for the pool, the gym or the spa for the day. They do not need a room.</p>
+<div class="fh-grid">
+<article class="fh-card"><h2>Fill the quiet hours</h2><p>Weekday pool, gym and spa time often has room in it. Day guests can take that time.</p></article>
+<article class="fh-card"><h2>Welcome local guests</h2><p>They are new people through the door. While they are with you, they may spend on food and drinks.</p></article>
+</div>
+<article class="fh-card fh-wide"><h2>You stay in control</h2><p>What the hotel offers is tailored with you. The details are agreed together, and nothing is set until you are happy with it.</p></article>
+</div>
+<section class="fh-pilot"><div class="wrap">
+<p class="fh-kicker">A short pilot</p>
+<h2>See if it suits the hotel.</h2>
+<p>A brief trial is a simple way to find out. We shape it with you, then you decide. Write to us and we will be in touch.</p>
+<a class="btn btn-coral" href="${href}">Talk to us</a>
+<p class="fh-mail">Email ${contactMail()}</p>
+</div></section>`, { analytics: true }));
 });
+app.get('/hotel/join', (req, res) => res.redirect(302, '/for-hotels'));
+app.post('/hotel/join', (req, res) => res.redirect(303, '/for-hotels'));
 const LEGAL_LINKS = '<p class="legal-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a></p>';
 app.get('/hotel/login', (req, res) => {
   res.send(page('Hotel login', `<div class="wrap sec narrow"><div class="login-card"><h1 class="l-title">Hotel login</h1>
 ${req.query.e ? '<div class="alert">Wrong username or password.</div>' : ''}
 <form method="post" action="/hotel/login"><label class="fl">Username<input name="user" required autocomplete="username"></label><label class="fl">Password<input name="pass" type="password" required autocomplete="current-password"></label>
 <button class="btn btn-navy full">Log in</button></form>
-<p class="center" style="margin-top:16px"><a href="/hotel/join">List a hotel</a></p>
+<p class="center" style="margin-top:16px"><a href="/for-hotels">For hotels</a></p>
 ${LEGAL_LINKS}</div></div>`, { bare: true }));
 });
 app.post('/hotel/login', (req, res) => {
@@ -1078,7 +1059,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <div class="partner-card"><b>You keep food and drink spend</b><p>What guests buy at your bar or café stays with you.</p></div>
 <div class="partner-card"><b>Paid monthly</b><p>Seating and add-on sales are paid out once a month. You keep 75%. Hotel Day Club keeps 25%.</p></div>
 </div>
-<p class="hiw-cta"><a class="btn btn-coral" href="/hotel/join">List a hotel</a> <a class="btn btn-line" href="/hotel">Hotel login</a></p>
+<p class="hiw-cta"><a class="btn btn-coral" href="/for-hotels">Talk to us</a> <a class="btn btn-line" href="/hotel">Hotel login</a></p>
 </div></section>
 <div class="wrap hiw-block" id="faq">
 <h2>Questions</h2>

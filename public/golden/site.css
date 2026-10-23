@@ -25,3 +25,25 @@ h1,h2,.l-title{font-family:Fraunces,Georgia,serif;font-weight:500}
 @media(max-width:800px){
   body.guest .hdr-nav a:not(.pill){display:none}
 }
+.fh{padding:36px 0 8px}
+.fh-kicker{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#9E2E20;font-weight:600;margin:0 0 12px}
+.fh h1{font-weight:500;font-size:clamp(40px,6vw,76px);line-height:.98;margin:0 0 16px;color:var(--ink)}
+.fh h1 em{font-style:italic;color:#9E2E20}
+.fh-lead{font-size:1.15rem;line-height:1.5;color:var(--muted);max-width:40rem;margin:0}
+.fh-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:32px 0 16px}
+.fh-card{background:#fff;border-radius:24px;padding:24px 22px}
+.fh-card h2{margin:0 0 8px;font-size:clamp(26px,3vw,34px);font-weight:500;color:var(--ink)}
+.fh-card p{margin:0;color:var(--muted);line-height:1.5}
+.fh-wide{margin-bottom:8px}
+.fh-pilot{background:#0E1E3A;color:#fff;margin:28px 0 0;padding:56px 0}
+.fh-pilot .fh-kicker{color:#FFB5A3}
+.fh-pilot h2{color:#fff;font-weight:500;font-size:clamp(32px,4vw,52px);margin:0 0 12px}
+.fh-pilot p{color:#D5DCE8;max-width:36rem;line-height:1.5}
+.fh-pilot .btn{margin-top:8px;border-radius:99px;padding:16px 26px}
+.fh-mail{margin:16px 0 0}
+.fh-mail a{color:#fff;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:700px){
+  .fh{padding-top:20px}
+  .fh-grid{grid-template-columns:1fr}
+  .fh-pilot{padding:40px 0}
+}

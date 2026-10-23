@@ -233,6 +233,14 @@ function start(port, extra = {}) {
     assert.ok(faq.body.includes('How do I contact you?') && faq.body.includes('Email ' + link));
     assert.ok(!faq.body.includes('Jason Baranov') && !faq.body.includes('registration pending'));
     onlyThisMail(home.body, 'home');
+    const forHotels = await get(port, '/for-hotels');
+    assert.strictEqual(forHotels.status, 200);
+    onlyThisMail(forHotels.body, 'for-hotels');
+    assert.ok(forHotels.body.includes('mailto:hello@hoteldayclub.com.au?subject=Hotel%20Day%20Club%20-%20partnership%20enquiry'));
+    assert.ok(!/commission|75%|25%/i.test(forHotels.body));
+    const join = await get(port, '/hotel/join');
+    assert.strictEqual(join.status, 302);
+    assert.strictEqual(join.headers.location, '/for-hotels');
     assert.ok(home.body.includes('Contact ' + link));
     assert.ok(!risk.body.includes('{{CONTACT_EMAIL}}'));
 
@@ -363,7 +371,7 @@ function start(port, extra = {}) {
     const home = await get(gaPort, '/');
     assert.ok(home.body.includes(gaSnippet), 'homepage should include the standard gtag snippet');
     assert.ok(home.body.indexOf(gaSnippet) < home.body.indexOf('</head>'));
-    const guestPages = ['/how-it-works', '/faq', '/privacy', '/terms', '/refunds', '/risk', '/h/saltwater-terrace', '/checkout?hotel=skyline-rooftop&date=' + encodeURIComponent(freeSky.date) + '&pass=chair&qty=1'];
+    const guestPages = ['/for-hotels', '/how-it-works', '/faq', '/privacy', '/terms', '/refunds', '/risk', '/h/saltwater-terrace', '/checkout?hotel=skyline-rooftop&date=' + encodeURIComponent(freeSky.date) + '&pass=chair&qty=1'];
     for (const pathName of guestPages) {
       const doc = await get(gaPort, pathName);
       assert.strictEqual(doc.status, 200, pathName);
@@ -373,12 +381,16 @@ function start(port, extra = {}) {
     const head = missing.body.slice(0, missing.body.indexOf('</head>'));
     assert.ok(head.includes("gtag('config','G-9F5ZH1T4YN',{page_path:'/booking',page_location:location.origin+'/booking',page_title:'Booking'});"));
     assert.ok(!head.includes('HDC-99999'));
-    for (const pathName of ['/hotel/login', '/admin/login', '/hotel/join']) {
+    for (const pathName of ['/hotel/login', '/admin/login']) {
       const doc = await get(gaPort, pathName);
       assert.strictEqual(doc.status, 200, pathName);
       assert.ok(!doc.body.includes('googletagmanager.com'), pathName);
       assert.ok(!doc.body.includes('G-9F5ZH1T4YN'), pathName);
     }
+    const joinRedirect = await get(gaPort, '/hotel/join');
+    assert.strictEqual(joinRedirect.status, 302);
+    assert.strictEqual(joinRedirect.headers.location, '/for-hotels');
+    assert.ok(!String(joinRedirect.body || '').includes('googletagmanager.com'));
     const login = await post(gaPort, '/hotel/login', { user: 'demo-saltwater', pass: 'legal-hotel-test' });
     assert.strictEqual(login.status, 302);
     const cookie = (login.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
