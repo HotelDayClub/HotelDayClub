@@ -2,7 +2,7 @@
 
 *Hotel life, by the day.* This is a working demo of a day-pass product. Every hotel is a **fictional example listing** shown with stock mood photos (credits are in `public/assets/CREDITS.md`). Nothing here is a real hotel, and no real payments are taken.
 
-**Stack:** Node 20, Express, server-rendered HTML, and SQLite via `better-sqlite3`. The QR codes come from the `qrcode` package. There is no build step. The styles reuse the brand mockup's `styles.css`, with `public/app.css` added on top.
+**Stack:** Node 20, Express, server-rendered HTML, and SQLite via `better-sqlite3`. The QR codes come from the `qrcode` package. There is no build step. The homepage is the Golden Hour design (`public/golden/`). Fraunces, Inter and Caveat are self-hosted. Other pages share that header, footer and palette via `public/golden/site.css`, on top of `styles.css` and `app.css`.
 
 ## Run it
 ```bash
