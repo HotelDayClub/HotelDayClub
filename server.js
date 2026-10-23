@@ -471,7 +471,7 @@ app.get('/checkout', (req, res) => {
   const cancel = cancelNote(db, h, date);
   const picked = new Set(v.addons.map(x => x.code));
   const offer = addonAvailability(h.id, date);
-  const addonFields = offer.length ? `<details class="extras" id="addon-block"><summary>Add extras <span class="extra-opt">(optional)</span></summary><div class="extra-list" id="co-addons">${offer.map(ad => {
+  const addonFields = offer.length ? `<details class="extras" id="addon-block"><summary><span class="extra-label">Add extras <span class="extra-opt">(optional)</span></span></summary><div class="extra-list" id="co-addons">${offer.map(ad => {
     const need = ad.per === 'booking' ? 1 : people;
     const dis = ad.remaining < need;
     const on = !dis && picked.has(ad.code);

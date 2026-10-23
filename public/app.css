@@ -598,10 +598,10 @@ form.check-code input,form.check-code .btn{width:100%}
   .bar-price b{font-size:1.15rem}
 }
 .extras{border:1px solid var(--line);border-radius:12px;background:#fff;margin:0 0 12px}
-.extras summary{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:40px;padding:6px 12px;cursor:pointer;font-weight:650;font-size:.9rem;list-style:none}
+.extras summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;padding:6px 12px;cursor:pointer;font-weight:650;font-size:.9rem;list-style:none}
 .extras summary::-webkit-details-marker{display:none}
 .extras summary:focus-visible{outline:3px solid #0E1E3A;outline-offset:2px}
-.extra-opt{color:#3b4458;font-weight:500}
+.extra-opt{color:#667085;font-weight:500;font-size:.78em}
 .extras summary::after{content:"";width:7px;height:7px;border-right:1.6px solid #0A1428;border-bottom:1.6px solid #0A1428;transform:rotate(45deg);flex:0 0 auto}
 .extras[open] summary::after{transform:rotate(-135deg)}
 .extra-list{list-style:none;margin:0;padding:0 6px 6px}
