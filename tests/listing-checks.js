@@ -86,8 +86,12 @@ function start(port) {
     assert.ok(salt.body.includes('18 Demo Terrace'));
     assert.ok(salt.body.includes('Get directions'));
     assert.ok(salt.body.includes('Apple Maps'));
-    assert.ok(salt.body.includes('data-src="https://www.openstreetmap.org/export/embed.html'));
+    assert.ok(salt.body.includes('class="map-peek"'));
+    assert.ok(salt.body.includes('View map'));
+    assert.ok(salt.body.includes('data-lat="-33.8915"'));
     assert.ok(!salt.body.includes('<iframe'));
+    assert.ok(!salt.body.includes('export/embed.html'));
+    assert.ok(!salt.body.includes('<script src="/vendor/leaflet/leaflet.js">'));
     assert.ok(salt.body.includes('class="hdc-date"'));
     assert.ok(salt.body.includes('data-inline="1"'));
     assert.ok(salt.body.includes('Most popular'));
@@ -143,7 +147,10 @@ function start(port) {
     live.close();
     const checkout = await get(port, `/checkout?hotel=saltwater-terrace&date=${encodeURIComponent(when)}&pass=lounger&qty=1`);
     assert.strictEqual(checkout.status, 200);
-    assert.ok(checkout.body.includes('Make it a day'));
+    assert.ok(checkout.body.includes('Add extras'));
+    assert.ok(checkout.body.includes('(optional)'));
+    assert.ok(!checkout.body.includes('Make it a day'));
+    assert.ok(!/<details class="extras"[^>]*\sopen/.test(checkout.body));
     assert.ok(!checkout.body.includes('Spots left'));
     assert.ok(checkout.body.includes('>Pass</dt>'));
     assert.ok(checkout.body.includes('>Guests</dt>'));

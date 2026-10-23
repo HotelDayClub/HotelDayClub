@@ -560,10 +560,26 @@ form.check-code input,form.check-code .btn{width:100%}
 .reassure{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .reassure li{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
 .reassure b{display:block;margin-bottom:4px}
-.arrive-addr{font-weight:700;margin:0 0 10px}
-.map-slot{position:relative;aspect-ratio:16/9;background:#E7EEF5;border-radius:16px;overflow:hidden;margin:0 0 12px}
-.map-slot iframe{width:100%;height:100%;border:0}
-.map-hold{position:absolute;inset:0;display:grid;place-items:center;margin:0;color:#0A1428;font-weight:650}
+.arrive-line{display:flex;align-items:center;gap:10px;margin:0 0 10px}
+.arrive-addr{flex:1;font-weight:700;margin:0}
+.map-peek{position:relative;flex:0 0 148px;height:72px;padding:0;border:1px solid #D0D5DD;border-radius:12px;overflow:hidden;background:#E7EEF5;cursor:pointer}
+.map-peek-art{display:block;width:100%;height:100%}
+.map-peek-label{position:absolute;left:6px;right:6px;bottom:6px;background:#fff;color:#0A1428;border-radius:999px;font-size:.72rem;font-weight:700;line-height:1.2;padding:3px 8px;text-align:center}
+.map-peek:focus-visible,.map-close:focus-visible{outline:3px solid #0E1E3A;outline-offset:2px}
+.map-sheet{border:0;padding:0;border-radius:18px;width:min(840px,calc(100vw - 32px));max-height:calc(100dvh - 32px);color:#0A1428;background:#fff}
+.map-sheet::backdrop{background:rgba(10,20,40,.55)}
+.map-sheet-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px}
+.map-sheet-bar h4{margin:0;font-size:.95rem;font-weight:700}
+.map-close{border:1px solid #D0D5DD;background:#fff;color:#0A1428;border-radius:999px;min-height:40px;padding:8px 14px;font-weight:700;cursor:pointer}
+.map-canvas{height:min(480px,62dvh);background:#E7EEF5}
+.map-credit,.map-fail{margin:0;padding:8px 12px 12px;font-size:.75rem;color:#3b4458}
+.map-pin{background:transparent;border:0}
+.map-pin span{display:block;width:16px;height:16px;border-radius:50%;background:#FF6B57;border:2px solid #0A1428;box-shadow:0 1px 3px rgba(10,20,40,.35)}
+@media(max-width:700px){
+  .map-peek{flex-basis:112px;height:64px}
+  .map-sheet{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;border-radius:0}
+  .map-canvas{height:calc(100dvh - 108px)}
+}
 .arrive-acts{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
 .arrive-notes{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .arrive-notes li{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
@@ -581,8 +597,20 @@ form.check-code input,form.check-code .btn{width:100%}
   .book-box{scroll-margin-bottom:96px}
   .bar-price b{font-size:1.15rem}
 }
-.make-day{border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:8px 0 16px;background:#fff}
-.make-day h3{font-family:var(--font-display);font-weight:560;font-size:1.35rem;margin:0 0 6px}
+.extras{border:1px solid var(--line);border-radius:12px;background:#fff;margin:0 0 12px}
+.extras summary{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:40px;padding:6px 12px;cursor:pointer;font-weight:650;font-size:.9rem;list-style:none}
+.extras summary::-webkit-details-marker{display:none}
+.extras summary:focus-visible{outline:3px solid #0E1E3A;outline-offset:2px}
+.extra-opt{color:#3b4458;font-weight:500}
+.extras summary::after{content:"";width:7px;height:7px;border-right:1.6px solid #0A1428;border-bottom:1.6px solid #0A1428;transform:rotate(45deg);flex:0 0 auto}
+.extras[open] summary::after{transform:rotate(-135deg)}
+.extra-list{list-style:none;margin:0;padding:0 6px 6px}
+.extra{display:flex;align-items:center;gap:8px;min-height:26px;margin:0;padding:1px 4px;font-size:.8rem;line-height:1.25;font-weight:600;cursor:pointer}
+.extra input{width:14px;height:14px;margin:0;flex:0 0 auto;accent-color:#0E1E3A}
+.extra-name{flex:1;min-width:0}
+.extra-price,.extra-note{margin-left:auto;color:#3b4458;font-size:.74rem;font-weight:650;white-space:nowrap}
+.extra.is-off{opacity:.55;cursor:not-allowed}
+.extra-static .extra{cursor:default}
 .fl .pk-btn,.pk-cal{text-transform:none;letter-spacing:0}
 .inc-form,.arrive-form{margin-top:28px}
 .inc-edit{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(110px,.8fr) 88px 88px;gap:8px;align-items:end;padding:10px 0;border-top:1px solid var(--line)}

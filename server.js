@@ -471,12 +471,14 @@ app.get('/checkout', (req, res) => {
   const cancel = cancelNote(db, h, date);
   const picked = new Set(v.addons.map(x => x.code));
   const offer = addonAvailability(h.id, date);
-  const addonFields = offer.length ? `<section class="make-day" id="addon-block"><h3>Make it a day</h3><p class="muted small">Optional. Add a food and drink credit, the spa, parking or the gym when this hotel offers them. The total updates before you confirm.</p><div class="addon-pick" id="co-addons">${offer.map(ad => {
+  const addonFields = offer.length ? `<details class="extras" id="addon-block"><summary>Add extras <span class="extra-opt">(optional)</span></summary><div class="extra-list" id="co-addons">${offer.map(ad => {
     const need = ad.per === 'booking' ? 1 : people;
     const dis = ad.remaining < need;
     const on = !dis && picked.has(ad.code);
-    return `<label class="tog${dis ? ' dis' : ''}"><span><b>${esc(ad.name)}</b><small>${dis ? 'Sold out' : `${money(ad.price)} ${ad.per === 'booking' ? 'per booking' : 'per person'}`}</small></span><input type="checkbox" name="addon" value="${esc(ad.code)}" data-price="${ad.price}" data-per="${esc(ad.per)}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}></label>`;
-  }).join('')}</div></section>` : '';
+    const price = !dis && Number(ad.price) > 0 ? `<span class="extra-price">${money(ad.price)}</span>` : '';
+    const note = dis ? '<span class="extra-note">Sold out</span>' : '';
+    return `<label class="extra${dis ? ' is-off' : ''}"><input type="checkbox" name="addon" value="${esc(ad.code)}" data-price="${Number(ad.price) || 0}" data-per="${esc(ad.per)}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}><span class="extra-name">${esc(ad.name)}</span>${price}${note}</label>`;
+  }).join('')}</div></details>` : '';
   res.send(page('Checkout', `<div class="wrap sec checkout">
 <a class="link small" href="/h/${h.slug}?date=${date}">← Back to listing</a><h1 class="l-title">Confirm and pay</h1>
 <div class="co-grid"><form class="co-form" method="post" action="/book">
@@ -509,7 +511,7 @@ ${riskCard(h)}
 const pass=${p.price}, spots=${qty}, people=${people};
 const fmt=n=>'$'+n.toLocaleString('en-AU');
 function paint(){let extra=0;const lines=[];
- document.querySelectorAll('#co-addons input:checked').forEach(i=>{const price=+i.dataset.price,q=i.dataset.per==='booking'?1:people;extra+=price*q;lines.push('<li><span>'+i.parentElement.querySelector('b').textContent+' × '+q+'</span><b>'+fmt(price*q)+'</b></li>')});
+ document.querySelectorAll('#co-addons input:checked').forEach(i=>{const price=+i.dataset.price,q=i.dataset.per==='booking'?1:people;extra+=price*q;const name=i.parentElement.querySelector('.extra-name').textContent;const cost=price>0?'<b>'+fmt(price*q)+'</b>':'';lines.push('<li><span>'+name+' × '+q+'</span>'+cost+'</li>')});
  const total=pass*spots+extra;
  const box=document.getElementById('addon-lines'); if(box) box.innerHTML=lines.join('');
  const el=document.getElementById('co-total'); if(el) el.textContent=fmt(total);
@@ -770,7 +772,7 @@ ${addonsAll.map(a => {
   const left = a.enabled ? (closed ? 0 : Math.max(0, a.daily_cap - addonSold(a.id, t))) : null;
   const lateOk = a.code !== 'late' || hotelLatePossible(db, h);
   const lateNote = a.code !== 'late' ? '' : `<div class="muted small">${lateOk ? 'Only after room guests only has ended, and only until the pool closes.' : 'Leave this off. It would overlap room guests only or run past closing.'}</div>`;
-  return `<div class="addon-row"><label class="addon-on"><input type="checkbox" name="on" value="${a.id}" ${a.enabled ? 'checked' : ''}> Offer</label><div><b>${esc(a.name)}</b><div class="muted small">${esc(a.blurb)} · ${a.per === 'booking' ? 'per booking' : 'per person'}</div>${lateNote}<div class="addon-nums"><label>Price<input class="num" type="number" min="0" step="1" name="aprice_${a.id}" value="${a.price}"></label><label>Each day<input class="num" type="number" min="0" step="1" name="acap_${a.id}" value="${a.daily_cap}"></label>${left == null ? '<span class="muted small">Off</span>' : `<span class="muted small">${left} left today</span>`}</div></div></div>`;
+  return `<div class="addon-row"><label class="addon-on"><input type="checkbox" name="on" value="${a.id}" ${a.enabled ? 'checked' : ''}> Offer</label><div><b>${esc(a.name)}</b><div class="muted small">${esc(a.blurb)} · ${a.per === 'booking' ? 'per booking' : 'per person'}</div>${lateNote}<div class="addon-nums"><label>Price<input class="num" type="number" min="0" step="1" name="aprice_${a.id}" value="${a.price ? a.price : ''}" placeholder="Blank" title="Leave blank if there is no charge"></label><label>Each day<input class="num" type="number" min="0" step="1" name="acap_${a.id}" value="${a.daily_cap}"></label>${left == null ? '<span class="muted small">Off</span>' : `<span class="muted small">${left} left today</span>`}</div></div></div>`;
 }).join('')}
 </div><button class="btn btn-navy">Save add-ons</button></form></section>
 <section id="blocked" class="panel"><div class="blk-head"><h2 class="ph2">Blocked dates</h2></div>
@@ -921,10 +923,12 @@ app.post('/hotel/addons', hotelAuth, (req, res) => {
   const up = db.prepare('UPDATE addons SET enabled=?, price=?, daily_cap=? WHERE id=? AND hotel_id=?');
   let blocked = false;
   db.transaction(() => getAddons(req.hotel.id).forEach(a => {
-    const price = parseInt(req.body['aprice_' + a.id], 10), cap = parseInt(req.body['acap_' + a.id], 10);
+    const rawPrice = String(req.body['aprice_' + a.id] ?? '').trim();
+    const price = rawPrice === '' ? 0 : parseInt(rawPrice, 10);
+    const cap = parseInt(req.body['acap_' + a.id], 10);
     let enabled = on.has(a.id) ? 1 : 0;
     if (a.code === 'late' && enabled && !allowLate) { enabled = 0; blocked = true; }
-    const usePrice = Number.isFinite(price) ? Math.max(0, price) : a.price;
+    const usePrice = rawPrice === '' ? 0 : (Number.isFinite(price) ? Math.max(0, price) : (a.price || 0));
     const useCap = Number.isFinite(cap) ? Math.max(0, cap) : a.daily_cap;
     enabled = syncAddonEdit(db, req.hotel.id, a.code, enabled, usePrice, useCap);
     up.run(enabled, usePrice, useCap, a.id, req.hotel.id);

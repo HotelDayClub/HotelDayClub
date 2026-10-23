@@ -200,17 +200,19 @@ function includedHtml(items) {
   return `<section class="l-sec" id="included"><h3>What's included</h3><ul class="inc-grid">${rows.map(i => `<li>${ICONS[i.code] || ''}<span>${esc(i.name)}</span></li>`).join('')}</ul>${note}</section>`;
 }
 
+function priceBit(n) {
+  return Number(n) > 0 ? `<span class="extra-price">${money(n)}</span>` : '';
+}
 function addonsHtml(items) {
   const rows = items.filter(i => i.mode === 'addon');
   const parkingOff = items.find(i => i.code === 'parking' && i.mode === 'off');
   const list = rows.map(i => {
-    const extra = i.code === 'parking' && i.daily_cap ? `<small>${i.daily_cap} spaces a day</small>` : '';
-    const note = i.note ? `<small>${esc(i.note)}</small>` : '';
-    return `<li><span>${esc(i.name)}${extra}${note}</span><b>${money(i.price)}</b></li>`;
+    const extra = i.code === 'parking' && i.daily_cap ? `<span class="extra-note">${i.daily_cap} a day</span>` : '';
+    return `<li class="extra"><span class="extra-name">${esc(i.name)}</span>${priceBit(i.price)}${extra}</li>`;
   }).join('');
   const off = parkingOff ? '<p class="muted small">Parking is not offered with this pass.</p>' : '';
   if (!list && !off) return '';
-  return `<section class="l-sec" id="addons-list"><h3>Add-ons</h3>${list ? `<ul class="addon-menu">${list}</ul>` : ''}${off}<p class="muted small">Optional. Choose them when you book. Prices are examples in this demo.</p></section>`;
+  return `<section class="l-sec" id="addons-list"><details class="extras"><summary>Add extras <span class="extra-opt">(optional)</span></summary>${list ? `<ul class="extra-list extra-static">${list}</ul>` : ''}</details>${off}</section>`;
 }
 
 function dayBeats(items) {
@@ -253,12 +255,12 @@ function inclusionsForm(items) {
 <option value="addon" ${i.mode === 'addon' ? 'selected' : ''}>Paid add-on</option>
 <option value="off" ${i.mode === 'off' ? 'selected' : ''}>Not offered</option>
 </select>
-<label>Price<input class="num" type="number" min="0" step="1" name="price_${i.code}" value="${i.price || 0}" aria-label="${esc(i.name)} price"></label>
+<label>Price<input class="num" type="number" min="0" step="1" name="price_${i.code}" value="${i.price ? i.price : ''}" placeholder="Blank" aria-label="${esc(i.name)} price. Leave blank if there is no charge."></label>
 <label>A day<input class="num" type="number" min="0" step="1" name="cap_${i.code}" value="${i.daily_cap || 0}" aria-label="${esc(i.name)} per day"></label>
 ${i.code === 'parking' ? `<label class="inc-note">Note<input name="note_parking" maxlength="160" value="${esc(i.note || '')}" placeholder="Where to park"></label>` : `<input type="hidden" name="note_${i.code}" value="${esc(i.note || '')}">`}
 </div>`).join('');
   return `<form class="inc-form" method="post" action="/hotel/inclusions"><h2>What's included</h2>
-<p class="muted small">Included items come with the pass. Paid add-ons are optional at booking and use the daily number as a cap. Parking uses that cap as spaces per day. Not offered stays off the listing.</p>
+<p class="muted small">Included items come with the pass. Paid add-ons are optional at booking and use the daily number as a cap. Leave the price blank when there is no charge. Parking uses that cap as spaces per day. Not offered stays off the listing.</p>
 <div class="inc-edit inc-head"><span>Item</span><span>Offer</span><span>Price</span><span>A day</span></div>
 ${rows}
 <div class="offer-save"><button class="btn btn-navy" type="submit">Save what's included</button></div></form>`;

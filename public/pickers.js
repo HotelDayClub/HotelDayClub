@@ -261,6 +261,7 @@
         if (today) { b.classList.add('is-today'); b.setAttribute('aria-current', 'date'); }
         var why = past ? 'unavailable' : future ? 'unavailable' : shut ? 'closed' : '';
         b.setAttribute('aria-label', labelDate(date) + (why ? ', ' + why : ''));
+        if (past) b.classList.add('is-past');
         if (past || future || shut) b.disabled = true;
         if (selected && same(date, selected)) {
           b.classList.add('is-on');
