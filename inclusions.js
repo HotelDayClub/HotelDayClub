@@ -212,7 +212,7 @@ function addonsHtml(items) {
   }).join('');
   const off = parkingOff ? '<p class="muted small">Parking is not offered with this pass.</p>' : '';
   if (!list && !off) return '';
-  return `<section class="l-sec" id="addons-list"><details class="extras"><summary>Add extras <span class="extra-opt">(optional)</span></summary>${list ? `<ul class="extra-list extra-static">${list}</ul>` : ''}</details>${off}</section>`;
+  return `<section class="l-sec" id="addons-list"><details class="extras"><summary><span class="extra-label">Add extras <span class="extra-opt">(optional)</span></span></summary>${list ? `<ul class="extra-list extra-static">${list}</ul>` : ''}</details>${off}</section>`;
 }
 
 function dayBeats(items) {

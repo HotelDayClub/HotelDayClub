@@ -153,7 +153,7 @@ ${arrival}
 <div id="status" class="status"></div>
 <figure class="seat-shot" id="seat-photo"><img id="seat-img" src="${esc(seatPhoto(pick && pick.kind))}" alt="" width="480" height="360" loading="lazy" decoding="async"><figcaption>Example photo, not this hotel.</figcaption></figure>
 <label class="fl" for="qty">Guests<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}">${n}</option>`).join('')}</select></label>
-<details class="extras" id="extras"><summary>Add extras <span class="extra-opt">(optional)</span></summary><div class="extra-list" id="addons-pick"></div></details>
+<details class="extras" id="extras"><summary><span class="extra-label">Add extras <span class="extra-opt">(optional)</span></span></summary><div class="extra-list" id="addons-pick"></div></details>
 <div class="bb-total" id="total"></div>
 <p class="cancel-note" id="cancel-note">${esc(cancel)}</p>
 <button class="btn btn-coral full" id="go" type="submit">Book your day</button>
