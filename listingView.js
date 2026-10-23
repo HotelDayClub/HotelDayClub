@@ -46,7 +46,9 @@ function render(){
  const holds=p?p.holds||1:1;
  const prev=[...document.querySelectorAll('#addons-pick input:checked')].map(i=>i.value);
  const box=$('#addons-pick');
- box.innerHTML=addons.map(a=>{const dis=a.remaining<need(a,q,holds);const on=!dis&&prev.indexOf(a.code)>=0;return '<label class="tog'+(dis?' dis':'')+'"><span><b>'+h(a.name)+'</b><small>'+(dis?'Sold out':fmt(a.price)+(a.per==='booking'?' per booking':' per guest'))+'</small></span><input type="checkbox" name="addon" value="'+h(a.code)+'" '+(dis?'disabled':'')+(on?' checked':'')+'></label>'}).join('');
+ const wrap=document.getElementById('extras');
+ if(wrap) wrap.hidden=!addons.length;
+ box.innerHTML=addons.map(a=>{const dis=a.remaining<need(a,q,holds);const on=!dis&&prev.indexOf(a.code)>=0;const price=!dis&&a.price>0?'<span class="extra-price">'+fmt(a.price)+'</span>':'';const note=dis?'<span class="extra-note">Sold out</span>':'';return '<label class="extra'+(dis?' is-off':'')+'"><input type="checkbox" name="addon" value="'+h(a.code)+'" '+(dis?'disabled':'')+(on?' checked':'')+'><span class="extra-name">'+h(a.name)+'</span>'+price+note+'</label>'}).join('');
  let extra=0;document.querySelectorAll('#addons-pick input:checked').forEach(i=>{const a=addons.find(x=>x.code===i.value);if(a)extra+=a.price*need(a,q,holds)});
  const people=p?q*holds:q;
  const sum=p?p.price*q+extra:0;
@@ -64,10 +66,50 @@ async function load(){const el=$('#date');if(!el)return;const r=await fetch('/ap
 document.getElementById('date').addEventListener('change',load);
 document.getElementById('qty').addEventListener('change',render);
 document.querySelectorAll('.gal-nav').forEach(btn=>btn.addEventListener('click',()=>{const gal=document.querySelector('.gallery.swipe');if(!gal)return;const w=gal.clientWidth*0.86;gal.scrollBy({left:btn.dataset.dir==='next'?w:-w,behavior:'smooth'})}));
-const slot=document.querySelector('.map-slot');
-if(slot&&'IntersectionObserver' in window){
- const io=new IntersectionObserver(entries=>{if(!entries.some(e=>e.isIntersecting))return;const f=document.createElement('iframe');f.src=slot.dataset.src;f.title='Map of the area';f.loading='lazy';f.referrerPolicy='no-referrer-when-downgrade';slot.replaceChildren(f);io.disconnect()},{rootMargin:'0px'});
- io.observe(slot);
+const peek=document.querySelector('.map-peek');
+const sheet=document.querySelector('.map-sheet');
+if(peek&&sheet){
+ document.body.appendChild(sheet);
+ let map, loading;
+ function draw(){
+  const lat=+peek.dataset.lat, lng=+peek.dataset.lng;
+  if(!map){
+   map=L.map(sheet.querySelector('.map-canvas'),{scrollWheelZoom:true});
+   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+   const icon=L.divIcon({className:'map-pin',html:'<span></span>',iconSize:[18,18],iconAnchor:[9,9]});
+   L.marker([lat,lng],{icon:icon,alt:'Hotel location',title:peek.dataset.label||'Hotel'}).addTo(map);
+  }
+  map.setView([lat,lng],16);
+  setTimeout(function(){map.invalidateSize()},80);
+ }
+ function ensure(){
+  if(window.L) return Promise.resolve();
+  if(loading) return loading;
+  loading=new Promise(function(resolve,reject){
+   const css=document.createElement('link');
+   css.rel='stylesheet'; css.href='/vendor/leaflet/leaflet.css';
+   css.onload=function(){};
+   document.head.appendChild(css);
+   const s=document.createElement('script');
+   s.src='/vendor/leaflet/leaflet.js';
+   s.onload=function(){resolve()};
+   s.onerror=function(){reject()};
+   document.body.appendChild(s);
+  });
+  return loading;
+ }
+ function openMap(){
+  peek.setAttribute('aria-expanded','true');
+  if(!sheet.open) sheet.showModal();
+  sheet.querySelector('.map-close').focus();
+  ensure().then(draw).catch(function(){
+   const box=sheet.querySelector('.map-canvas');
+   if(!box.querySelector('.map-fail')) box.insertAdjacentHTML('beforeend','<p class="map-fail">The map could not load. Use Get directions instead.</p>');
+  });
+ }
+ peek.addEventListener('click',openMap);
+ sheet.querySelector('.map-close').addEventListener('click',function(){sheet.close()});
+ sheet.addEventListener('close',function(){peek.setAttribute('aria-expanded','false');peek.focus()});
 }
 load();setInterval(load,15000);
 </script>`;
@@ -111,8 +153,7 @@ ${arrival}
 <div id="status" class="status"></div>
 <figure class="seat-shot" id="seat-photo"><img id="seat-img" src="${esc(seatPhoto(pick && pick.kind))}" alt="" width="480" height="360" loading="lazy" decoding="async"><figcaption>Example photo, not this hotel.</figcaption></figure>
 <label class="fl" for="qty">Guests<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}">${n}</option>`).join('')}</select></label>
-<div class="addon-label">Add-ons</div>
-<div class="addon-pick" id="addons-pick"></div>
+<details class="extras" id="extras"><summary>Add extras <span class="extra-opt">(optional)</span></summary><div class="extra-list" id="addons-pick"></div></details>
 <div class="bb-total" id="total"></div>
 <p class="cancel-note" id="cancel-note">${esc(cancel)}</p>
 <button class="btn btn-coral full" id="go" type="submit">Book your day</button>

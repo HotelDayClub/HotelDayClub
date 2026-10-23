@@ -80,13 +80,6 @@ function saveArrival(db, hotelId, body) {
   return {};
 }
 
-function mapSrc(lat, lng) {
-  const dLat = 0.006;
-  const dLng = 0.008;
-  const bbox = [lng - dLng, lat - dLat, lng + dLng, lat + dLat].map(n => n.toFixed(5)).join('%2C');
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lng}`;
-}
-
 function arrivalHtml(hotel) {
   const address = String(hotel.address || '').trim();
   const transit = String(hotel.transit_note || '').trim();
@@ -102,25 +95,26 @@ function arrivalHtml(hotel) {
   const osm = mapped
     ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`
     : `https://www.openstreetmap.org/search?query=${q}`;
-  const map = mapped ? `<div class="map-slot" data-src="${esc(mapSrc(lat, lng))}"><p class="map-hold">Map loads when you reach it.</p><noscript><p><a href="${esc(osm)}">Open the map</a></p></noscript></div>` : '';
+  const preview = mapped ? `<button type="button" class="map-peek" data-lat="${lat}" data-lng="${lng}" data-label="${esc(address || 'Hotel')}" aria-haspopup="dialog" aria-controls="map-sheet" aria-expanded="false"><svg class="map-peek-art" viewBox="0 0 160 72" aria-hidden="true"><rect width="160" height="72" fill="#E7EEF5"/><path d="M0 24h160M0 48h160M36 0v72M92 0v72" stroke="#C5D4E4" stroke-width="4"/><path d="M0 12h160M68 0v72" stroke="#D7E3EF" stroke-width="2"/><circle cx="80" cy="34" r="6" fill="#FF6B57" stroke="#0A1428" stroke-width="1.6"/></svg><span class="map-peek-label">View map</span></button>` : '';
+  const sheet = mapped ? `<dialog class="map-sheet" id="map-sheet" aria-labelledby="map-sheet-title"><div class="map-sheet-bar"><h4 id="map-sheet-title">${esc(address || 'Map')}</h4><button type="button" class="map-close">Close</button></div><div class="map-canvas" aria-label="Map. You can pan and zoom."></div><p class="map-credit">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors. Fictional demo address.</p></dialog>` : '';
   const notes = [
     transit ? `<li><b>Train and bus</b><span>${esc(transit)}</span></li>` : '',
     parking ? `<li><b>Parking</b><span>${esc(parking)}</span></li>` : '',
     entrance ? `<li><b>Day guests</b><span>${esc(entrance)}</span></li>` : '',
   ].join('');
   return `<section class="l-sec" id="getting-there"><h3>Getting there</h3>
-${address ? `<p class="arrive-addr">${esc(address)}</p>` : ''}
-${map}
+<div class="arrive-line">${address ? `<p class="arrive-addr">${esc(address)}</p>` : ''}${preview}</div>
 <div class="arrive-acts">${address ? `<a class="btn btn-navy" href="${esc(google)}" target="_blank" rel="noopener noreferrer">Get directions</a><a class="btn btn-line" href="${esc(apple)}" target="_blank" rel="noopener noreferrer">Apple Maps</a>` : ''}</div>
 ${notes ? `<ul class="arrive-notes">${notes}</ul>` : ''}
-<p class="muted small">Map data © <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">OpenStreetMap</a> contributors. This is a fictional demo address. <a href="${esc(osm)}" rel="noopener noreferrer">Open the map</a>.</p></section>`;
+<p class="muted small">This is a fictional demo address. <a href="${esc(osm)}" rel="noopener noreferrer">Open the map</a>.</p>
+${sheet}</section>`;
 }
 
 function arrivalForm(hotel) {
   const lat = hotel.lat == null ? '' : hotel.lat;
   const lng = hotel.lng == null ? '' : hotel.lng;
   return `<form class="arrive-form" method="post" action="/hotel/arrival" id="arrive-edit"><h2>Getting there</h2>
-<p class="muted small">Guests see this on the listing. The map loads only when they scroll to it. Directions open in Google Maps or Apple Maps. Leave latitude and longitude blank to hide the map.</p>
+<p class="muted small">Guests see a small map preview beside the address. The interactive map loads only when they open it. Directions open in Google Maps or Apple Maps. Leave latitude and longitude blank to hide the map.</p>
 <label class="fl">Address<input name="address" maxlength="160" required value="${esc(hotel.address || '')}"></label>
 <div class="two"><label class="fl">Latitude<input name="lat" inputmode="decimal" value="${esc(lat)}" placeholder="-33.8688"></label>
 <label class="fl">Longitude<input name="lng" inputmode="decimal" value="${esc(lng)}" placeholder="151.2093"></label></div>

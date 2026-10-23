@@ -56,7 +56,9 @@ html.js .pk-cal.pk-inline{display:block}
 .pk-day.is-today:not(.is-on){box-shadow:inset 0 0 0 2px #0E1E3A}
 .pk-day.is-on{background:#FF6B57;color:#0A1428}
 .pk-day:disabled{background:#eef1f4;color:#3b4458;cursor:not-allowed;text-decoration:line-through}
+.pk-day:disabled.is-past{background:transparent;color:#b7c0ce;cursor:default;text-decoration:none}
 .pk-day:disabled.is-on{background:#e7d2cc;color:#0A1428}
+.pk-day:disabled.is-past.is-on{background:transparent;color:#b7c0ce}
 .pk-cal-note{margin:8px 0 0;font-size:.75rem;font-weight:500;color:#3b4458;line-height:1.35}
 .pk-clear{
   display:block;width:100%;margin-top:8px;min-height:40px;border:0;border-radius:12px;background:#F6EFE6;color:#0A1428;
