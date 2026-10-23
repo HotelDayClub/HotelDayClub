@@ -100,7 +100,7 @@ assert.ok(html30.includes('Example data'));
 assert.ok(html30.includes('Your payout'));
 assert.ok(html30.includes('What you receive'));
 assert.ok(!/commission/i.test(html30));
-assert.ok(!/25%|75% of|hotel share|before commission/i.test(html30));
+assert.ok(!/75% of|hotel share|before commission|platform commission/i.test(html30));
 assert.ok(html30.includes('Fill rate'));
 assert.ok(html30.includes('No-shows'));
 assert.ok(html30.includes('Listing views'));
@@ -191,7 +191,8 @@ assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM bookings WHERE hotel_id=?'
 
 const saltViews = buildAnalytics(db, salt, { days: 30, today }).views;
 const css = fs.readFileSync(path.join(__dirname, '../public/app.css'), 'utf8');
-assert.ok(css.includes('font-family:Montserrat'));
+assert.ok(css.includes('font-family:Inter'));
+assert.ok(!css.includes('fonts.googleapis.com'));
 assert.ok(css.includes('.example-badge{display:inline-flex') && css.includes('background:#0B2545;color:#fff'));
 assert.ok(css.includes('@media(max-width:599px)'));
 
@@ -265,7 +266,7 @@ function cookieFrom(res) {
     assert.ok(!/guest rating|average rating|star rating/i.test(page.body));
     assert.ok(page.body.includes('What you receive'));
     assert.ok(!/commission/i.test(page.body));
-    assert.ok(!/25%|75% of|hotel share|before commission/i.test(page.body));
+    assert.ok(!/75% of|hotel share|before commission|platform commission/i.test(page.body));
     const settings = await get(port, '/hotel/settings', { Cookie: cookie });
     assert.strictEqual(settings.status, 200);
     assert.ok(/name="day_open" value="6" checked/.test(settings.body));

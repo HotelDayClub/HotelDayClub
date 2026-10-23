@@ -3,16 +3,15 @@
    Brand tokens live in :root. To rebrand: edit tokens here and
    BRAND / DOMAIN / TAGLINE / WORDMARK in build_pages.py, then rebuild (see ../README.md)
    ========================================================== */
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,560;0,9..144,640;1,9..144,560&display=swap");
 :root{
-  --navy:#0B2545;  --aqua:#19C3C9; --lagoon:#0FA3B1; --coral:#FF6B5B; --coral-dk:#E9503F;
-  --sun:#FFD166;   --sand:#F6EFE6; --ink:#1B2433; --muted:#667085; --line:#EAECF0; --soft:#F7F8FA;
+  --navy:#0E1E3A;  --aqua:#19C3C9; --lagoon:#0FA3B1; --coral:#FF6B57; --coral-dk:#E85A48;
+  --sun:#FFD166;   --sand:#F6EFE6; --ink:#0A1428; --muted:#3b4458; --line:#E4DDD4; --soft:#F7F3EE;
   --white:#fff; --r-lg:24px; --r:16px; --r-sm:12px;
   --sh-1:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
   --sh-2:0 6px 20px rgba(16,24,40,.08);
   --sh-3:0 16px 40px rgba(16,24,40,.14);
   --font-display:"Fraunces",Georgia,serif;
-  --font-body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
   --max:1280px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -30,7 +29,8 @@ h3{font-weight:700;font-size:1.05rem;letter-spacing:-.01em}
 .ico.sm{width:16px;height:16px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;padding:13px 22px;font-weight:700;font-size:1rem;transition:transform .15s, background .15s}
 .btn:active{transform:scale(.98)}
-.btn-coral{background:linear-gradient(90deg,var(--coral),#FF8A5B);color:#fff}
+.btn-coral{background:var(--coral);color:var(--ink)}
+.btn-coral:hover{background:#ff7d6c;color:var(--ink)}
 .btn-navy{background:var(--navy);color:#fff}
 .btn-line{background:#fff;color:var(--ink);border:1px solid var(--ink)}
 .link{font-weight:600;text-decoration:underline;text-underline-offset:3px}
@@ -70,7 +70,7 @@ h3{font-weight:700;font-size:1.05rem;letter-spacing:-.01em}
 .seg:hover{background:var(--soft)}
 .seg label{font-size:.75rem;font-weight:700;color:var(--ink)}
 .seg input,.seg select{border:0;background:transparent;font:400 .97rem var(--font-body);color:var(--muted);outline:none;padding:2px 0;width:100%;-webkit-appearance:none;appearance:none}
-.search-go{margin:10px;border:0;border-radius:999px;background:linear-gradient(90deg,var(--coral),#FF8A5B);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px}
+.search-go{margin:10px;border:0;border-radius:999px;background:var(--coral);color:var(--ink);font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px}
 
 /* Categories */
 .cats{display:flex;gap:30px;overflow-x:auto;padding:30px 4px 4px;scrollbar-width:none;border-bottom:1px solid var(--line)}

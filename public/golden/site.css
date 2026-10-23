@@ -1,0 +1,27 @@
+/* Shared Golden Hour chrome for every page except the homepage, which has its own sheet. */
+:root{--navy:#0E1E3A;--ink:#0A1428;--coral:#FF6B57;--salmon:#FFB5A3;--sand:#F6EFE6;--muted:#3b4458}
+body.guest,body.staff{background:var(--sand);color:var(--ink)}
+.demo-banner{background:#0A1428;color:#fff;font-size:13px;line-height:1.4;text-align:center;padding:8px 16px}
+.hdr{background:var(--navy);border-bottom:0;color:#fff}
+.hdr .logo{color:#fff;font-family:Fraunces,Georgia,serif;font-weight:600}
+.hdr .logo i{font-family:Caveat,cursive;font-style:normal;font-weight:600;color:var(--salmon);font-size:1.7rem;margin-left:2px}
+.hdr-nav a,.hotel-link,.hotel-link.show{color:#fff}
+.hdr-nav a:hover,.hotel-link:hover{background:rgba(255,255,255,.1);color:#fff}
+.hdr-nav a.pill{background:#fff;color:var(--navy);font-weight:600;border-radius:99px}
+.hdr-nav a.pill:hover{background:#fff;color:var(--navy)}
+h1,h2,.l-title{font-family:Fraunces,Georgia,serif;font-weight:500}
+.btn-coral{background:var(--coral);color:var(--ink);background-image:none}
+.btn-coral:hover{background:#ff7d6c;color:var(--ink)}
+.login-card,.co-sum,.book-box{background:#fff}
+.app-ftr{background:#0A1428;color:#D5DCE8;border-top:0;margin-top:48px}
+.app-ftr .logo{color:#fff}
+.app-ftr .logo i{font-family:Caveat,cursive;font-style:normal;font-weight:600;color:var(--salmon);font-size:1.6rem}
+.app-ftr a{color:#fff}
+.app-ftr .muted,.app-ftr p{color:#D5DCE8}
+.app-ftr nav{display:flex;flex-wrap:wrap;gap:8px 16px}
+.app-ftr nav a{text-decoration:underline;text-underline-offset:2px}
+:focus-visible{outline:3px solid #C9412F;outline-offset:3px}
+.hdr :focus-visible{outline-color:#fff}
+@media(max-width:800px){
+  body.guest .hdr-nav a:not(.pill){display:none}
+}

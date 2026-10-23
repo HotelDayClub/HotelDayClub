@@ -30,4 +30,25 @@ The licence and photographer for each Pexels photo were read from its public pag
 
 ## Other assets
 - `logo-mark.svg`, `ph-*.svg`, and all UI icons (inline SVG in the pages): original artwork made for this mockup.
-- Fonts: Fraunces and DM Sans (Google Fonts, SIL Open Font License).
+- Fonts: Fraunces, Inter and Caveat (SIL Open Font License), self-hosted in `public/golden/fonts/` from Google Fonts. DM Sans is no longer requested.
+
+## Golden Hour homepage media
+Checked 23 October 2026. These files are generic stock. They are not photographs of the fictional example hotels.
+
+### Unsplash License
+The Unsplash help centre states that images can be used for most commercial and personal projects without permission or credit (credit is appreciated): https://help.unsplash.com/en/articles/2612315-can-i-use-unsplash-images-for-personal-or-commercial-projects. The public photo pages and https://unsplash.com/license answered 401 / a bot check, so photographer names could not be confirmed from those pages. Credit is given by photo URL as a courtesy. Several scenes are overseas resorts. Do not present them as a named Australian hotel. Swap them for Australian hotel photography, with permission, before a real launch.
+
+| File | Photo page |
+|---|---|
+| golden/img/1-sm.jpg (dusk pool, Golden hour) | https://unsplash.com/photos/photo-1571896349842-33c89424de2d |
+| golden/img/3-sm.jpg (spa afternoon) | https://unsplash.com/photos/photo-1544161515-4ab6ce6db874 |
+| golden/img/4-sm.jpg (daybed and long lunch) | https://unsplash.com/photos/photo-1566073771259-6a8506099945 |
+| golden/img/gym-sm.jpg (8 am gym) | https://unsplash.com/photos/photo-1534438327276-14e5300c3a48 |
+| Not used on the page: photo-1540541338287-41700207dee6, photo-1520250497591-112f2f40a3f4 | Unsplash |
+
+WebP copies of the same files sit beside the JPEGs. Example-listing cards use resized WebP copies in `golden/img/cards/`, made from the licensed listing photos above.
+
+### Pexels License
+https://www.pexels.com/license/ was readable: photos and videos are free to use, including commercially; attribution is not required; you may modify them. You may not sell unaltered copies, imply endorsement, or redistribute them on another stock platform.
+
+Hero video `golden/vid/hero.mp4` is Pexels video 10993980, https://www.pexels.com/video/10993980/, trimmed to 9 seconds (1280×720, no audio). `golden/img/hero-poster.jpg` is the first frame. The video page itself was blocked by a bot check, so the videographer's name was not confirmed. Credited as a courtesy. The on-page chip says "Stock media · example only".

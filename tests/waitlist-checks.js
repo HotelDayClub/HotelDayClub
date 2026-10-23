@@ -92,22 +92,27 @@ function cookie(res) {
     assert.strictEqual(home.status, 200);
     assert.ok(home.body.includes('Join the waitlist'));
     assert.ok(home.body.includes('Find a hotel'));
-    assert.ok(home.body.includes('Book a pass'));
-    assert.ok(home.body.includes('Show up and relax'));
+    assert.ok(home.body.includes('Pick a seat and a day'));
+    assert.ok(home.body.includes('Show up, switch off'));
     assert.ok(home.body.includes('Example listings'));
+    assert.ok(home.body.includes('Swim &amp; gym'));
+    assert.ok(home.body.includes('Gym session'));
+    assert.ok(home.body.includes('fetchpriority="high"'));
+    assert.ok(home.body.includes('/golden/vid/hero.mp4'));
+    assert.ok(!home.body.includes('<video'), 'hero video is attached after load, not in the first HTML');
+    assert.ok(home.body.includes('prefers-reduced-motion') && home.body.includes('max-width:800px') && home.body.includes('saveData'));
     for (const photo of ['infinity-ocean.jpg', 'rooftop-city.jpg', 'glass-roof-pool.jpg', 'tropical-resort.jpg', 'daybed-canopy.jpg', 'cabana-drapes.jpg']) {
-      assert.ok(home.body.includes('/assets/photos/' + photo), photo);
+      const webp = photo.replace(/\.jpg$/, '.webp');
+      assert.ok(home.body.includes('/golden/img/cards/' + webp), photo);
       assert.ok(fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'photos', photo)), photo);
-      assert.ok(!home.body.includes('loading="lazy"'), 'example cards should not lazy-load their photos');
+      assert.ok(fs.existsSync(path.join(__dirname, '..', 'public', 'golden', 'img', 'cards', webp)), webp);
     }
-    assert.ok(home.body.includes('Only what that hotel lists'));
-    assert.ok(home.body.includes('A weekday escape'));
-    assert.ok(home.body.includes('A staycation without the stay'));
-    assert.ok(home.body.includes('Working from the pool'));
+    assert.ok(home.body.includes('loading="lazy"'), 'below-the-fold images should be lazy');
+    assert.ok(!/fetchpriority="high"[^>]*loading="lazy"/.test(home.body), 'the hero image should not be lazy');
     assert.ok(home.body.includes('href="/faq"'));
     assert.ok(home.body.includes('For hotels'));
-    assert.ok(home.body.includes('Spare pool and spa capacity'));
-    assert.ok(home.body.includes('href="/how-it-works#partners"'));
+    assert.ok(home.body.includes('Quiet pool on a Tuesday'));
+    assert.ok(home.body.includes('href="/hotel/join"'));
     assert.ok(home.body.includes('Explore by destination'));
     assert.ok(home.body.includes('Popular destinations'));
     assert.ok(/href="\/\?dest=sydney-cbd#explore"[\s\S]*?Sydney CBD[\s\S]*?1 example listing/.test(home.body));
