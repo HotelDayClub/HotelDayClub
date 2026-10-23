@@ -172,9 +172,11 @@ addEventListener('load',function(){
   var play=v.play(); if(play&&play.catch) play.catch(function(){});
 });
 var els=document.querySelectorAll('[data-rv]');
-if(rm||!('IntersectionObserver' in window)){els.forEach(function(e){e.classList.add('in')})}else{
-  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
+function show(el){el.classList.add('in')}
+if(rm||!('IntersectionObserver' in window)){els.forEach(show)}else{
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){show(e.target);io.unobserve(e.target)}})},{threshold:.05,rootMargin:'0px 0px -8% 0px'});
   els.forEach(function(e){io.observe(e)});
+  setTimeout(function(){els.forEach(show)},1200);
 }
 var dlg=document.getElementById('waitlist');
 function openWl(){if(dlg&&typeof dlg.showModal==='function'&&!dlg.open)dlg.showModal();}
@@ -198,7 +200,7 @@ function page(title, body, { nav = 'guest', bare = false, analytics = false, ana
   const bodyClass = home ? 'home' : nav === 'guest' ? 'guest' : 'staff';
   const header = home ? '' : `<header class="hdr"><div class="wrap hdr-in">${LOGO}${nav === 'guest' ? guestNav : '<nav class="hdr-nav"></nav>'}<div class="hdr-right">${right}</div></div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-${tags}<title>${esc(title)} · Hotel Day Club</title><meta name="robots" content="noindex, nofollow"><link rel="icon" href="/assets/logo-mark.svg">${home ? '<script>document.documentElement.classList.add("js")</script>' : ''}${css}</head><body class="${bodyClass}">
+${tags}<title>${esc(title)} · Hotel Day Club</title><meta name="robots" content="noindex, nofollow"><link rel="icon" href="/assets/logo-mark.svg">${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : ''}${css}</head><body class="${bodyClass}">
 <div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>
 ${header}<main>${body}</main>
 ${bare ? '' : siteFooter()}${home ? HOME_SCRIPT : ''}
@@ -320,7 +322,7 @@ ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the li
 <details><summary>Is Hotel Day Club taking bookings?</summary><p>Not yet. Join the waitlist and we'll email you when passes open near you.</p></details>
 <details><summary>What's included?</summary><p>Each hotel sets its own inclusions — pool, gym, spa, towels, seating — and every listing spells out what your pass covers.</p></details>
 <p class="faq-more"><a href="/faq">All questions</a></p></div></section>
-<div class="hotels" id="hotels" data-rv><div><span class="kicker">For hotels</span><h2>Quiet pool on a Tuesday? <em>Fill it.</em></h2><p>List spare pool, gym and spa capacity for local day guests, on your terms. You choose the hours, the prices and how many guests you take.</p></div><a class="btn" href="/hotel/join">Talk to us</a></div>
+<div class="hotels" id="hotels"><div><span class="kicker">For hotels</span><h2>Quiet pool on a Tuesday? <em>Fill it.</em></h2><p>List spare pool, gym and spa capacity for local day guests, on your terms. You choose the hours, the prices and how many guests you take.</p></div><a class="btn" href="/hotel/join">Talk to us</a></div>
 <noscript><style>#waitlist{display:block;position:static;margin:24px auto 40px}</style></noscript>
 <dialog id="waitlist" aria-labelledby="wl-title" data-open="${openWait ? '1' : '0'}"><div class="wl-in">
 <button type="button" class="wl-x" data-close>Close</button>
