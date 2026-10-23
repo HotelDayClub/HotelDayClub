@@ -91,6 +91,14 @@ function cookie(res) {
     const home = await get(port, '/');
     assert.strictEqual(home.status, 200);
     assert.ok(home.body.includes('Join the waitlist'));
+    const homeCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'golden', 'home.css'), 'utf8');
+    assert.ok(homeCss.includes('.wl input:not([type="radio"]):not([type="checkbox"])'), 'text fields must not size radios');
+    assert.ok(homeCss.includes('.wl-choice:has(input:checked)'), 'selected role needs a visible state');
+    assert.ok(!/\.wl input,\.wl select\{/.test(homeCss), 'broad .wl input rule would stretch radios');
+    const appCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.css'), 'utf8');
+    assert.ok(appCss.includes('.wl input:not([type="radio"]):not([type="checkbox"])'));
+    assert.ok(appCss.includes('.hours-row input[type=checkbox]{accent-color:var(--navy);width:18px;height:18px}'));
+    assert.ok(appCss.includes('.pp input{accent-color:var(--navy)}'));
     assert.ok(home.body.includes('Find a hotel'));
     assert.ok(home.body.includes('Pick a seat and a day'));
     assert.ok(home.body.includes('Show up, switch off'));

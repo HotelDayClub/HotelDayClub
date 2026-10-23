@@ -448,11 +448,11 @@ form.check-code input,form.check-code .btn{width:100%}
 .wl{position:relative}
 .wl .fl{display:block;font-weight:700;color:#0B2545;margin-top:12px}
 .wl .opt{font-weight:600;color:#3E4C59}
-.wl input,.wl select{display:block;width:100%;margin-top:6px;min-height:48px;border:1px solid #667085;border-radius:12px;padding:10px 12px;font:400 1rem Inter,system-ui,sans-serif;background:#fff;color:#1B2433}
+.wl input:not([type="radio"]):not([type="checkbox"]),.wl select{display:block;width:100%;margin-top:6px;min-height:48px;border:1px solid #667085;border-radius:12px;padding:10px 12px;font:400 1rem Inter,system-ui,sans-serif;background:#fff;color:#1B2433}
 .wl-roles{border:0;margin:14px 0 4px;padding:0}
 .wl-roles legend{font-weight:700;color:#0B2545;margin-bottom:6px}
 .wl-choice{display:flex;align-items:center;gap:10px;min-height:44px;font-weight:600;color:#0B2545}
-.wl-choice input{width:20px;height:20px;accent-color:#0B2545}
+.wl-choice input{width:20px;height:20px;min-height:0;padding:0;accent-color:#0B2545}
 .wl .btn{margin-top:16px}
 @media(max-width:719px){.wl .btn{width:100%}}
 .wl-note{margin-top:12px;color:#3E4C59;font-size:.92rem}
