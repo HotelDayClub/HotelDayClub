@@ -7,7 +7,7 @@ img{max-width:100%;display:block}button,input,select{font:inherit}a{color:inheri
 .logo i{font-family:Caveat,cursive;font-style:normal;font-weight:600;color:var(--salmon);font-size:32px;margin-left:2px}
 .top .links{display:flex;gap:28px;align-items:center;font-size:15px}
 .top .links a{text-decoration:none;color:#fff}
-.pill{background:#fff;color:var(--navy);padding:10px 18px;border-radius:99px;font-weight:600;text-decoration:none}
+.top .links a.pill{background:#fff;color:#0E1E3A;padding:10px 18px;border-radius:99px;font-weight:600}
 .hero{position:relative;min-height:100vh;display:grid;grid-template-columns:1.1fr .9fr;color:#fff;overflow:hidden;background:var(--navy)}
 .hero .ph{position:relative;min-height:100%}
 .media{position:absolute;inset:0;overflow:hidden}
@@ -87,7 +87,7 @@ h2 em{color:#C9412F;font-style:italic}
 .faq-list p{margin:10px 0 0;line-height:1.55;color:#3b4458}
 .faq-more{margin-top:8px}
 .faq-more a{font-weight:600;text-decoration:underline;text-underline-offset:3px}
-.hotels{background:var(--ink);color:#fff;border-radius:32px;margin:0 5vw 80px;padding:80px 6vw;display:flex;justify-content:space-between;align-items:center;gap:40px}
+.hotels{background:#0A1428;color:#fff;opacity:1;border-radius:32px;margin:0 5vw 80px;padding:80px 6vw;display:flex;justify-content:space-between;align-items:center;gap:40px}
 .hotels h2{color:#fff;font-size:clamp(34px,4vw,56px)}
 .hotels h2 em{color:var(--salmon)}
 .hotels p{color:#D5DCE8;max-width:460px;margin:16px 0 0;line-height:1.5}
@@ -119,8 +119,9 @@ h2 em{color:#C9412F;font-style:italic}
 .wl-ok{background:var(--sand);padding:16px;border-radius:16px;margin:12px 0}
 .wl-ok h3{font-family:Fraunces,Georgia,serif;margin:0 0 6px}
 .wl-ok p{margin:0;color:#3b4458}
-.js [data-rv]{opacity:0;transform:translateY(28px);transition:opacity .9s ease,transform .9s ease}
-.js [data-rv].in{opacity:1;transform:none}
+html.rv [data-rv]{opacity:0;transform:translateY(28px);transition:opacity .9s ease,transform .9s ease;animation:force-in .01s 1.6s forwards}
+html.rv [data-rv].in{opacity:1;transform:none;animation:none}
+@keyframes force-in{to{opacity:1;transform:none}}
 :focus-visible{outline:3px solid var(--coral-ink);outline-offset:3px}
 .hero :focus-visible,.top :focus-visible{outline-color:#fff}
 @media(max-width:800px){
@@ -146,7 +147,7 @@ h2 em{color:#C9412F;font-style:italic}
 @media(max-width:420px){.dests{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){
   .zoom.on,.marquee .track{animation:none}
-  .js [data-rv]{opacity:1;transform:none;transition:none}
+  html.rv [data-rv]{opacity:1;transform:none;transition:none;animation:none}
   .layer,.tint,.times button,.slot,.ex{transition:none}
   video{display:none}
 }
