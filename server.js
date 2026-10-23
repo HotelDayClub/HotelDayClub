@@ -6,6 +6,12 @@ const fs = require('fs');
 const path = require('path');
 const db = require('./db');
 const { seed, ensureAddons, ensureSchedules, seedPerformance } = require('./seed');
+const {
+  seatPhoto, SEAT_PHOTO, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
+  includedHtml, addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml,
+} = require('./inclusions');
+const { ensureArrival, saveArrival, arrivalHtml, arrivalForm } = require('./arrival');
+const { listingHtml } = require('./listingView');
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
 const { adminPassword, demoHotelPassword } = require('./passwords');
 const { ymd, addDays, esc, money, nice } = require('./util');
@@ -13,7 +19,7 @@ const { DESTINATIONS, destIcon } = require('./destinations');
 const { parseSignup, saveSignup, notifyWebhook, rateLimited, waitlistCsv } = require('./waitlist');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
-  hoursFor, hoursView, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST,
+  hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST,
   fmtTime, cancelNote, riskCard, riskText, riskTick, swimNote, hotelLatePossible, lateWindow,
 } = require('./offering');
 const app = express();
@@ -45,7 +51,7 @@ function availability(hid, date) {
   const rows = getPasses(hid).map(p => {
     const s = sold(p.id, date);
     return {
-      id: p.id, code: p.code, name: p.name, kind: p.kind || '', holds: p.holds || 1,
+      id: p.id, code: p.code, name: p.name, kind: p.kind || '', holds: p.holds || 1, featured: p.featured ? 1 : 0,
       description: p.description || '', photo: p.photo || '', price: p.price, cap: p.daily_cap, sold: s,
       remaining: why || past ? 0 : Math.max(0, p.daily_cap - s), blocked: why, past,
     };
@@ -197,16 +203,17 @@ function page(title, body, { nav = 'guest', bare = false, analytics = false, ana
     : nav === 'admin' ? '<a class="hotel-link show" href="/admin/logout">Log out</a>' : '';
   const guestNav = `<nav class="hdr-nav"><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a><a class="pill" href="${home ? '#waitlist' : '/#waitlist'}">Join the waitlist</a></nav>`;
   const tags = analytics && nav === 'guest' ? gaSnippet(analyticsPath) : '';
+  const pickerCss = '<link rel="stylesheet" href="/pickers.css">';
   const css = home
-    ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-poster.webp" type="image/webp" fetchpriority="high"><link rel="stylesheet" href="/golden/home.css">`
-    : `${FONT_LINKS}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css">`;
+    ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-poster.webp" type="image/webp" fetchpriority="high">${pickerCss}<link rel="stylesheet" href="/golden/home.css">`
+    : `${FONT_LINKS}${pickerCss}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css">`;
   const bodyClass = home ? 'home' : nav === 'guest' ? 'guest' : 'staff';
   const header = home ? '' : `<header class="hdr"><div class="wrap hdr-in">${LOGO}${nav === 'guest' ? guestNav : '<nav class="hdr-nav"></nav>'}<div class="hdr-right">${right}</div></div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-${tags}<title>${esc(title)} · Hotel Day Club</title><meta name="robots" content="noindex, nofollow"><link rel="icon" href="/assets/logo-mark.svg">${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : ''}${css}</head><body class="${bodyClass}">
+${tags}<title>${esc(title)} · Hotel Day Club</title><meta name="robots" content="noindex, nofollow"><link rel="icon" href="/assets/logo-mark.svg">${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 <div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>
 ${header}<main>${body}</main>
-${bare ? '' : siteFooter()}${home ? HOME_SCRIPT : ''}
+${bare ? '' : siteFooter()}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}
 </body></html>`;
 }
 const card = (h, date) => {
@@ -229,8 +236,32 @@ const seatList = passes => `<div class="seat-list">${passes.map(p => `<div class
 function exampleCount(n) {
   return `${n} example listing${n === 1 ? '' : 's'}`;
 }
-function homePage({ where = '', date = '', kind = '', dest = '', destination = '', joined = false, error = '', values = {} } = {}) {
+const WANTS = [
+  { id: '', name: 'Any', icon: 'any' },
+  { id: 'pool', name: 'Pool', icon: 'pool' },
+  { id: 'gym', name: 'Gym', icon: 'gym' },
+  { id: 'spa', name: 'Spa', icon: 'spa' },
+  { id: 'pool-spa', name: 'Pool + Spa', icon: 'both' },
+];
+function hotelOffers(hotel, want) {
+  if (!want) return true;
+  const items = loadInclusions(db, hotel.id);
+  const on = code => {
+    const mode = (items.find(i => i.code === code) || {}).mode;
+    return mode && mode !== 'off';
+  };
+  const pool = on('pool');
+  const gym = on('gym');
+  const spa = on('spa') || on('sauna');
+  if (want === 'pool') return pool;
+  if (want === 'gym') return gym;
+  if (want === 'spa') return spa;
+  if (want === 'pool-spa') return pool && spa;
+  return true;
+}
+function homePage({ where = '', date = '', want = '', dest = '', destination = '', joined = false, error = '', values = {} } = {}) {
   if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) date = '';
+  if (!WANTS.some(w => w.id === want)) want = '';
   const hotels = getHotels();
   const areas = [...new Set(hotels.map(h => h.area))];
   const destObj = DESTINATIONS.find(d => d.id === dest) || null;
@@ -239,14 +270,10 @@ function homePage({ where = '', date = '', kind = '', dest = '', destination = '
     : destination;
   let list = hotels.filter(h => !where || h.area === where);
   if (destObj) list = list.filter(h => destObj.areas.includes(h.area));
-  if (kind) list = list.filter(h => {
-    const spots = getPasses(h.id);
-    if (!spots.some(p => p.kind === kind)) return false;
-    if (!date) return true;
-    return availability(h.id, date).some(p => p.kind === kind && p.remaining > 0);
-  });
-  const filtered = Boolean(where || date || kind || destObj);
-  const kinds = KINDS.filter(k => k.code !== 'custom');
+  if (want) list = list.filter(h => hotelOffers(h, want));
+  if (date) list = list.filter(h => !closureReason(db, h, date));
+  const filtered = Boolean(where || date || want || destObj);
+  const wantLabel = (WANTS.find(w => w.id === want) || {}).name || '';
   const counts = DESTINATIONS.map(d => ({ ...d, count: hotels.filter(h => d.areas.includes(h.area)).length }));
   const destCards = counts.map(d => {
     const href = d.count
@@ -266,12 +293,12 @@ function homePage({ where = '', date = '', kind = '', dest = '', destination = '
   let exploreTitle = 'Example listings';
   if (destObj && !list.length) exploreTitle = `No example listings in ${esc(destObj.name)} yet`;
   else if (destObj) exploreTitle = `${exampleCount(list.length)} · ${esc(destObj.name)}`;
-  else if (where || date || kind) exploreTitle = `${list.length} place${list.length === 1 ? '' : 's'} ${where ? 'in ' + esc(where) : 'around Australia'}${date ? ' on ' + esc(nice(date)) : ''}`;
+  else if (where || date || want) exploreTitle = `${list.length} place${list.length === 1 ? '' : 's'} ${where ? 'in ' + esc(where) : 'around Australia'}${wantLabel && wantLabel !== 'Any' ? ' · ' + esc(wantLabel) : ''}${date ? ' on ' + esc(nice(date)) : ''}`;
   const emptyCopy = destObj
     ? `There are no example listings in ${esc(destObj.name)} yet. <a class="link" href="/?destination=${encodeURIComponent(destObj.id)}#waitlist">Join the waitlist</a>`
-    : 'Nothing matches. Try another date or seating.';
+    : 'Nothing matches. Try another date, or pool, gym or spa.';
   const form = values || {};
-  const destOptions = DESTINATIONS.map(d => `<option value="${esc(d.id)}"${pickedDest === d.id ? ' selected' : ''}>${esc(d.name)}</option>`).join('');
+  const destOptions = DESTINATIONS.map(d => `<option value="${esc(d.id)}" data-icon="${esc(d.icon)}"${pickedDest === d.id ? ' selected' : ''}>${esc(d.name)}</option>`).join('');
   const lead = joined ? `<script>if(typeof gtag==='function')gtag('event','generate_lead');</script>` : '';
   const openWait = Boolean(joined || error || pickedDest);
   const exampleCards = list.map(h => {
@@ -298,9 +325,9 @@ function homePage({ where = '', date = '', kind = '', dest = '', destination = '
 <p class="lead">A hotel pool, gym, daybed or spa for the day — minutes from home, no room needed.</p>
 <div class="times"><button type="button" data-i="0" aria-pressed="false">Swim &amp; gym</button><button type="button" data-i="1" class="on" aria-pressed="true">Long lunch</button><button type="button" data-i="2" aria-pressed="false">Spa afternoon</button><button type="button" data-i="3" aria-pressed="false">Golden hour</button></div>
 <form class="search" action="/#explore" method="get">
-<div class="seg"><label for="w">Where</label><select id="w" name="where"><option value="">All of Australia</option>${areas.map(a => `<option value="${esc(a)}"${a === where ? ' selected' : ''}>${esc(a)}</option>`).join('')}</select></div>
-<div class="seg"><label for="d">When</label><input id="d" type="date" name="date" min="${today()}" value="${esc(date)}"></div>
-<div class="seg"><label for="p">Seat</label><select id="p" name="kind"><option value="">Any seat</option>${kinds.map(k => `<option value="${k.code}"${kind === k.code ? ' selected' : ''}>${esc(k.name)}</option>`).join('')}</select></div>
+<div class="seg"><label for="w">Where</label><select id="w" class="hdc-pick" name="where"><option value="" data-icon="pin">All of Australia</option>${areas.map(a => `<option value="${esc(a)}" data-icon="pin"${a === where ? ' selected' : ''}>${esc(a)}</option>`).join('')}</select></div>
+<div class="seg"><label for="d">When</label><input id="d" class="hdc-date" type="date" name="date" min="${today()}" max="${ymd(addDays(new Date(), 90))}" value="${esc(date)}"></div>
+<div class="seg"><label for="p">What</label><select id="p" class="hdc-pick" name="want">${WANTS.map(w => `<option value="${w.id}" data-icon="${w.icon}"${want === w.id ? ' selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
 <button type="submit">Search</button></form></div></header>
 <div class="marquee" aria-label="Pool day, gym session, spa afternoon, daybed for two, cabana with friends, golden-hour swim"><div class="track" aria-hidden="true"><span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺<span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺</div></div>
 <section data-rv><span class="kicker sand">Plan your day by the hour</span><h2>One day. <em>Four</em> ways to spend it.</h2>
@@ -311,8 +338,8 @@ ${slot('3-sm', 'Spa treatment table', '3 pm', 'Spa afternoon', 'Steam, sauna, a 
 ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
 </div></section>
 <section class="steps" data-rv><div><span class="kicker">How it works</span><h2>Book the pool, <em>not</em> the room.</h2></div>
-<ol><li><span>01</span><div><b>Find a hotel</b><p>Pools, gyms and spas — each listing shows hours, seating and exactly what's included.</p></div></li>
-<li><span>02</span><div><b>Pick a seat and a day</b><p>See the price and spots left before you confirm.</p></div></li>
+<ol><li><span>01</span><div><b>Find a hotel</b><p>Pools, gyms and spas — each listing shows hours, the pass and exactly what's included.</p></div></li>
+<li><span>02</span><div><b>Pick a pass and a day</b><p>See the price before you confirm.</p></div></li>
 <li><span>03</span><div><b>Show up, switch off</b><p>Check in at the desk and the day is yours.</p></div></li></ol></section>
 <section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings · not real hotels</span><h2>${exploreTitle === 'Example listings' ? "A taste of what's <em>coming.</em>" : exploreTitle}</h2></div>${filtered ? '<a class="clear" href="/#explore">Clear filters</a>' : ''}</div>
 <p class="home-note">Shown while the site is in demo mode. These hotels are fictional. No real bookings are taken.</p>
@@ -323,7 +350,7 @@ ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the li
 <section class="faq" data-rv><div><span class="kicker sand">Good to know</span><h2>Questions, <em>answered.</em></h2></div>
 <div class="faq-list"><details open><summary>Do I need to stay at the hotel?</summary><p>No. A day pass gives you the pool, gym or spa for set hours — no room booking needed.</p></details>
 <details><summary>Is Hotel Day Club taking bookings?</summary><p>Not yet. Join the waitlist and we'll email you when passes open near you.</p></details>
-<details><summary>What's included?</summary><p>Each hotel sets its own inclusions — pool, gym, spa, towels, seating — and every listing spells out what your pass covers.</p></details>
+<details><summary>What's included?</summary><p>Each hotel sets its own inclusions — pool, gym, spa and towels — and every listing spells out what your pass covers.</p></details>
 <p class="faq-more"><a href="/faq">All questions</a></p></div></section>
 <div class="hotels" id="hotels"><div><span class="kicker">For hotels</span><h2>Quiet pool on a Tuesday? <em>Fill it.</em></h2><p>List spare pool, gym and spa capacity for local day guests, on your terms. You choose the hours, the prices and how many guests you take.</p></div><a class="btn" href="/for-hotels">Talk to us</a></div>
 <noscript><style>#waitlist{display:block;position:static;margin:24px auto 40px}</style></noscript>
@@ -338,7 +365,7 @@ ${joined ? `<div class="wl-ok" role="status"><h3>You're on the list</h3><p>Thank
 <label class="fl">Email<input name="email" type="email" required autocomplete="email" maxlength="254" value="${esc(form.email || '')}"></label>
 <label class="fl">First name <span class="opt">(optional)</span><input name="first_name" autocomplete="given-name" maxlength="60" value="${esc(form.first_name || '')}"></label>
 <label class="fl">Suburb or postcode <span class="opt">(optional)</span><input name="place" maxlength="80" value="${esc(form.place || '')}"></label>
-<label class="fl">Destination <span class="opt">(optional)</span><select name="destination"><option value="">No particular place</option>${destOptions}</select></label>
+<label class="fl">Destination <span class="opt">(optional)</span><select id="wl-dest" class="hdc-pick" name="destination"><option value="" data-icon="pin">No particular place</option>${destOptions}</select></label>
 <fieldset class="wl-roles"><legend>Joining as</legend>
 <label class="wl-choice"><input type="radio" name="role" value="guest"${form.role === 'guest' ? ' checked' : ''} required> I'm a guest</label>
 <label class="wl-choice"><input type="radio" name="role" value="hotel"${form.role === 'hotel' ? ' checked' : ''}> I'm a hotel</label>
@@ -349,11 +376,11 @@ ${joined ? `<div class="wl-ok" role="status"><h3>You're on the list</h3><p>Thank
 </form></div></dialog>`, { analytics: true, home: true });
 }
 app.get('/', (req, res) => {
-  const { where = '', date = '', kind = '', dest = '', destination = '' } = req.query;
+  const { where = '', date = '', want = '', dest = '', destination = '' } = req.query;
   res.send(homePage({
     where: String(where),
     date: String(date),
-    kind: String(kind),
+    want: String(want),
     dest: String(dest),
     destination: String(destination),
     joined: req.query.waitlist === '1',
@@ -387,61 +414,28 @@ app.post('/waitlist', async (req, res) => {
 app.get('/h/:slug', (req, res) => {
   const h = publicHotel(req.params.slug); if (!h) return res.status(404).send(page('Not found', '<div class="wrap sec"><h2>Listing not found</h2></div>', { analytics: true }));
   recordListingView(db, h.id, today(), req);
-  const date = req.query.date && req.query.date >= today() ? req.query.date : today();
+  const maxDate = ymd(addDays(new Date(), 90));
+  let date = req.query.date && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date) && req.query.date >= today() && req.query.date <= maxDate ? req.query.date : today();
   const passes = getPasses(h.id);
+  const av = availability(h.id, date);
   const from = passes.length ? Math.min(...passes.map(p => p.price)) : 0;
-  const blocked = db.prepare('SELECT date FROM blocked_dates WHERE hotel_id=? AND date>=? ORDER BY date').all(h.id, today()).map(b => b.date);
-  res.send(page(h.name, `<div class="wrap listing">
-<div class="l-hd"><p class="eyebrow-s">Fictional demo listing</p><h1 class="l-title">${esc(h.name)}</h1>
-<div class="muted l-meta">New · ${esc(h.area)} · ${esc(hoursView(db, h, date).hoursLine)}</div></div>
-<div class="gallery">${h.photos.map((p, i) => `<img class="g${i}" src="/assets/photos/${p}" alt="">`).join('')}<span class="photo-credit">Stock photos · not this hotel</span></div>
-<div class="l-body"><div class="l-main">
-<h2>${esc(h.tagline)}</h2><p class="lead">${esc(h.blurb)}</p>
-<h3 class="mt">What's included</h3><ul class="amen">${h.amenities.map(a => `<li>${ICON.check} ${esc(a)}</li>`).join('')}</ul>
-<h3 class="mt">Seating</h3>${seatList(passes)}
-${rulesCard(h, hoursView(db, h, date))}
-</div>
-<aside class="book-box" id="book"><form action="/checkout" method="get" id="bf">
-<input type="hidden" name="hotel" value="${h.slug}">
-<div class="bb-price">From <b>${money(from)}</b> <span class="muted">per spot</span></div>
-<label class="fl">Date<input type="date" name="date" id="date" min="${today()}" max="${ymd(addDays(new Date(), 90))}" value="${date}" required></label>
-<div id="status" class="status"></div>
-<div class="pass-pick" id="passes"></div>
-<label class="fl">How many<select name="qty" id="qty">${[1, 2, 3, 4, 5, 6].map(n => `<option>${n}</option>`).join('')}</select></label>
-<details id="addon-block" class="addon-fold" hidden><summary><span>Add-ons</span><span class="muted" id="addon-sum">Optional</span></summary><div class="addon-pick" id="addons-pick"></div></details>
-<div class="bb-total" id="total"></div>
-<p class="cancel-note" id="cancel-note"></p>
-<button class="btn btn-coral full" id="go" type="submit">Reserve</button>
-<p class="muted small center">You won't be charged. Demo payment only.</p>
-${blocked.length ? `<p class="muted small">Closed: ${blocked.map(nice).join(', ')}</p>` : ''}
-</form></aside></div></div>
-<script>
-const $=s=>document.querySelector(s);let av=[],addons=[],dayLeft=null;
-function fmt(n){return '$'+n.toLocaleString('en-AU')}
-function h(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function label(p){return p.holds>1?p.name+' for '+p.holds:p.name}
-function need(a,q,holds){return a.per==='booking'?1:q*(holds||1)}
-function render(){const q=+$('#qty').value;const prevPass=document.querySelector('input[name=pass]:checked');
- $('#passes').innerHTML=av.map(p=>{const dis=p.remaining<q;const on=prevPass&&prevPass.value===p.code&&!dis;return '<label class="pp'+(dis?' dis':'')+'"><input type="radio" name="pass" value="'+p.code+'" '+(dis?'disabled':'')+(on?' checked':'')+'><span><b>'+h(label(p))+'</b><small>'+(p.remaining===0?'Sold out':p.remaining+' left')+'</small></span><b>'+fmt(p.price)+'</b></label>'}).join('');
- if(!document.querySelector('input[name=pass]:checked')){const f=document.querySelector('input[name=pass]:not([disabled])');if(f)f.checked=true}
- const c=document.querySelector('input[name=pass]:checked');const p=c&&av.find(x=>x.code===c.value);const holds=p?p.holds||1:1;
- const fold=$('#addon-block');const wasOpen=fold.open;
- const prev=[...document.querySelectorAll('#addons-pick input:checked')].map(i=>i.value);
- fold.hidden=!addons.length;
- $('#addons-pick').innerHTML=addons.map(a=>{const dis=a.remaining<need(a,q,holds);const on=!dis&&prev.indexOf(a.code)>=0;return '<label class="tog'+(dis?' dis':'')+'"><span><b>'+h(a.name)+'</b><small>'+(dis?'Sold out':fmt(a.price)+(a.per==='booking'?' per booking':' per person'))+'</small></span><input type="checkbox" name="addon" value="'+a.code+'" '+(dis?'disabled':'')+(on?' checked':'')+'></label>'}).join('');
- const picked=document.querySelectorAll('#addons-pick input:checked').length;
- fold.open=wasOpen||picked>0;const sum=$('#addon-sum');if(sum)sum.textContent=picked?picked+' selected':'Optional';
- let extra=0;document.querySelectorAll('#addons-pick input:checked').forEach(i=>{const a=addons.find(x=>x.code===i.value);if(a)extra+=a.price*need(a,q,holds)});
- const people=p?q*holds:q;
- $('#total').innerHTML=p?'<span>'+fmt(p.price)+' × '+q+(people>q?' · '+people+' people':'')+(extra?' + add-ons':'')+'</span><b>'+fmt(p.price*q+extra)+'</b>':'';
- $('#go').disabled=!p;$('#go').textContent=p?'Reserve':'Not available';
- const b=av[0]&&av[0].blocked;const raw=av.reduce((s,x)=>s+x.remaining,0);const total=dayLeft==null?raw:Math.min(raw,dayLeft);
- const st=$('#status');st.className='status'+(b||total===0?' out':'');
- st.textContent=b?b:total===0?'Sold out this day':total+' spots left';
- document.querySelectorAll('#passes input, #addons-pick input').forEach(r=>r.onchange=render)}
-async function load(){const r=await fetch('/api/availability?hotel=${h.slug}&date='+$('#date').value);const data=await r.json();av=data.passes;addons=data.addons||[];dayLeft=data.day_left==null?null:data.day_left;const note=document.getElementById('cancel-note');if(note)note.textContent=data.cancel||'';render()}
-$('#date').onchange=load;$('#qty').onchange=render;load();setInterval(load,15000);
-</script>`, { analytics: true }));
+  const items = loadInclusions(db, h.id);
+  const closed = [];
+  for (let i = 0; i < 90; i++) {
+    const d = ymd(addDays(new Date(), i));
+    if (closureReason(db, h, d)) closed.push(d);
+  }
+  res.send(page(h.name, listingHtml({
+    h, date, minDate: today(), maxDate, closed: closed.join(','), passes, av, from,
+    hoursLine: hoursView(db, h, date).hoursLine,
+    cancel: cancelNote(db, h, date),
+    beats: beatsHtml(items),
+    included: includedHtml(items),
+    addonList: addonsHtml(items),
+    hours: hoursHtml(hoursLines(db, h)),
+    policy: policyHtml(h),
+    arrival: arrivalHtml(h),
+  }), { analytics: true }));
 });
 
 app.get('/api/availability', (req, res) => {
@@ -455,7 +449,7 @@ function validate(q) {
   const h = publicHotel(q.hotel); if (!h) return { err: 'Hotel not found.' };
   const date = String(q.date || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { err: 'Pick a date.', h };
   const qty = Math.max(1, Math.min(6, parseInt(q.qty, 10) || 1));
-  const p = getPasses(h.id).find(x => x.code === q.pass); if (!p) return { err: 'Pick a seating type.', h };
+  const p = getPasses(h.id).find(x => x.code === q.pass); if (!p) return { err: 'Pick a pass.', h };
   const a = availability(h.id, date).find(x => x.id === p.id);
   if (a.past) return { err: 'That date has passed.', h };
   if (a.blocked) {
@@ -472,17 +466,17 @@ const errPage = (v, res) => res.status(409).send(page('Not available', `<div cla
 
 app.get('/checkout', (req, res) => {
   const v = validate(req.query); if (v.err) return errPage(v, res);
-  const { h, p, date, qty, people, a } = v;
+  const { h, p, date, qty, people } = v;
   const grand = p.price * qty + v.addonTotal;
   const cancel = cancelNote(db, h, date);
   const picked = new Set(v.addons.map(x => x.code));
   const offer = addonAvailability(h.id, date);
-  const addonFields = offer.length ? `<details class="addon-fold"${picked.size ? ' open' : ''}><summary><span>Add-ons</span><span class="muted">${picked.size ? picked.size + ' selected' : 'Optional'}</span></summary><div class="addon-pick" id="co-addons">${offer.map(ad => {
+  const addonFields = offer.length ? `<section class="make-day" id="addon-block"><h3>Make it a day</h3><p class="muted small">Optional. Add a food and drink credit, the spa, parking or the gym when this hotel offers them. The total updates before you confirm.</p><div class="addon-pick" id="co-addons">${offer.map(ad => {
     const need = ad.per === 'booking' ? 1 : people;
     const dis = ad.remaining < need;
     const on = !dis && picked.has(ad.code);
     return `<label class="tog${dis ? ' dis' : ''}"><span><b>${esc(ad.name)}</b><small>${dis ? 'Sold out' : `${money(ad.price)} ${ad.per === 'booking' ? 'per booking' : 'per person'}`}</small></span><input type="checkbox" name="addon" value="${esc(ad.code)}" data-price="${ad.price}" data-per="${esc(ad.per)}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}></label>`;
-  }).join('')}</div></details>` : '';
+  }).join('')}</div></section>` : '';
   res.send(page('Checkout', `<div class="wrap sec checkout">
 <a class="link small" href="/h/${h.slug}?date=${date}">← Back to listing</a><h1 class="l-title">Confirm and pay</h1>
 <div class="co-grid"><form class="co-form" method="post" action="/book">
@@ -507,7 +501,7 @@ ${riskCard(h)}
 <p class="privacy-note">We use your name, email and mobile to hold this booking and show it to the hotel. Some providers store data overseas. <a href="/privacy">Privacy policy</a></p>
 <button class="btn btn-coral full" id="co-btn" type="submit">Confirm booking · ${money(grand)} (demo)</button></form>
 <aside class="co-sum"><img src="/assets/photos/${h.photos[0]}" alt=""><div class="pad"><h3>${esc(h.name)}</h3><p class="muted small">${esc(h.area)}</p>
-<dl><dt>Date</dt><dd>${esc(nice(date))}</dd><dt>Seating</dt><dd>${esc(spotLabel(p))} × ${qty}</dd><dt>People</dt><dd>${people}</dd><dt>Spots left</dt><dd>${a.remaining}</dd></dl>
+<dl><dt>Date</dt><dd>${esc(nice(date))}</dd><dt>Pass</dt><dd>${esc(spotLabel(p))} × ${qty}</dd><dt>Guests</dt><dd>${people}</dd></dl>
 <p class="cancel-note">${esc(cancel)}</p>
 <ul class="addon-lines" id="addon-lines">${v.addons.map(ad => `<li><span>${esc(ad.name)} × ${ad.qty}</span><b>${money(ad.line)}</b></li>`).join('')}</ul>
 <div class="bb-total"><span>Total</span><b id="co-total">${money(grand)}</b></div><p class="muted small">Prices include GST. Demo only.</p></div></aside></div></div>
@@ -566,7 +560,7 @@ app.get('/booking/:code', async (req, res) => {
 <p class="center muted">We've sent the details to ${esc(b.email)} (demo: no email is actually sent).</p>
 <div class="ticket"><div class="t-top"><img src="/assets/photos/${JSON.parse(b.photos)[0]}" alt=""><div><h3>${esc(b.hotel)}</h3><p class="muted small">${esc(b.area)}, Australia</p></div></div>
 <div class="t-mid"><img class="qr" src="${qr}" alt="QR code for ${b.code}"><div class="code">${b.code}</div><p class="muted small">Show this at reception</p></div>
-<dl><dt>Guest</dt><dd>${esc(b.guest_name)}</dd><dt>Date</dt><dd>${esc(nice(b.date))}${when ? ` · ${esc(when)}` : ''}</dd><dt>Seating</dt><dd>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</dd><dt>People</dt><dd>${party}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Cancellation</dt><dd>${esc(note)}</dd><dt>Rules</dt><dd>${b.rules_ack_at ? 'Accepted' : '—'}</dd><dt>Terms</dt><dd>${b.terms_ack_at ? 'Accepted' : '—'}</dd><dt>Risk warning</dt><dd>${b.risk_ack_at ? 'Accepted' : '—'}</dd><dt>Status</dt><dd>${b.checked_in_at ? 'Checked in ' + esc(b.checked_in_at) : 'Confirmed'}</dd></dl>
+<dl><dt>Guest</dt><dd>${esc(b.guest_name)}</dd><dt>Date</dt><dd>${esc(nice(b.date))}${when ? ` · ${esc(when)}` : ''}</dd><dt>Pass</dt><dd>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</dd><dt>Guests</dt><dd>${party}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Cancellation</dt><dd>${esc(note)}</dd><dt>Rules</dt><dd>${b.rules_ack_at ? 'Accepted' : '—'}</dd><dt>Terms</dt><dd>${b.terms_ack_at ? 'Accepted' : '—'}</dd><dt>Risk warning</dt><dd>${b.risk_ack_at ? 'Accepted' : '—'}</dd><dt>Status</dt><dd>${b.checked_in_at ? 'Checked in ' + esc(b.checked_in_at) : 'Confirmed'}</dd></dl>
 <p class="swim-note">${esc(swimNote(hotel))}</p>
 ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}</div>
 <div class="center" style="margin-top:20px"><a class="btn btn-line" href="/">Book another day</a></div></div>`, { analytics: true, analyticsPath: '/booking' }));
@@ -720,8 +714,10 @@ app.get('/hotel/settings', hotelAuth, (req, res) => {
   const locked = new Set(db.prepare('SELECT DISTINCT pass_type_id id FROM bookings WHERE hotel_id=?').all(row.id).map(r => r.id));
   res.send(dashShell(req.hotel, `${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <p class="eyebrow-s">Settings</p><h1 class="l-title">Your offering</h1>
-<p class="muted">Seating, hours and pool rules. Guests see this on the listing.</p>
-${offeringForm({ action: '/hotel/settings', hotel: row, spots: getPasses(row.id), hours: hoursFor(db, row.id), lockedIds: locked, error: req.query.e || '' })}`, { here: '/hotel/settings' }));
+<p class="muted">Passes, hours, what's included, getting there and pool rules. Guests see this on the listing.</p>
+${offeringForm({ action: '/hotel/settings', hotel: row, spots: getPasses(row.id), hours: hoursFor(db, row.id), lockedIds: locked, error: req.query.e || '' })}
+${inclusionsForm(loadInclusions(db, row.id))}
+${arrivalForm(row)}`, { here: '/hotel/settings' }));
 });
 app.post('/hotel/settings', hotelAuth, (req, res) => {
   const result = db.transaction(() => saveOffering(db, req.hotel.id, req.body))();
@@ -767,7 +763,7 @@ ${found ? `<p class="muted small">${found.length} result${found.length === 1 ? '
 <section id="avail" class="panel"><h2 class="ph2">Next 14 days</h2><div class="tbl-wrap"><table class="tbl avail"><thead><tr><th>Seating</th>${days.map(d => `<th>${nice(d).replace(' ', '<br>')}</th>`).join('')}</tr></thead><tbody>
 ${passes.map(p => `<tr><td><b>${esc(spotLabel(p))}</b><div class="muted small">cap ${p.daily_cap}</div></td>${days.map(d => { const a = grid[d].find(x => x.id === p.id); if (a.blocked) return `<td class="bl">${/same-day|closed for today/i.test(a.blocked) ? 'Cutoff' : 'Closed'}</td>`; return `<td class="${a.sold >= p.daily_cap ? 'full' : ''}">${a.sold}/${p.daily_cap}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div><p class="muted small">Booked out of the daily limit. Swipe sideways for later days.</p></section>
 <section id="addons" class="panel"><h2 class="ph2">Add-ons</h2>
-<p class="muted small">Optional extras. Turn one on, then set the price and how many you can take in a day. Late access cannot overlap room guests only, and it cannot run past the pool's closing time.</p>
+<p class="muted small">Optional extras. Turn one on, then set the price and how many you can take in a day. Included items, parking and getting there are set in <a href="/hotel/settings">Settings</a>. Late access cannot overlap room guests only, and it cannot run past the pool's closing time.</p>
 <form method="post" action="/hotel/addons"><div class="addon-edit">
 ${addonsAll.map(a => {
   const closed = closureReason(db, h, t);
@@ -928,10 +924,24 @@ app.post('/hotel/addons', hotelAuth, (req, res) => {
     const price = parseInt(req.body['aprice_' + a.id], 10), cap = parseInt(req.body['acap_' + a.id], 10);
     let enabled = on.has(a.id) ? 1 : 0;
     if (a.code === 'late' && enabled && !allowLate) { enabled = 0; blocked = true; }
-    up.run(enabled, Number.isFinite(price) ? Math.max(0, price) : a.price, Number.isFinite(cap) ? Math.max(0, cap) : a.daily_cap, a.id, req.hotel.id);
+    const usePrice = Number.isFinite(price) ? Math.max(0, price) : a.price;
+    const useCap = Number.isFinite(cap) ? Math.max(0, cap) : a.daily_cap;
+    enabled = syncAddonEdit(db, req.hotel.id, a.code, enabled, usePrice, useCap);
+    up.run(enabled, usePrice, useCap, a.id, req.hotel.id);
   }))();
   const msg = blocked ? "Late access stays off. It can't overlap room guests only or run past the pool's closing time." : 'Add-ons saved. Guests see the changes straight away.';
   res.redirect(303, '/hotel?msg=' + encodeURIComponent(msg) + '#addons');
+});
+app.post('/hotel/inclusions', hotelAuth, (req, res) => {
+  const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(req.hotel.id);
+  const result = saveInclusions(db, req.hotel.id, req.body, { allowLate: hotelLatePossible(db, hotel) });
+  const msg = result.lateBlocked ? "Late stay stays off. It can't overlap room guests only or run past the pool's closing time." : "Saved what's included.";
+  res.redirect(303, '/hotel/settings?msg=' + encodeURIComponent(msg) + '#included');
+});
+app.post('/hotel/arrival', hotelAuth, (req, res) => {
+  const result = saveArrival(db, req.hotel.id, req.body);
+  if (result.err) return res.redirect('/hotel/settings?e=' + encodeURIComponent(result.err) + '#arrive-edit');
+  res.redirect(303, '/hotel/settings?msg=' + encodeURIComponent('Saved getting there.') + '#arrive-edit');
 });
 app.post('/hotel/block', hotelAuth, (req, res) => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(req.body.date)) db.prepare('INSERT OR REPLACE INTO blocked_dates(hotel_id,date,reason) VALUES (?,?,?)').run(req.hotel.id, req.body.date, String(req.body.reason || 'Closed').slice(0, 80) || 'Closed');
@@ -1036,13 +1046,13 @@ app.get('/how-it-works', (req, res) => {
   res.send(page('How it works', `<div class="wrap hiw-hero">
 <p class="eyebrow-s">How it works</p>
 <h1 class="l-title">A hotel day, without the overnight.</h1>
-<p class="lead">Book a hotel pool, daybed or spa for the day. No room needed. Hotels set their own seating, prices and how many guests they take.</p>
+<p class="lead">Book a hotel pool, daybed or spa for the day. No room needed. Hotels set their own passes, prices and how many guests they take.</p>
 <p class="hiw-jumps"><a href="#guests">For guests</a><a href="#partners">For hotels</a><a href="#faq">Questions</a></p>
 </div>
 <div class="wrap hiw-block" id="guests">
 <h2>For guests</h2>
 <div class="how-grid">
-<div><span class="n">1</span><h3>Browse</h3><p class="muted">Search by neighbourhood, date and seating. Each listing shows what's included, the pool rules, and how many spots are left.</p></div>
+<div><span class="n">1</span><h3>Browse</h3><p class="muted">Search by neighbourhood, date and what you want: pool, gym or spa. Each listing shows what's included and the pool rules.</p></div>
 <div><span class="n">2</span><h3>Book</h3><p class="muted">Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking, gym access or a food and drink credit if you want. Tick the pool rules, the terms and the risk warning. The total updates before you confirm. This demo doesn't charge a card.</p></div>
 <div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">At the front desk when the hotel opens for day passes. The hours are on your confirmation. Reception checks you in and hands you a wristband.</p></div>
 <div><span class="n">4</span><h3>Enjoy</h3><p class="muted">Your spot, for the hours that hotel has set. Add-ons stay optional.</p></div>
@@ -1075,6 +1085,8 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 if (db.prepare('SELECT COUNT(*) n FROM hotels').get().n === 0) seed(db);
 else ensureAddons(db);
 ensureSchedules(db);
+ensureInclusions(db);
+ensureArrival(db);
 seedPerformance(db);
 syncHoursLabels(db);
 db.prepare("UPDATE hotels SET password=? WHERE login LIKE 'demo-%'").run(demoHotelPassword());

@@ -31,7 +31,7 @@ const OFFERINGS = {
     age_policy: 'All ages', kids_hours: 'All open hours', towels: 1, food_rule: 'Food and drink from the pool bar only',
     id_required: 1, lifeguard: 0,
     spots: [
-      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the infinity pool, with a towel.', holds: 1, price: 45, daily_cap: 24, photo: 'hero-loungers.jpg' },
+      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the infinity pool, with a towel.', holds: 1, price: 45, daily_cap: 24, photo: 'hero-loungers.jpg', featured: 1 },
       { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A reserved daybed for two, with shade.', holds: 2, price: 95, daily_cap: 6, photo: 'daybed-canopy.jpg' },
       { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A draped cabana for four, with loungers.', holds: 4, price: 220, daily_cap: 3, photo: 'cabana-drapes.jpg' },
     ],
@@ -41,7 +41,7 @@ const OFFERINGS = {
     age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: 'Bar from noon. No outside food or drink.',
     id_required: 1, lifeguard: 0, room_only_from: '16:00', room_only_to: '17:00',
     spots: [
-      { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair on the rooftop deck, with a towel.', holds: 1, price: 55, daily_cap: 20, photo: 'rooftop-city.jpg' },
+      { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair on the rooftop deck, with a towel.', holds: 1, price: 55, daily_cap: 20, photo: 'rooftop-city.jpg', featured: 1 },
       { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A reserved daybed for two, with a city view.', holds: 2, price: 120, daily_cap: 8, photo: 'daybed-canopy.jpg' },
       { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A cabana for four on the roof.', holds: 4, price: 260, daily_cap: 4, photo: 'cabana-drapes.jpg' },
     ],
@@ -52,7 +52,7 @@ const OFFERINGS = {
     id_required: 1, lifeguard: 0,
     season_start: '12-01', season_end: '03-31', season_opens: '08:00', season_closes: '19:00',
     spots: [
-      { code: 'entry', kind: 'entry', name: 'General entry', description: 'Pool, steam room and sauna.', holds: 1, price: 65, daily_cap: 40, photo: 'glass-roof-pool.jpg' },
+      { code: 'entry', kind: 'entry', name: 'General entry', description: 'Pool, steam room and sauna.', holds: 1, price: 65, daily_cap: 40, photo: 'glass-roof-pool.jpg', featured: 1 },
       { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger under the glass roof, with a robe.', holds: 1, price: 85, daily_cap: 16, photo: 'hero-loungers.jpg' },
       { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A quiet daybed for two beside the pool.', holds: 2, price: 150, daily_cap: 6, photo: 'indoor-spa-pool.jpg' },
     ],
@@ -62,7 +62,7 @@ const OFFERINGS = {
     age_policy: 'All ages', kids_hours: 'All open hours, shallow end', towels: 1, food_rule: 'Café on site. Packed lunches welcome.',
     id_required: 1, lifeguard: 1,
     spots: [
-      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger in the palm gardens, with a towel.', holds: 1, price: 35, daily_cap: 40, photo: 'tropical-resort.jpg' },
+      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger in the palm gardens, with a towel.', holds: 1, price: 35, daily_cap: 40, photo: 'tropical-resort.jpg', featured: 1 },
       { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair by the shallow end.', holds: 1, price: 25, daily_cap: 30, photo: 'kids-float.jpg' },
       { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A shaded daybed for two.', holds: 2, price: 70, daily_cap: 10, photo: 'thatched-umbrellas.jpg' },
     ],
@@ -72,7 +72,7 @@ const OFFERINGS = {
     age_policy: 'All ages', kids_hours: 'Until 2pm', towels: 1, food_rule: 'Kiosk on site. No glass.',
     id_required: 1, lifeguard: 0,
     spots: [
-      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the magnesium pool, with a towel.', holds: 1, price: 40, daily_cap: 28, photo: 'infinity-palms.jpg' },
+      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the magnesium pool, with a towel.', holds: 1, price: 40, daily_cap: 28, photo: 'infinity-palms.jpg', featured: 1 },
       { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A canopy daybed for two, steps from the beach.', holds: 2, price: 90, daily_cap: 8, photo: 'daybed-canopy.jpg' },
     ],
   },
@@ -81,7 +81,7 @@ const OFFERINGS = {
     age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: 'No outside food or drink.',
     id_required: 1, lifeguard: 0,
     spots: [
-      { code: 'entry', kind: 'entry', name: 'General entry', description: 'Bathhouse, plunge pools and the outdoor pool.', holds: 1, price: 80, daily_cap: 24, photo: 'spa-steps.jpg' },
+      { code: 'entry', kind: 'entry', name: 'General entry', description: 'Bathhouse, plunge pools and the outdoor pool.', holds: 1, price: 80, daily_cap: 24, photo: 'spa-steps.jpg', featured: 1 },
       { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A draped cabana for two by the outdoor pool.', holds: 2, price: 180, daily_cap: 5, photo: 'cabana-drapes.jpg' },
     ],
   },
