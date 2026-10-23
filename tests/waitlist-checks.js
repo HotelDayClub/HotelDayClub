@@ -100,7 +100,11 @@ function cookie(res) {
     assert.ok(appCss.includes('.hours-row input[type=checkbox]{accent-color:var(--navy);width:18px;height:18px}'));
     assert.ok(appCss.includes('.pp input{accent-color:var(--navy)}'));
     assert.ok(home.body.includes('Find a hotel'));
-    assert.ok(home.body.includes('Pick a seat and a day'));
+    assert.ok(home.body.includes('Pick a pass and a day'));
+    assert.ok(home.body.includes('name="want"'));
+    assert.ok(home.body.includes('Pool + Spa'));
+    assert.ok(!home.body.includes('Any seat'));
+    assert.ok(!home.body.includes('>Seat<'));
     assert.ok(home.body.includes('Show up, switch off'));
     assert.ok(home.body.includes('Example listings'));
     assert.ok(home.body.includes('Swim &amp; gym'));
@@ -171,7 +175,7 @@ function cookie(res) {
     assert.ok(none.body.includes('href="/?destination=melbourne#waitlist"'));
 
     const prefill = await get(port, '/?destination=melbourne');
-    assert.ok(prefill.body.includes('<option value="melbourne" selected>Melbourne</option>'));
+    assert.ok(prefill.body.includes('<option value="melbourne" data-icon="laneway" selected>Melbourne</option>'));
 
     const missing = await post(port, '/waitlist', { role: 'guest' }, { 'X-Forwarded-For': '203.0.113.1' });
     assert.strictEqual(missing.status, 400);

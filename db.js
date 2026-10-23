@@ -37,6 +37,15 @@ CREATE TABLE IF NOT EXISTS listing_views(
   PRIMARY KEY(hotel_id, day, seeded)
 );
 CREATE INDEX IF NOT EXISTS idx_bookings_hotel_date ON bookings(hotel_id, date);
+CREATE TABLE IF NOT EXISTS inclusions(
+  hotel_id INTEGER NOT NULL REFERENCES hotels(id),
+  code TEXT NOT NULL,
+  mode TEXT NOT NULL DEFAULT 'off',
+  price INTEGER NOT NULL DEFAULT 0,
+  daily_cap INTEGER NOT NULL DEFAULT 0,
+  note TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY(hotel_id, code)
+);
 CREATE TABLE IF NOT EXISTS waitlist(
   id INTEGER PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
@@ -60,8 +69,11 @@ ensureCols('hotels', [
   ['id_required', 'INTEGER'], ['lifeguard', 'INTEGER'], ['cutoff_hours', 'INTEGER DEFAULT 2'],
   ['season_start', 'TEXT'], ['season_end', 'TEXT'], ['season_opens', 'TEXT'], ['season_closes', 'TEXT'],
   ['room_only_from', 'TEXT'], ['room_only_to', 'TEXT'], ['marketing_opt_in', 'INTEGER DEFAULT 0'],
+  ['dress_code', 'TEXT'],
+  ['address', 'TEXT'], ['lat', 'REAL'], ['lng', 'REAL'],
+  ['transit_note', 'TEXT'], ['parking_entrance', 'TEXT'], ['day_entrance', 'TEXT'],
 ]);
-ensureCols('pass_types', [['holds', 'INTEGER DEFAULT 1'], ['photo', 'TEXT'], ['kind', 'TEXT']]);
+ensureCols('pass_types', [['holds', 'INTEGER DEFAULT 1'], ['photo', 'TEXT'], ['kind', 'TEXT'], ['featured', 'INTEGER DEFAULT 0']]);
 ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0'], ['terms_ack_at', 'TEXT'], ['risk_ack_at', 'TEXT'], ['risk_text', 'TEXT'], ['cancel_note', 'TEXT'], ['seeded', 'INTEGER NOT NULL DEFAULT 0'], ['refunded', 'INTEGER NOT NULL DEFAULT 0']]);
 ensureCols('guest_notes', [['seeded', 'INTEGER NOT NULL DEFAULT 0']]);
 module.exports = db;

@@ -200,6 +200,14 @@ function hoursView(db, hotel, date) {
   }
   return { hoursLine, span, showSeason: !(plan && plan.open && inSeason(hotel, date)) };
 }
+function hoursLines(db, hotel) {
+  const rows = hoursFor(db, hotel.id);
+  return DAY_ORDER.map(wd => {
+    const r = rows.find(x => x.weekday === wd) || { open: 0, opens: '10:00', closes: '16:00' };
+    if (!r.open) return { day: DAY_LONG[wd], time: 'Closed' };
+    return { day: DAY_LONG[wd], time: `${fmtTime(r.opens)}–${fmtTime(effectiveClose(r, hotel.room_only_from))}` };
+  });
+}
 function listingHours(db, hotel, date) {
   return hoursView(db, hotel, date).hoursLine;
 }
@@ -398,6 +406,7 @@ function readForm(body) {
       code: String(codes[i] || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20),
       kind, name: name.slice(0, 40), description: String(descs[i] || '').trim().slice(0, 180),
       holds: hold, price, daily_cap: cap, photo: safePhoto(photos[i]),
+      featured: many(body.featured).map(n => parseInt(n, 10)).includes(i) ? 1 : 0,
     });
   }
   if (!spots.length) return { err: 'Add at least one seating type.' };
@@ -452,6 +461,7 @@ function readForm(body) {
     kids_hours: String(body.kids_hours || '').trim().slice(0, 120),
     towels: body.towels === '1' ? 1 : 0,
     food_rule: String(body.food_rule || '').trim().slice(0, 160),
+    dress_code: String(body.dress_code || '').trim().slice(0, 160),
     id_required: body.id_required === '1' ? 1 : 0,
     lifeguard: body.lifeguard === '1' ? 1 : 0,
     season_start: seasonStart || null,
@@ -465,8 +475,8 @@ function readForm(body) {
 function writeOffering(db, hotelId, spec) {
   const existing = db.prepare('SELECT * FROM pass_types WHERE hotel_id=?').all(hotelId);
   const booked = db.prepare('SELECT 1 FROM bookings WHERE pass_type_id=? LIMIT 1');
-  const up = db.prepare('UPDATE pass_types SET code=?, kind=?, name=?, description=?, holds=?, price=?, daily_cap=?, photo=?, sort=? WHERE id=? AND hotel_id=?');
-  const ins = db.prepare('INSERT INTO pass_types(hotel_id,code,kind,name,description,holds,price,daily_cap,photo,sort) VALUES (?,?,?,?,?,?,?,?,?,?)');
+  const up = db.prepare('UPDATE pass_types SET code=?, kind=?, name=?, description=?, holds=?, price=?, daily_cap=?, photo=?, sort=?, featured=? WHERE id=? AND hotel_id=?');
+  const ins = db.prepare('INSERT INTO pass_types(hotel_id,code,kind,name,description,holds,price,daily_cap,photo,sort,featured) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
   const used = new Set();
   const seen = new Set();
   spec.spots.forEach((s, sort) => {
@@ -480,10 +490,10 @@ function writeOffering(db, hotelId, spec) {
     }
     used.add(code);
     if (s.id && existing.some(e => e.id === s.id)) {
-      up.run(code, s.kind, s.name, s.description, s.holds, s.price, s.daily_cap, s.photo || null, sort, s.id, hotelId);
+      up.run(code, s.kind, s.name, s.description, s.holds, s.price, s.daily_cap, s.photo || null, sort, s.featured ? 1 : 0, s.id, hotelId);
       seen.add(s.id);
     } else {
-      seen.add(ins.run(hotelId, code, s.kind, s.name, s.description, s.holds, s.price, s.daily_cap, s.photo || null, sort).lastInsertRowid);
+      seen.add(ins.run(hotelId, code, s.kind, s.name, s.description, s.holds, s.price, s.daily_cap, s.photo || null, sort, s.featured ? 1 : 0).lastInsertRowid);
     }
   });
   const kept = [];
@@ -500,14 +510,14 @@ function writeOffering(db, hotelId, spec) {
   db.prepare(`UPDATE hotels SET name=COALESCE(?, name), area=COALESCE(?, area), tagline=COALESCE(?, tagline), blurb=COALESCE(?, blurb),
     contact_name=?, contact_email=?, hours=?, open_days=?, opens=?, closes=?, cutoff_hours=?,
     heated=?, setting=?, age_policy=?, kids_hours=?, towels=?, food_rule=?, id_required=?, lifeguard=?,
-    season_start=?, season_end=?, season_opens=?, season_closes=?, room_only_from=?, room_only_to=? WHERE id=?`).run(
+    season_start=?, season_end=?, season_opens=?, season_closes=?, room_only_from=?, room_only_to=?, dress_code=? WHERE id=?`).run(
     profile.name || null, profile.area || null, profile.tagline ?? null, profile.blurb ?? null,
     profile.contact_name || null, profile.contact_email || null,
     sum.hours, sum.open_days, sum.opens, sum.closes, spec.cutoff_hours,
     spec.heated ? 1 : 0, spec.setting || 'outdoor', spec.age_policy || 'All ages', spec.kids_hours || null,
     spec.towels ? 1 : 0, spec.food_rule || null, spec.id_required ? 1 : 0, spec.lifeguard ? 1 : 0,
     spec.season_start || null, spec.season_end || null, spec.season_opens || null, spec.season_closes || null,
-    spec.room_only_from || null, spec.room_only_to || null, hotelId
+    spec.room_only_from || null, spec.room_only_to || null, spec.dress_code || null, hotelId
   );
   return { ok: true, kept };
 }
@@ -565,7 +575,8 @@ function spotCard(s, index, locked) {
 <label class="fl">Each day<input name="cap" type="number" min="0" step="1" data-code="${esc(s.code || '')}" value="${s.daily_cap ?? ''}" required></label>
 <label class="fl">Photo<select name="photo"><option value="">No photo</option>${PHOTOS.map(([f, l]) => `<option value="${f}" ${s.photo === f ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
 </div>
-<label class="fl">Description<input name="spot_desc" maxlength="180" value="${esc(s.description || '')}" placeholder="What is included with this spot"></label></div>`;
+<label class="fl">Description<input name="spot_desc" maxlength="180" value="${esc(s.description || '')}" placeholder="What is included with this spot"></label>
+<label class="tick"><input type="checkbox" name="featured" value="${index}" ${s.featured ? 'checked' : ''}> Show a Most popular label. You choose this. It is not a count of bookings.</label></div>`;
 }
 function offeringForm({ action, hotel, spots, hours, account, error, lockedIds }) {
   const h = hotel || {};
@@ -617,6 +628,7 @@ ${DAY_ORDER.map(wd => {
 <div class="two">${yn('towels', 'Towels included', h.towels)}${yn('id_required', 'Photo ID required', h.id_required !== 0)}</div>
 <div class="two">${yn('lifeguard', 'Lifeguard on duty', h.lifeguard)}
 <label class="fl">Food and drink<input name="food_rule" maxlength="160" value="${esc(h.food_rule || '')}" placeholder="Pool bar only"></label></div>
+<label class="fl">Dress code<input name="dress_code" maxlength="160" value="${esc(h.dress_code || '')}" placeholder="Swimwear at the pool. A cover-up in the lobby."></label>
 ${account ? `<label class="tick"><input type="checkbox" name="marketing" value="1" ${h.marketing ? 'checked' : ''}> Email me about listing a hotel. Optional, and separate from this application.</label>
 <p class="privacy-note">We use your name, email and login to review this application and reply to you. <a href="/privacy">Privacy policy</a></p>` : ''}
 <div class="offer-save"><button class="btn btn-navy" type="submit">${account ? 'Submit for approval' : 'Save'}</button></div>
@@ -649,6 +661,6 @@ module.exports = {
   KINDS, PHOTOS, fmtTime, parseTime, minutes, spotLabel, hoursSummary, dayPlan, dayClosure, closureReason,
   rulesLines, rulesText, rulesCard, amenitiesFrom, slugify, hoursFor, blankJoin, readForm,
   writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,
-  listingHours, hoursView, syncHoursLabels, inSeason, latePossible, hotelLatePossible, lateWindow, syncLateAddons,
+  listingHours, hoursView, hoursLines, syncHoursLabels, inSeason, latePossible, hotelLatePossible, lateWindow, syncLateAddons,
   cancelNote, riskLines, riskText, riskCard, riskTick, swimNote,
 };

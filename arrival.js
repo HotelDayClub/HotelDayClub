@@ -1,0 +1,133 @@
+const { esc } = require('./util');
+
+const PRESETS = {
+  'saltwater-terrace': {
+    address: '18 Demo Terrace, Bondi Beach NSW 2026',
+    lat: -33.8915, lng: 151.2767,
+    transit: 'Bondi Junction station, then the 333 bus towards Bondi Beach. Get off at Campbell Parade.',
+    parking: 'The demo car park entrance is on Demo Lane, behind the building.',
+    entrance: 'Day guests check in at the pool reception on level 1, not the hotel front desk.',
+  },
+  'skyline-rooftop': {
+    address: '4 Demo Street, North Sydney NSW 2060',
+    lat: -33.8396, lng: 151.2069,
+    transit: 'North Sydney station is a short walk. Use the Miller Street exit.',
+    parking: 'Car park entry is off Demo Lane. A height limit applies in this demo.',
+    entrance: 'Day guests take the pool lift from the ground-floor lobby and check in on the roof.',
+  },
+  'harbourside-lido': {
+    address: '90 Demo Place, Sydney NSW 2000',
+    lat: -33.8688, lng: 151.2093,
+    transit: 'Town Hall or Wynyard station, then a short walk.',
+    parking: 'The basement entry is on Demo Lane. Spaces are limited in this demo.',
+    entrance: 'Day guests check in at the lido desk inside the pool hall, not hotel reception.',
+  },
+  'palm-court': {
+    address: '7 Demo Avenue, Parramatta NSW 2150',
+    lat: -33.8151, lng: 151.0011,
+    transit: 'Parramatta station, then a short walk.',
+    parking: 'On-site parking. Enter from Demo Avenue and follow the signs to the pool.',
+    entrance: 'Day guests check in at the garden reception beside the lagoon.',
+  },
+  'manly-sands': {
+    address: '22 Demo Road, Manly NSW 2095',
+    lat: -33.798, lng: 151.287,
+    transit: 'The Manly ferry, then a short walk. The 199 bus also stops nearby.',
+    parking: 'Street-side hotel bays on Demo Road. First come in this demo.',
+    entrance: 'Day guests check in at the beachfront desk, not the hotel lobby.',
+  },
+  'bayview-spa': {
+    address: '5 Demo Crescent, Rose Bay NSW 2029',
+    lat: -33.8745, lng: 151.271,
+    transit: 'Edgecliff station, then the 323 bus towards Rose Bay.',
+    parking: 'Forecourt spaces. Enter from Demo Crescent.',
+    entrance: 'Day guests check in at the bathhouse door on the garden side.',
+  },
+};
+
+function numOrNull(raw) {
+  const text = String(raw ?? '').trim();
+  if (!text) return null;
+  const n = Number(text);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function ensureArrival(db) {
+  const upd = db.prepare(`UPDATE hotels SET address=?, lat=?, lng=?, transit_note=?, parking_entrance=?, day_entrance=?
+    WHERE slug=? AND (address IS NULL OR address='')`);
+  db.transaction(() => {
+    for (const [slug, row] of Object.entries(PRESETS)) {
+      upd.run(row.address, row.lat, row.lng, row.transit, row.parking, row.entrance, slug);
+    }
+  })();
+}
+
+function saveArrival(db, hotelId, body) {
+  const address = String(body.address || '').trim().slice(0, 160);
+  if (!address) return { err: 'Add an address.' };
+  const lat = numOrNull(body.lat);
+  const lng = numOrNull(body.lng);
+  const hasLat = String(body.lat || '').trim() !== '';
+  const hasLng = String(body.lng || '').trim() !== '';
+  if (hasLat || hasLng) {
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+      return { err: 'Latitude must be between -90 and 90, and longitude between -180 and 180.' };
+    }
+  }
+  const clip = key => String(body[key] || '').trim().slice(0, 240);
+  db.prepare('UPDATE hotels SET address=?, lat=?, lng=?, transit_note=?, parking_entrance=?, day_entrance=? WHERE id=?')
+    .run(address, hasLat ? lat : null, hasLng ? lng : null, clip('transit_note'), clip('parking_entrance'), clip('day_entrance'), hotelId);
+  return {};
+}
+
+function mapSrc(lat, lng) {
+  const dLat = 0.006;
+  const dLng = 0.008;
+  const bbox = [lng - dLng, lat - dLat, lng + dLng, lat + dLat].map(n => n.toFixed(5)).join('%2C');
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lng}`;
+}
+
+function arrivalHtml(hotel) {
+  const address = String(hotel.address || '').trim();
+  const transit = String(hotel.transit_note || '').trim();
+  const parking = String(hotel.parking_entrance || '').trim();
+  const entrance = String(hotel.day_entrance || '').trim();
+  if (!address && !transit && !parking && !entrance) return '';
+  const lat = Number(hotel.lat);
+  const lng = Number(hotel.lng);
+  const mapped = Number.isFinite(lat) && Number.isFinite(lng);
+  const q = encodeURIComponent(address || `${lat},${lng}`);
+  const google = `https://www.google.com/maps/dir/?api=1&destination=${q}`;
+  const apple = `https://maps.apple.com/?daddr=${q}&dirflg=d`;
+  const osm = mapped
+    ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`
+    : `https://www.openstreetmap.org/search?query=${q}`;
+  const map = mapped ? `<div class="map-slot" data-src="${esc(mapSrc(lat, lng))}"><p class="map-hold">Map loads when you reach it.</p><noscript><p><a href="${esc(osm)}">Open the map</a></p></noscript></div>` : '';
+  const notes = [
+    transit ? `<li><b>Train and bus</b><span>${esc(transit)}</span></li>` : '',
+    parking ? `<li><b>Parking</b><span>${esc(parking)}</span></li>` : '',
+    entrance ? `<li><b>Day guests</b><span>${esc(entrance)}</span></li>` : '',
+  ].join('');
+  return `<section class="l-sec" id="getting-there"><h3>Getting there</h3>
+${address ? `<p class="arrive-addr">${esc(address)}</p>` : ''}
+${map}
+<div class="arrive-acts">${address ? `<a class="btn btn-navy" href="${esc(google)}" target="_blank" rel="noopener noreferrer">Get directions</a><a class="btn btn-line" href="${esc(apple)}" target="_blank" rel="noopener noreferrer">Apple Maps</a>` : ''}</div>
+${notes ? `<ul class="arrive-notes">${notes}</ul>` : ''}
+<p class="muted small">Map data © <a href="https://www.openstreetmap.org/copyright" rel="noopener noreferrer">OpenStreetMap</a> contributors. This is a fictional demo address. <a href="${esc(osm)}" rel="noopener noreferrer">Open the map</a>.</p></section>`;
+}
+
+function arrivalForm(hotel) {
+  const lat = hotel.lat == null ? '' : hotel.lat;
+  const lng = hotel.lng == null ? '' : hotel.lng;
+  return `<form class="arrive-form" method="post" action="/hotel/arrival" id="arrive-edit"><h2>Getting there</h2>
+<p class="muted small">Guests see this on the listing. The map loads only when they scroll to it. Directions open in Google Maps or Apple Maps. Leave latitude and longitude blank to hide the map.</p>
+<label class="fl">Address<input name="address" maxlength="160" required value="${esc(hotel.address || '')}"></label>
+<div class="two"><label class="fl">Latitude<input name="lat" inputmode="decimal" value="${esc(lat)}" placeholder="-33.8688"></label>
+<label class="fl">Longitude<input name="lng" inputmode="decimal" value="${esc(lng)}" placeholder="151.2093"></label></div>
+<label class="fl">Train or bus<textarea name="transit_note" maxlength="240">${esc(hotel.transit_note || '')}</textarea></label>
+<label class="fl">Parking entrance<textarea name="parking_entrance" maxlength="240">${esc(hotel.parking_entrance || '')}</textarea></label>
+<label class="fl">Day guest entrance<textarea name="day_entrance" maxlength="240">${esc(hotel.day_entrance || '')}</textarea></label>
+<div class="offer-save"><button class="btn btn-navy" type="submit">Save getting there</button></div></form>`;
+}
+
+module.exports = { ensureArrival, saveArrival, arrivalHtml, arrivalForm };

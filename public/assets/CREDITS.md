@@ -46,7 +46,7 @@ The Unsplash help centre states that images can be used for most commercial and 
 | golden/img/gym-sm.jpg (8 am gym) | https://unsplash.com/photos/photo-1534438327276-14e5300c3a48 |
 | Not used on the page: photo-1540541338287-41700207dee6, photo-1520250497591-112f2f40a3f4 | Unsplash |
 
-WebP copies of the same files sit beside the JPEGs. Example-listing cards use resized WebP copies in `golden/img/cards/`, made from the licensed listing photos above.
+WebP copies of the same files sit beside the JPEGs. Example-listing cards use resized WebP copies in `golden/img/cards/`, made from the licensed listing photos above. Pass photos in `photos/seats/` are smaller WebP crops of those same credited files (lounger, daybed, cabana, chair, glass-roof pool, infinity pool). They are example photos, not the fictional hotels.
 
 ### Pexels License
 https://www.pexels.com/license/ was readable: photos and videos are free to use, including commercially; attribution is not required; you may modify them. You may not sell unaltered copies, imply endorsement, or redistribute them on another stock platform.
