@@ -84,7 +84,7 @@ function addonAvailability(hid, date) {
     const shown = presentAddon(hotel, date, a);
     if (!shown) return null;
     const s = addonSold(a.id, date);
-    return { id: shown.id, code: shown.code, name: shown.name, blurb: shown.blurb, price: shown.price, cap: shown.daily_cap, per: shown.per, sold: s,
+    return { id: shown.id, code: shown.code, name: shown.name, blurb: shown.blurb, price: shown.price, per: shown.per,
       remaining: why || past ? 0 : Math.max(0, shown.daily_cap - s) };
   }).filter(Boolean);
 }
@@ -103,7 +103,7 @@ function chosenAddons(hid, date, people, q) {
     if (!shown) return { err: a.code === 'late' ? "Late access can't overlap room guests only or run past the pool's closing time." : 'That add-on is not available.' };
     const qty = a.per === 'booking' ? 1 : people;
     const left = Math.max(0, a.daily_cap - addonSold(a.id, date));
-    if (left < qty) return { err: left === 0 ? `${shown.name} is sold out that day.` : `Only ${left} ${shown.name} left that day.` };
+    if (left < qty) return { err: left === 0 ? `${shown.name} is sold out for this date.` : `${shown.name} doesn't have enough left for this date.` };
     rows.push({ id: a.id, code: a.code, name: shown.name, price: a.price, per: a.per, qty, line: a.price * qty });
   }
   return { addons: rows, addonTotal: rows.reduce((s, a) => s + a.line, 0) };
@@ -476,7 +476,7 @@ app.get('/checkout', (req, res) => {
     const dis = ad.remaining < need;
     const on = !dis && picked.has(ad.code);
     const price = !dis && Number(ad.price) > 0 ? `<span class="extra-price">${money(ad.price)}</span>` : '';
-    const note = dis ? '<span class="extra-note">Sold out</span>' : '';
+    const note = dis ? '<span class="extra-note">Sold out for this date</span>' : '';
     return `<label class="extra${dis ? ' is-off' : ''}"><input type="checkbox" name="addon" value="${esc(ad.code)}" data-price="${Number(ad.price) || 0}" data-per="${esc(ad.per)}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}><span class="extra-name">${esc(ad.name)}</span>${price}${note}</label>`;
   }).join('')}</div></details>` : '';
   res.send(page('Checkout', `<div class="wrap sec checkout">

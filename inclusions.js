@@ -206,10 +206,7 @@ function priceBit(n) {
 function addonsHtml(items) {
   const rows = items.filter(i => i.mode === 'addon');
   const parkingOff = items.find(i => i.code === 'parking' && i.mode === 'off');
-  const list = rows.map(i => {
-    const extra = i.code === 'parking' && i.daily_cap ? `<span class="extra-note">${i.daily_cap} a day</span>` : '';
-    return `<li class="extra"><span class="extra-name">${esc(i.name)}</span>${priceBit(i.price)}${extra}</li>`;
-  }).join('');
+  const list = rows.map(i => `<li class="extra"><span class="extra-name">${esc(i.name)}</span>${priceBit(i.price)}</li>`).join('');
   const off = parkingOff ? '<p class="muted small">Parking is not offered with this pass.</p>' : '';
   if (!list && !off) return '';
   return `<section class="l-sec" id="addons-list"><details class="extras"><summary><span class="extra-label">Add extras <span class="extra-opt">(optional)</span></span></summary>${list ? `<ul class="extra-list extra-static">${list}</ul>` : ''}</details>${off}</section>`;
