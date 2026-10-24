@@ -1,18 +1,79 @@
 // Public destination cards. `areas` must match hotels.area exactly.
 // An empty list means nothing is listed there, so the card is "Coming soon".
+// `id` is the waitlist value. `slug` is the public URL under /destinations/.
 const DESTINATIONS = [
-  { id: 'sydney-cbd', name: 'Sydney CBD', areas: ['CBD & Harbour'], icon: 'city' },
-  { id: 'bondi', name: 'Bondi & Eastern Beaches', areas: ['Eastern Beaches'], icon: 'wave' },
-  { id: 'manly', name: 'Manly & Northern Beaches', areas: ['Northern Beaches'], icon: 'beach' },
-  { id: 'north-sydney', name: 'North Sydney', areas: ['North Sydney'], icon: 'skyline' },
-  { id: 'eastern-suburbs', name: 'Eastern Suburbs', areas: ['Eastern Suburbs'], icon: 'palm' },
-  { id: 'parramatta', name: 'Parramatta', areas: ['Parramatta'], icon: 'park' },
-  { id: 'melbourne', name: 'Melbourne', areas: [], icon: 'laneway' },
-  { id: 'brisbane', name: 'Brisbane', areas: [], icon: 'river' },
-  { id: 'gold-coast', name: 'Gold Coast', areas: [], icon: 'coast' },
-  { id: 'byron-bay', name: 'Byron Bay', areas: [], icon: 'lighthouse' },
-  { id: 'cairns', name: 'Cairns & Port Douglas', areas: [], icon: 'reef' },
-  { id: 'perth', name: 'Perth', areas: [], icon: 'sun' },
+  {
+    id: 'sydney-cbd', slug: 'sydney', name: 'Sydney CBD', areas: ['CBD & Harbour'], icon: 'city',
+    title: 'Sydney hotel pool day passes',
+    description: 'Hotel pool, gym and spa day passes in the Sydney CBD. No room needed. Example listings here are fictional until a hotel joins.',
+    intro: 'A hotel pool, gym or spa in the Sydney CBD, for the day, without booking a room. Anything listed below is a fictional example. It does not mean a hotel has signed up.',
+  },
+  {
+    id: 'bondi', slug: 'bondi', name: 'Bondi & Eastern Beaches', areas: ['Eastern Beaches'], icon: 'wave',
+    title: 'Bondi hotel pool day passes',
+    description: 'Pool and spa day passes around Bondi and the Eastern Beaches. Example listings are fictional until a hotel joins Hotel Day Club.',
+    intro: 'Day passes for a hotel pool or spa around Bondi and the Eastern Beaches. The cards below are fictional examples with stock photos, not hotels that have joined.',
+  },
+  {
+    id: 'manly', slug: 'manly', name: 'Manly & Northern Beaches', areas: ['Northern Beaches'], icon: 'beach',
+    title: 'Manly hotel pool day passes',
+    description: 'Hotel pool day passes in Manly and the Northern Beaches. Example listings are fictional until a hotel joins Hotel Day Club.',
+    intro: 'A hotel pool for the day in Manly and the Northern Beaches, with no overnight stay. Listings here are examples so you can see the shape of a page. No hotel has signed up.',
+  },
+  {
+    id: 'north-sydney', slug: 'north-sydney', name: 'North Sydney', areas: ['North Sydney'], icon: 'skyline',
+    title: 'North Sydney hotel day passes',
+    description: 'Hotel pool and gym day passes in North Sydney. Example listings are fictional until a hotel joins Hotel Day Club.',
+    intro: 'North Sydney day passes cover a hotel pool or gym for set hours. The example on this page is fictional. It is here to show the listing, not a partnership.',
+  },
+  {
+    id: 'eastern-suburbs', slug: 'eastern-suburbs', name: 'Eastern Suburbs', areas: ['Eastern Suburbs'], icon: 'palm',
+    title: 'Eastern Suburbs hotel day passes',
+    description: 'Hotel pool and spa day passes in the Eastern Suburbs. Example listings are fictional until a hotel joins Hotel Day Club.',
+    intro: 'Pool and spa day passes in the Eastern Suburbs, booked for the day. The example listing is not a real hotel, and the photos are stock.',
+  },
+  {
+    id: 'parramatta', slug: 'parramatta', name: 'Parramatta', areas: ['Parramatta'], icon: 'park',
+    title: 'Parramatta hotel day passes',
+    description: 'Hotel pool day passes in Parramatta. Example listings are fictional until a hotel joins Hotel Day Club.',
+    intro: 'A Parramatta hotel pool for the day, without a room. The example listing is fictional and is not a hotel that has agreed to take day guests.',
+  },
+  {
+    id: 'melbourne', slug: 'melbourne', name: 'Melbourne', areas: [], icon: 'laneway',
+    title: 'Melbourne hotel day passes',
+    description: 'Hotel pool, gym and spa day passes in Melbourne are not listed yet. Join the waitlist and we will write when a hotel is ready.',
+    intro: 'Melbourne is on the list of places Hotel Day Club wants to cover. There is no hotel listing here yet, and none of the example hotels on the homepage are in Melbourne.',
+  },
+  {
+    id: 'brisbane', slug: 'brisbane', name: 'Brisbane', areas: [], icon: 'river',
+    title: 'Brisbane hotel day passes',
+    description: 'Hotel pool, gym and spa day passes in Brisbane are not listed yet. Join the waitlist and we will write when a hotel is ready.',
+    intro: 'Brisbane day passes are not open. This page is a place to land while we talk to hotels. Nothing here is a booking you can make today.',
+  },
+  {
+    id: 'gold-coast', slug: 'gold-coast', name: 'Gold Coast', areas: [], icon: 'coast',
+    title: 'Gold Coast hotel day passes',
+    description: 'Hotel pool and spa day passes on the Gold Coast are not listed yet. Join the waitlist and we will write when a hotel is ready.',
+    intro: 'The Gold Coast is a natural fit for a pool day pass, and there is no listing here yet. Join the waitlist if you want a note when a hotel is ready.',
+  },
+  {
+    id: 'byron-bay', slug: 'byron-bay', name: 'Byron Bay', areas: [], icon: 'lighthouse',
+    title: 'Byron Bay hotel day passes',
+    description: 'Hotel pool and spa day passes in Byron Bay are not listed yet. Join the waitlist and we will write when a hotel is ready.',
+    intro: 'Byron Bay is coming later. There is no example listing for this coast, and no hotel here has joined Hotel Day Club.',
+  },
+  {
+    id: 'cairns', slug: 'cairns', name: 'Cairns & Port Douglas', areas: [], icon: 'reef',
+    title: 'Cairns and Port Douglas day passes',
+    description: 'Hotel pool day passes in Cairns and Port Douglas are not listed yet. Join the waitlist and we will write when a hotel is ready.',
+    intro: 'Cairns and Port Douglas are on the map for later. There is no pool day pass to book here yet.',
+  },
+  {
+    id: 'perth', slug: 'perth', name: 'Perth', areas: [], icon: 'sun',
+    title: 'Perth hotel day passes',
+    description: 'Hotel pool, gym and spa day passes in Perth are not listed yet. Join the waitlist and we will write when a hotel is ready.',
+    intro: 'Perth day passes are not listed. This page is only a marker. We will use it when a hotel there is ready to take day guests.',
+  },
 ];
 
 const PATHS = {
@@ -35,4 +96,8 @@ function destIcon(kind) {
   return `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`;
 }
 
-module.exports = { DESTINATIONS, destIcon };
+function destinationBySlug(slug) {
+  return DESTINATIONS.find(d => d.slug === slug) || null;
+}
+
+module.exports = { DESTINATIONS, destIcon, destinationBySlug };

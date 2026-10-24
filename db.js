@@ -72,6 +72,7 @@ ensureCols('hotels', [
   ['dress_code', 'TEXT'],
   ['address', 'TEXT'], ['lat', 'REAL'], ['lng', 'REAL'],
   ['transit_note', 'TEXT'], ['parking_entrance', 'TEXT'], ['day_entrance', 'TEXT'],
+  ['is_demo', 'INTEGER NOT NULL DEFAULT 0'],
 ]);
 ensureCols('pass_types', [['holds', 'INTEGER DEFAULT 1'], ['photo', 'TEXT'], ['kind', 'TEXT'], ['featured', 'INTEGER DEFAULT 0']]);
 ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0'], ['terms_ack_at', 'TEXT'], ['risk_ack_at', 'TEXT'], ['risk_text', 'TEXT'], ['cancel_note', 'TEXT'], ['seeded', 'INTEGER NOT NULL DEFAULT 0'], ['refunded', 'INTEGER NOT NULL DEFAULT 0']]);

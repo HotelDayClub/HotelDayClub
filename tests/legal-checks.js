@@ -164,11 +164,18 @@ function start(port, extra = {}) {
     assert.ok(faq.body.includes('5-pass pack is not offered'));
     assert.ok(faq.body.includes('24 hours before'));
     assert.ok(faq.body.includes('A free date change may be available once, subject to availability.'));
-    assert.ok(faq.body.includes('noindex'));
+    assert.ok(faq.body.includes('content="index, follow"'));
+    assert.ok(!faq.body.includes('noindex'));
 
     const robots = await get(port, '/robots.txt');
     assert.strictEqual(robots.status, 200);
-    assert.ok(/User-agent:\s*\*/.test(robots.body) && /Disallow:\s*\//.test(robots.body), robots.body);
+    assert.ok(/^User-agent:\s*\*/m.test(robots.body), robots.body);
+    assert.ok(/^Allow:\s*\/$/m.test(robots.body), robots.body);
+    for (const line of ['Disallow: /admin', 'Disallow: /hotel', 'Disallow: /checkout', 'Disallow: /api', 'Disallow: /booking/']) {
+      assert.ok(robots.body.includes(line), robots.body);
+    }
+    assert.ok(robots.body.includes('Sitemap: https://www.hoteldayclub.com.au/sitemap.xml'), robots.body);
+    assert.ok(!/^Disallow:\s*\/\s*$/m.test(robots.body), robots.body);
 
     const draft = 'Draft terms for demo purposes, pending legal review.';
     for (const pathName of ['/terms', '/privacy', '/refunds', '/risk']) {
@@ -176,14 +183,17 @@ function start(port, extra = {}) {
       assert.strictEqual(doc.status, 200, pathName);
       assert.ok(doc.body.includes(draft), pathName);
       assert.ok(doc.body.includes('Hotel Day Club · ABN 98 227 458 028'), pathName);
-      assert.ok(doc.body.includes('noindex'), pathName);
+      assert.ok(doc.body.includes('content="index, follow"'), pathName);
+      assert.ok(!doc.body.includes('noindex'), pathName);
+      assert.ok(doc.body.includes('rel="canonical" href="https://www.hoteldayclub.com.au' + pathName + '"'), pathName);
       assert.ok(!doc.body.includes('DRAFT: NOT FOR PUBLICATION'), pathName);
       assert.ok(!/LAWYER/.test(doc.body), pathName);
       assert.ok(!/partner hotels?/i.test(doc.body), pathName);
       assert.ok(!doc.body.includes('">http'), pathName);
       assert.ok(!doc.body.includes('Jason Baranov') && !doc.body.includes('registration pending'), pathName);
       assert.ok(!doc.body.includes('{{ABN}}') && !doc.body.includes('{{CONTACT_EMAIL}}'), pathName);
-      assert.ok(!/\[[^\]]+\]/.test(doc.body.replace(/<[^>]+>/g, '')), pathName + ' still has a placeholder');
+      const visible = doc.body.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<[^>]+>/g, '');
+      assert.ok(!/\[[^\]]+\]/.test(visible), pathName + ' still has a placeholder');
     }
     const terms = await get(port, '/terms');
     assert.ok(terms.body.includes('Customer terms (draft)'));
