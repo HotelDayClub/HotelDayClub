@@ -78,6 +78,8 @@ function start(port) {
     assert.ok(salt.body.includes('id="addons-list"'));
     assert.ok(salt.body.includes('Parking'));
     assert.ok(salt.body.includes('$18'));
+    assert.ok(!salt.body.includes('30 a day'));
+    assert.ok(!/\b\d+ a day\b/.test(salt.body));
     assert.ok(salt.body.includes('id="hours"'));
     assert.ok(salt.body.includes('Daily · 10am–4pm'));
     assert.ok(salt.body.includes('id="policy"'));
@@ -112,6 +114,10 @@ function start(port) {
     const sky = await get(port, '/h/skyline-rooftop');
     assert.ok(sky.body.includes('Mon–Thu · 11am–4pm'));
     assert.ok(!sky.body.includes('Wed ·'));
+    assert.ok(sky.body.includes('Parking'));
+    assert.ok(sky.body.includes('$40'));
+    assert.ok(!sky.body.includes('16 a day'));
+    assert.ok(!/\b\d+ a day\b/.test(sky.body));
 
     const join = await get(port, '/hotel/join');
     assert.strictEqual(join.status, 302);
@@ -134,6 +140,7 @@ function start(port) {
     assert.ok(authed.body.includes('name="address"'));
     assert.ok(authed.body.includes("What's included"));
     assert.ok(authed.body.includes('Most popular label'));
+    assert.ok(authed.body.includes('name="cap_parking"'));
 
     const Database = require('better-sqlite3');
     const live = new Database(dbPath);
@@ -154,6 +161,9 @@ function start(port) {
     assert.ok(!checkout.body.includes('Spots left'));
     assert.ok(checkout.body.includes('>Pass</dt>'));
     assert.ok(checkout.body.includes('>Guests</dt>'));
+    assert.ok(checkout.body.includes('Parking'));
+    assert.ok(!checkout.body.includes('30 a day'));
+    assert.ok(!/\b\d+ a day\b/.test(checkout.body));
     const live2 = new Database(dbPath);
     live2.prepare("UPDATE addons SET daily_cap=0 WHERE hotel_id=? AND code='parking'").run(hotel.id);
     live2.close();
