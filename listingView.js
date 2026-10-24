@@ -29,8 +29,13 @@ function fmt(n){return '$'+n.toLocaleString('en-AU')}
 function h(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function need(a,q,holds){return a.per==='booking'?1:q*(holds||1)}
 function showSeat(src){const img=$('#seat-img');if(!img||!src||img.getAttribute('src')===src)return;img.classList.add('is-swap');setTimeout(function(){img.src=src;img.classList.remove('is-swap')},160)}
+function guests(){
+ const sel=document.querySelector('select[name="qty"]');
+ const n=sel?parseInt(sel.value,10):NaN;
+ return n>0?n:1;
+}
 function render(){
- const q=+$('#qty').value;
+ const q=guests();
  document.querySelectorAll('#passes .pass-card').forEach(card=>{
   const input=card.querySelector('input');
   const p=av.find(x=>x.code===input.value);
@@ -64,7 +69,7 @@ function render(){
 }
 async function load(){const el=$('#date');if(!el)return;const r=await fetch('/api/availability?hotel=${slug}&date='+encodeURIComponent(el.value));const data=await r.json();av=data.passes||[];addons=data.addons||[];const note=document.getElementById('cancel-note');if(note)note.textContent=data.cancel||'';render()}
 document.getElementById('date').addEventListener('change',load);
-document.getElementById('qty').addEventListener('change',render);
+document.querySelector('select[name="qty"]').addEventListener('change',render);
 document.querySelectorAll('.gal-nav').forEach(btn=>btn.addEventListener('click',()=>{const gal=document.querySelector('.gallery.swipe');if(!gal)return;const w=gal.clientWidth*0.86;gal.scrollBy({left:btn.dataset.dir==='next'?w:-w,behavior:'smooth'})}));
 const peek=document.querySelector('.map-peek');
 const sheet=document.querySelector('.map-sheet');
@@ -152,7 +157,7 @@ ${arrival}
 <input type="date" class="hdc-date" data-inline="1" data-closed="${esc(closed)}" name="date" id="date" min="${minDate}" max="${maxDate}" value="${esc(date)}" required>
 <div id="status" class="status"></div>
 <figure class="seat-shot" id="seat-photo"><img id="seat-img" src="${esc(seatPhoto(pick && pick.kind))}" alt="" width="480" height="360" loading="lazy" decoding="async"><figcaption>Example photo, not this hotel.</figcaption></figure>
-<label class="fl" for="qty">Guests<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}">${n}</option>`).join('')}</select></label>
+<label class="fl" for="qty">Guests<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === 1 ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
 <details class="extras" id="extras"><summary><span class="extra-label">Add extras <span class="extra-opt">(optional)</span></span></summary><div class="extra-list" id="addons-pick"></div></details>
 <div class="bb-total" id="total"></div>
 <p class="cancel-note" id="cancel-note">${esc(cancel)}</p>

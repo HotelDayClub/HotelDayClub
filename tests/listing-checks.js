@@ -99,6 +99,9 @@ function start(port) {
     assert.ok(salt.body.includes('Most popular'));
     assert.ok(salt.body.includes('Instant confirmation'));
     assert.ok(salt.body.includes('Book your day'));
+    assert.ok(salt.body.includes('<option value="1" selected>1</option>'));
+    assert.ok(salt.body.includes('select[name="qty"]'));
+    assert.ok(!salt.body.includes("$('#qty').value"));
     assert.ok(!salt.body.includes('spots left'));
     assert.ok(!salt.body.includes('Wed ·'));
     assert.ok(!/>\s*Seat\s*</.test(salt.body));
