@@ -147,9 +147,9 @@ function cookie(res) {
     assert.ok(!hiw.body.includes('href="/hotel/join"'));
     assert.ok(home.body.includes('Explore by destination'));
     assert.ok(home.body.includes('Popular destinations'));
-    assert.ok(/href="\/\?dest=sydney-cbd#explore"[\s\S]*?Sydney CBD[\s\S]*?1 example listing/.test(home.body));
-    assert.ok(/href="\/\?dest=bondi#explore"[\s\S]*?Bondi &amp; Eastern Beaches[\s\S]*?1 example listing/.test(home.body));
-    assert.ok(/href="\/\?destination=melbourne#waitlist"[\s\S]*?Melbourne[\s\S]*?Coming soon[\s\S]*?No listings yet/.test(home.body));
+    assert.ok(/href="\/destinations\/sydney"[\s\S]*?Sydney CBD[\s\S]*?1 example listing/.test(home.body));
+    assert.ok(/href="\/destinations\/bondi"[\s\S]*?Bondi &amp; Eastern Beaches[\s\S]*?1 example listing/.test(home.body));
+    assert.ok(/href="\/destinations\/melbourne"[\s\S]*?Melbourne[\s\S]*?Coming soon[\s\S]*?No listings yet/.test(home.body));
     assert.ok(home.body.includes('Gold Coast') && home.body.includes('Brisbane') && home.body.includes('Byron Bay'));
     assert.ok(home.body.includes('Cairns &amp; Port Douglas') && home.body.includes('Perth'));
     assert.ok(!home.body.includes('0 example'));

@@ -23,3 +23,9 @@ services:
         sync: false
       - key: WAITLIST_WEBHOOK_TOKEN
         sync: false
+      - key: SITE_INDEXABLE
+        value: "true"
+      - key: GOOGLE_SITE_VERIFICATION
+        sync: false
+      - key: BING_SITE_VERIFICATION
+        sync: false

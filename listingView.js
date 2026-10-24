@@ -2,7 +2,16 @@ const { esc, money, nice } = require('./util');
 const { spotLabel } = require('./offering');
 const { seatPhoto } = require('./inclusions');
 
-function passCards(passes, av) {
+const KIND_ALT = { lounger: 'sun lounger', daybed: 'daybed', cabana: 'cabana', chair: 'pool chair', entry: 'spa or pool entry', custom: 'pool pass' };
+function kindAlt(kind) { return KIND_ALT[kind] || 'day pass'; }
+function isDemo(h) { return Number(h && h.is_demo) === 1; }
+function shortName(h) { return String(h.name || '').replace(/\s*\(Demo\)\s*$/, ''); }
+function passAlt(p, h) {
+  const kind = kindAlt(p.kind);
+  return isDemo(h) ? `Example photo of a ${kind}, not this hotel` : `${kind} at ${shortName(h)}`;
+}
+
+function passCards(passes, av, h) {
   const open = av.filter(p => p.remaining > 0);
   const pick = open.find(p => p.featured) || open[0] || av[0];
   return passes.map(p => {
@@ -14,7 +23,7 @@ function passCards(passes, av) {
     return `<label class="pass-card${dis ? ' dis' : ''}">
 <input type="radio" name="pass" value="${esc(p.code)}" data-kind="${esc(p.kind || 'custom')}" data-price="${p.price}" data-holds="${p.holds || 1}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}>
 ${pop}
-<img src="${esc(seatPhoto(p.kind))}" alt="" width="480" height="360" loading="lazy" decoding="async">
+<img src="${esc(seatPhoto(p.kind))}" alt="${esc(passAlt(p, h))}" width="480" height="360" loading="lazy" decoding="async">
 <span class="pc-body"><b>${esc(spotLabel(p))}</b><span class="pc-desc">${esc(p.description || '')}</span><span class="pc-price">From ${money(p.price)}</span><span class="avail">${state}</span></span>
 </label>`;
   }).join('');
@@ -122,25 +131,29 @@ load();setInterval(load,15000);
 
 function listingHtml(opts) {
   const { h, date, minDate, maxDate, closed, passes, av, from, hoursLine, cancel, beats, included, addonList, hours, policy, arrival } = opts;
-  const short = String(h.name || '').replace(/\s*\(Demo\)\s*$/, '');
+  const short = shortName(h);
+  const demo = isDemo(h);
   const pick = av.find(p => p.featured && p.remaining > 0) || av.find(p => p.remaining > 0) || av[0];
-  const photos = (h.photos || []).map((p, i) => `<img class="g${i}" src="/assets/photos/${esc(p)}" alt="${i === 0 ? 'Stock photo, not this hotel' : ''}" width="1200" height="900" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`).join('');
+  const galAlt = demo ? 'Stock photo, not this hotel' : `Photo of ${short}`;
+  const photos = (h.photos || []).map((p, i) => `<img class="g${i}" src="/assets/photos/${esc(p)}" alt="${esc(galAlt)}" width="1200" height="900" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`).join('');
+  const seatKind = kindAlt(pick && pick.kind);
+  const seatAlt = demo ? `Example photo of a ${seatKind}, not this hotel` : `${seatKind} at ${short}`;
   return `<div class="wrap listing">
 <div class="gallery swipe" aria-label="Photos">${photos}
 <button type="button" class="gal-nav prev" data-dir="prev" aria-label="Previous photo">‹</button>
 <button type="button" class="gal-nav next" data-dir="next" aria-label="Next photo">›</button>
-<span class="photo-credit">Stock photos · not this hotel</span></div>
+${demo ? '<span class="photo-credit">Stock photos · not this hotel</span>' : ''}</div>
 <form action="/checkout" method="get" id="bf" class="l-body">
 <input type="hidden" name="hotel" value="${esc(h.slug)}">
 <div class="l-main">
-<p class="eyebrow-s">Fictional demo listing</p>
+<p class="eyebrow-s">${demo ? 'Fictional demo listing' : esc(h.area)}</p>
 <h1 class="l-title">Your day at ${esc(short)}</h1>
 <div class="muted l-meta">New · ${esc(h.area)} · ${esc(hoursLine)}</div>
 <p class="day-lead"><b>${esc(h.tagline)}.</b> ${esc(h.blurb)}</p>
 <h2 class="day-kicker">Your day</h2>
 ${beats}
 <h2 class="day-kicker">Choose a pass</h2>
-<div class="pass-cards" id="passes">${passCards(passes, av)}</div>
+<div class="pass-cards" id="passes">${passCards(passes, av, h)}</div>
 ${included}
 ${addonList}
 ${hours}
@@ -156,7 +169,7 @@ ${arrival}
 <p class="bb-label" id="date-label">Date</p>
 <input type="date" class="hdc-date" data-inline="1" data-closed="${esc(closed)}" name="date" id="date" min="${minDate}" max="${maxDate}" value="${esc(date)}" required>
 <div id="status" class="status"></div>
-<figure class="seat-shot" id="seat-photo"><img id="seat-img" src="${esc(seatPhoto(pick && pick.kind))}" alt="" width="480" height="360" loading="lazy" decoding="async"><figcaption>Example photo, not this hotel.</figcaption></figure>
+<figure class="seat-shot" id="seat-photo"><img id="seat-img" src="${esc(seatPhoto(pick && pick.kind))}" alt="${esc(seatAlt)}" width="480" height="360" loading="lazy" decoding="async">${demo ? '<figcaption>Example photo, not this hotel.</figcaption>' : `<figcaption>${esc(short)}</figcaption>`}</figure>
 <label class="fl" for="qty">Guests<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === 1 ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
 <details class="extras" id="extras"><summary><span class="extra-label">Add extras <span class="extra-opt">(optional)</span></span></summary><div class="extra-list" id="addons-pick"></div></details>
 <div class="bb-total" id="total"></div>

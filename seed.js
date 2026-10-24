@@ -146,7 +146,7 @@ const hotels = [
    'A calm bathhouse with hot and cold plunge, a heated outdoor pool and draped cabanas. 18+ on weekdays.',
    ['cabana-drapes.jpg', 'indoor-spa-pool.jpg', 'spa-steps.jpg', 'loungers-snacks.jpg'], ['Heated pool', 'Hot & cold plunge', 'Cabanas', '18+ weekdays', 'Robes'], 'demo-bayview'],
 ];
-const insH = db.prepare('INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+const insH = db.prepare('INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status,is_demo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
 const insB = db.prepare('INSERT INTO blocked_dates(hotel_id,date,reason) VALUES (?,?,?)');
 const insBk = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,status,checked_in_at,created_at,party,rules_ack_at,rules_text,seeded,refunded)
   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,0)`);
@@ -161,7 +161,7 @@ db.transaction(() => {
   hotels.forEach((h, i) => {
     const spec = OFFERINGS[h[0]];
     const open = new Set(spec.hours.filter(d => d.open).map(d => d.weekday));
-    const id = insH.run(h[0], h[1], h[2], h[3], h[4], JSON.stringify(h[5]), JSON.stringify(h[6]), '', null, h[7], demoHotelPassword(), 'active').lastInsertRowid;
+    const id = insH.run(h[0], h[1], h[2], h[3], h[4], JSON.stringify(h[5]), JSON.stringify(h[6]), '', null, h[7], demoHotelPassword(), 'active', 1).lastInsertRowid;
     writeOffering(db, id, spec);
     const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(id);
     const rules = rulesText(hotel);
