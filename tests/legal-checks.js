@@ -183,8 +183,8 @@ function start(port, extra = {}) {
       assert.strictEqual(doc.status, 200, pathName);
       assert.ok(doc.body.includes(draft), pathName);
       assert.ok(doc.body.includes('Hotel Day Club · ABN 98 227 458 028'), pathName);
-      assert.ok(doc.body.includes('content="index, follow"'), pathName);
-      assert.ok(!doc.body.includes('noindex'), pathName);
+      assert.ok(doc.body.includes('content="noindex, follow"'), pathName);
+      assert.ok(!doc.body.includes('noindex, nofollow'), pathName);
       assert.ok(doc.body.includes('rel="canonical" href="https://www.hoteldayclub.com.au' + pathName + '"'), pathName);
       assert.ok(!doc.body.includes('DRAFT: NOT FOR PUBLICATION'), pathName);
       assert.ok(!/LAWYER/.test(doc.body), pathName);

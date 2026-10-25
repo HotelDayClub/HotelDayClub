@@ -135,9 +135,17 @@ function alts(html, where) {
     assert.ok(map.includes('https://www.hoteldayclub.com.au/guides/what-is-a-hotel-day-pass'));
     assert.ok(map.includes('<lastmod>'));
     assert.ok(!map.includes('/h/saltwater-terrace'));
+    assert.ok(!map.includes('/privacy'));
+    assert.ok(!map.includes('/terms'));
+    assert.ok(!map.includes('/refunds'));
+    assert.ok(!map.includes('/risk'));
     assert.ok(!map.includes('/checkout'));
     assert.ok(!map.includes('/admin'));
     assert.ok(!map.includes('/hotel'));
+    const privacy = text(await get(port, '/privacy'));
+    assert.ok(privacy.includes('content="noindex, follow"'));
+    assert.ok(privacy.includes('href="/privacy"'));
+    assert.ok(home.includes('href="/privacy"') && home.includes('href="/terms"') && home.includes('href="/refunds"') && home.includes('href="/risk"'));
 
     const demo = text(await get(port, '/h/saltwater-terrace?date=2099-01-01'));
     assert.ok(demo.includes('content="noindex, follow"'));
@@ -275,6 +283,19 @@ function alts(html, where) {
     assert.ok(hotel.includes('noindex'));
   } finally {
     ga.kill('SIGTERM');
+  }
+  const legalPort = 3324;
+  const legalOn = await start(legalPort, { LEGAL_PAGES_INDEXABLE: 'true' });
+  try {
+    const terms = text(await get(legalPort, '/terms'));
+    assert.ok(terms.includes('content="index, follow"'));
+    assert.ok(!terms.includes('noindex'));
+    const map = text(await get(legalPort, '/sitemap.xml'));
+    for (const pathName of ['/privacy', '/terms', '/refunds', '/risk']) {
+      assert.ok(map.includes('https://www.hoteldayclub.com.au' + pathName), pathName);
+    }
+  } finally {
+    legalOn.kill('SIGTERM');
   }
   console.log('seo checks passed');
 })().catch(err => {

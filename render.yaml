@@ -25,6 +25,8 @@ services:
         sync: false
       - key: SITE_INDEXABLE
         value: "true"
+      - key: LEGAL_PAGES_INDEXABLE
+        sync: false
       - key: GOOGLE_SITE_VERIFICATION
         sync: false
       - key: BING_SITE_VERIFICATION
