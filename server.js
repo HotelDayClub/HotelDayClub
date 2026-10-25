@@ -54,7 +54,9 @@ app.get('/sitemap.xml', (req, res) => {
   const lastmod = ymd(new Date());
   const paths = [];
   if (seo.siteIndexable()) {
-    paths.push('/', '/for-hotels', '/how-it-works', '/faq', '/privacy', '/terms', '/refunds', '/risk', '/guides');
+    paths.push('/', '/for-hotels', '/how-it-works', '/faq');
+    if (seo.legalPagesIndexable()) paths.push('/privacy', '/terms', '/refunds', '/risk');
+    paths.push('/guides');
     for (const g of seo.GUIDES) paths.push('/guides/' + g.slug);
     for (const d of DESTINATIONS) paths.push('/destinations/' + d.slug);
     const hotels = db.prepare("SELECT slug FROM hotels WHERE COALESCE(status,'active')='active' AND COALESCE(is_demo,0)=0 ORDER BY slug").all();
@@ -1239,7 +1241,7 @@ function legalDoc(heading, file) {
   const copy = seo.pageCopy(LEGAL_PAGES[file]);
   return page(heading, `<div class="wrap sec"><h1 class="l-title">${esc(heading)}</h1><p class="draft-notice">Draft terms for demo purposes, pending legal review.</p><article class="legal-doc">${article}</article></div>`, {
     analytics: true,
-    index: true,
+    index: seo.legalPagesIndexable() ? true : 'follow',
     ...copy,
     jsonld: seo.graph(seo.crumbs([{ name: copy.crumb, path: copy.path }])),
   });

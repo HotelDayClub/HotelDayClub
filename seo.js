@@ -94,6 +94,12 @@ function siteIndexable() {
   return !/^(0|false|off|no)$/i.test(raw);
 }
 
+function legalPagesIndexable() {
+  const raw = String(process.env.LEGAL_PAGES_INDEXABLE || '').trim();
+  if (!raw) return false;
+  return /^(1|true|on|yes)$/i.test(raw);
+}
+
 function robotsContent(index) {
   if (!siteIndexable()) return 'noindex, nofollow';
   if (index === 'follow') return 'noindex, follow';
@@ -388,7 +394,7 @@ ${body}
 
 module.exports = {
   ORIGIN, DEFAULT_IMAGE, LOGO, PAGES, GUIDES,
-  siteIndexable, robotsContent, fullTitle, clampDesc, absolute, shortName,
+  siteIndexable, legalPagesIndexable, robotsContent, fullTitle, clampDesc, absolute, shortName,
   listingTitle, listingDescription, pageCopy, crumbs, graph, homeJsonLd, listingJsonLd, articleJsonLd,
   headMeta, robotsTxt, sitemapDocument, canonicalRedirect,
   faqHtml, faqJsonLd, guideBySlug, guideIndexHtml, guideHtml,
