@@ -235,8 +235,14 @@ function gaSnippet(safePath) {
 function siteFooter(tone) {
   const abn = `<p class="muted small abn-line">Hotel Day Club · ABN ${esc(businessAbn())}</p>`;
   const logo = tone === 'light' ? logoLink('light') : logoLink('dark');
-  return `<footer class="app-ftr"><div class="wrap ftr-in"><div>${logo}<p class="muted small">Contact ${contactMail()}</p></div>
-<nav class="ftr-links"><a href="/destinations/sydney">Sydney</a><a href="/destinations/gold-coast">Gold Coast</a><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/guides">Guides</a><a href="/for-hotels">For hotels</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a></nav>
+  const destLinks = DESTINATIONS.map(d => `<a href="/destinations/${esc(d.slug)}">${esc(d.name)}</a>`).join('');
+  const guideLinks = [`<a href="/guides">All guides</a>`, ...seo.GUIDES.map(g => `<a href="/guides/${esc(g.slug)}">${esc(g.h1)}</a>`)].join('');
+  return `<footer class="app-ftr"><div class="wrap ftr-in"><div class="ftr-brand">${logo}<p class="muted small">Contact ${contactMail()}</p></div>
+<div class="ftr-cols">
+<nav class="ftr-col ftr-dest" aria-label="Destinations"><p class="ftr-h">Destinations</p>${destLinks}</nav>
+<nav class="ftr-col" aria-label="Guides"><p class="ftr-h">Guides</p>${guideLinks}</nav>
+<nav class="ftr-col" aria-label="Site"><p class="ftr-h">Site</p><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/for-hotels">For hotels</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a></nav>
+</div>
 <p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p>${abn}</div></footer>`;
 }
 const FONT_LINKS = `<link rel="preload" href="/golden/fonts/f3.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/golden/fonts/f5.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/golden/fonts.css">`;
@@ -405,7 +411,7 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
     return `<a class="ex" href="/h/${h.slug}${date ? '?date=' + encodeURIComponent(date) : ''}">${img}<span class="tag">Example</span><h3>${esc(h.name)}</h3><p>${esc(h.area)} · From ${money(from)} · Demo</p></a>`;
   }).join('');
   const slot = (src, alt, time, title, copy) => `<div class="slot"><picture><source type="image/webp" srcset="/golden/img/${src}.webp"><img src="/golden/img/${src}.jpg" alt="${alt}" width="900" height="600" loading="lazy" decoding="async"></picture><span class="t">${time}</span><div class="b"><h3>${title}</h3><p>${copy}</p></div></div>`;
-  return page('Take the day off', `<nav class="top">${logoLink('dark')}<div class="links"><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a><a class="pill" href="#waitlist">Join the waitlist</a></div></nav>
+  return page('Hotel day passes in Australia', `<nav class="top">${logoLink('dark')}<div class="links"><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a><a class="pill" href="#waitlist">Join the waitlist</a></div></nav>
 <header class="hero" data-slot="1"><div class="ph"><div class="media">
 <picture class="layer" data-slot="0"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-swim-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-swim-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-swim.webp"><img src="/golden/img/hero-swim.jpg" alt="Ocean pool at sunrise" width="1920" height="1080" decoding="async"></picture>
 <picture class="layer on" data-slot="1"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-lunch-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-lunch-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-lunch.webp"><img fetchpriority="high" src="/golden/img/hero-lunch.jpg" alt="Resort pool with palm trees" width="1920" height="1080" decoding="async"></picture>
@@ -413,8 +419,8 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
 <picture class="layer" data-slot="3"><source type="image/webp" srcset="/golden/img/1-sm.webp"><img src="/golden/img/1-sm.jpg" alt="Hotel pool at dusk" width="900" height="900" loading="lazy" decoding="async"></picture>
 <div class="shimmer" aria-hidden="true"></div><div class="tint"></div></div>
 <div class="clock"><span id="ct">12:00</span><small id="cl">Long lunch</small></div><span class="credit">Stock media · example only</span></div>
-<div class="copy"><span class="kicker">Hotel pools, gyms &amp; spas across Australia</span>
-<h1>Take the day <em>off.</em><br>Swim till&nbsp;six.</h1>
+<div class="copy"><h1 class="kicker">Hotel day passes in Australia</h1>
+<h2 class="hero-line">Take the day <em>off.</em><br>Swim till&nbsp;six.</h2>
 <p class="lead">A hotel pool, gym, daybed or spa for the day — minutes from home, no room needed.</p>
 <div class="times"><button type="button" data-i="0" aria-pressed="false">Swim &amp; gym</button><button type="button" data-i="1" class="on" aria-pressed="true">Long lunch</button><button type="button" data-i="2" aria-pressed="false">Spa afternoon</button><button type="button" data-i="3" aria-pressed="false">Golden hour</button></div>
 <form class="search" action="/#explore" method="get">
@@ -423,29 +429,29 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
 <div class="seg"><label for="p">What</label><select id="p" class="hdc-pick" name="want">${WANTS.map(w => `<option value="${w.id}" data-icon="${w.icon}"${want === w.id ? ' selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
 <button type="submit">Search</button></form></div></header>
 <div class="marquee" aria-label="Pool day, gym session, spa afternoon, daybed for two, cabana with friends, golden-hour swim"><div class="track" aria-hidden="true"><span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺<span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺</div></div>
-<section data-rv><span class="kicker sand">Plan your day by the hour</span><h2>One day. <em>Four</em> ways to spend it.</h2>
+<section data-rv><span class="kicker sand">Plan your day by the hour</span><h2>A hotel day by the hour</h2>
 <div class="day">
 ${slot('gym-sm', 'Hotel gym with free weights', '8 am', 'Swim &amp; gym', 'A gym session, then laps before the city wakes up.')}
 ${slot('4-sm', 'Hotel daybed beside a pool', '12 pm', 'Daybed &amp; long lunch', 'Order from the pool bar, stay put till three.')}
 ${slot('3-sm', 'Spa treatment table', '3 pm', 'Spa afternoon', 'Steam, sauna, a treatment if the hotel offers one.')}
 ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
 </div></section>
-<section class="steps" data-rv><div><span class="kicker">How it works</span><h2>Book the pool, <em>not</em> the room.</h2></div>
+<section class="steps" data-rv><div><span class="kicker">How it works</span><h2>How a hotel day pass works</h2></div>
 <ol><li><span>01</span><div><b>Find a hotel</b><p>Pools, gyms and spas — each listing shows hours, the pass and exactly what's included.</p></div></li>
 <li><span>02</span><div><b>Pick a pass and a day</b><p>See the price before you confirm.</p></div></li>
 <li><span>03</span><div><b>Show up, switch off</b><p>Check in at the desk and the day is yours.</p></div></li></ol></section>
-<section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings · not real hotels</span><h2>${exploreTitle === 'Example listings' ? "A taste of what's <em>coming.</em>" : exploreTitle}</h2></div>${filtered ? '<a class="clear" href="/#explore">Clear filters</a>' : ''}</div>
+<section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings · not real hotels</span><h2>${exploreTitle}</h2></div>${filtered ? '<a class="clear" href="/#explore">Clear filters</a>' : ''}</div>
 <p class="home-note">Shown while the site is in demo mode. These hotels are fictional. No real bookings are taken. <a href="/guides">Read the day pass guides</a>.</p>
 <div class="list">${exampleCards || `<p class="home-note">${emptyCopy}</p>`}</div></section>
-<section id="destinations" data-rv><span class="kicker sand">Explore by destination</span><h2>Popular destinations</h2>
+<section id="destinations" data-rv><span class="kicker sand">Explore by destination</span><h2>Destinations</h2>
 <p class="home-note">The number on a card counts fictional example listings in this demo for that area. It does not mean a hotel has signed up. Coming soon means there is nothing listed there yet.</p>
 <ul class="dests">${destCards}</ul></section>
-<section class="faq" data-rv><div><span class="kicker sand">Good to know</span><h2>Questions, <em>answered.</em></h2></div>
+<section class="faq" data-rv><div><span class="kicker sand">Good to know</span><h2>Questions about hotel day passes</h2></div>
 <div class="faq-list"><details open><summary>Do I need to stay at the hotel?</summary><p>No. A day pass gives you the pool, gym or spa for set hours — no room booking needed.</p></details>
 <details><summary>Is Hotel Day Club taking bookings?</summary><p>Not yet. Join the waitlist and we'll email you when passes open near you.</p></details>
 <details><summary>What's included?</summary><p>Each hotel sets its own inclusions — pool, gym, spa and towels — and every listing spells out what your pass covers.</p></details>
 <p class="faq-more"><a href="/faq">All questions</a></p></div></section>
-<div class="hotels" id="hotels"><div><span class="kicker">For hotels</span><h2>Quiet pool on a Tuesday? <em>Fill it.</em></h2><p>List spare pool, gym and spa capacity for local day guests, on your terms. You choose the hours, the prices and how many guests you take.</p></div><a class="btn" href="/for-hotels">Talk to us</a></div>
+<div class="hotels" id="hotels"><div><span class="kicker">For hotels</span><h2>List a hotel pool</h2><p>List spare pool, gym and spa capacity for local day guests, on your terms. You choose the hours, the prices and how many guests you take.</p></div><a class="btn" href="/for-hotels">Talk to us</a></div>
 <noscript><style>#waitlist{display:block;position:static;margin:24px auto 40px}</style></noscript>
 <dialog id="waitlist" aria-labelledby="wl-title" data-open="${openWait ? '1' : '0'}"><div class="wl-in">
 <button type="button" class="wl-x" data-close>Close</button>
@@ -1470,7 +1476,7 @@ app.get('/refunds', (req, res) => res.send(legalDoc('Cancellation and refunds (d
 app.get('/risk', (req, res) => res.send(legalDoc('Risk warning (draft)', 'guest-risk-acknowledgement.md')));
 app.get('/faq', (req, res) => {
   const copy = seo.pageCopy('faq');
-  res.send(page('Questions', seo.faqHtml(contactMail()), {
+  res.send(page('Hotel day pass questions', seo.faqHtml(contactMail()), {
     analytics: true,
     index: true,
     ...copy,

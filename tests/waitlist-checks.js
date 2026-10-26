@@ -143,7 +143,7 @@ function cookie(res) {
     assert.ok(!/fetchpriority="high"[^>]*loading="lazy"/.test(home.body), 'the hero image should not be lazy');
     assert.ok(home.body.includes('href="/faq"'));
     assert.ok(home.body.includes('For hotels'));
-    assert.ok(home.body.includes('Quiet pool on a Tuesday'));
+    assert.ok(home.body.includes('List a hotel pool'));
     assert.ok(home.body.includes('href="/for-hotels"'));
     assert.ok(!home.body.includes('href="/hotel/join"'));
     const hotels = await get(port, '/for-hotels');
@@ -166,7 +166,7 @@ function cookie(res) {
     assert.ok(hiw.body.includes('href="/for-hotels"'));
     assert.ok(!hiw.body.includes('href="/hotel/join"'));
     assert.ok(home.body.includes('Explore by destination'));
-    assert.ok(home.body.includes('Popular destinations'));
+    assert.ok(home.body.includes('<h2>Destinations</h2>'));
     assert.ok(/href="\/destinations\/sydney"[\s\S]*?Sydney CBD[\s\S]*?1 example listing/.test(home.body));
     assert.ok(/href="\/destinations\/bondi"[\s\S]*?Bondi &amp; Eastern Beaches[\s\S]*?1 example listing/.test(home.body));
     assert.ok(/href="\/destinations\/melbourne"[\s\S]*?Melbourne[\s\S]*?Coming soon[\s\S]*?No listings yet/.test(home.body));
