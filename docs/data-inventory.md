@@ -11,10 +11,10 @@ The app does not take payment. Checkout shows disabled card fields and the text 
 | SQLite file | The tables below | `DB_PATH` if set, otherwise `DATA_DIR/daypass.db` if `DATA_DIR` is set, otherwise `data/daypass.db`. On Render without `DATA_DIR` this file is on the ephemeral disk and is wiped on deploy. |
 | `DATA_DIR/backups/` (or `data/backups/` when `DATA_DIR` is unset) | Up to 14 SQLite snapshots, `hdc-YYYY-MM-DD-HHmm.sqlite` | Automatic only when `DATA_DIR` is set (3:30am Australia/Sydney, and at startup if the newest file is older than 24 hours). Manual backup from `/admin/backups` always works. Same contents as the live database, including every row below. |
 | `DATA_DIR/uploads/` | Image files served at `/uploads/<file>` when `DATA_DIR` is set | No upload form exists. The directory is created so a later image file can live on the disk. Nothing is written there today. Stock photos stay in `public/assets/photos` and are not personal data. |
-| Process memory | Waitlist rate-limit buckets keyed by IP | `waitlist.js`. Not written to SQLite. Cleared when the process stops. |
-| stdout / Render logs | Waitlist fields, and a generated password if an env var is missing | See Logs below. Render keeps logs on its own schedule. This app does not delete them. |
+| Process memory | Waitlist, booking-lookup and admin-login counters keyed by IP | Not written to SQLite. Cleared when the process stops. Admin login locks for 15 minutes after 5 failures. Booking lookups allow 30 in 15 minutes. |
+| stdout / Render logs | Waitlist fields, and a generated admin password if `ADMIN_PASSWORD` is missing | The generated demo hotel password is not written to the log. See Logs below. Render keeps logs on its own schedule. This app does not delete them. |
 | Optional webhook | Waitlist row plus `WAITLIST_WEBHOOK_TOKEN` | `POST` to `WAITLIST_WEBHOOK_URL` when that variable is set. The README script appends the row to a Google Sheet. |
-| Browser | Signed `admin` cookie (value `jason`) and signed `hotel` cookie (hotel id) | httpOnly, SameSite=Lax. No server-side session table. No guest account cookie. |
+| Browser | Signed `admin` cookie (value `jason`) and signed `hotel` cookie (hotel id) | httpOnly, SameSite=Lax, 12-hour expiry. Secure when `NODE_ENV` is `production`. No server-side session table. No guest account cookie. |
 | Google Analytics | Page views on public guest pages | Measurement ID `G-9F5ZH1T4YN` in production unless `GA_MEASUREMENT_ID` overrides it. Not loaded on `/hotel` or `/admin`. A booking confirmation is sent as path `/booking` and title `Booking`, so the booking code in the address bar is not the hit path. The waitlist success page can send a `generate_lead` event with no name or email. |
 
 There is no separate session store, no payment table, and no copy of a photo ID.
@@ -32,7 +32,7 @@ Written by `POST /book`.
 | `guest_name` | Name typed at checkout |
 | `email` | Email typed at checkout (trimmed, not lower-cased) |
 | `phone` | Mobile typed at checkout |
-| `code` | Booking code `HDC-` plus digits. Knowing it opens `/booking/<code>` |
+| `code` | Booking code. New bookings use `HDC-` plus 32 hex characters. Older `HDC-` plus digits still open `/booking/<code>` |
 | `date`, `qty`, `party`, `unit_price`, `total`, `status`, `pass_type_id`, `hotel_id` | The day, spots, party size, price and hotel |
 | `checked_in_at` | Set when a hotel checks the guest in. Empty until then |
 | `rules_ack_at`, `terms_ack_at`, `risk_ack_at` | Timestamps of the three required checkboxes |
@@ -76,7 +76,7 @@ Not guest checkout data. Still personal where it names a person.
 | --- | --- |
 | `contact_name`, `contact_email` | Shown on the admin pending list. Not shown on the public listing |
 | `login` | Hotel username |
-| `password` | Plaintext password compared in `POST /hotel/login`. Demo rows (`login` like `demo-%`) are overwritten on every boot with `DEMO_HOTEL_PASSWORD` |
+| `password` | scrypt hash (`scrypt$…` with a per-password salt). Plaintext values are hashed on startup. `demo-` logins are re-hashed when they do not match the current `DEMO_HOTEL_PASSWORD`. The hash is not shown on a page, in the hotels CSV, or in the log |
 | `address`, `lat`, `lng` | Shown on the public listing (Getting there). Demo values are fictional addresses from `arrival.js` |
 | `name`, `area`, hours, rules, prices | Listing content. Public when the hotel is active |
 
@@ -91,7 +91,7 @@ Not guest checkout data. Still personal where it names a person.
 ## Who can see it
 
 - **Anyone** can open an active listing, which shows the hotel name, area, address and map pin. They cannot see the waitlist, guest names, or hotel passwords.
-- **Anyone who knows a booking code** can open `/booking/<code>` with no login. The page shows the guest name, the email address ("We've sent the details to …"), hotel, date, pass, party size, total, add-ons and check-in status. It does not show the mobile number. The page is `noindex` and `robots.txt` disallows `/booking/`. The code is still a link that reveals the email.
+- **Anyone who knows a booking code** can open `/booking/<code>` with no login. The page shows a masked name (first name and last initial), a masked email (`j***@gmail.com`), the code, hotel, date, pass, party size, status, add-ons, a QR of the code, an add-to-calendar file and a directions link. It does not show the full name, the full email, or the mobile number. The page is `noindex` (`X-Robots-Tag` as well as the meta tag) and `robots.txt` disallows `/booking/`. Lookups are limited to 30 per address per 15 minutes.
 - **A logged-in hotel** sees, for its own bookings, guest name, email and mobile on the dashboard table, plus code, date, pass, party, add-ons, rules-accepted flag and guest notes. Lookup also matches email and phone. The printable list and the night-before email preview show name, code, pass, party and notes, not email or mobile. Check-in shows the guest name.
 - **Admin** (`admin` cookie after logging in as `jason`) sees every hotel, every booking (name, email, phone), guest notes, and the waitlist. Admin can download the SQLite backup and the CSV files. Hotel CSV columns are id, slug, name, area, status, login, contact name, contact email and address. The password column is not exported. Booking CSV includes name, email, mobile and the booking fields, not the stored rules text.
 - **The waitlist webhook**, if configured, receives email, first name, place, role, hotel name and destination.
@@ -120,7 +120,7 @@ An admin can delete a waitlist row from `/admin`. Nothing in the admin UI delete
 
 When `WAITLIST_WEBHOOK_URL` is unset, every successful signup logs the email, first name, place, role, hotel name and destination (`waitlist.js`, "stored locally"). The same fields are logged if the webhook URL is invalid, the webhook returns an error, it times out, or the database insert throws (`server.js`). A successful webhook logs only the HTTP status, not the row.
 
-If `ADMIN_PASSWORD` or `DEMO_HOTEL_PASSWORD` is unset at startup, `passwords.js` generates a password and writes it to the log. Set both variables so that does not happen.
+If `ADMIN_PASSWORD` is unset at startup, `passwords.js` generates a password and writes it to the log. If `DEMO_HOTEL_PASSWORD` is unset, a password is generated and is not written to the log, so demo hotel login will not work until the variable is set and the process restarts. Set both variables.
 
 The in-memory rate limit uses `req.ip` and does not log it on its own.
 
@@ -134,13 +134,13 @@ These are differences between the code and the draft policy. They are not a rewr
 
 3. **What the hotel sees.** Section 5 says the hotel receives "your name, booking code, pass and party size (and any notes you add)". The hotel dashboard also shows the guest's email and mobile. Checkout's own note says "We use your name, email and mobile to hold this booking and show it to the hotel." That checkout sentence matches the dashboard. Section 5 does not list email or mobile.
 
-4. **Booking link.** The policy does not say that anyone with the booking URL can see the guest name and email. `/booking/<code>` does that with no login.
+4. **Booking link.** The policy does not describe `/booking/<code>`. Anyone with the code can open that page with no login. The page shows a masked name (first name and last initial) and a masked email, plus the code, hotel, date, pass, party size and status. It does not show the full name, the full email, or the mobile number. The policy still needs a sentence if that page stays public. Suggested wording is in `docs/policy-fixes-needed.md`.
 
 5. **No-show notes.** The policy's incident line is "if the hotel reports an incident or refused entry linked to your booking, a short note of what happened." The app also stores `kind = no_show`, with the same free-text note. There is no refused-entry flag separate from that note.
 
-6. **Marketing send and unsubscribe.** The policy says: "We send marketing emails or SMS (for example, hot-day alerts, new hotels and offers) only if you've opted in. Every marketing message identifies us and has an unsubscribe option, and we act on unsubscribes within 5 working days." The app stores `marketing_opt_in` and does not send email or SMS at all. The confirmation page says "demo: no email is actually sent." There is no unsubscribe route and no record of an unsubscribe. The only in-product instruction is to email the contact address.
+6. **Marketing send and unsubscribe.** The policy says: "We send marketing emails or SMS (for example, hot-day alerts, new hotels and offers) only if you've opted in. Every marketing message identifies us and has an unsubscribe option, and we act on unsubscribes within 5 working days." The app stores `marketing_opt_in` and does not send email or SMS at all. The confirmation page says "No email is sent in this demo." There is no unsubscribe route and no record of an unsubscribe. The only in-product instruction is to email the contact address.
 
-7. **Security claims.** The policy says: "We use reasonable steps to protect personal information: access controls, strong passwords and two-factor authentication on admin accounts, encrypted connections, and giving hotels only the minimum details." Admin login is one shared password compared as a string, then a signed cookie. There is no second factor. Hotel passwords are stored and compared in plaintext. If `COOKIE_SECRET` is unset, cookies are signed with the fixed default in `server.js`. Hotels are shown email and mobile, which is more than the "minimum details" list in section 5.
+7. **Security claims.** The policy says: "We use reasonable steps to protect personal information: access controls, strong passwords and two-factor authentication on admin accounts, encrypted connections, and giving hotels only the minimum details." Hotel passwords are scrypt hashes, compared in constant time. Admin login is still one shared password, compared in constant time, with a lockout after 5 failures in 15 minutes. The admin cookie is HttpOnly, SameSite=Lax, expires after 12 hours, and is Secure when `NODE_ENV` is `production`. There is no second factor. If `COOKIE_SECRET` is unset, cookies are signed with the fixed default in `server.js`. A logged-in hotel still sees email and mobile for its own bookings, which is more than the "minimum details" list in section 5. A hotel's queries are limited to that hotel's id.
 
 8. **Retention.** The policy says: "We keep booking and payment records for as long as needed for tax and legal purposes. We delete or de-identify guest lists and marketing data when no longer needed. Hotels are asked to delete guest lists after the visit." There are no payment records. There is no deletion or de-identification job, no maximum age, and no message in the product asking a hotel to delete a guest list. Guest lists, notes and the marketing flag remain in SQLite, and in backups, until a person removes them.
 
