@@ -308,6 +308,7 @@ function robotsTxt() {
     'Disallow: /checkout',
     'Disallow: /api',
     'Disallow: /booking/',
+    'Disallow: /healthz',
     'Sitemap: ' + ORIGIN + '/sitemap.xml',
     '',
   ].join('\n');

@@ -49,7 +49,7 @@ function start(port, extra = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['server.js'], {
       cwd: path.join(__dirname, '..'),
-      env: { ...process.env, ...extra, PORT: String(port), DB_PATH: dbPath, ADMIN_PASSWORD: 'seo-admin', DEMO_HOTEL_PASSWORD: 'seo-hotel' },
+      env: { ...process.env, ...extra, PORT: String(port), DB_PATH: dbPath, DATA_DIR: '', ADMIN_PASSWORD: 'seo-admin', DEMO_HOTEL_PASSWORD: 'seo-hotel' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let log = '';
@@ -126,6 +126,7 @@ function alts(html, where) {
     assert.ok(robots.includes('Disallow: /checkout'));
     assert.ok(robots.includes('Disallow: /api'));
     assert.ok(robots.includes('Disallow: /booking/'));
+    assert.ok(robots.includes('Disallow: /healthz'));
     assert.ok(robots.includes('Sitemap: https://www.hoteldayclub.com.au/sitemap.xml'));
     assert.ok(!/^Disallow: \/\s*$/m.test(robots));
 
@@ -141,6 +142,7 @@ function alts(html, where) {
     assert.ok(!map.includes('/risk'));
     assert.ok(!map.includes('/checkout'));
     assert.ok(!map.includes('/admin'));
+    assert.ok(!map.includes('healthz'));
     assert.ok(!map.includes('/hotel'));
     const privacy = text(await get(port, '/privacy'));
     assert.ok(privacy.includes('content="noindex, follow"'));

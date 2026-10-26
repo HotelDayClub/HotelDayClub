@@ -2,13 +2,17 @@ services:
   - type: web
     name: hotel-day-club
     runtime: node
+    # Leave this as free. A blueprint sync would otherwise change the live plan.
+    # Upgrade to Starter in the Render dashboard before attaching a disk. See README.
     plan: free
     buildCommand: npm install
     startCommand: npm start
-    healthCheckPath: /
+    healthCheckPath: /healthz
     envVars:
       - key: NODE_VERSION
         value: "20"
+      - key: DATA_DIR
+        sync: false
       - key: ADMIN_PASSWORD
         sync: false
       - key: DEMO_HOTEL_PASSWORD

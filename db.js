@@ -1,8 +1,10 @@
 const fs = require('fs');
-const Database = require('better-sqlite3');
 const path = require('path');
-const dbPath = process.env.DB_PATH || path.join(__dirname, 'data', 'daypass.db');
+const Database = require('better-sqlite3');
+const paths = require('./paths');
+const dbPath = paths.dbPath();
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+if (paths.dataDir()) fs.mkdirSync(paths.uploadsDir(), { recursive: true });
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
@@ -58,6 +60,7 @@ CREATE TABLE IF NOT EXISTS waitlist(
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
+// Adds a column only when it is missing, so this is safe to run on every boot.
 function ensureCols(table, cols) {
   const have = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name));
   for (const [name, ddl] of cols) if (!have.has(name)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${ddl}`);

@@ -6,10 +6,12 @@
   "scripts": {
     "start": "node server.js",
     "seed": "node seed.js",
+    "restore": "node scripts/restore-backup.js",
     "bg": "./start.sh",
     "test": "python3 e2e_test.py",
     "test:analytics": "node tests/analytics-checks.js",
-    "test:waitlist": "node tests/waitlist-checks.js"
+    "test:waitlist": "node tests/waitlist-checks.js",
+    "test:backups": "node tests/backup-checks.js"
   },
   "keywords": [],
   "author": "",
