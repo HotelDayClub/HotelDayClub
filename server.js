@@ -244,6 +244,12 @@ var ct=document.getElementById('ct'),cl=document.getElementById('cl');if(ct)ct.t
 document.querySelectorAll('.layer').forEach(function(l){l.classList.toggle('on',+l.dataset.slot===media[i])});}
 bs.forEach(function(b){b.addEventListener('click',function(){set(+b.dataset.i)})});set(1);
 var rm=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var net=navigator.connection||{},slow=!!(net.saveData||/2g/.test(net.effectiveType||''));
+var box=document.querySelector('.media');
+function syncMotion(){if(!box)return;var allow=!rm&&!slow;box.classList.toggle('motion',allow);box.classList.toggle('paused',!allow||document.hidden);}
+syncMotion();
+document.addEventListener('visibilitychange',syncMotion);
+if(net.addEventListener)net.addEventListener('change',function(){slow=!!(net.saveData||/2g/.test(net.effectiveType||''));syncMotion();});
 var els=document.querySelectorAll('[data-rv]');
 function show(el){el.classList.add('in')}
 if(rm||!('IntersectionObserver' in window)){els.forEach(show)}else{
@@ -398,9 +404,9 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
 <header class="hero" data-slot="1"><div class="ph"><div class="media">
 <picture class="layer" data-slot="0"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-swim-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-swim-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-swim.webp"><img src="/golden/img/hero-swim.jpg" alt="Ocean pool at sunrise" width="1920" height="1080" decoding="async"></picture>
 <picture class="layer on" data-slot="1"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-lunch-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-lunch-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-lunch.webp"><img fetchpriority="high" src="/golden/img/hero-lunch.jpg" alt="Resort pool with palm trees" width="1920" height="1080" decoding="async"></picture>
-<picture class="layer zoom" data-slot="2"><source type="image/webp" srcset="/golden/img/3-sm.webp"><img src="/golden/img/3-sm.jpg" alt="Spa treatment room" width="900" height="600" loading="lazy" decoding="async"></picture>
-<picture class="layer zoom" data-slot="3"><source type="image/webp" srcset="/golden/img/1-sm.webp"><img src="/golden/img/1-sm.jpg" alt="Hotel pool at dusk" width="900" height="900" loading="lazy" decoding="async"></picture>
-<div class="tint"></div></div>
+<picture class="layer" data-slot="2"><source type="image/webp" srcset="/golden/img/3-sm.webp"><img src="/golden/img/3-sm.jpg" alt="Spa treatment room" width="900" height="600" loading="lazy" decoding="async"></picture>
+<picture class="layer" data-slot="3"><source type="image/webp" srcset="/golden/img/1-sm.webp"><img src="/golden/img/1-sm.jpg" alt="Hotel pool at dusk" width="900" height="900" loading="lazy" decoding="async"></picture>
+<div class="shimmer" aria-hidden="true"></div><div class="tint"></div></div>
 <div class="clock"><span id="ct">12:00</span><small id="cl">Long lunch</small></div><span class="credit">Stock media · example only</span></div>
 <div class="copy"><span class="kicker">Hotel pools, gyms &amp; spas across Australia</span>
 <h1>Take the day <em>off.</em><br>Swim till&nbsp;six.</h1>

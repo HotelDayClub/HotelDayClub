@@ -122,6 +122,14 @@ function cookie(res) {
     assert.ok(!home.body.includes('hero.mp4'));
     assert.ok(!home.body.includes('hero-poster'));
     assert.ok(!home.body.includes('<video'));
+    assert.ok(home.body.includes('saveData') && home.body.includes('visibilitychange') && home.body.includes("classList.toggle('motion'"));
+    assert.ok(home.body.includes('class="shimmer"'));
+    for (const name of ['kb0', 'kb1', 'kb2', 'kb3', 'kbshine']) assert.ok(homeCss.includes('@keyframes ' + name), name);
+    assert.ok(homeCss.includes('scale(1.06)'));
+    assert.ok(homeCss.includes('animation-play-state:paused'));
+    assert.ok(homeCss.includes('prefers-reduced-motion:reduce'));
+    assert.ok(homeCss.includes('.media.motion .layer,.media.motion .shimmer{animation:none}'));
+    assert.ok(!homeCss.includes('feTurbulence') && !homeCss.includes('filter:'));
     for (const photo of ['infinity-ocean.jpg', 'rooftop-city.jpg', 'glass-roof-pool.jpg', 'tropical-resort.jpg', 'daybed-canopy.jpg', 'cabana-drapes.jpg']) {
       const webp = photo.replace(/\.jpg$/, '.webp');
       assert.ok(home.body.includes('/golden/img/cards/' + webp), photo);
