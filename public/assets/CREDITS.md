@@ -57,4 +57,4 @@ Homepage hero stills, cropped to 16:9. They are example photos, not partner venu
 | golden/img/hero-swim.jpg (8:00 Swim & gym) | https://www.pexels.com/photo/30975492/ | Yulius Santoso |
 | golden/img/hero-lunch.jpg (12:00 Long lunch) | https://www.pexels.com/photo/38188725/ | Relaxing Journeys |
 
-WebP and smaller mobile copies sit beside those JPEGs. The on-page chip says "Stock media · example only". The footer credits the photographers.
+WebP and smaller mobile copies sit beside those JPEGs. The on-page chip says "Stock media · example only". Attribution is optional under the Pexels licence. The footer photographer credit was removed on 26 Oct 2026.
