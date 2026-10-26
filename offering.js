@@ -24,7 +24,6 @@ const PHOTOS = [
   ['spa-steps.jpg', 'Spa'],
   ['tropical-resort.jpg', 'Lagoon'],
   ['resort-palms.jpg', 'Palms'],
-  ['kids-float.jpg', 'Shallow end'],
   ['thatched-umbrellas.jpg', 'Umbrellas'],
   ['loungers-snacks.jpg', 'Poolside'],
   ['infinity-palms.jpg', 'Palms and pool'],
