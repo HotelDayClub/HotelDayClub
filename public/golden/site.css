@@ -16,13 +16,18 @@ h1,h2,.l-title{font-family:Fraunces,Georgia,serif;font-weight:500}
 .app-ftr .logo img{height:32px;width:auto;max-width:none}
 .app-ftr a{color:#fff}
 .app-ftr .muted,.app-ftr p{color:#D5DCE8}
-.app-ftr nav{display:flex;flex-wrap:wrap;gap:8px 16px}
-.app-ftr nav a{text-decoration:underline;text-underline-offset:2px}
+.app-ftr .ftr-cols{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,.9fr) minmax(0,.8fr);gap:18px 32px;margin:4px 0}
+.app-ftr nav.ftr-col{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin:0;min-width:0}
+.app-ftr .ftr-h{margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;line-height:1.3;color:#fff}
+.app-ftr .ftr-col a{text-decoration:underline;text-underline-offset:2px;color:#fff}
 :focus-visible{outline:3px solid #C9412F;outline-offset:3px}
 .hdr :focus-visible{outline-color:#fff}
 @media(max-width:800px){
   body.guest .hdr-nav a:not(.pill){display:none}
   .hdr .logo img,.app-ftr .logo img{height:28px}
+  .app-ftr .ftr-cols{grid-template-columns:1fr 1fr;gap:16px 18px}
+  .app-ftr nav.ftr-dest{grid-column:1 / -1;flex-direction:row;flex-wrap:wrap;column-gap:14px;row-gap:8px}
+  .app-ftr nav.ftr-dest .ftr-h{flex-basis:100%}
 }
 .fh{padding:36px 0 8px}
 .fh-kicker{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#9E2E20;font-weight:600;margin:0 0 12px}

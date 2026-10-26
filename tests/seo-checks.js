@@ -94,8 +94,20 @@ function alts(html, where) {
     assert.ok(titleOf(home).length <= 60, titleOf(home));
     assert.strictEqual(titleOf(home), 'Hotel day passes in Australia · Hotel Day Club');
     assert.ok(home.includes('rel="canonical" href="https://www.hoteldayclub.com.au/"'));
-    assert.ok(home.includes('Take the day'));
-    assert.ok(home.includes('name="description"'));
+    const homeDesc = 'Book a hotel pool, spa or gym for the day in Australia, no room needed. We&#39;re launching soon, so join the waitlist.';
+    assert.ok(home.includes('<h1 class="kicker">Hotel day passes in Australia</h1>'));
+    assert.ok(home.includes('<h2 class="hero-line">Take the day <em>off.</em><br>Swim till&nbsp;six.</h2>'));
+    assert.ok(home.includes('How a hotel day pass works'));
+    assert.ok(home.includes('<h2>Destinations</h2>'));
+    assert.ok(home.includes('Questions about hotel day passes'));
+    assert.ok(home.includes(`name="description" content="${homeDesc}"`));
+    assert.ok(home.includes(`property="og:description" content="${homeDesc}"`));
+    assert.ok(home.includes(`name="twitter:description" content="${homeDesc}"`));
+    assert.ok(home.includes('Demo site'));
+    const footer = home.slice(home.indexOf('<footer'));
+    for (const d of DESTINATIONS) assert.ok(footer.includes(`href="/destinations/${d.slug}"`), d.slug);
+    assert.ok(footer.includes('href="/guides"'));
+    for (const g of seo.GUIDES) assert.ok(footer.includes(`href="/guides/${g.slug}"`), g.slug);
     assert.ok(home.includes('og:locale" content="en_AU"'));
     assert.ok(home.includes('name="theme-color" content="#0E1E3A"'));
     assert.ok(home.includes('href="/site.webmanifest"'));
@@ -281,7 +293,20 @@ function alts(html, where) {
     assert.ok(text(br).includes('content="index, follow"'));
     const plain = await get(port, '/faq');
     assert.ok(!plain.headers['content-encoding']);
-    assert.ok(text(plain).includes('at least 3 years'));
+    const faq = text(plain);
+    assert.ok(faq.includes('at least 3 years'));
+    assert.ok(faq.includes('<h1 class="l-title">Hotel day pass questions</h1>'));
+    const faqPage = ld(faq).find(n => n['@type'] === 'FAQPage');
+    assert.ok(faqPage);
+    const visibleQa = [...faq.matchAll(/<summary>([^<]*)<\/summary><p>([\s\S]*?)<\/p>/g)];
+    assert.strictEqual(faqPage.mainEntity.length, visibleQa.length);
+    const decode = s => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+    faqPage.mainEntity.forEach((item, i) => {
+      assert.strictEqual(item['@type'], 'Question');
+      assert.strictEqual(item.acceptedAnswer['@type'], 'Answer');
+      assert.strictEqual(item.name, decode(visibleQa[i][1]));
+      assert.strictEqual(item.acceptedAnswer.text.replace(/\s+/g, ' ').trim(), decode(visibleQa[i][2]));
+    });
 
     const apex = await get(port, '/faq?x=1', { Host: 'hoteldayclub.com.au', 'X-Forwarded-Proto': 'http' });
     assert.strictEqual(apex.status, 301);

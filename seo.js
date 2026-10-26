@@ -11,7 +11,7 @@ const PAGES = {
   home: {
     path: '/',
     title: 'Hotel day passes in Australia',
-    description: 'Book a hotel pool, spa or gym for the day in Australia. No room needed. Demo listings are examples until hotels join.',
+    description: 'Book a hotel pool, spa or gym for the day in Australia, no room needed. We\'re launching soon, so join the waitlist.',
   },
   hotels: {
     path: '/for-hotels',
@@ -358,7 +358,7 @@ function faqItems(mailHtml, mailText) {
 
 function faqHtml(mailHtml) {
   const blocks = faqItems(mailHtml).map((item, i) => `<details${i === 0 ? ' open' : ''}><summary>${esc(item.q)}</summary><p>${item.html}</p></details>`).join('\n');
-  return `<div class="wrap sec"><h1 class="l-title">Questions</h1>
+  return `<div class="wrap sec"><h1 class="l-title">Hotel day pass questions</h1>
 <p class="lead">Short answers, in line with the <a href="/terms">customer terms</a> and the <a href="/refunds">cancellation and refund policy</a>. Both of those pages are drafts.</p>
 <div class="faq">
 ${blocks}
@@ -372,7 +372,7 @@ function faqJsonLd(mailText) {
     acceptedAnswer: { '@type': 'Answer', text: item.text || plain(item.html) },
   }));
   const copy = pageCopy('faq');
-  return graph(crumbs([{ name: 'Questions', path: copy.path }]), { '@type': 'FAQPage', mainEntity });
+  return graph(crumbs([{ name: 'Hotel day pass questions', path: copy.path }]), { '@type': 'FAQPage', mainEntity });
 }
 
 function guideBySlug(slug) {
