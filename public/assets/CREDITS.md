@@ -29,7 +29,7 @@ The licence and photographer for each Pexels photo were read from its public pag
 **Before launch:** re-check each licence and replace these photos with images supplied by the hotel that is listed. Stock photos must never be shown as a real hotel's property. The photo with a child (kids-float.jpg) is a licensed Pexels stock image; don't use it in paid ads without checking the Pexels terms for people.
 
 ## Other assets
-- `logo-mark.svg`, `ph-*.svg`, and all UI icons (inline SVG in the pages): original artwork made for this mockup.
+- `hdc-lockup-*.svg`, `hdc-icon*.svg`, the favicon set and `og-image-1200x630.png`: the approved H Lane Monogram. `ph-*.svg` and the inline UI icons are original artwork made for this mockup.
 - Fonts: Fraunces, Inter and Caveat (SIL Open Font License), self-hosted in `public/golden/fonts/` from Google Fonts. DM Sans is no longer requested.
 
 ## Golden Hour homepage media

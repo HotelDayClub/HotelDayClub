@@ -3,8 +3,8 @@ const { esc } = require('./util');
 const ORIGIN = 'https://www.hoteldayclub.com.au';
 const BRAND = 'Hotel Day Club';
 const SUFFIX = ' · ' + BRAND;
-const DEFAULT_IMAGE = ORIGIN + '/assets/og.jpg';
-const LOGO = ORIGIN + '/assets/logo-mark.png';
+const DEFAULT_IMAGE = ORIGIN + '/assets/og-image-1200x630.png';
+const LOGO = ORIGIN + '/assets/android-chrome-512.png';
 const PUBLISHED = '2026-10-24';
 
 const PAGES = {
@@ -273,10 +273,10 @@ function headMeta({ documentTitle, description, robots, canonicalUrl, image, ima
     `<meta name="robots" content="${esc(robots || 'noindex, nofollow')}">`,
     '<meta name="theme-color" content="#0E1E3A">',
     canonicalUrl ? `<link rel="canonical" href="${esc(canonicalUrl)}">` : '',
-    '<link rel="icon" href="/favicon.ico" sizes="any">',
+    '<link rel="icon" href="/favicon.ico" sizes="48x48">',
+    '<link rel="icon" href="/assets/hdc-icon.svg" type="image/svg+xml">',
     '<link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">',
     '<link rel="icon" href="/assets/favicon-16.png" type="image/png" sizes="16x16">',
-    '<link rel="icon" href="/assets/logo-mark.svg" type="image/svg+xml">',
     '<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">',
     '<link rel="manifest" href="/site.webmanifest">',
     `<meta property="og:locale" content="en_AU">`,
