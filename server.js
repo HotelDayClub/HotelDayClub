@@ -232,10 +232,10 @@ function gaSnippet(safePath) {
     : `gtag('config','${id}');`;
   return `<script async src="https://www.googletagmanager.com/gtag/js?id=${id}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());${config}</script>`;
 }
-function siteFooter(tone, note) {
+function siteFooter(tone) {
   const abn = `<p class="muted small abn-line">Hotel Day Club · ABN ${esc(businessAbn())}</p>`;
   const logo = tone === 'light' ? logoLink('light') : logoLink('dark');
-  return `<footer class="app-ftr"><div class="wrap ftr-in"><div>${logo}<p class="muted small">Contact ${contactMail()}</p>${note || ''}</div>
+  return `<footer class="app-ftr"><div class="wrap ftr-in"><div>${logo}<p class="muted small">Contact ${contactMail()}</p></div>
 <nav class="ftr-links"><a href="/destinations/sydney">Sydney</a><a href="/destinations/gold-coast">Gold Coast</a><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/guides">Guides</a><a href="/for-hotels">For hotels</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a></nav>
 <p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p>${abn}</div></footer>`;
 }
@@ -307,7 +307,7 @@ function page(title, body, opts = {}) {
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 <div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>
 ${header}<main>${body}</main>
-${bare ? '' : siteFooter(home ? 'light' : 'dark', home ? '<p class="muted small">Photo: Yulius Santoso / Pexels · Photo: Relaxing Journeys / Pexels</p>' : '')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}
+${bare ? '' : siteFooter(home ? 'light' : 'dark')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}
 </body></html>`;
 }
 const card = (h, date) => {
