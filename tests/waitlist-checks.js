@@ -116,8 +116,11 @@ function cookie(res) {
     assert.ok(home.body.includes('/golden/img/hero-lunch'));
     assert.ok(home.body.includes('width="1920" height="1080"'));
     assert.ok(home.body.includes('href="/golden/img/hero-lunch.webp"'));
-    assert.ok(home.body.includes('Photo: Yulius Santoso / Pexels'));
-    assert.ok(home.body.includes('Photo: Relaxing Journeys / Pexels'));
+    assert.ok(!home.body.includes('Photo: Yulius Santoso / Pexels'));
+    assert.ok(!home.body.includes('Photo: Relaxing Journeys / Pexels'));
+    assert.ok(!home.body.includes('Yulius Santoso') && !home.body.includes('Relaxing Journeys'));
+    assert.ok(home.body.includes('Stock media · example only'));
+    assert.ok(home.body.includes('class="app-ftr"'));
     assert.ok(!home.body.includes('Bronte') && !home.body.includes('Palm Cove') && !home.body.includes('Icebergs'));
     assert.ok(!home.body.includes('hero.mp4'));
     assert.ok(!home.body.includes('hero-poster'));

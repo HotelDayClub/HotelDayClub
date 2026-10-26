@@ -232,12 +232,12 @@ function gaSnippet(safePath) {
     : `gtag('config','${id}');`;
   return `<script async src="https://www.googletagmanager.com/gtag/js?id=${id}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());${config}</script>`;
 }
-function siteFooter(tone, note) {
+function siteFooter(tone) {
   const abn = `<p class="muted small abn-line">Hotel Day Club · ABN ${esc(businessAbn())}</p>`;
   const logo = tone === 'light' ? logoLink('light') : logoLink('dark');
   const destLinks = DESTINATIONS.map(d => `<a href="/destinations/${esc(d.slug)}">${esc(d.name)}</a>`).join('');
   const guideLinks = [`<a href="/guides">All guides</a>`, ...seo.GUIDES.map(g => `<a href="/guides/${esc(g.slug)}">${esc(g.h1)}</a>`)].join('');
-  return `<footer class="app-ftr"><div class="wrap ftr-in"><div class="ftr-brand">${logo}<p class="muted small">Contact ${contactMail()}</p>${note || ''}</div>
+  return `<footer class="app-ftr"><div class="wrap ftr-in"><div class="ftr-brand">${logo}<p class="muted small">Contact ${contactMail()}</p></div>
 <div class="ftr-cols">
 <nav class="ftr-col ftr-dest" aria-label="Destinations"><p class="ftr-h">Destinations</p>${destLinks}</nav>
 <nav class="ftr-col" aria-label="Guides"><p class="ftr-h">Guides</p>${guideLinks}</nav>
@@ -313,7 +313,7 @@ function page(title, body, opts = {}) {
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 <div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>
 ${header}<main>${body}</main>
-${bare ? '' : siteFooter(home ? 'light' : 'dark', home ? '<p class="muted small">Photo: Yulius Santoso / Pexels · Photo: Relaxing Journeys / Pexels</p>' : '')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}
+${bare ? '' : siteFooter(home ? 'light' : 'dark')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}
 </body></html>`;
 }
 const card = (h, date) => {
