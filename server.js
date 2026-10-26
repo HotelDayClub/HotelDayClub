@@ -14,7 +14,7 @@ const { ensureArrival, saveArrival, arrivalHtml, arrivalForm } = require('./arri
 const { listingHtml } = require('./listingView');
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
 const { adminPassword, verifyPassword, safeEqual, migrateHotelPasswords, maskName, maskEmail } = require('./passwords');
-const { staffCookie, clearStaffCookie } = require('./session');
+const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
 const { ymd, addDays, esc, money, nice } = require('./util');
 const { DESTINATIONS, destIcon, destinationBySlug } = require('./destinations');
 const seo = require('./seo');
@@ -31,7 +31,7 @@ const {
 const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3030;
-const SECRET = process.env.COOKIE_SECRET || 'hdc-demo-secret';
+const SECRET = resolveCookieSecret();
 const ADMIN_USER = 'jason';
 const HOTEL_SHARE = 0.75;
 app.use(seo.canonicalRedirect);

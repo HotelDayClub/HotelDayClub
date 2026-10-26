@@ -151,6 +151,36 @@ function unit() {
   assert.strictEqual(dev.maxAge, 12 * 60 * 60 * 1000);
   process.env.NODE_ENV = 'production';
   assert.strictEqual(session.staffCookieOptions().secure, true);
+  const previousSecret = process.env.COOKIE_SECRET;
+  const errors = [];
+  const origError = console.error;
+  console.error = (...args) => { errors.push(args.join(' ')); };
+  try {
+    delete process.env.COOKIE_SECRET;
+    delete process.env.NODE_ENV;
+    assert.strictEqual(session.resolveCookieSecret(), session.DEFAULT_COOKIE_SECRET);
+    assert.strictEqual(errors.length, 0);
+    process.env.NODE_ENV = 'production';
+    const generated = session.resolveCookieSecret();
+    assert.notStrictEqual(generated, session.DEFAULT_COOKIE_SECRET);
+    assert.ok(generated.length >= 32);
+    assert.ok(errors.some(line => /COOKIE_SECRET/.test(line) && /Sessions reset on restart/.test(line)));
+    assert.ok(!errors.some(line => line.includes(generated)));
+    errors.length = 0;
+    process.env.COOKIE_SECRET = session.DEFAULT_COOKIE_SECRET;
+    const refused = session.resolveCookieSecret();
+    assert.notStrictEqual(refused, session.DEFAULT_COOKIE_SECRET);
+    assert.ok(errors.some(line => /Sessions reset on restart/.test(line)));
+    assert.ok(!errors.join('\n').includes(refused));
+    errors.length = 0;
+    process.env.COOKIE_SECRET = 'render-generated-secret';
+    assert.strictEqual(session.resolveCookieSecret(), 'render-generated-secret');
+    assert.strictEqual(errors.length, 0);
+  } finally {
+    console.error = origError;
+    if (previousSecret == null) delete process.env.COOKIE_SECRET;
+    else process.env.COOKIE_SECRET = previousSecret;
+  }
   if (previous == null) delete process.env.NODE_ENV;
   else process.env.NODE_ENV = previous;
 }
