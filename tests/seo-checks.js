@@ -129,6 +129,24 @@ function alts(html, where) {
     assert.ok(robots.includes('Disallow: /healthz'));
     assert.ok(robots.includes('Sitemap: https://www.hoteldayclub.com.au/sitemap.xml'));
     assert.ok(!/^Disallow: \/\s*$/m.test(robots));
+    assert.ok(robots.includes('Allow: /favicon.ico'));
+    assert.ok(!/Disallow:\s*\/favicon\.ico/.test(robots));
+
+    const ico = await get(port, '/favicon.ico');
+    assert.strictEqual(ico.status, 200);
+    assert.ok(String(ico.headers['content-type']).startsWith('image/x-icon'), ico.headers['content-type']);
+    assert.ok(String(ico.headers['cache-control']).includes('max-age=86400'));
+    assert.ok(!ico.body.includes(Buffer.from('<html')));
+    assert.strictEqual(ico.body.readUInt16LE(0), 0);
+    assert.strictEqual(ico.body.readUInt16LE(2), 1);
+    const count = ico.body.readUInt16LE(4);
+    const sizes = [];
+    for (let i = 0; i < count; i++) {
+      const w = ico.body.readUInt8(6 + i * 16);
+      sizes.push(w === 0 ? 256 : w);
+    }
+    assert.deepStrictEqual(sizes, [16, 32, 48]);
+    assert.ok(home.includes('href="/favicon.ico"'));
 
     const map = text(await get(port, '/sitemap.xml'));
     assert.ok(map.includes('https://www.hoteldayclub.com.au/faq'));
@@ -265,6 +283,7 @@ function alts(html, where) {
     assert.ok(home.includes('content="noindex, nofollow"'));
     const robots = text(await get(offPort, '/robots.txt'));
     assert.ok(/^Disallow: \/$/m.test(robots));
+    assert.ok(robots.includes('Allow: /favicon.ico'));
     assert.ok(!robots.includes('Sitemap:'));
     const map = text(await get(offPort, '/sitemap.xml'));
     assert.ok(!map.includes('<loc>'));
