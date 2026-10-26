@@ -26,7 +26,7 @@ All photos were downloaded on 21 Oct 2026 (AEDT) and stored locally in `assets/p
 | photos/resort-palms.jpg | https://unsplash.com/photos/qDMY-BeGoLs | Long Chung (@chungj07) |
 
 The licence and photographer for each Pexels photo were read from its public page. The Unsplash licence lines ("Free to use under the Unsplash License") and photographers come from the public photo pages as indexed by search; unsplash.com blocked direct page fetches.
-**Before launch:** re-check each licence and replace these photos with images supplied by the hotel that is listed. Stock photos must never be shown as a real hotel's property. The photo with a child (kids-float.jpg) is a licensed Pexels stock image; don't use it in paid ads without checking the Pexels terms for people.
+**Before launch:** re-check each licence and replace these photos with images supplied by the hotel that is listed. Stock photos must never be shown as a real hotel's property. `kids-float.jpg` shows an identifiable child and is not used on the Palm Court gallery.
 
 ## Other assets
 - `hdc-lockup-*.svg`, `hdc-icon*.svg`, the favicon set and `og-image-1200x630.png`: the approved H Lane Monogram. `ph-*.svg` and the inline UI icons are original artwork made for this mockup.
@@ -51,4 +51,11 @@ WebP copies of the same files sit beside the JPEGs. Example-listing cards use re
 ### Pexels License
 https://www.pexels.com/license/ was readable: photos and videos are free to use, including commercially; attribution is not required; you may modify them. You may not sell unaltered copies, imply endorsement, or redistribute them on another stock platform.
 
-Hero video `golden/vid/hero.mp4` is Pexels video 10993980, https://www.pexels.com/video/10993980/, trimmed to 9 seconds (1280×720, no audio). `golden/img/hero-poster.jpg` is the first frame. The video page itself was blocked by a bot check, so the videographer's name was not confirmed. Credited as a courtesy. The on-page chip says "Stock media · example only".
+Homepage hero stills, cropped to 16:9. They are example photos, not partner venues.
+
+| File | Photo | Photographer |
+|---|---|---|
+| golden/img/hero-swim.jpg (8:00 Swim & gym) | https://www.pexels.com/photo/30975492/ | Yulius Santoso |
+| golden/img/hero-lunch.jpg (12:00 Long lunch) | https://www.pexels.com/photo/38188725/ | Relaxing Journeys |
+
+WebP and smaller mobile copies sit beside those JPEGs. The on-page chip says "Stock media · example only". The footer credits the photographers.

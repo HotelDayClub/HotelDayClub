@@ -232,34 +232,29 @@ function gaSnippet(safePath) {
     : `gtag('config','${id}');`;
   return `<script async src="https://www.googletagmanager.com/gtag/js?id=${id}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());${config}</script>`;
 }
-function siteFooter(tone) {
+function siteFooter(tone, note) {
   const abn = `<p class="muted small abn-line">Hotel Day Club · ABN ${esc(businessAbn())}</p>`;
   const logo = tone === 'light' ? logoLink('light') : logoLink('dark');
-  return `<footer class="app-ftr"><div class="wrap ftr-in"><div>${logo}<p class="muted small">Contact ${contactMail()}</p></div>
+  return `<footer class="app-ftr"><div class="wrap ftr-in"><div>${logo}<p class="muted small">Contact ${contactMail()}</p>${note || ''}</div>
 <nav class="ftr-links"><a href="/destinations/sydney">Sydney</a><a href="/destinations/gold-coast">Gold Coast</a><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/guides">Guides</a><a href="/for-hotels">For hotels</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a></nav>
 <p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p>${abn}</div></footer>`;
 }
 const FONT_LINKS = `<link rel="preload" href="/golden/fonts/f3.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/golden/fonts/f5.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/golden/fonts.css">`;
 const HOME_SCRIPT = `<script>
 (function(){
-var S=[["8:00","Swim & gym"],["12:00","Long lunch"],["15:00","Spa afternoon"],["18:00","Golden hour"]],media=[0,0,2,3],cur=1;
+var S=[["8:00","Swim & gym"],["12:00","Long lunch"],["15:00","Spa afternoon"],["18:00","Golden hour"]],media=[0,1,2,3],cur=1;
 var hero=document.querySelector('.hero'),bs=document.querySelectorAll('.times button');
 function set(i){cur=i;if(!hero)return;hero.dataset.slot=String(i);bs.forEach(function(b,k){b.classList.toggle('on',k===i);b.setAttribute('aria-pressed',k===i?'true':'false')});
 var ct=document.getElementById('ct'),cl=document.getElementById('cl');if(ct)ct.textContent=S[i][0];if(cl)cl.textContent=S[i][1];
 document.querySelectorAll('.layer').forEach(function(l){l.classList.toggle('on',+l.dataset.slot===media[i])});}
 bs.forEach(function(b){b.addEventListener('click',function(){set(+b.dataset.i)})});set(1);
-var rm=matchMedia('(prefers-reduced-motion: reduce)').matches,c=navigator.connection||{},small=matchMedia('(max-width:800px)').matches;
-var slow=!!(c.saveData||/2g/.test(c.effectiveType||''));
-addEventListener('load',function(){
-  if(rm||small||slow) return;
-  var v=document.createElement('video');
-  v.className='layer';v.muted=true;v.loop=true;v.playsInline=true;v.setAttribute('playsinline','');v.preload='auto';v.setAttribute('aria-hidden','true');v.dataset.slot='0';
-  v.src='/golden/vid/hero.mp4';
-  var box=document.querySelector('.media'); if(!box) return;
-  box.insertBefore(v, box.querySelector('.tint'));
-  if(media[cur]===0) v.classList.add('on');
-  var play=v.play(); if(play&&play.catch) play.catch(function(){});
-});
+var rm=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var net=navigator.connection||{},slow=!!(net.saveData||/2g/.test(net.effectiveType||''));
+var box=document.querySelector('.media');
+function syncMotion(){if(!box)return;var allow=!rm&&!slow;box.classList.toggle('motion',allow);box.classList.toggle('paused',!allow||document.hidden);}
+syncMotion();
+document.addEventListener('visibilitychange',syncMotion);
+if(net.addEventListener)net.addEventListener('change',function(){slow=!!(net.saveData||/2g/.test(net.effectiveType||''));syncMotion();});
 var els=document.querySelectorAll('[data-rv]');
 function show(el){el.classList.add('in')}
 if(rm||!('IntersectionObserver' in window)){els.forEach(show)}else{
@@ -304,7 +299,7 @@ function page(title, body, opts = {}) {
   });
   const pickerCss = '<link rel="stylesheet" href="/pickers.css">';
   const css = home
-    ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-poster.webp" type="image/webp" fetchpriority="high">${pickerCss}<link rel="stylesheet" href="/golden/home.css">`
+    ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-lunch-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-lunch.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${pickerCss}<link rel="stylesheet" href="/golden/home.css">`
     : `${FONT_LINKS}${pickerCss}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css">`;
   const bodyClass = home ? 'home' : nav === 'guest' ? 'guest' : 'staff';
   const header = home ? '' : `<header class="hdr"><div class="wrap hdr-in">${logoLink('dark')}${nav === 'guest' ? guestNav : '<nav class="hdr-nav"></nav>'}<div class="hdr-right">${right}</div></div></header>`;
@@ -312,7 +307,7 @@ function page(title, body, opts = {}) {
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 <div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>
 ${header}<main>${body}</main>
-${bare ? '' : siteFooter(home ? 'light' : 'dark')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}
+${bare ? '' : siteFooter(home ? 'light' : 'dark', home ? '<p class="muted small">Photo: Yulius Santoso / Pexels · Photo: Relaxing Journeys / Pexels</p>' : '')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}
 </body></html>`;
 }
 const card = (h, date) => {
@@ -412,10 +407,11 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
   const slot = (src, alt, time, title, copy) => `<div class="slot"><picture><source type="image/webp" srcset="/golden/img/${src}.webp"><img src="/golden/img/${src}.jpg" alt="${alt}" width="900" height="600" loading="lazy" decoding="async"></picture><span class="t">${time}</span><div class="b"><h3>${title}</h3><p>${copy}</p></div></div>`;
   return page('Take the day off', `<nav class="top">${logoLink('dark')}<div class="links"><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a><a class="pill" href="#waitlist">Join the waitlist</a></div></nav>
 <header class="hero" data-slot="1"><div class="ph"><div class="media">
-<picture class="layer on" data-slot="0"><source type="image/webp" srcset="/golden/img/hero-poster.webp"><img fetchpriority="high" src="/golden/img/hero-poster.jpg" alt="Sunlit hotel pool water" width="1280" height="720" decoding="async"></picture>
-<picture class="layer zoom" data-slot="2"><source type="image/webp" srcset="/golden/img/3-sm.webp"><img src="/golden/img/3-sm.jpg" alt="Spa treatment room" width="900" height="600" loading="lazy" decoding="async"></picture>
-<picture class="layer zoom" data-slot="3"><source type="image/webp" srcset="/golden/img/1-sm.webp"><img src="/golden/img/1-sm.jpg" alt="Hotel pool at dusk" width="900" height="900" loading="lazy" decoding="async"></picture>
-<div class="tint"></div></div>
+<picture class="layer" data-slot="0"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-swim-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-swim-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-swim.webp"><img src="/golden/img/hero-swim.jpg" alt="Ocean pool at sunrise" width="1920" height="1080" decoding="async"></picture>
+<picture class="layer on" data-slot="1"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-lunch-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-lunch-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-lunch.webp"><img fetchpriority="high" src="/golden/img/hero-lunch.jpg" alt="Resort pool with palm trees" width="1920" height="1080" decoding="async"></picture>
+<picture class="layer" data-slot="2"><source type="image/webp" srcset="/golden/img/3-sm.webp"><img src="/golden/img/3-sm.jpg" alt="Spa treatment room" width="900" height="600" loading="lazy" decoding="async"></picture>
+<picture class="layer" data-slot="3"><source type="image/webp" srcset="/golden/img/1-sm.webp"><img src="/golden/img/1-sm.jpg" alt="Hotel pool at dusk" width="900" height="900" loading="lazy" decoding="async"></picture>
+<div class="shimmer" aria-hidden="true"></div><div class="tint"></div></div>
 <div class="clock"><span id="ct">12:00</span><small id="cl">Long lunch</small></div><span class="credit">Stock media · example only</span></div>
 <div class="copy"><span class="kicker">Hotel pools, gyms &amp; spas across Australia</span>
 <h1>Take the day <em>off.</em><br>Swim till&nbsp;six.</h1>

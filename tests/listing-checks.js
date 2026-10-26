@@ -109,6 +109,11 @@ function start(port) {
     assert.strictEqual(popular, 1);
 
     const palm = await get(port, '/h/palm-court');
+    assert.ok(!palm.body.includes('kids-float.jpg'));
+    assert.ok(palm.body.includes('tropical-resort.jpg'));
+    assert.ok(palm.body.includes('resort-palms.jpg'));
+    assert.ok(palm.body.includes('thatched-umbrellas.jpg'));
+    assert.strictEqual((palm.body.match(/class="g\d+"/g) || []).length, 3);
     assert.ok(palm.body.includes('On-site parking is included'));
     assert.ok(!palm.body.includes('Parking is not offered'));
     assert.ok(palm.body.includes('id="getting-there"'));

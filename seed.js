@@ -63,7 +63,7 @@ const OFFERINGS = {
     id_required: 1, lifeguard: 1,
     spots: [
       { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger in the palm gardens, with a towel.', holds: 1, price: 35, daily_cap: 40, photo: 'tropical-resort.jpg', featured: 1 },
-      { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair by the shallow end.', holds: 1, price: 25, daily_cap: 30, photo: 'kids-float.jpg' },
+      { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair by the shallow end.', holds: 1, price: 25, daily_cap: 30, photo: '' },
       { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A shaded daybed for two.', holds: 2, price: 70, daily_cap: 10, photo: 'thatched-umbrellas.jpg' },
     ],
   },
@@ -138,7 +138,7 @@ const hotels = [
    ['glass-roof-pool.jpg', 'spa-steps.jpg', 'indoor-spa-pool.jpg', 'hero-loungers.jpg'], ['Indoor heated pool', 'Sauna', 'Steam room', 'Spa treatments', 'Robes'], 'demo-harbourside'],
   ['palm-court', 'Palm Court Resort (Demo)', 'Parramatta', 'Lagoon pool in leafy palm gardens',
    'A big lagoon pool ringed by palms, with plenty of shade and a family-friendly shallow end. Easy parking.',
-   ['tropical-resort.jpg', 'resort-palms.jpg', 'kids-float.jpg', 'thatched-umbrellas.jpg'], ['Lagoon pool', 'Kid-friendly', 'Free parking', 'Shade umbrellas', 'Café'], 'demo-palmcourt'],
+   ['tropical-resort.jpg', 'resort-palms.jpg', 'thatched-umbrellas.jpg'], ['Lagoon pool', 'Kid-friendly', 'Free parking', 'Shade umbrellas', 'Café'], 'demo-palmcourt'],
   ['manly-sands', 'Manly Sands House (Demo)', 'Northern Beaches', 'Canopy daybeds steps from the beach',
    'Canopy daybeds right on the water line, a magnesium pool and a kiosk doing smashed avo and cold ones.',
    ['daybed-canopy.jpg', 'thatched-umbrellas.jpg', 'infinity-palms.jpg', 'beach-resort-pool.jpg'], ['Magnesium pool', 'Beachside', 'Daybeds', 'Kiosk', 'Towels included'], 'demo-manly'],
