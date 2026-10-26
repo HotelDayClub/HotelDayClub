@@ -42,6 +42,11 @@ function staticCache(res, filePath) {
   if (/\.(?:jpe?g|png|webp|gif|svg|ico|woff2?)$/i.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=2592000');
   else if (/\.(?:css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=86400');
 }
+app.get('/favicon.ico', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=86400');
+  res.set('Content-Type', 'image/x-icon');
+  res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
+});
 app.get('/robots.txt', (req, res) => {
   res.type('text/plain; charset=utf-8');
   res.set('Cache-Control', 'public, max-age=300');

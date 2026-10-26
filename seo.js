@@ -273,6 +273,7 @@ function headMeta({ documentTitle, description, robots, canonicalUrl, image, ima
     `<meta name="robots" content="${esc(robots || 'noindex, nofollow')}">`,
     '<meta name="theme-color" content="#0E1E3A">',
     canonicalUrl ? `<link rel="canonical" href="${esc(canonicalUrl)}">` : '',
+    '<link rel="icon" href="/favicon.ico" sizes="any">',
     '<link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">',
     '<link rel="icon" href="/assets/favicon-16.png" type="image/png" sizes="16x16">',
     '<link rel="icon" href="/assets/logo-mark.svg" type="image/svg+xml">',
@@ -299,9 +300,10 @@ function headMeta({ documentTitle, description, robots, canonicalUrl, image, ima
 }
 
 function robotsTxt() {
-  if (!siteIndexable()) return 'User-agent: *\nDisallow: /\n';
+  if (!siteIndexable()) return 'User-agent: *\nAllow: /favicon.ico\nDisallow: /\n';
   return [
     'User-agent: *',
+    'Allow: /favicon.ico',
     'Allow: /',
     'Disallow: /admin',
     'Disallow: /hotel',
