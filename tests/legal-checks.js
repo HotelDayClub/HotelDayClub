@@ -381,7 +381,7 @@ function start(port, extra = {}) {
     const home = await get(gaPort, '/');
     assert.ok(home.body.includes(gaSnippet), 'homepage should include the standard gtag snippet');
     assert.ok(home.body.indexOf(gaSnippet) < home.body.indexOf('</head>'));
-    const guestPages = ['/for-hotels', '/how-it-works', '/faq', '/privacy', '/terms', '/refunds', '/risk', '/h/saltwater-terrace', '/checkout?hotel=skyline-rooftop&date=' + encodeURIComponent(freeSky.date) + '&pass=chair&qty=1'];
+    const guestPages = ['/for-hotels', '/how-it-works', '/faq', '/contact', '/privacy', '/terms', '/refunds', '/risk', '/h/saltwater-terrace', '/checkout?hotel=skyline-rooftop&date=' + encodeURIComponent(freeSky.date) + '&pass=chair&qty=1'];
     for (const pathName of guestPages) {
       const doc = await get(gaPort, pathName);
       assert.strictEqual(doc.status, 200, pathName);

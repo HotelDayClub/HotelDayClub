@@ -28,6 +28,11 @@ const PAGES = {
     title: 'Hotel day pass questions',
     description: 'Answers about hotel day passes in Australia: cancellation, what to bring, age rules, and how to contact Hotel Day Club.',
   },
+  contact: {
+    path: '/contact',
+    title: 'Contact us',
+    description: 'Send a message to Hotel Day Club about a booking, a change, a cancellation or a hotel in Australia. We\'ll reply by email.',
+  },
   privacy: {
     path: '/privacy',
     title: 'Privacy policy',
@@ -362,7 +367,8 @@ function faqHtml(mailHtml) {
 <p class="lead">Short answers, in line with the <a href="/terms">customer terms</a> and the <a href="/refunds">cancellation and refund policy</a>. Both of those pages are drafts.</p>
 <div class="faq">
 ${blocks}
-</div></div>`;
+</div>
+<p>For a booking, a change or a cancellation, use the <a href="/contact">contact form</a>.</p></div>`;
 }
 
 function faqJsonLd(mailText) {

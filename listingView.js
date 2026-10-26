@@ -143,6 +143,7 @@ function listingHtml(opts) {
 <button type="button" class="gal-nav prev" data-dir="prev" aria-label="Previous photo">‹</button>
 <button type="button" class="gal-nav next" data-dir="next" aria-label="Next photo">›</button>
 ${demo ? '<span class="photo-credit">Stock photos · not this hotel</span>' : ''}</div>
+${reassureStrip(true)}
 <form action="/checkout" method="get" id="bf" class="l-body">
 <input type="hidden" name="hotel" value="${esc(h.slug)}">
 <div class="l-main">
@@ -183,4 +184,43 @@ ${arrival}
 ${listingScript(h.slug)}`;
 }
 
-module.exports = { listingHtml };
+const ASSURE = [
+  {
+    icon: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3.5v3M16 3.5v3M4 10h16"/><path d="M8.8 15.2l2.1 2.1 4.6-4.8"/>',
+    title: '24 hours to cancel',
+    text: 'Free until 24 hours before your access hours start.',
+  },
+  {
+    icon: '<circle cx="12" cy="12" r="3.2"/><path d="M12 4.2v2.2M12 17.6v2.2M4.2 12h2.2M17.6 12h2.2M6.5 6.5l1.6 1.6M15.9 15.9l1.6 1.6M17.5 6.5l-1.6 1.6M8.1 15.9l-1.6 1.6"/>',
+    title: 'No room needed',
+    text: 'A pool, gym or spa for the day.',
+  },
+  {
+    icon: '<path d="M5 9V5h4M15 5h4v4M19 15v4h-4M9 19H5v-4"/><path d="M10 10h1.6v1.6H10zM12.6 12.6H14V14h-1.4z"/>',
+    title: 'Code at the desk',
+    text: 'Show your QR code at reception to check in.',
+  },
+  {
+    icon: '<path d="M7.2 8.2A5.2 5.2 0 1 1 6 13"/><path d="M5.2 5.4V9H9"/>',
+    title: 'If the pool closes',
+    text: 'You choose a full refund or a free rebooking.',
+  },
+  {
+    icon: '<path d="M4 7.5h16v10H4z"/><path d="M4 8l8 6 8-6"/>',
+    title: 'Help when you need it',
+    text: "Questions about a booking, a change or a cancellation? Write to us and we'll reply by email.",
+    href: '/contact',
+  },
+];
+
+function reassureStrip(lite) {
+  const items = ASSURE.map(item => {
+    const inner = `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${item.icon}</svg><b>${item.title}</b><span>${item.text}</span>`;
+    return item.href
+      ? `<li><a class="assure-link" href="${item.href}">${inner}</a></li>`
+      : `<li>${inner}</li>`;
+  }).join('');
+  return `<section class="assure${lite ? ' assure-lite' : ''}" aria-label="Before you book"><ul>${items}</ul></section>`;
+}
+
+module.exports = { listingHtml, reassureStrip };

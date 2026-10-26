@@ -11,7 +11,7 @@ const {
   includedHtml, addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml,
 } = require('./inclusions');
 const { ensureArrival, saveArrival, arrivalHtml, arrivalForm } = require('./arrival');
-const { listingHtml } = require('./listingView');
+const { listingHtml, reassureStrip } = require('./listingView');
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
 const { adminPassword, verifyPassword, safeEqual, migrateHotelPasswords, maskName, maskEmail } = require('./passwords');
 const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
@@ -20,6 +20,7 @@ const { DESTINATIONS, destIcon, destinationBySlug } = require('./destinations');
 const seo = require('./seo');
 const compress = require('./compress');
 const { parseSignup, saveSignup, notifyWebhook, rateLimited, waitlistCsv } = require('./waitlist');
+const { TOPICS, parseMessage, contactLimited, saveMessage, topicLabel, sameSitePost } = require('./contact');
 const paths = require('./paths');
 const backups = require('./backups');
 const { bookingsCsv, hotelsCsv } = require('./dataExport');
@@ -63,7 +64,7 @@ app.get('/sitemap.xml', (req, res) => {
   const lastmod = ymd(new Date());
   const paths = [];
   if (seo.siteIndexable()) {
-    paths.push('/', '/for-hotels', '/how-it-works', '/faq');
+    paths.push('/', '/for-hotels', '/how-it-works', '/faq', '/contact');
     if (seo.legalPagesIndexable()) paths.push('/privacy', '/terms', '/refunds', '/risk');
     paths.push('/guides');
     for (const g of seo.GUIDES) paths.push('/guides/' + g.slug);
@@ -241,7 +242,7 @@ function siteFooter(tone) {
 <div class="ftr-cols">
 <nav class="ftr-col ftr-dest" aria-label="Destinations"><p class="ftr-h">Destinations</p>${destLinks}</nav>
 <nav class="ftr-col" aria-label="Guides"><p class="ftr-h">Guides</p>${guideLinks}</nav>
-<nav class="ftr-col" aria-label="Site"><p class="ftr-h">Site</p><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/for-hotels">For hotels</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a></nav>
+<nav class="ftr-col" aria-label="Site"><p class="ftr-h">Site</p><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/contact">Contact</a><a href="/for-hotels">For hotels</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a></nav>
 </div>
 <p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p>${abn}</div></footer>`;
 }
@@ -429,6 +430,7 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
 <div class="seg"><label for="p">What</label><select id="p" class="hdc-pick" name="want">${WANTS.map(w => `<option value="${w.id}" data-icon="${w.icon}"${want === w.id ? ' selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
 <button type="submit">Search</button></form></div></header>
 <div class="marquee" aria-label="Pool day, gym session, spa afternoon, daybed for two, cabana with friends, golden-hour swim"><div class="track" aria-hidden="true"><span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺<span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺</div></div>
+${reassureStrip()}
 <section data-rv><span class="kicker sand">Plan your day by the hour</span><h2>A hotel day by the hour</h2>
 <div class="day">
 ${slot('gym-sm', 'Hotel gym with free weights', '8 am', 'Swim &amp; gym', 'A gym session, then laps before the city wakes up.')}
@@ -1241,6 +1243,7 @@ ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <p class="eyebrow-s">Platform admin · Jason</p><h1 class="l-title">All bookings</h1>
 <p><a class="btn btn-line" href="/admin/backups">Backups and exports</a></p>
 ${pending.length ? `<section class="panel"><h2 class="ph2">Pending approval</h2>${pendingHtml}</section>` : ''}
+${contactMessagesHtml()}
 <div class="stats">${stat('Bookings', tot.n, tot.passes + ' spots')}${stat('Gross sales', money(tot.gross), `Includes ${money(addonAll)} add-ons`)}${stat('Paid to hotels (75%)', money(tot.gross * HOTEL_SHARE))}${stat('Platform commission (25%)', money(tot.gross * (1 - HOTEL_SHARE)), 'Hotel Day Club revenue')}</div>
 <p class="muted small" style="margin:-8px 0 16px">Gross includes add-ons. Commission stays at 25% of that gross.</p>
 <section class="panel"><h2 class="ph2">By hotel</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Hotel</th><th>Bookings</th><th>Spots</th><th>Today</th><th>Gross</th><th>Hotel 75%</th><th>Commission 25%</th></tr></thead><tbody>
@@ -1267,6 +1270,28 @@ app.post('/admin/waitlist/delete', adminAuth, (req, res) => {
   const id = parseInt(req.body.id, 10);
   if (id) db.prepare('DELETE FROM waitlist WHERE id=?').run(id);
   res.redirect('/admin?msg=' + encodeURIComponent(id ? 'Removed that waitlist signup.' : 'Nothing to remove.') + '#waitlist');
+});
+function contactMessagesHtml() {
+  const rows = db.prepare('SELECT * FROM contact_messages ORDER BY id DESC LIMIT 200').all();
+  const waiting = rows.filter(r => !r.handled).length;
+  const note = paths.dataDir()
+    ? 'Saved in the database on the persistent disk. The app does not send these by email.'
+    : 'Saved in the database on this server. The app does not send these by email. This disk is cleared when the app is redeployed.';
+  const body = rows.length ? `<div class="msg-list">${rows.map(r => `<article class="msg-card">
+<div class="msg-top"><b>${esc(r.name)}</b><span class="${r.handled ? 'msg-done' : 'msg-new'}">${r.handled ? 'Handled' : 'New'}</span></div>
+<p class="msg-meta">${esc(r.email)}${r.booking_code ? ` · Code ${esc(r.booking_code)}` : ''} · ${esc(topicLabel(r.topic))} · ${esc(r.created_at)}</p>
+<p class="msg-body">${esc(r.message)}</p>
+${r.handled ? '' : `<form method="post" action="/admin/messages/handled"><input type="hidden" name="id" value="${r.id}"><button class="btn btn-line">Mark as handled</button></form>`}
+</article>`).join('')}</div>` : '<p class="muted">No messages yet.</p>';
+  return `<section class="panel" id="messages"><h2 class="ph2">Contact messages${waiting ? ` · ${waiting} new` : ''}</h2>
+<p class="muted small">${esc(note)}</p>
+${body}</section>`;
+}
+app.post('/admin/messages/handled', adminAuth, (req, res) => {
+  const id = parseInt(req.body.id, 10);
+  const row = id && db.prepare('SELECT id FROM contact_messages WHERE id=?').get(id);
+  if (row) db.prepare("UPDATE contact_messages SET handled=1, handled_at=datetime('now') WHERE id=?").run(id);
+  res.redirect('/admin?msg=' + encodeURIComponent(row ? 'Marked that message as handled.' : 'Nothing to update.') + '#messages');
 });
 
 function privateDownload(res) {
@@ -1296,7 +1321,7 @@ ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <section class="panel"><h2 class="ph2">Database copy</h2>
 <p>Last backup: <b>${esc(when)}</b></p>
 <p>Size: <b>${esc(size)}</b>${latest ? ` · ${esc(latest.name)}` : ''}</p>
-<p class="muted small">${esc(auto)} The file is a consistent SQLite snapshot. It includes bookings, hotels, waitlist rows and guest notes. Download it if you want a copy off this server. It is not a public link.</p>
+<p class="muted small">${esc(auto)} The file is a consistent SQLite snapshot. It includes bookings, hotels, waitlist rows, contact messages and guest notes. Download it if you want a copy off this server. It is not a public link.</p>
 <form method="post" action="/admin/backups"><button class="btn btn-navy">Back up now</button></form>
 <p style="margin-top:14px"><a class="btn btn-line" href="/admin/backups/latest">Download latest backup</a></p>
 </section>
@@ -1369,7 +1394,70 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <details><summary>Age limits</summary><p>You need to be 18 or over to book. Each hotel sets its own age policy and kids' hours. They're on the listing, and in the risk warning, before you pay.</p></details>
 <details><summary>Weather</summary><p>Rain on its own is not a closure. If the hotel closes the pool, you choose a full refund or a free rebooking. <a href="/faq">All questions</a>.</p></details>
 </div>
+<p>Still need a hand? <a href="/contact">Contact us</a>.</p>
 </div>`, { analytics: true, index: true, ...seo.pageCopy('how'), jsonld: seo.graph(seo.crumbs([{ name: 'How it works', path: '/how-it-works' }])) }));
+});
+
+function contactHtml({ error, values, sent }) {
+  const copy = seo.pageCopy('contact');
+  const opts = {
+    analytics: true,
+    index: true,
+    ...copy,
+    jsonld: seo.graph(seo.crumbs([{ name: 'Contact', path: '/contact' }])),
+  };
+  const mail = contactMail();
+  if (sent) {
+    return page('Contact', `<div class="wrap sec narrow contact-page">
+<p class="contact-kicker">Contact</p>
+<h1 class="l-title">Thanks, we have your message</h1>
+<p class="lead">We'll reply by email to the address you gave us.</p>
+<div class="login-card contact-card contact-ok" role="status">
+<p>You can also write to ${mail}.</p>
+<p><a href="/">Back to the homepage</a></p>
+</div></div>`, opts);
+  }
+  const v = values || {};
+  const topics = TOPICS.map(t => `<option value="${esc(t.value)}"${v.topic === t.value ? ' selected' : ''}>${esc(t.label)}</option>`).join('');
+  return page('Contact', `<div class="wrap sec narrow contact-page">
+<p class="contact-kicker">Contact</p>
+<h1 class="l-title">How can we help?</h1>
+<p class="lead">Questions about a booking, a change, a cancellation, or listing a hotel in Australia? Send a note. We'll reply by email.</p>
+<div class="login-card contact-card">
+${error ? `<div class="alert" role="alert">${esc(error)}</div>` : ''}
+<form method="post" action="/contact">
+<div class="hp" aria-hidden="true"><label>Company website<input name="company_website" tabindex="-1" autocomplete="off" value=""></label></div>
+<label class="fl">Name<input name="name" required autocomplete="name" maxlength="80" value="${esc(v.name || '')}"></label>
+<label class="fl">Email<input name="email" type="email" required autocomplete="email" maxlength="254" value="${esc(v.email || '')}"></label>
+<label class="fl">Booking code <span class="opt">(optional)</span><input name="booking_code" maxlength="40" autocomplete="off" value="${esc(v.booking_code || '')}"></label>
+<label class="fl">Topic<select name="topic" required><option value="">Choose a topic</option>${topics}</select></label>
+<label class="fl">Message<textarea name="message" required maxlength="2000">${esc(v.message || '')}</textarea></label>
+<button class="btn btn-navy full" type="submit">Send message</button>
+<p class="contact-note">We use your name, email and this message only to reply to you. <a href="/privacy">Privacy policy</a>.</p>
+</form>
+<p class="contact-alt">Or email ${mail}.</p>
+</div></div>`, opts);
+}
+app.get('/contact', (req, res) => {
+  res.send(contactHtml({ sent: req.query.sent === '1' }));
+});
+app.post('/contact', (req, res) => {
+  const parsed = parseMessage(req.body || {});
+  const show = (status, extra) => res.status(status).send(contactHtml({ error: extra.error, values: parsed.values || {} }));
+  if (contactLimited(req.ip || 'unknown')) {
+    if (parsed.honeypot) return res.redirect(303, '/contact?sent=1');
+    return show(429, { error: 'Please wait a few minutes, then try the form again.' });
+  }
+  if (parsed.honeypot) return res.redirect(303, '/contact?sent=1');
+  if (!sameSitePost(req)) return show(403, { error: 'That message could not be sent. Use the form on this page.' });
+  if (parsed.error) return show(400, parsed);
+  try {
+    saveMessage(db, parsed.row);
+  } catch (err) {
+    console.error('contact: database save failed ' + err.message);
+    return show(500, { error: 'We could not save that message. Email us and we will reply.' });
+  }
+  res.redirect(303, '/contact?sent=1');
 });
 
 // Full demo seed runs only when there are no hotels. A database that already has rows is not replaced.
