@@ -2,7 +2,7 @@
 *{box-sizing:border-box}html{scroll-behavior:auto}body.home{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--sand);color:var(--ink);line-height:1.5}
 img{max-width:100%;display:block}button,input,select{font:inherit}a{color:inherit}
 .demo-banner{background:var(--ink);color:#fff;font-size:13px;text-align:center;padding:8px 16px;line-height:1.4}
-.top{position:absolute;top:36px;left:0;right:0;z-index:5;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 5vw;color:#fff;background:linear-gradient(180deg,rgba(10,20,40,.55),transparent)}
+.top{position:absolute;top:36px;left:0;right:0;z-index:5;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 5vw;color:#fff;background:linear-gradient(180deg,rgba(10,20,40,.78),rgba(10,20,40,.62))}
 .logo{font-family:Fraunces,Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.02em;text-decoration:none;color:#fff}
 .logo i{font-family:Caveat,cursive;font-style:normal;font-weight:600;color:var(--salmon);font-size:32px;margin-left:2px}
 .top .links{display:flex;gap:28px;align-items:center;font-size:15px}
@@ -158,5 +158,4 @@ html.rv [data-rv].in{opacity:1;transform:none;animation:none}
   .zoom.on,.marquee .track{animation:none}
   html.rv [data-rv]{opacity:1;transform:none;transition:none;animation:none}
   .layer,.tint,.times button,.slot,.ex{transition:none}
-  video{display:none}
 }

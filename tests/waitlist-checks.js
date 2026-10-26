@@ -111,9 +111,17 @@ function cookie(res) {
     assert.ok(home.body.includes('Swim &amp; gym'));
     assert.ok(home.body.includes('Gym session'));
     assert.ok(home.body.includes('fetchpriority="high"'));
-    assert.ok(home.body.includes('/golden/vid/hero.mp4'));
-    assert.ok(!home.body.includes('<video'), 'hero video is attached after load, not in the first HTML');
-    assert.ok(home.body.includes('prefers-reduced-motion') && home.body.includes('max-width:800px') && home.body.includes('saveData'));
+    assert.ok(home.body.includes('media=[0,1,2,3]'));
+    assert.ok(home.body.includes('/golden/img/hero-swim'));
+    assert.ok(home.body.includes('/golden/img/hero-lunch'));
+    assert.ok(home.body.includes('width="1920" height="1080"'));
+    assert.ok(home.body.includes('href="/golden/img/hero-lunch.webp"'));
+    assert.ok(home.body.includes('Photo: Yulius Santoso / Pexels'));
+    assert.ok(home.body.includes('Photo: Relaxing Journeys / Pexels'));
+    assert.ok(!home.body.includes('Bronte') && !home.body.includes('Palm Cove') && !home.body.includes('Icebergs'));
+    assert.ok(!home.body.includes('hero.mp4'));
+    assert.ok(!home.body.includes('hero-poster'));
+    assert.ok(!home.body.includes('<video'));
     for (const photo of ['infinity-ocean.jpg', 'rooftop-city.jpg', 'glass-roof-pool.jpg', 'tropical-resort.jpg', 'daybed-canopy.jpg', 'cabana-drapes.jpg']) {
       const webp = photo.replace(/\.jpg$/, '.webp');
       assert.ok(home.body.includes('/golden/img/cards/' + webp), photo);
