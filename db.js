@@ -80,4 +80,25 @@ ensureCols('hotels', [
 ensureCols('pass_types', [['holds', 'INTEGER DEFAULT 1'], ['photo', 'TEXT'], ['kind', 'TEXT'], ['featured', 'INTEGER DEFAULT 0']]);
 ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0'], ['terms_ack_at', 'TEXT'], ['risk_ack_at', 'TEXT'], ['risk_text', 'TEXT'], ['cancel_note', 'TEXT'], ['seeded', 'INTEGER NOT NULL DEFAULT 0'], ['refunded', 'INTEGER NOT NULL DEFAULT 0']]);
 ensureCols('guest_notes', [['seeded', 'INTEGER NOT NULL DEFAULT 0']]);
+
+// Removes one stock photo of an identifiable child from stored galleries.
+// Safe to run on every boot: a row is rewritten only when that filename is present.
+function dropKidsFloatPhoto(database) {
+  const drop = 'kids-float.jpg';
+  const read = database.prepare('SELECT id, photos FROM hotels');
+  const write = database.prepare('UPDATE hotels SET photos=? WHERE id=?');
+  const clearPass = database.prepare("UPDATE pass_types SET photo='' WHERE photo=?");
+  database.transaction(() => {
+    for (const row of read.all()) {
+      if (row.photos == null || row.photos === '') continue;
+      let photos;
+      try { photos = JSON.parse(row.photos); } catch { continue; }
+      if (!Array.isArray(photos) || !photos.includes(drop)) continue;
+      write.run(JSON.stringify(photos.filter(p => p !== drop)), row.id);
+    }
+    clearPass.run(drop);
+  })();
+}
+dropKidsFloatPhoto(db);
+db.dropKidsFloatPhoto = dropKidsFloatPhoto;
 module.exports = db;

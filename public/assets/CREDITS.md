@@ -16,7 +16,6 @@ All photos were downloaded on 21 Oct 2026 (AEDT) and stored locally in `assets/p
 | photos/tropical-resort.jpg | https://www.pexels.com/photo/pool-and-loungers-in-tropical-resort-yard-in-sunlight-5746250/ | Ryutaro Tsukata |
 | photos/glass-roof-pool.jpg | https://www.pexels.com/photo/view-of-a-pool-under-a-glass-roof-in-a-resort-12739423/ | Toni Berisha |
 | photos/indoor-spa-pool.jpg | https://www.pexels.com/photo/brown-and-white-hot-tub-6667423/ | Pavel Danilyuk |
-| photos/kids-float.jpg | https://www.pexels.com/photo/girl-sitting-on-a-floater-floating-on-a-swimming-pool-8094751/ | Roxanne Minnish |
 
 ## Unsplash: free under the Unsplash License (https://unsplash.com/license). Attribution isn't required but is given here.
 | File | Photo | Photographer |
@@ -26,7 +25,7 @@ All photos were downloaded on 21 Oct 2026 (AEDT) and stored locally in `assets/p
 | photos/resort-palms.jpg | https://unsplash.com/photos/qDMY-BeGoLs | Long Chung (@chungj07) |
 
 The licence and photographer for each Pexels photo were read from its public page. The Unsplash licence lines ("Free to use under the Unsplash License") and photographers come from the public photo pages as indexed by search; unsplash.com blocked direct page fetches.
-**Before launch:** re-check each licence and replace these photos with images supplied by the hotel that is listed. Stock photos must never be shown as a real hotel's property. `kids-float.jpg` shows an identifiable child and is not used on the Palm Court gallery.
+**Before launch:** re-check each licence and replace these photos with images supplied by the hotel that is listed. Stock photos must never be shown as a real hotel's property. `kids-float.jpg` (Pexels 8094751, Roxanne Minnish) showed an identifiable child and has been removed. On startup the app drops that filename from every hotel's photos list and clears it on any pass that still points at it.
 
 ## Other assets
 - `hdc-lockup-*.svg`, `hdc-icon*.svg`, the favicon set and `og-image-1200x630.png`: the approved H Lane Monogram. `ph-*.svg` and the inline UI icons are original artwork made for this mockup.
