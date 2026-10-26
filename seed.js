@@ -410,7 +410,7 @@ function seedPerformance(db) {
 }
 
 function resetAndSeed() {
-  const f = process.env.DB_PATH || path.join(__dirname, 'data', 'daypass.db');
+  const f = require('./paths').dbPath();
   fs.mkdirSync(path.dirname(f), { recursive: true });
   for (const x of [f, f + '-wal', f + '-shm']) if (fs.existsSync(x)) fs.unlinkSync(x);
   delete require.cache[require.resolve('./db')];

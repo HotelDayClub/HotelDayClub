@@ -19,6 +19,9 @@ const { DESTINATIONS, destIcon, destinationBySlug } = require('./destinations');
 const seo = require('./seo');
 const compress = require('./compress');
 const { parseSignup, saveSignup, notifyWebhook, rateLimited, waitlistCsv } = require('./waitlist');
+const paths = require('./paths');
+const backups = require('./backups');
+const { bookingsCsv, hotelsCsv } = require('./dataExport');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
   hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST,
@@ -64,7 +67,29 @@ app.get('/sitemap.xml', (req, res) => {
   }
   res.send(seo.sitemapDocument(paths.map(p => ({ loc: seo.absolute(p), lastmod }))));
 });
+app.get('/healthz', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  try {
+    const row = db.prepare('SELECT 1 AS ok').get();
+    if (!row || row.ok !== 1) throw new Error('unexpected result');
+    res.json({ ok: true, db: true });
+  } catch (err) {
+    console.error('healthz: database read failed: ' + err.message);
+    res.status(503).json({ ok: false, db: false });
+  }
+});
 app.use(express.static(path.join(__dirname, 'public'), { setHeaders: staticCache }));
+if (paths.dataDir()) {
+  const uploadRoot = paths.uploadsDir();
+  app.get('/uploads/:name', (req, res, next) => {
+    const name = path.basename(String(req.params.name || ''));
+    if (!/^[\w.-]+\.(?:jpe?g|png|webp|gif)$/i.test(name)) return next();
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.sendFile(name, { root: uploadRoot }, err => { if (err) next(); });
+  });
+}
 app.get('/vendor/jsQR.js', (req, res) => {
   res.type('js');
   res.sendFile(require.resolve('jsqr'));
@@ -1079,6 +1104,7 @@ app.get('/admin', adminAuth, (req, res) => {
   res.send(page('Admin', `<div class="wrap sec">
 ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <p class="eyebrow-s">Platform admin · Jason</p><h1 class="l-title">All bookings</h1>
+<p><a class="btn btn-line" href="/admin/backups">Backups and exports</a></p>
 ${pending.length ? `<section class="panel"><h2 class="ph2">Pending approval</h2>${pendingHtml}</section>` : ''}
 <div class="stats">${stat('Bookings', tot.n, tot.passes + ' spots')}${stat('Gross sales', money(tot.gross), `Includes ${money(addonAll)} add-ons`)}${stat('Paid to hotels (75%)', money(tot.gross * HOTEL_SHARE))}${stat('Platform commission (25%)', money(tot.gross * (1 - HOTEL_SHARE)), 'Hotel Day Club revenue')}</div>
 <p class="muted small" style="margin:-8px 0 16px">Gross includes add-ons. Commission stays at 25% of that gross.</p>
@@ -1089,7 +1115,9 @@ ${per.map(r => `<tr><td><a class="link" href="/admin?hotel=${r.id}#all"><b>${esc
 ${guestList(rows, { checkin: false, hotelCol: true, log: false })}<p class="muted small">Showing the latest ${rows.length} (max 100).</p></section>
 <section class="panel"><h2 class="ph2">Guest notes</h2>${notes.length ? notes.map(n => `<div class="pending-row"><div><b>${n.kind === 'incident' ? 'Incident' : 'No-show'}</b> · ${esc(n.guest_name)} · ${esc(n.code)}<div class="muted small">${esc(n.hotel)} · ${esc(nice(n.date))} · ${esc(hhmm(n.created_at))}${n.note ? ' · ' + esc(n.note) : ''}</div></div></div>`).join('') : '<p class="muted">No notes yet. Hotels log a no-show or an incident from the guest list.</p>'}</section>
 <section class="panel" id="waitlist"><h2 class="ph2">Waitlist</h2>
-<p class="muted small">These rows are stored on this server only. They are not shown on the public site. Download the CSV before a redeploy if the spreadsheet connection is not set up. This disk is cleared when the app is redeployed.</p>
+<p class="muted small">${paths.dataDir()
+  ? 'These rows are stored in the database on the persistent disk. They are not shown on the public site. Download a CSV or a database backup if you want a copy off this server.'
+  : 'These rows are stored on this server only. They are not shown on the public site. Download the CSV before a redeploy if the spreadsheet connection is not set up. This disk is cleared when the app is redeployed.'}</p>
 <p><a class="btn btn-navy" href="/admin/waitlist.csv">Download CSV</a></p>
 ${waitRows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Email</th><th>Name</th><th>Place</th><th>Role</th><th>Hotel</th><th>Destination</th><th>Added</th><th></th></tr></thead><tbody>
 ${waitRows.map(w => `<tr><td>${esc(w.email)}</td><td>${esc(w.first_name)}</td><td>${esc(w.place)}</td><td>${esc(w.role)}</td><td>${esc(w.hotel_name)}</td><td>${esc(w.destination)}</td><td>${esc(w.created_at)}</td><td><form method="post" action="/admin/waitlist/delete"><input type="hidden" name="id" value="${w.id}"><button class="btn btn-line">Delete</button></form></td></tr>`).join('')}
@@ -1098,14 +1126,74 @@ ${waitRows.map(w => `<tr><td>${esc(w.email)}</td><td>${esc(w.first_name)}</td><t
 });
 app.get('/admin/waitlist.csv', adminAuth, (req, res) => {
   const rows = db.prepare('SELECT email, first_name, place, role, hotel_name, destination, created_at, updated_at FROM waitlist ORDER BY id').all();
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="waitlist.csv"');
-  res.send(waitlistCsv(rows));
+  sendCsv(res, 'waitlist.csv', waitlistCsv(rows));
 });
 app.post('/admin/waitlist/delete', adminAuth, (req, res) => {
   const id = parseInt(req.body.id, 10);
   if (id) db.prepare('DELETE FROM waitlist WHERE id=?').run(id);
   res.redirect('/admin?msg=' + encodeURIComponent(id ? 'Removed that waitlist signup.' : 'Nothing to remove.') + '#waitlist');
+});
+
+function privateDownload(res) {
+  res.set('Cache-Control', 'no-store');
+  res.set('Pragma', 'no-cache');
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.set('Referrer-Policy', 'no-referrer');
+}
+function sendCsv(res, filename, body) {
+  privateDownload(res);
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(body);
+}
+app.get('/admin/backups', adminAuth, (req, res) => {
+  const latest = backups.latestBackup();
+  const when = latest ? backups.formatSydney(new Date(latest.mtimeMs)) : 'No backup yet';
+  const size = latest ? backups.formatBytes(latest.bytes) : '—';
+  const auto = paths.dataDir()
+    ? 'Automatic backups are on. A copy runs at 3:30am Sydney time, and also at startup when the newest file is older than 24 hours. The newest 14 files are kept.'
+    : 'Automatic backups are off because DATA_DIR is not set. Back up now still saves a file next to the database. On the free plan that file is wiped with the server disk.';
+  res.set('Cache-Control', 'no-store');
+  res.send(page('Backups', `<div class="wrap sec">
+${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
+<p class="eyebrow-s">Platform admin · Jason</p><h1 class="l-title">Backups</h1>
+<p><a class="link" href="/admin">Back to all bookings</a></p>
+<section class="panel"><h2 class="ph2">Database copy</h2>
+<p>Last backup: <b>${esc(when)}</b></p>
+<p>Size: <b>${esc(size)}</b>${latest ? ` · ${esc(latest.name)}` : ''}</p>
+<p class="muted small">${esc(auto)} The file is a consistent SQLite snapshot. It includes bookings, hotels, waitlist rows and guest notes. Download it if you want a copy off this server. It is not a public link.</p>
+<form method="post" action="/admin/backups"><button class="btn btn-navy">Back up now</button></form>
+<p style="margin-top:14px"><a class="btn btn-line" href="/admin/backups/latest">Download latest backup</a></p>
+</section>
+<section class="panel"><h2 class="ph2">Spreadsheets</h2>
+<p class="muted small">These CSV files are for your own copy, for example in Google Drive. Hotels are exported without passwords. Guest notes stay in the database backup.</p>
+<p><a class="btn btn-navy" href="/admin/export/bookings.csv">Download bookings CSV</a> <a class="btn btn-line" href="/admin/export/hotels.csv">Download hotels CSV</a> <a class="btn btn-line" href="/admin/waitlist.csv">Download waitlist CSV</a></p>
+</section></div>`, { nav: 'admin' }));
+});
+app.post('/admin/backups', adminAuth, async (req, res) => {
+  try {
+    const made = await backups.requestBackup(db, 'manual');
+    res.redirect('/admin/backups?msg=' + encodeURIComponent(`Backup saved (${made.name}, ${backups.formatBytes(made.bytes)}).`));
+  } catch (err) {
+    res.redirect('/admin/backups?msg=' + encodeURIComponent('Backup failed. Check the server log.'));
+  }
+});
+app.get('/admin/backups/latest', adminAuth, (req, res) => {
+  const latest = backups.latestBackup();
+  if (!latest) return res.redirect('/admin/backups?msg=' + encodeURIComponent('No backup yet. Use Back up now.'));
+  privateDownload(res);
+  res.download(latest.file, latest.name);
+});
+app.get('/admin/export/bookings.csv', adminAuth, (req, res) => {
+  const rows = db.prepare(`SELECT b.code, h.name AS hotel, h.slug AS hotel_slug, b.date, b.qty, b.party, b.guest_name, b.email, b.phone,
+    b.status, b.unit_price, b.total, b.created_at, b.checked_in_at, b.marketing_opt_in,
+    b.rules_ack_at, b.terms_ack_at, b.risk_ack_at, b.cancel_note, b.seeded
+    FROM bookings b JOIN hotels h ON h.id=b.hotel_id ORDER BY b.id`).all();
+  sendCsv(res, 'bookings.csv', bookingsCsv(rows));
+});
+app.get('/admin/export/hotels.csv', adminAuth, (req, res) => {
+  const rows = db.prepare(`SELECT id, slug, name, area, status, login, contact_name, contact_email, address FROM hotels ORDER BY id`).all();
+  sendCsv(res, 'hotels.csv', hotelsCsv(rows));
 });
 
 app.get('/how-it-works', (req, res) => {
@@ -1149,6 +1237,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 </div>`, { analytics: true, index: true, ...seo.pageCopy('how'), jsonld: seo.graph(seo.crumbs([{ name: 'How it works', path: '/how-it-works' }])) }));
 });
 
+// Full demo seed runs only when there are no hotels. A database that already has rows is not replaced.
 if (db.prepare('SELECT COUNT(*) n FROM hotels').get().n === 0) seed(db);
 else ensureAddons(db);
 ensureSchedules(db);
@@ -1325,4 +1414,8 @@ app.use((req, res) => {
   sendNotFound(res, { analyticsPath: req.path.startsWith('/booking/') ? '/booking' : '' });
 });
 
-app.listen(PORT, () => console.log(`Hotel Day Club demo on http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Hotel Day Club demo on http://localhost:${PORT}`);
+  console.log('data: database at ' + paths.dbPath());
+  backups.startScheduler(db);
+});

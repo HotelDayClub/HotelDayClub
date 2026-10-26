@@ -45,6 +45,7 @@ function start(port, dbFile, extra = {}) {
         ...process.env,
         PORT: String(port),
         DB_PATH: dbFile,
+        DATA_DIR: '',
         ADMIN_PASSWORD: 'wait-admin-test',
         DEMO_HOTEL_PASSWORD: 'wait-hotel-test',
         ...extra,

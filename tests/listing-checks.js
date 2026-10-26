@@ -35,7 +35,7 @@ function start(port) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['server.js'], {
       cwd: path.join(__dirname, '..'),
-      env: { ...process.env, PORT: String(port), DB_PATH: dbPath, ADMIN_PASSWORD: 'list-admin', DEMO_HOTEL_PASSWORD: 'list-hotel' },
+      env: { ...process.env, PORT: String(port), DB_PATH: dbPath, DATA_DIR: '', ADMIN_PASSWORD: 'list-admin', DEMO_HOTEL_PASSWORD: 'list-hotel' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let log = '';

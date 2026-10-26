@@ -132,7 +132,7 @@ function start(port, extra = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['server.js'], {
       cwd: path.join(__dirname, '..'),
-      env: { ...process.env, ...extra, PORT: String(port), DB_PATH: dbPath },
+      env: { ...process.env, ...extra, PORT: String(port), DB_PATH: dbPath, DATA_DIR: '' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let log = '';
@@ -171,7 +171,7 @@ function start(port, extra = {}) {
     assert.strictEqual(robots.status, 200);
     assert.ok(/^User-agent:\s*\*/m.test(robots.body), robots.body);
     assert.ok(/^Allow:\s*\/$/m.test(robots.body), robots.body);
-    for (const line of ['Disallow: /admin', 'Disallow: /hotel', 'Disallow: /checkout', 'Disallow: /api', 'Disallow: /booking/']) {
+    for (const line of ['Disallow: /admin', 'Disallow: /hotel', 'Disallow: /checkout', 'Disallow: /api', 'Disallow: /booking/', 'Disallow: /healthz']) {
       assert.ok(robots.body.includes(line), robots.body);
     }
     assert.ok(robots.body.includes('Sitemap: https://www.hoteldayclub.com.au/sitemap.xml'), robots.body);

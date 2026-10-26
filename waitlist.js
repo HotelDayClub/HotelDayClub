@@ -141,4 +141,4 @@ function waitlistCsv(rows) {
   return lines.join('\r\n') + '\r\n';
 }
 
-module.exports = { parseSignup, saveSignup, notifyWebhook, rateLimited, waitlistCsv };
+module.exports = { parseSignup, saveSignup, notifyWebhook, rateLimited, waitlistCsv, csvCell };
