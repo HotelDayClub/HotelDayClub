@@ -102,7 +102,12 @@ function alts(html, where) {
     assert.ok(home.includes('apple-touch-icon'));
     assert.ok(home.includes('content="googleverify123"'));
     assert.ok(home.includes('name="msvalidate.01" content="BING123456"'));
-    assert.ok(home.includes('https://www.hoteldayclub.com.au/assets/og.jpg'));
+    assert.ok(home.includes('https://www.hoteldayclub.com.au/assets/og-image-1200x630.png'));
+    assert.ok(home.includes('src="/assets/hdc-lockup-dark.svg"'));
+    assert.ok(home.includes('src="/assets/hdc-lockup-light.svg"'));
+    assert.ok(home.includes('alt="Hotel Day Club"'));
+    assert.ok(!home.includes('logo-mark'));
+    assert.ok(home.includes('href="/assets/hdc-icon.svg"'));
     assert.ok(!home.includes('href="/admin"'));
     assert.ok(!home.includes('href="/hotel"'));
     assert.ok(home.includes('href="/guides"'));
@@ -147,6 +152,44 @@ function alts(html, where) {
     }
     assert.deepStrictEqual(sizes, [16, 32, 48]);
     assert.ok(home.includes('href="/favicon.ico"'));
+
+    function pngSize(body) {
+      assert.strictEqual(body.readUInt32BE(12), 0x49484452);
+      return { width: body.readUInt32BE(16), height: body.readUInt32BE(20) };
+    }
+    const touch = await get(port, '/assets/apple-touch-icon.png');
+    assert.strictEqual(touch.status, 200);
+    assert.ok(String(touch.headers['content-type']).startsWith('image/png'), touch.headers['content-type']);
+    assert.deepStrictEqual(pngSize(touch.body), { width: 180, height: 180 });
+    const og = await get(port, '/assets/og-image-1200x630.png');
+    assert.strictEqual(og.status, 200);
+    assert.ok(String(og.headers['content-type']).startsWith('image/png'), og.headers['content-type']);
+    assert.deepStrictEqual(pngSize(og.body), { width: 1200, height: 630 });
+    const manifest = JSON.parse(text(await get(port, '/site.webmanifest')));
+    for (const icon of manifest.icons) {
+      const file = await get(port, icon.src);
+      assert.strictEqual(file.status, 200, icon.src);
+      assert.ok(String(file.headers['content-type']).startsWith('image/png'));
+    }
+    async function assertLocalAssets(html, label) {
+      const urls = new Set();
+      const re = /(?:src|href)="(\/(?:assets|favicon)[^"#?]*)"/g;
+      let match;
+      while ((match = re.exec(html))) urls.add(match[1]);
+      for (const url of urls) {
+        const res = await get(port, url);
+        assert.strictEqual(res.status, 200, label + ' ' + url);
+      }
+    }
+    await assertLocalAssets(home, 'home');
+    const hotelsPage = text(await get(port, '/for-hotels'));
+    assert.ok(hotelsPage.includes('src="/assets/hdc-lockup-dark.svg"'));
+    assert.ok(!hotelsPage.includes('hdc-lockup-light.svg'));
+    await assertLocalAssets(hotelsPage, 'for-hotels');
+    const listingPage = text(await get(port, '/h/saltwater-terrace'));
+    assert.ok(listingPage.includes('src="/assets/hdc-lockup-dark.svg"'));
+    assert.ok(!listingPage.includes('hdc-lockup-light.svg'));
+    await assertLocalAssets(listingPage, 'listing');
 
     const map = text(await get(port, '/sitemap.xml'));
     assert.ok(map.includes('https://www.hoteldayclub.com.au/faq'));
@@ -227,7 +270,7 @@ function alts(html, where) {
 
     const css = await get(port, '/app.css');
     assert.ok(String(css.headers['cache-control']).includes('max-age=86400'));
-    const svg = await get(port, '/assets/logo-mark.svg');
+    const svg = await get(port, '/assets/hdc-lockup-dark.svg');
     assert.ok(String(svg.headers['cache-control']).includes('max-age=2592000'));
 
     const gz = await get(port, '/', { 'Accept-Encoding': 'gzip' });

@@ -191,7 +191,11 @@ const ICON = {
   check: '<svg class="ico sm" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>',
   lock: '<svg class="ico sm" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
 };
-const LOGO = '<a class="logo" href="/">Hotel Day <i>Club</i></a>';
+function logoLink(tone) {
+  const light = tone === 'light';
+  const src = light ? '/assets/hdc-lockup-light.svg' : '/assets/hdc-lockup-dark.svg';
+  return `<a class="logo" href="/"><img src="${src}" alt="Hotel Day Club" width="187" height="32"></a>`;
+}
 const DEFAULT_CONTACT_EMAIL = 'hello@hoteldayclub.com.au';
 const DEFAULT_ABN = '98 227 458 028';
 function contactEmail() {
@@ -228,9 +232,10 @@ function gaSnippet(safePath) {
     : `gtag('config','${id}');`;
   return `<script async src="https://www.googletagmanager.com/gtag/js?id=${id}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());${config}</script>`;
 }
-function siteFooter(note) {
+function siteFooter(tone, note) {
   const abn = `<p class="muted small abn-line">Hotel Day Club · ABN ${esc(businessAbn())}</p>`;
-  return `<footer class="app-ftr"><div class="wrap ftr-in"><div>${LOGO}<p class="muted small">Contact ${contactMail()}</p>${note || ''}</div>
+  const logo = tone === 'light' ? logoLink('light') : logoLink('dark');
+  return `<footer class="app-ftr"><div class="wrap ftr-in"><div>${logo}<p class="muted small">Contact ${contactMail()}</p>${note || ''}</div>
 <nav class="ftr-links"><a href="/destinations/sydney">Sydney</a><a href="/destinations/gold-coast">Gold Coast</a><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/guides">Guides</a><a href="/for-hotels">For hotels</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a></nav>
 <p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p>${abn}</div></footer>`;
 }
@@ -297,12 +302,12 @@ function page(title, body, opts = {}) {
     ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-lunch-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-lunch.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${pickerCss}<link rel="stylesheet" href="/golden/home.css">`
     : `${FONT_LINKS}${pickerCss}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css">`;
   const bodyClass = home ? 'home' : nav === 'guest' ? 'guest' : 'staff';
-  const header = home ? '' : `<header class="hdr"><div class="wrap hdr-in">${LOGO}${nav === 'guest' ? guestNav : '<nav class="hdr-nav"></nav>'}<div class="hdr-right">${right}</div></div></header>`;
+  const header = home ? '' : `<header class="hdr"><div class="wrap hdr-in">${logoLink('dark')}${nav === 'guest' ? guestNav : '<nav class="hdr-nav"></nav>'}<div class="hdr-right">${right}</div></div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 <div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>
 ${header}<main>${body}</main>
-${bare ? '' : siteFooter(home ? '<p class="muted small">Photo: Yulius Santoso / Pexels · Photo: Relaxing Journeys / Pexels</p>' : '')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}
+${bare ? '' : siteFooter(home ? 'light' : 'dark', home ? '<p class="muted small">Photo: Yulius Santoso / Pexels · Photo: Relaxing Journeys / Pexels</p>' : '')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}
 </body></html>`;
 }
 const card = (h, date) => {
@@ -400,7 +405,7 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
     return `<a class="ex" href="/h/${h.slug}${date ? '?date=' + encodeURIComponent(date) : ''}">${img}<span class="tag">Example</span><h3>${esc(h.name)}</h3><p>${esc(h.area)} · From ${money(from)} · Demo</p></a>`;
   }).join('');
   const slot = (src, alt, time, title, copy) => `<div class="slot"><picture><source type="image/webp" srcset="/golden/img/${src}.webp"><img src="/golden/img/${src}.jpg" alt="${alt}" width="900" height="600" loading="lazy" decoding="async"></picture><span class="t">${time}</span><div class="b"><h3>${title}</h3><p>${copy}</p></div></div>`;
-  return page('Take the day off', `<nav class="top"><a class="logo" href="/">Hotel Day <i>Club</i></a><div class="links"><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a><a class="pill" href="#waitlist">Join the waitlist</a></div></nav>
+  return page('Take the day off', `<nav class="top">${logoLink('dark')}<div class="links"><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a><a class="pill" href="#waitlist">Join the waitlist</a></div></nav>
 <header class="hero" data-slot="1"><div class="ph"><div class="media">
 <picture class="layer" data-slot="0"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-swim-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-swim-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-swim.webp"><img src="/golden/img/hero-swim.jpg" alt="Ocean pool at sunrise" width="1920" height="1080" decoding="async"></picture>
 <picture class="layer on" data-slot="1"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-lunch-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-lunch-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-lunch.webp"><img fetchpriority="high" src="/golden/img/hero-lunch.jpg" alt="Resort pool with palm trees" width="1920" height="1080" decoding="async"></picture>

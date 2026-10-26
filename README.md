@@ -125,7 +125,7 @@ What still has to be done by hand:
 2. Submit `https://www.hoteldayclub.com.au/sitemap.xml`.
 3. Point the bare domain at the host. `http://hoteldayclub.com.au` and `http://www.hoteldayclub.com.au` only 301 to `https://www.hoteldayclub.com.au` once the request reaches this app. If the apex times out, DNS is not sending it here. In Render, add `hoteldayclub.com.au` as a custom domain (redirect or alias to `www`). In DNS, `www` should be a CNAME to the Render hostname, and the apex needs the A or ALIAS record Render shows for that domain. The app cannot fix a name that never resolves.
 4. A new hotel is indexed when `is_demo` is `0`, which is the default. Demo rows are forced back to `is_demo=1` on startup when the login starts with `demo-` or the name contains `(Demo)`. Do not use that login or that suffix for a real hotel. Do not add reviews, ratings or made-up counts.
-5. The share image is already at `/assets/og.jpg`. Replace it only if you want a different photograph. Keep using a file we host.
+5. The share image is already at `/assets/og-image-1200x630.png`. Keep using a file we host.
 
 ## Going live: what's still needed
 1. **Hosting:** Vercel (porting to Next.js is straightforward because routes map one to one) or Render or Fly.io for this Express app as is.
