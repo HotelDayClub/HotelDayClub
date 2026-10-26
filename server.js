@@ -13,7 +13,8 @@ const {
 const { ensureArrival, saveArrival, arrivalHtml, arrivalForm } = require('./arrival');
 const { listingHtml } = require('./listingView');
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
-const { adminPassword, demoHotelPassword } = require('./passwords');
+const { adminPassword, verifyPassword, safeEqual, migrateHotelPasswords, maskName, maskEmail } = require('./passwords');
+const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
 const { ymd, addDays, esc, money, nice } = require('./util');
 const { DESTINATIONS, destIcon, destinationBySlug } = require('./destinations');
 const seo = require('./seo');
@@ -30,7 +31,7 @@ const {
 const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3030;
-const SECRET = process.env.COOKIE_SECRET || 'hdc-demo-secret';
+const SECRET = resolveCookieSecret();
 const ADMIN_USER = 'jason';
 const HOTEL_SHARE = 0.75;
 app.use(seo.canonicalRedirect);
@@ -96,7 +97,12 @@ app.get('/vendor/jsQR.js', (req, res) => {
 });
 
 const today = () => ymd(new Date());
-const hotelRow = h => h && ({ ...h, photos: JSON.parse(h.photos || '[]'), amenities: JSON.parse(h.amenities || '[]') });
+const hotelRow = h => {
+  if (!h) return h;
+  const row = { ...h, photos: JSON.parse(h.photos || '[]'), amenities: JSON.parse(h.amenities || '[]') };
+  delete row.password;
+  return row;
+};
 const getHotels = () => db.prepare("SELECT * FROM hotels WHERE COALESCE(status,'active')='active' ORDER BY id").all().map(hotelRow);
 const getHotel = slug => hotelRow(db.prepare('SELECT * FROM hotels WHERE slug=?').get(slug));
 const publicHotel = slug => { const h = getHotel(slug); return h && (!h.status || h.status === 'active') ? h : null; };
@@ -168,7 +174,12 @@ function chosenAddons(hid, date, people, q) {
   return { addons: rows, addonTotal: rows.reduce((s, a) => s + a.line, 0) };
 }
 const bookingAddons = id => db.prepare('SELECT name, qty, unit_price, total FROM booking_addons WHERE booking_id=? ORDER BY name').all(id);
-const newCode = () => { let c; do { c = 'HDC-' + (10000 + Math.floor(Math.random() * 90000)); } while (db.prepare('SELECT 1 FROM bookings WHERE code=?').get(c)); return c; };
+const newCode = () => {
+  let c;
+  do { c = 'HDC-' + crypto.randomBytes(16).toString('hex').toUpperCase(); }
+  while (db.prepare('SELECT 1 FROM bookings WHERE code=?').get(c));
+  return c;
+};
 
 const ICON = {
   search: '<svg class="ico sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
@@ -632,9 +643,80 @@ app.post('/book', (req, res) => {
   res.redirect(303, '/booking/' + code);
 });
 
-const bookingFull = code => db.prepare(`SELECT b.*, h.name hotel, h.slug, h.area, h.photos, h.id hotel_id_join, p.name pass, p.holds FROM bookings b JOIN hotels h ON h.id=b.hotel_id JOIN pass_types p ON p.id=b.pass_type_id WHERE b.code=?`).get(code);
+const bookingFull = code => db.prepare(`SELECT b.*, h.name hotel, h.slug, h.area, h.photos, h.address, h.lat, h.lng, h.id hotel_id_join, p.name pass, p.holds FROM bookings b JOIN hotels h ON h.id=b.hotel_id JOIN pass_types p ON p.id=b.pass_type_id WHERE b.code=?`).get(code);
+const bookingHits = new Map();
+const BOOKING_WINDOW_MS = 15 * 60 * 1000;
+const BOOKING_MAX = 30;
+function bookingLimited(ip) {
+  const now = Date.now();
+  let row = bookingHits.get(ip);
+  if (!row || now - row.start > BOOKING_WINDOW_MS) {
+    row = { start: now, n: 0 };
+    bookingHits.set(ip, row);
+  }
+  row.n += 1;
+  if (bookingHits.size > 4000) {
+    for (const [key, value] of bookingHits) if (now - value.start > BOOKING_WINDOW_MS) bookingHits.delete(key);
+  }
+  return row.n > BOOKING_MAX;
+}
+function bookingPrivate(res) {
+  res.set('Cache-Control', 'no-store');
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+}
+function rejectBookingLookup(res) {
+  bookingPrivate(res);
+  res.set('Retry-After', '900');
+  return res.status(429).type('text/plain; charset=utf-8').send('Too many booking lookups. Try again in 15 minutes.');
+}
+function directionsHref(hotel) {
+  const lat = Number(hotel.lat);
+  const lng = Number(hotel.lng);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && (lat || lng)) {
+    return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lng)}#map=17/${lat}/${lng}`;
+  }
+  const address = String(hotel.address || '').trim();
+  if (!address) return '';
+  return 'https://www.openstreetmap.org/search?query=' + encodeURIComponent(address);
+}
+function icsEscape(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+}
+function bookingIcs(b, hotel) {
+  const day = String(b.date || '').replace(/-/g, '');
+  const end = day && /^\d{8}$/.test(day) ? ymd(addDays(new Date(b.date + 'T00:00:00'), 1)).replace(/-/g, '') : day;
+  const where = String(hotel.address || hotel.area || '').trim();
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Hotel Day Club//EN',
+    'BEGIN:VEVENT',
+    `UID:${icsEscape(b.code)}@hoteldayclub.com.au`,
+    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z')}`,
+    `DTSTART;VALUE=DATE:${day}`,
+    `DTEND;VALUE=DATE:${end}`,
+    `SUMMARY:${icsEscape('Day pass at ' + (hotel.name || 'Hotel Day Club'))}`,
+    `DESCRIPTION:${icsEscape('Booking ' + b.code + '. Show this code at reception.')}`,
+    where ? `LOCATION:${icsEscape(where)}` : '',
+    'END:VEVENT',
+    'END:VCALENDAR',
+    '',
+  ];
+  return lines.filter(Boolean).join('\r\n');
+}
+app.get('/booking/:code/calendar.ics', (req, res) => {
+  if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);
+  const b = bookingFull(String(req.params.code || '').toUpperCase());
+  bookingPrivate(res);
+  if (!b) return res.status(404).type('text/plain; charset=utf-8').send('Booking not found.');
+  const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(b.hotel_id);
+  res.type('text/calendar; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="${b.code}.ics"`);
+  res.send(bookingIcs(b, hotel));
+});
 app.get('/booking/:code', async (req, res) => {
-  const b = bookingFull(req.params.code.toUpperCase());
+  if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);
+  const b = bookingFull(String(req.params.code || '').toUpperCase());
   if (!b) return sendNotFound(res, { analyticsPath: '/booking' });
   const qr = await QRCode.toDataURL(`HDC:${b.code}`, { margin: 1, width: 260, color: { dark: '#0B2545' } });
   const adds = bookingAddons(b.id);
@@ -644,15 +726,21 @@ app.get('/booking/:code', async (req, res) => {
   const party = b.party || b.qty * (b.holds || 1);
   const bookedAt = b.created_at ? new Date(String(b.created_at).replace(' ', 'T')) : new Date();
   const note = b.cancel_note || cancelNote(db, hotel, b.date, bookedAt);
+  const shownName = maskName(b.guest_name);
+  const shownEmail = maskEmail(b.email);
+  const mapHref = directionsHref(hotel);
+  const status = b.status === 'cancelled' ? 'Cancelled' : b.checked_in_at ? 'Checked in ' + b.checked_in_at : 'Confirmed';
+  bookingPrivate(res);
   res.send(page('Booking confirmed', `<div class="wrap sec narrow confirm">
 <div class="ok-badge">${ICON.check}</div><h1 class="l-title center">You're booked in.</h1>
-<p class="center muted">We've sent the details to ${esc(b.email)} (demo: no email is actually sent).</p>
+<p class="center muted">Your confirmation is saved on this page. No email is sent in this demo.</p>
 <div class="ticket"><div class="t-top"><img src="/assets/photos/${JSON.parse(b.photos)[0]}" alt="${esc(/\(Demo\)/.test(b.hotel) ? 'Stock photo, not this hotel' : 'Photo of ' + seo.shortName(b.hotel))}" width="1200" height="900"><div><h3>${esc(b.hotel)}</h3><p class="muted small">${esc(b.area)}, Australia</p></div></div>
-<div class="t-mid"><img class="qr" src="${qr}" alt="QR code for ${b.code}"><div class="code">${b.code}</div><p class="muted small">Show this at reception</p></div>
-<dl><dt>Guest</dt><dd>${esc(b.guest_name)}</dd><dt>Date</dt><dd>${esc(nice(b.date))}${when ? ` · ${esc(when)}` : ''}</dd><dt>Pass</dt><dd>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</dd><dt>Guests</dt><dd>${party}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Cancellation</dt><dd>${esc(note)}</dd><dt>Rules</dt><dd>${b.rules_ack_at ? 'Accepted' : '—'}</dd><dt>Terms</dt><dd>${b.terms_ack_at ? 'Accepted' : '—'}</dd><dt>Risk warning</dt><dd>${b.risk_ack_at ? 'Accepted' : '—'}</dd><dt>Status</dt><dd>${b.checked_in_at ? 'Checked in ' + esc(b.checked_in_at) : 'Confirmed'}</dd></dl>
+<div class="t-mid"><img class="qr" src="${qr}" alt="QR code for ${esc(b.code)}"><div class="code">${esc(b.code)}</div><p class="muted small">Show this at reception</p></div>
+<dl><dt>Guest</dt><dd>${esc(shownName)}</dd>${shownEmail ? `<dt>Email</dt><dd>${esc(shownEmail)}</dd>` : ''}<dt>Date</dt><dd>${esc(nice(b.date))}${when ? ` · ${esc(when)}` : ''}</dd><dt>Pass</dt><dd>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</dd><dt>Guests</dt><dd>${party}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Cancellation</dt><dd>${esc(note)}</dd><dt>Rules</dt><dd>${b.rules_ack_at ? 'Accepted' : '—'}</dd><dt>Terms</dt><dd>${b.terms_ack_at ? 'Accepted' : '—'}</dd><dt>Risk warning</dt><dd>${b.risk_ack_at ? 'Accepted' : '—'}</dd><dt>Status</dt><dd>${esc(status)}</dd></dl>
 <p class="swim-note">${esc(swimNote(hotel))}</p>
 ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}</div>
-<div class="center" style="margin-top:20px"><a class="btn btn-line" href="/">Book another day</a></div></div>`, { analytics: true, analyticsPath: '/booking', index: false, canonical: false }));
+<p class="center" style="margin-top:16px"><a class="btn btn-line" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">Add to calendar</a>${mapHref ? ` <a class="btn btn-line" href="${esc(mapHref)}">Directions</a>` : ''}</p>
+<div class="center" style="margin-top:12px"><a class="btn btn-line" href="/">Book another day</a></div></div>`, { analytics: true, analyticsPath: '/booking', index: false, canonical: false }));
 });
 
 const hotelAuth = (req, res, next) => { const id = req.signedCookies.hotel; const h = id && db.prepare('SELECT * FROM hotels WHERE id=?').get(id); if (!h) return res.redirect('/hotel/login'); req.hotel = hotelRow(h); next(); };
@@ -688,11 +776,14 @@ ${req.query.e ? '<div class="alert">Wrong username or password.</div>' : ''}
 ${LEGAL_LINKS}</div></div>`, { bare: true, index: false, canonical: false }));
 });
 app.post('/hotel/login', (req, res) => {
-  const h = db.prepare('SELECT * FROM hotels WHERE login=? AND password=?').get(String(req.body.user || '').trim(), req.body.pass);
-  if (!h) return res.redirect('/hotel/login?e=1');
-  res.cookie('hotel', h.id, { signed: true, httpOnly: true, sameSite: 'lax' }); res.redirect('/hotel');
+  const login = String(req.body.user || '').trim();
+  const pass = String(req.body.pass || '');
+  const h = db.prepare('SELECT * FROM hotels WHERE login=?').get(login);
+  if (!verifyPassword(pass, h && h.password) || !h) return res.redirect('/hotel/login?e=1');
+  staffCookie(res, 'hotel', String(h.id));
+  res.redirect('/hotel');
 });
-app.get('/hotel/logout', (req, res) => { res.clearCookie('hotel'); res.redirect('/hotel/login'); });
+app.get('/hotel/logout', (req, res) => { clearStaffCookie(res, 'hotel'); res.redirect('/hotel/login'); });
 
 const stat = (label, val, sub = '') => `<div class="stat"><span>${label}</span><b>${val}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
 function seatCell(b) {
@@ -800,6 +891,7 @@ ${todaySection(h, { big: true, live: '/hotel/today-list?view=checkin' })}
 });
 app.get('/hotel/settings', hotelAuth, (req, res) => {
   const row = db.prepare('SELECT * FROM hotels WHERE id=?').get(req.hotel.id);
+  delete row.password;
   const locked = new Set(db.prepare('SELECT DISTINCT pass_type_id id FROM bookings WHERE hotel_id=?').all(row.id).map(r => r.id));
   res.send(dashShell(req.hotel, `${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <p class="eyebrow-s">Settings</p><h1 class="l-title">Your offering</h1>
@@ -989,7 +1081,7 @@ app.get('/hotel/go/:token', (req, res) => {
   const hotel = data && db.prepare('SELECT * FROM hotels WHERE id=?').get(data.h);
   if (!hotel || !/^\d{4}-\d{2}-\d{2}$/.test(data.d || '')) return res.status(400).send(page('Link expired', `<div class="wrap sec narrow"><h1 class="l-title">This link has expired</h1><p class="muted">Open tonight's email again from the dashboard, or <a href="/hotel/login">log in</a>.</p></div>`, { bare: true, index: false, canonical: false }));
   const msg = data.a === 'cap' ? capDate(hotel.id, data.d, data.n) : pauseDate(hotel.id, data.d, 'pause').msg;
-  res.cookie('hotel', hotel.id, { signed: true, httpOnly: true, sameSite: 'lax' });
+  staffCookie(res, 'hotel', String(hotel.id));
   res.send(page('Saved', `<div class="wrap sec narrow"><h1 class="l-title">${esc(msg)}</h1><p class="muted">${esc(hotel.name)} · ${esc(nice(data.d))}</p><p style="margin-top:18px"><a class="btn btn-navy" href="/hotel">Back to dashboard</a></p></div>`, { bare: true, index: false, canonical: false }));
 });
 app.get('/hotel/print', hotelAuth, (req, res) => {
@@ -1069,14 +1161,45 @@ app.post('/hotel/blocked', hotelAuth, (req, res) => {
 });
 
 const adminAuth = (req, res, next) => req.signedCookies.admin === 'jason' ? next() : res.redirect('/admin/login');
-app.get('/admin/login', (req, res) => res.send(page('Admin login', `<div class="wrap sec narrow"><div class="login-card"><h1 class="l-title">Admin login</h1>${req.query.e ? '<div class="alert">Wrong username or password.</div>' : ''}
+const adminFails = new Map();
+const ADMIN_WINDOW_MS = 15 * 60 * 1000;
+const ADMIN_MAX_FAILS = 5;
+function adminFailure(ip) {
+  const now = Date.now();
+  let row = adminFails.get(ip);
+  if (!row || now - row.start > ADMIN_WINDOW_MS) row = { start: now, n: 0 };
+  row.n += 1;
+  adminFails.set(ip, row);
+  return row.n >= ADMIN_MAX_FAILS;
+}
+function adminLocked(ip) {
+  const row = adminFails.get(ip);
+  if (!row) return false;
+  if (Date.now() - row.start > ADMIN_WINDOW_MS) { adminFails.delete(ip); return false; }
+  return row.n >= ADMIN_MAX_FAILS;
+}
+app.get('/admin/login', (req, res) => {
+  const alert = req.query.e === 'lock'
+    ? '<div class="alert">Too many tries. Wait 15 minutes, then try again.</div>'
+    : req.query.e ? '<div class="alert">Wrong username or password.</div>' : '';
+  res.send(page('Admin login', `<div class="wrap sec narrow"><div class="login-card"><h1 class="l-title">Admin login</h1>${alert}
 <form method="post" action="/admin/login"><label class="fl">Username<input name="user" required autocomplete="username"></label><label class="fl">Password<input name="pass" type="password" required autocomplete="current-password"></label><button class="btn btn-navy full">Log in</button></form>
-${LEGAL_LINKS}</div></div>`, { bare: true, index: false, canonical: false })));
-app.post('/admin/login', (req, res) => {
-  if (req.body.user !== ADMIN_USER || req.body.pass !== adminPassword()) return res.redirect('/admin/login?e=1');
-  res.cookie('admin', 'jason', { signed: true, httpOnly: true, sameSite: 'lax' }); res.redirect('/admin');
+${LEGAL_LINKS}</div></div>`, { bare: true, index: false, canonical: false }));
 });
-app.get('/admin/logout', (req, res) => { res.clearCookie('admin'); res.redirect('/'); });
+app.post('/admin/login', (req, res) => {
+  const ip = req.ip || 'unknown';
+  if (adminLocked(ip)) return res.redirect('/admin/login?e=lock');
+  const userOk = safeEqual(String(req.body.user || ''), ADMIN_USER);
+  const passOk = safeEqual(String(req.body.pass || ''), adminPassword());
+  if (!userOk || !passOk) {
+    adminFailure(ip);
+    return res.redirect('/admin/login?e=' + (adminLocked(ip) ? 'lock' : '1'));
+  }
+  adminFails.delete(ip);
+  staffCookie(res, 'admin', 'jason');
+  res.redirect('/admin');
+});
+app.get('/admin/logout', (req, res) => { clearStaffCookie(res, 'admin'); res.redirect('/'); });
 app.post('/admin/approve', adminAuth, (req, res) => {
   const id = parseInt(req.body.id, 10);
   const h = id && db.prepare('SELECT name FROM hotels WHERE id=? AND status=?').get(id, 'pending');
@@ -1245,8 +1368,8 @@ ensureInclusions(db);
 ensureArrival(db);
 seedPerformance(db);
 syncHoursLabels(db);
-db.prepare("UPDATE hotels SET password=? WHERE login LIKE 'demo-%'").run(demoHotelPassword());
 db.prepare("UPDATE hotels SET is_demo=1 WHERE login LIKE 'demo-%' OR name LIKE '%(Demo)%'").run();
+migrateHotelPasswords(db);
 adminPassword();
 
 function inlineMd(text) {

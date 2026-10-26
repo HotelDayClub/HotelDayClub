@@ -12,6 +12,7 @@
     "test:analytics": "node tests/analytics-checks.js",
     "test:waitlist": "node tests/waitlist-checks.js",
     "test:backups": "node tests/backup-checks.js",
+    "test:security": "node tests/security-checks.js",
     "test:static": "node tests/static-checks.js"
   },
   "keywords": [],
