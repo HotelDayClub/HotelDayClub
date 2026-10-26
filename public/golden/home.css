@@ -3,8 +3,8 @@
 img{max-width:100%;display:block}button,input,select{font:inherit}a{color:inherit}
 .demo-banner{background:var(--ink);color:#fff;font-size:13px;text-align:center;padding:8px 16px;line-height:1.4}
 .top{position:absolute;top:36px;left:0;right:0;z-index:5;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 5vw;color:#fff;background:linear-gradient(180deg,rgba(10,20,40,.55),transparent)}
-.logo{font-family:Fraunces,Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.02em;text-decoration:none;color:#fff}
-.logo i{font-family:Caveat,cursive;font-style:normal;font-weight:600;color:var(--salmon);font-size:32px;margin-left:2px}
+.logo{display:inline-flex;align-items:center;line-height:0;text-decoration:none}
+.logo img{height:36px;width:auto;max-width:none}
 .top .links{display:flex;gap:28px;align-items:center;font-size:15px}
 .top .links a{text-decoration:none;color:#fff}
 .top .links a.pill{background:#fff;color:#0E1E3A;padding:10px 18px;border-radius:99px;font-weight:600}
@@ -94,8 +94,7 @@ h2 em{color:#C9412F;font-style:italic}
 .hotels p{color:#D5DCE8;max-width:460px;margin:16px 0 0;line-height:1.5}
 .btn{background:var(--coral);color:var(--ink);font-weight:600;padding:16px 26px;border-radius:99px;text-decoration:none;white-space:nowrap;display:inline-block}
 .app-ftr{padding:8px 5vw 56px;font-size:13px;color:#3b4458}
-.app-ftr .logo{color:var(--ink);font-size:22px}
-.app-ftr .logo i{color:var(--coral-ink);font-size:28px}
+.app-ftr .logo img{height:32px}
 .app-ftr a{color:var(--ink)}
 .app-ftr nav{display:flex;flex-wrap:wrap;gap:8px 16px;margin:14px 0}
 .app-ftr nav a{text-decoration:underline;text-underline-offset:2px}
@@ -130,6 +129,7 @@ html.rv [data-rv].in{opacity:1;transform:none;animation:none}
 .hero :focus-visible,.top :focus-visible{outline-color:#fff}
 .search :focus-visible{outline:3px solid #0E1E3A;outline-offset:2px}
 @media(max-width:800px){
+  .top .logo img{height:28px}
   .top .links a:not(.pill){display:none}
   .hero{grid-template-columns:1fr;min-height:auto}
   .hero .ph{height:420px;min-height:420px}
