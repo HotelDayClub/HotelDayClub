@@ -1,6 +1,7 @@
 const zlib = require('zlib');
 
 const TEXT = /text|json|javascript|xml|svg|manifest/;
+const MAX_BUFFER = 1024 * 1024;
 
 function vary(res) {
   const prev = res.getHeader('Vary');
@@ -30,10 +31,14 @@ function compress(req, res, next) {
   let pending = [];
   let mode = null;
 
-  function flushPending(target) {
+  function flushPending() {
     const buf = pending.length ? Buffer.concat(pending) : null;
     pending = [];
-    return buf && target ? target(buf) : buf;
+    return buf;
+  }
+
+  function pendingSize() {
+    return pending.reduce((n, c) => n + c.length, 0);
   }
 
   function start(size) {
@@ -55,30 +60,33 @@ function compress(req, res, next) {
     return true;
   }
 
+  // Hold the body until end, then compress it in one shot. Static files are
+  // piped, and zlib.write() returns false once a chunk passes the writable
+  // high water mark (16KB on Node 20, which Render runs) without producing
+  // output until flush. The file stream then waits for a drain that never
+  // comes, so the response hangs before any body bytes. Compressing on end
+  // flushes the encoder. Past MAX_BUFFER, send the rest uncompressed.
   res.write = function (chunk, encoding, cb) {
     if (typeof encoding === 'function') { cb = encoding; encoding = undefined; }
     if (chunk == null) { if (cb) cb(); return true; }
     if (!Buffer.isBuffer(chunk)) chunk = Buffer.from(chunk, typeof encoding === 'string' ? encoding : 'utf8');
-    if (mode === 'zip') return zipper.write(chunk, cb);
     if (mode === 'plain') return write(chunk, cb);
+    const type = String(res.getHeader('Content-Type') || '');
+    if (type && !TEXT.test(type)) {
+      mode = 'plain';
+      pending.push(chunk);
+      return write(flushPending(), cb);
+    }
     pending.push(chunk);
-    const size = pending.reduce((n, c) => n + c.length, 0);
-    if (size < 1024) { if (cb) cb(); return true; }
-    const zipped = start(size);
-    const buf = flushPending();
-    if (!zipped) return write(buf, cb);
-    return zipper.write(buf, cb);
+    if (pendingSize() <= MAX_BUFFER) { if (cb) cb(); return true; }
+    mode = 'plain';
+    return write(flushPending(), cb);
   };
 
   res.end = function (chunk, encoding, cb) {
     if (typeof chunk === 'function') { cb = chunk; chunk = undefined; encoding = undefined; }
     else if (typeof encoding === 'function') { cb = encoding; encoding = undefined; }
     if (chunk != null && !Buffer.isBuffer(chunk)) chunk = Buffer.from(chunk, typeof encoding === 'string' ? encoding : 'utf8');
-    if (mode === 'zip') {
-      zipper.end(chunk);
-      if (cb) zipper.once('end', cb);
-      return res;
-    }
     if (mode === 'plain') return end(chunk, cb);
     if (chunk) pending.push(chunk);
     const buf = flushPending();
