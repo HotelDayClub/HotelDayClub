@@ -281,6 +281,10 @@ function start(port, extra = {}) {
     assert.ok(forHotels.body.includes('mailto:hello@hoteldayclub.com.au?subject=Hotel%20Day%20Club%20-%20partnership%20enquiry'));
     assert.ok(!/75%|25%/.test(forHotels.body));
     assert.ok(forHotels.body.includes('We earn a commission on bookings and pay you the rest monthly, with a statement.'));
+    const how = await get(port, '/how-it-works');
+    assert.strictEqual(how.status, 200);
+    assert.ok(how.body.includes('Seating and add-on sales are paid out once a month. Your share is set out in your hotel agreement.'));
+    assert.ok(!/75%|25%/.test(how.body));
     const join = await get(port, '/hotel/join');
     assert.strictEqual(join.status, 302);
     assert.strictEqual(join.headers.location, '/for-hotels');
