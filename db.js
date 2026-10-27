@@ -59,6 +59,17 @@ CREATE TABLE IF NOT EXISTS waitlist(
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS contact_messages(
+  id INTEGER PRIMARY KEY,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  booking_code TEXT NOT NULL DEFAULT '',
+  topic TEXT NOT NULL,
+  message TEXT NOT NULL,
+  handled INTEGER NOT NULL DEFAULT 0,
+  handled_at TEXT
+);
 `);
 // Adds a column only when it is missing, so this is safe to run on every boot.
 function ensureCols(table, cols) {

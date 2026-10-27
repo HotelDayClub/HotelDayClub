@@ -55,6 +55,18 @@ picture.layer img{width:100%;height:100%;object-fit:cover;display:block}
 .marquee .track{display:inline-block;animation:mq 40s linear infinite;will-change:transform}
 @keyframes mq{to{transform:translateX(-50%)}}
 .marquee span{padding:0 28px}
+.assure{background:var(--sand);border-top:1px solid #C4B5A4;border-bottom:1px solid #C4B5A4;padding:34px 5vw}
+.assure ul{list-style:none;margin:0 auto;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:28px 20px;max-width:1180px}
+.assure li{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
+.assure .ico{width:28px;height:28px;color:var(--navy)}
+.assure b{font-size:16px;line-height:1.3;color:var(--ink);font-weight:700}
+.assure span{font-size:14px;line-height:1.45;color:#243044;max-width:16rem}
+.assure-link{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;color:inherit;text-decoration:none;border-radius:16px;padding:8px 6px;margin:-8px -6px}
+.assure-link:hover,.assure-link:focus-visible{background:rgba(14,30,58,.06)}
+.assure-link:hover b,.assure-link:focus-visible b{text-decoration:underline;text-underline-offset:3px}
+@media(max-width:1100px){
+  .assure ul{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 section{padding:110px 5vw}
 h2{font-family:Fraunces,Georgia,serif;font-weight:400;font-size:clamp(38px,4.6vw,68px);line-height:1;letter-spacing:-.02em;max-width:900px;color:var(--ink);margin:14px 0 0}
 h2 em{color:#C9412F;font-style:italic}
@@ -163,6 +175,8 @@ html.rv [data-rv].in{opacity:1;transform:none;animation:none}
   .hotels{flex-direction:column;align-items:flex-start;margin:0 4vw 48px;padding:50px 7vw}
   .marquee{font-size:28px}
   .hero-line{font-size:clamp(44px,12vw,64px)}
+  section.assure{padding:26px 6vw}
+  .assure ul{grid-template-columns:1fr}
   .app-ftr .ftr-cols{grid-template-columns:1fr 1fr;gap:16px 18px}
   .app-ftr nav.ftr-dest{grid-column:1 / -1;flex-direction:row;flex-wrap:wrap;column-gap:14px;row-gap:8px}
   .app-ftr nav.ftr-dest .ftr-h{flex-basis:100%}
