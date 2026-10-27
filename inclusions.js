@@ -182,7 +182,7 @@ function ensureInclusions(db) {
     ];
     const setBlurb = db.prepare('UPDATE hotels SET blurb=? WHERE blurb=?');
     for (const [from, to] of blurbs) setBlurb.run(to, from);
-    const manlyBlurb = 'Canopy daybeds steps from the beach, a magnesium pool, and a kiosk selling food and drinks.';
+    const manlyBlurb = require('./seed').DEMO_INTROS['manly-sands'].blurb;
     const setManly = db.prepare(`UPDATE hotels SET blurb=? WHERE slug='manly-sands' AND COALESCE(is_demo,0)=1 AND blurb=?`);
     for (const from of [
       'Canopy daybeds right on the water line, a magnesium pool and a kiosk doing smashed avo and cold ones.',

@@ -132,28 +132,86 @@ function ensureSchedules(db) {
       'Café on site. Packed lunches welcome.',
       'Food and drink are not included. Buy them at the café, or add the optional food and drink credit. Packed lunches are welcome.'
     );
+    // Approved demo intros. A later edit that is not one of these old sentences is left alone.
+    const setTag = db.prepare(`UPDATE hotels SET tagline=? WHERE ${demo} AND tagline=?`);
+    const setBlurb = db.prepare(`UPDATE hotels SET blurb=? WHERE ${demo} AND blurb=?`);
+    for (const [slug, intro] of Object.entries(DEMO_INTROS)) {
+      for (const old of intro.oldTaglines) setTag.run(intro.tagline, slug, old);
+      for (const old of intro.oldBlurbs) setBlurb.run(intro.blurb, slug, old);
+    }
   })();
 }
 
+// Taglines are stored without a closing full stop. The listing intro adds one.
+const DEMO_INTROS = {
+  'saltwater-terrace': {
+    tagline: 'Ocean-facing infinity pool above the sand',
+    blurb: 'Slip into a heated infinity pool on level one and look straight out to the Pacific. Feel the sun on the water, then retreat to a shaded daybed or a draped cabana for four. Towels, lockers and toiletries are included, and the pool bar opens at 11, with food and drink available to buy. Your ocean-side day awaits.',
+    oldTaglines: [],
+    oldBlurbs: [
+      'A heated infinity pool on level one, looking straight out to the Pacific. Loungers and towels. The pool bar sells drinks from 11.',
+      'A heated infinity pool on level one, looking straight out to the Pacific. Loungers, towels and a pool bar doing frozen margs from 11.',
+    ],
+  },
+  'skyline-rooftop': {
+    tagline: 'Sun, water and city views, high above the street',
+    blurb: 'Rise above the office towers to a heated rooftop pool with city views. Swim in the sun, then stretch out on a reserved daybed or gather friends in a rooftop cabana for four. The bar opens at noon, with food and drink available to buy, and Monday to Thursday are the quietest days.',
+    oldTaglines: ['Heated rooftop pool with city views'],
+    oldBlurbs: [
+      'Swim above the office towers. A heated rooftop pool, cabana daybeds, and a bar selling drinks from noon. Quietest Mon to Thu.',
+      'Swim above the office towers. A heated rooftop pool, cabana daybeds and a bar that opens at noon. Quietest Mon to Thu.',
+    ],
+  },
+  'harbourside-lido': {
+    tagline: 'Warm water and soft daylight under a glass roof',
+    blurb: 'Leave the city noise at the door and swim in soft daylight under a glass roof. The heated indoor pool is joined by a sauna and steam room to warm up between laps. Settle onto a lounger with a robe, or share a quiet daybed for two.',
+    oldTaglines: ['Glass-roofed pool and day spa in the city'],
+    oldBlurbs: [
+      'A light-filled pool under a glass roof, with steam room, sauna and a spa menu.',
+      'A light-filled pool under a glass roof, with steam room, sauna and a spa menu. Year-round, rain or shine.',
+    ],
+  },
+  'palm-court': {
+    tagline: 'Shady palms and a lagoon pool for the whole family',
+    blurb: 'Find a shaded spot beneath the palms and let the afternoon stretch out. The big outdoor lagoon pool (unheated) has a shallow end for little swimmers, and a lifeguard is on duty. Towels and on-site parking are included, and food and drink are available to buy poolside. Choose a lounger, a pool chair or a shaded daybed.',
+    oldTaglines: ['Lagoon pool in leafy palm gardens'],
+    oldBlurbs: ['A big lagoon pool ringed by palms, with plenty of shade and a family-friendly shallow end. Easy parking.'],
+  },
+  'manly-sands': {
+    tagline: 'Canopy daybeds steps from the beach',
+    blurb: 'Hear the waves, feel the sand on your feet and settle into a canopy daybed steps from the beach. Cool off in the outdoor magnesium pool (unheated), then wander to the kiosk, where food and drinks are available to buy. Towels, showers and change rooms are included. Your easy beach day awaits.',
+    oldTaglines: [],
+    oldBlurbs: [
+      'Canopy daybeds steps from the beach, a magnesium pool, and a kiosk selling food and drinks.',
+      'Canopy daybeds right on the water line, a magnesium pool, and a kiosk selling food and drinks.',
+      'Canopy daybeds steps from the beach, a magnesium pool and a kiosk doing smashed avo and cold ones.',
+      'Canopy daybeds right on the water line, a magnesium pool and a kiosk doing smashed avo and cold ones.',
+    ],
+  },
+  'bayview-spa': {
+    tagline: 'A quiet bathhouse day of heat, plunge and pool',
+    blurb: 'Step into the quiet of the bathhouse and let the day slow down. Move between hot and cold plunge, sauna and steam, then drift out to the heated outdoor pool. Robe, slippers and towels are waiting, and a draped cabana for two is there if you want one. Your calm day awaits.',
+    oldTaglines: ['Bathhouse, plunge pools and poolside cabanas'],
+    oldBlurbs: [
+      'A calm bathhouse with hot and cold plunge, a heated outdoor pool and draped cabanas. Adults only (18+).',
+      'A calm bathhouse with hot and cold plunge, a heated outdoor pool and draped cabanas. 18+ on weekdays.',
+    ],
+  },
+};
+
 function seed(db) {
 const hotels = [
-  ['saltwater-terrace', 'The Saltwater Terrace (Demo)', 'Eastern Beaches', 'Ocean-facing infinity pool above the sand',
-   'A heated infinity pool on level one, looking straight out to the Pacific. Loungers and towels. The pool bar sells drinks from 11.',
+  ['saltwater-terrace', 'The Saltwater Terrace (Demo)', 'Eastern Beaches', DEMO_INTROS['saltwater-terrace'].tagline, DEMO_INTROS['saltwater-terrace'].blurb,
    ['infinity-ocean.jpg', 'beach-resort-pool.jpg', 'loungers-snacks.jpg', 'infinity-palms.jpg'], ['Heated pool', 'Ocean view', 'Pool bar', 'Towels included', 'Showers & lockers'], 'demo-saltwater'],
-  ['skyline-rooftop', 'Skyline Rooftop Hotel (Demo)', 'North Sydney', 'Heated rooftop pool with city views',
-   'Swim above the office towers. A heated rooftop pool, cabana daybeds, and a bar selling drinks from noon. Quietest Mon to Thu.',
+  ['skyline-rooftop', 'Skyline Rooftop Hotel (Demo)', 'North Sydney', DEMO_INTROS['skyline-rooftop'].tagline, DEMO_INTROS['skyline-rooftop'].blurb,
    ['rooftop-city.jpg', 'hero-loungers.jpg', 'daybed-canopy.jpg', 'cabana-drapes.jpg'], ['Heated pool', 'Rooftop', 'City views', 'Daybeds', 'Gym access'], 'demo-skyline'],
-  ['harbourside-lido', 'Harbourside Lido (Demo)', 'CBD & Harbour', 'Glass-roofed pool and day spa in the city',
-   'A light-filled pool under a glass roof, with steam room, sauna and a spa menu.',
+  ['harbourside-lido', 'Harbourside Lido (Demo)', 'CBD & Harbour', DEMO_INTROS['harbourside-lido'].tagline, DEMO_INTROS['harbourside-lido'].blurb,
    ['glass-roof-pool.jpg', 'spa-steps.jpg', 'indoor-spa-pool.jpg', 'hero-loungers.jpg'], ['Indoor heated pool', 'Sauna', 'Steam room', 'Spa treatments', 'Robes'], 'demo-harbourside'],
-  ['palm-court', 'Palm Court Resort (Demo)', 'Parramatta', 'Lagoon pool in leafy palm gardens',
-   'A big lagoon pool ringed by palms, with plenty of shade and a family-friendly shallow end. Easy parking.',
+  ['palm-court', 'Palm Court Resort (Demo)', 'Parramatta', DEMO_INTROS['palm-court'].tagline, DEMO_INTROS['palm-court'].blurb,
    ['tropical-resort.jpg', 'resort-palms.jpg', 'thatched-umbrellas.jpg'], ['Lagoon pool', 'Kid-friendly', 'Free parking', 'Shade umbrellas', 'Café'], 'demo-palmcourt'],
-  ['manly-sands', 'Manly Sands House (Demo)', 'Northern Beaches', 'Canopy daybeds steps from the beach',
-   'Canopy daybeds steps from the beach, a magnesium pool, and a kiosk selling food and drinks.',
+  ['manly-sands', 'Manly Sands House (Demo)', 'Northern Beaches', DEMO_INTROS['manly-sands'].tagline, DEMO_INTROS['manly-sands'].blurb,
    ['daybed-canopy.jpg', 'thatched-umbrellas.jpg', 'infinity-palms.jpg', 'beach-resort-pool.jpg'], ['Magnesium pool', 'Beachside', 'Daybeds', 'Kiosk', 'Towels included'], 'demo-manly'],
-  ['bayview-spa', 'Bayview Spa Hotel (Demo)', 'Eastern Suburbs', 'Bathhouse, plunge pools and poolside cabanas',
-   'A calm bathhouse with hot and cold plunge, a heated outdoor pool and draped cabanas. Adults only (18+).',
+  ['bayview-spa', 'Bayview Spa Hotel (Demo)', 'Eastern Suburbs', DEMO_INTROS['bayview-spa'].tagline, DEMO_INTROS['bayview-spa'].blurb,
    ['cabana-drapes.jpg', 'indoor-spa-pool.jpg', 'spa-steps.jpg', 'loungers-snacks.jpg'], ['Heated pool', 'Hot & cold plunge', 'Cabanas', 'Adults only (18+)', 'Robes'], 'demo-bayview'],
 ];
 const insH = db.prepare('INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status,is_demo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
@@ -429,4 +487,4 @@ function resetAndSeed() {
 }
 
 if (require.main === module) resetAndSeed();
-module.exports = { seed, ensureAddons, ensureSchedules, seedPerformance };
+module.exports = { seed, ensureAddons, ensureSchedules, seedPerformance, DEMO_INTROS };

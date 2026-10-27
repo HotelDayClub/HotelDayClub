@@ -1,4 +1,5 @@
 const assert = require('assert');
+const { DEMO_INTROS } = require('../seed');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -31,6 +32,22 @@ function post(port, urlPath, fields, headers = {}) {
     req.end(body);
   });
 }
+function leadAndMeta(body, slug, name, area) {
+  const intro = DEMO_INTROS[slug];
+  assert.ok(body.includes(`<b>${intro.tagline}.</b> ${intro.blurb}`), slug);
+  const meta = body.match(/<meta name="description" content="([^"]*)">/);
+  const og = body.match(/<meta property="og:description" content="([^"]*)">/);
+  const tw = body.match(/<meta name="twitter:description" content="([^"]*)">/);
+  const expected = `${name} is a fictional example in ${area}. Stock photos. No real booking is taken on this demo.`.replace(/&/g, '&amp;');
+  assert.ok(meta && meta[1].length <= 155, slug);
+  assert.strictEqual(meta[1], expected, slug);
+  assert.strictEqual(og[1], expected, slug);
+  assert.strictEqual(tw[1], expected, slug);
+  assert.ok(!meta[1].includes(intro.blurb.slice(0, 24)), slug);
+  const ld = body.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  assert.ok(ld && !ld[1].includes(intro.blurb.slice(0, 24)), slug);
+}
+
 function start(port) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['server.js'], {
@@ -59,10 +76,13 @@ function start(port) {
     assert.ok(home.body.includes('id="wl-dest"'));
     const pool = await get(port, '/?want=pool');
     assert.ok(pool.body.includes('Saltwater Terrace'));
+    assert.ok(!home.body.includes(DEMO_INTROS['bayview-spa'].blurb));
+    assert.ok(!pool.body.includes(DEMO_INTROS['saltwater-terrace'].blurb));
     const spa = await get(port, '/?want=spa');
     assert.ok(spa.body.includes('Bayview Spa'));
     assert.ok(spa.body.includes('Harbourside Lido'));
     assert.ok(!spa.body.includes('Saltwater Terrace'));
+    assert.ok(!spa.body.includes(DEMO_INTROS['harbourside-lido'].blurb));
     const gym = await get(port, '/?want=gym');
     assert.ok(gym.body.includes('Skyline Rooftop'));
     assert.ok(!gym.body.includes('Palm Court'));
@@ -72,6 +92,7 @@ function start(port) {
 
     const salt = await get(port, '/h/saltwater-terrace');
     assert.strictEqual(salt.status, 200);
+    leadAndMeta(salt.body, 'saltwater-terrace', 'The Saltwater Terrace', 'Eastern Beaches');
     assert.ok(salt.body.includes('Your day at The Saltwater Terrace'));
     assert.ok(salt.body.includes('id="passes"'));
     assert.ok(!salt.body.includes('id="included"'));
@@ -164,8 +185,11 @@ function start(port) {
     assert.strictEqual(popular, 1);
 
     const bay = await get(port, '/h/bayview-spa');
-    assert.ok(bay.body.includes('Adults only (18+).'));
+    leadAndMeta(bay.body, 'bayview-spa', 'Bayview Spa Hotel', 'Eastern Suburbs');
+    assert.ok(bay.body.includes('>Age</dt><dd>18+</dd>'));
+    assert.ok(bay.body.includes('>Children</dt><dd>No children</dd>'));
     assert.ok(!bay.body.includes('18+ on weekdays'));
+    assert.ok(!bay.body.includes('Adults only (18+).'));
     assert.ok(bay.body.includes('Spa treatment credit'));
     assert.ok(bay.body.includes('$30'));
     assert.ok(!bay.body.includes('Spa treatment discount'));
@@ -182,6 +206,7 @@ function start(port) {
     assert.ok(!bay.body.includes('<b>Bar</b>'));
 
     const manly = await get(port, '/h/manly-sands');
+    leadAndMeta(manly.body, 'manly-sands', 'Manly Sands House', 'Northern Beaches');
     assert.ok(manly.body.includes('steps from the beach'));
     assert.ok(!manly.body.includes('water line'));
     assert.ok(manly.body.includes('>Age</dt><dd>All ages</dd>'));
@@ -195,6 +220,7 @@ function start(port) {
     assert.ok(manly.body.includes('<b>Magnesium pool</b>'));
 
     const palm = await get(port, '/h/palm-court');
+    leadAndMeta(palm.body, 'palm-court', 'Palm Court Resort', 'Parramatta');
     assert.ok(palm.body.includes('>Lifeguard</dt><dd>On duty</dd>'));
     assert.ok(palm.body.includes('>Heated</dt><dd>No</dd>'));
     assert.ok(!palm.body.includes('kids-float.jpg'));
@@ -222,7 +248,14 @@ function start(port) {
     assert.ok(palm.body.includes('id="getting-there"'));
     assert.ok(palm.body.includes('7 Demo Avenue'));
 
+    const harbour = await get(port, '/h/harbourside-lido');
+    leadAndMeta(harbour.body, 'harbourside-lido', 'Harbourside Lido', 'CBD & Harbour');
+    assert.ok(harbour.body.includes('>Pool</dt><dd>Indoor</dd>'));
+    assert.ok(harbour.body.includes('>Heated</dt><dd>Yes</dd>'));
+    assert.ok(harbour.body.includes('heated indoor pool'));
+
     const sky = await get(port, '/h/skyline-rooftop');
+    leadAndMeta(sky.body, 'skyline-rooftop', 'Skyline Rooftop Hotel', 'North Sydney');
     assert.ok(sky.body.includes('Mon–Thu · 11am–4pm'));
     assert.ok(sky.body.includes('<b>Heated rooftop pool</b>'));
     assert.ok(!sky.body.includes('<b>Gym</b>'));
