@@ -203,13 +203,16 @@ function includedHtml(items) {
 function priceBit(n) {
   return Number(n) > 0 ? `<span class="extra-price">${money(n)}</span>` : '';
 }
-function addonsHtml(items) {
-  const rows = items.filter(i => i.mode === 'addon');
+function addonsHtml(items, offers) {
+  const rows = (offers || []).filter(a => a && a.code !== 'late');
   const parkingOff = items.find(i => i.code === 'parking' && i.mode === 'off');
-  const list = rows.map(i => `<li class="extra"><span class="extra-name">${esc(i.name)}</span>${priceBit(i.price)}</li>`).join('');
+  const list = rows.map(i => `<label class="extra"><input type="checkbox" name="addon" value="${esc(i.code)}" data-price="${Number(i.price) || 0}" data-per="${esc(i.per || 'guest')}"><span class="extra-name">${esc(i.name)}</span>${priceBit(i.price)}</label>`).join('');
   const off = parkingOff ? '<p class="muted small">Parking is not offered with this pass.</p>' : '';
   if (!list && !off) return '';
-  return `<section class="l-sec" id="addons-list"><details class="extras"><summary><span class="extra-label">Add extras <span class="extra-opt">(optional)</span></span></summary>${list ? `<ul class="extra-list extra-static">${list}</ul>` : ''}</details>${off}</section>`;
+  const box = list
+    ? `<details class="extras" id="extras" open><summary><span class="extra-label">Add extras <span class="extra-opt">(optional)</span></span></summary><div class="extra-list" id="addons-pick">${list}</div></details>`
+    : '';
+  return `<section class="l-sec" id="addons-list">${box}${off}</section>`;
 }
 
 function dayBeats(items) {

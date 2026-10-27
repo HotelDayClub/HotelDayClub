@@ -17,7 +17,7 @@ function get(port, urlPath) {
   });
 }
 function post(port, urlPath, fields, headers = {}) {
-  const body = new URLSearchParams(fields).toString();
+  const body = fields instanceof URLSearchParams ? fields.toString() : new URLSearchParams(fields).toString();
   return new Promise((resolve, reject) => {
     const req = http.request({
       hostname: '127.0.0.1', port, path: urlPath, method: 'POST',
@@ -76,8 +76,20 @@ function start(port) {
     assert.ok(salt.body.includes('id="included"'));
     assert.ok(salt.body.includes('Complimentary Wi-Fi'));
     assert.ok(salt.body.includes('id="addons-list"'));
+    assert.ok(salt.body.includes('id="addons-pick"'));
+    assert.ok(salt.body.includes('name="addon"'));
+    assert.ok(salt.body.includes('value="gym"'));
+    assert.ok(salt.body.includes('value="food"'));
+    assert.ok(salt.body.includes('value="parking"'));
+    assert.ok(salt.body.includes('type="checkbox"'));
+    assert.ok(salt.body.includes('Fitness centre access'));
+    assert.ok(salt.body.includes('Food and beverage credit'));
+    assert.ok(!salt.body.includes('extra-static'));
     assert.ok(salt.body.includes('Parking'));
     assert.ok(salt.body.includes('$18'));
+    assert.ok(!salt.body.includes('Train and bus'));
+    assert.ok(!salt.body.includes('Bondi Junction'));
+    assert.ok(!salt.body.includes('Day guests check in'));
     assert.ok(!salt.body.includes('30 a day'));
     assert.ok(!/\b\d+ a day\b/.test(salt.body));
     assert.ok(salt.body.includes('id="hours"'));
@@ -195,6 +207,50 @@ function start(port) {
     assert.ok(checkout.body.includes('Parking'));
     assert.ok(!checkout.body.includes('30 a day'));
     assert.ok(!/\b\d+ a day\b/.test(checkout.body));
+    const fields = new URLSearchParams({
+      hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '2', price: '1',
+      name: 'Alex Citizen', email: 'alex-extra@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1',
+    });
+    fields.append('addon', 'gym');
+    fields.append('addon', 'parking');
+    const priced = await post(port, '/book', fields);
+    assert.strictEqual(priced.status, 303, priced.body.slice(0, 400));
+    const pricedDb = new Database(dbPath);
+    const saved = pricedDb.prepare('SELECT id, total, code FROM bookings WHERE email=?').get('alex-extra@example.com');
+    assert.strictEqual(saved.total, 158);
+    const lines = pricedDb.prepare('SELECT name, qty, unit_price, total FROM booking_addons WHERE booking_id=? ORDER BY name').all(saved.id);
+    assert.deepStrictEqual(lines, [
+      { name: 'Fitness centre access', qty: 2, unit_price: 25, total: 50 },
+      { name: 'Parking', qty: 1, unit_price: 18, total: 18 },
+    ]);
+    const hotelRow = pricedDb.prepare("SELECT * FROM hotels WHERE slug='saltwater-terrace'").get();
+    const { eventWindow, formatUtc } = require('../calendar');
+    const win = eventWindow(pricedDb, hotelRow, when);
+    pricedDb.close();
+    assert.ok(win && win.start < win.end);
+    const confirm = await get(port, priced.headers.location);
+    assert.ok(confirm.body.includes('Fitness centre access'));
+    assert.ok(confirm.body.includes('Parking'));
+    assert.ok(confirm.body.includes('$158'));
+    assert.ok(confirm.body.includes('Add to Google Calendar'));
+    assert.ok(confirm.body.includes('https://calendar.google.com/calendar/render?'));
+    assert.ok(confirm.body.includes('action=TEMPLATE'));
+    assert.ok(confirm.body.includes(formatUtc(win.start)));
+    assert.ok(confirm.body.includes(formatUtc(win.end)));
+    assert.ok(confirm.body.includes(saved.code));
+    const ics = await get(port, priced.headers.location + '/calendar.ics');
+    assert.ok(String(ics.headers['content-type']).includes('text/calendar'));
+    assert.ok(ics.body.includes('DTSTART:' + formatUtc(win.start)));
+    assert.ok(ics.body.includes('DTEND:' + formatUtc(win.end)));
+    assert.ok(!ics.body.includes('VALUE=DATE'));
+    assert.ok(ics.body.includes('Booking ' + saved.code));
+    assert.ok(ics.body.includes('18 Demo Terrace'));
+    const unknown = await post(port, '/book', {
+      hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '1', addon: 'not-a-real-extra',
+      name: 'Alex Citizen', email: 'alex-bad@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1',
+    });
+    assert.strictEqual(unknown.status, 409, unknown.body.slice(0, 300));
+    assert.ok(/not available/i.test(unknown.body));
     const live2 = new Database(dbPath);
     live2.prepare("UPDATE addons SET daily_cap=0 WHERE hotel_id=? AND code='parking'").run(hotel.id);
     live2.close();
