@@ -241,7 +241,7 @@ function siteFooter(tone) {
 <div class="ftr-cols">
 <nav class="ftr-col ftr-dest" aria-label="Destinations"><p class="ftr-h">Destinations</p>${destLinks}</nav>
 <nav class="ftr-col" aria-label="Guides"><p class="ftr-h">Guides</p>${guideLinks}</nav>
-<nav class="ftr-col" aria-label="Site"><p class="ftr-h">Site</p><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/for-hotels">For hotels</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a></nav>
+<nav class="ftr-col" aria-label="Site"><p class="ftr-h">Site</p><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/for-hotels">For hotels</a><a href="/hotel/login">Hotel partner login</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a></nav>
 </div>
 <p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p>${abn}</div></footer>`;
 }
@@ -756,12 +756,56 @@ ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li
 });
 
 const hotelAuth = (req, res, next) => { const id = req.signedCookies.hotel; const h = id && db.prepare('SELECT * FROM hotels WHERE id=?').get(id); if (!h) return res.redirect('/hotel/login'); req.hotel = hotelRow(h); next(); };
+const hotelFails = new Map();
+const HOTEL_WINDOW_MS = 15 * 60 * 1000;
+const HOTEL_MAX_FAILS = 5;
+function hotelFailure(ip) {
+  const now = Date.now();
+  let row = hotelFails.get(ip);
+  if (!row || now - row.start > HOTEL_WINDOW_MS) row = { start: now, n: 0 };
+  row.n += 1;
+  hotelFails.set(ip, row);
+  return row.n >= HOTEL_MAX_FAILS;
+}
+function hotelLocked(ip) {
+  const row = hotelFails.get(ip);
+  if (!row) return false;
+  if (Date.now() - row.start > HOTEL_WINDOW_MS) { hotelFails.delete(ip); return false; }
+  return row.n >= HOTEL_MAX_FAILS;
+}
+function hotelFailTarget(body, code) {
+  if (String(body && body.return || '') === '/for-hotels') return '/for-hotels?e=' + code + '#login';
+  return '/hotel/login?e=' + code;
+}
+function hotelLoginPanel(code, heading) {
+  const tag = heading === 'h1' ? 'h1' : 'h2';
+  const alert = code === 'lock'
+    ? '<div class="alert" role="alert">Too many tries. Wait 15 minutes, then try again.</div>'
+    : code ? '<div class="alert" role="alert">Wrong username or password.</div>' : '';
+  const back = heading === 'h1' ? '' : '<input type="hidden" name="return" value="/for-hotels">';
+  return `<section class="login-card fh-login" id="login">
+<${tag}>Hotel partner login</${tag}>
+<p class="fh-login-help">For hotels we have invited. There is no sign-up on this page.</p>
+${alert}
+<form method="post" action="/hotel/login">${back}
+<label class="fl">Username<input name="user" required autocomplete="username"></label>
+<label class="fl">Password<input name="pass" type="password" required autocomplete="current-password"></label>
+<button class="btn btn-navy full" type="submit">Log in</button>
+</form>
+<p class="fh-forgot">Forgot password? <a href="mailto:${esc(contactEmail())}">Email us</a>.</p>
+</section>`;
+}
 app.get('/for-hotels', (req, res) => {
   const href = esc(talkHref());
   res.send(page('For hotels', `<div class="wrap fh">
+<div class="fh-intro">
+<div>
 <p class="fh-kicker">For hotels</p>
 <h1>A quiet pool, <em>put to use.</em></h1>
 <p class="fh-lead">Hotel Day Club is for hotels in Australia. Local guests come for the pool, the gym or the spa for the day. They do not need a room.</p>
+</div>
+${hotelLoginPanel(req.query.e === 'lock' ? 'lock' : req.query.e ? '1' : '')}
+</div>
 <div class="fh-grid">
 <article class="fh-card"><h2>Fill the quiet hours</h2><p>Weekday pool, gym and spa time often has room in it. Day guests can take that time.</p></article>
 <article class="fh-card"><h2>Welcome local guests</h2><p>They are new people through the door. While they are with you, they may spend on food and drinks.</p></article>
@@ -780,18 +824,23 @@ app.get('/hotel/join', (req, res) => res.redirect(302, '/for-hotels'));
 app.post('/hotel/join', (req, res) => res.redirect(303, '/for-hotels'));
 const LEGAL_LINKS = '<p class="legal-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a></p>';
 app.get('/hotel/login', (req, res) => {
-  res.send(page('Hotel login', `<div class="wrap sec narrow"><div class="login-card"><h1 class="l-title">Hotel login</h1>
-${req.query.e ? '<div class="alert">Wrong username or password.</div>' : ''}
-<form method="post" action="/hotel/login"><label class="fl">Username<input name="user" required autocomplete="username"></label><label class="fl">Password<input name="pass" type="password" required autocomplete="current-password"></label>
-<button class="btn btn-navy full">Log in</button></form>
-<p class="center" style="margin-top:16px"><a href="/for-hotels">For hotels</a></p>
-${LEGAL_LINKS}</div></div>`, { bare: true, index: false, canonical: false }));
+  const code = req.query.e === 'lock' ? 'lock' : req.query.e ? '1' : '';
+  res.send(page('Hotel partner login', `<div class="wrap sec narrow partner-login-page">
+${hotelLoginPanel(code, 'h1')}
+<p class="center partner-back"><a href="/for-hotels">For hotels</a></p>
+${LEGAL_LINKS}</div>`, { bare: true, index: false, canonical: false }));
 });
 app.post('/hotel/login', (req, res) => {
+  const ip = req.ip || 'unknown';
+  if (hotelLocked(ip)) return res.redirect(hotelFailTarget(req.body, 'lock'));
   const login = String(req.body.user || '').trim();
   const pass = String(req.body.pass || '');
   const h = db.prepare('SELECT * FROM hotels WHERE login=?').get(login);
-  if (!verifyPassword(pass, h && h.password) || !h) return res.redirect('/hotel/login?e=1');
+  if (!verifyPassword(pass, h && h.password) || !h) {
+    hotelFailure(ip);
+    return res.redirect(hotelFailTarget(req.body, hotelLocked(ip) ? 'lock' : '1'));
+  }
+  hotelFails.delete(ip);
   staffCookie(res, 'hotel', String(h.id));
   res.redirect('/hotel');
 });
