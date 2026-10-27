@@ -24,8 +24,9 @@ for (const g of seo.GUIDES) {
   assert.ok(seo.fullTitle(g.title).length <= 60, g.title);
   assert.ok(g.description.length <= 155, g.description);
 }
-assert.strictEqual(seo.listingTitle('The Saltwater Terrace (Demo)'), 'The Saltwater Terrace day pass · Hotel Day Club');
-assert.ok(!seo.listingTitle('The Saltwater Terrace (Demo)').includes('(Demo)'));
+assert.strictEqual(seo.listingTitle('The Saltwater Terrace (Demo)'), 'The Saltwater Terrace (Demo) day pass · Hotel Day Club');
+assert.ok(seo.listingTitle('The Saltwater Terrace (Demo)').includes('(Demo)'));
+assert.ok(!seo.listingTitle('A real hotel').includes('(Demo)'));
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-seo-'));
 const dbPath = path.join(dir, 'daypass.db');

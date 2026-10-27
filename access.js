@@ -88,13 +88,31 @@ function accessList(areas, opts = {}) {
     return `<li class="access-item">${img}<div><b>${esc(name)}</b>${blurb ? `<p>${esc(blurb)}</p>` : ''}${hours ? `<p class="access-hours">${esc(hours)}</p>` : ''}</div></li>`;
   }).join('')}</ul>`;
 }
-function accessDetail(areas, opts) {
-  const list = accessList(areas, opts);
-  return list ? `<h4>Included access</h4>${list}` : '';
+function splitAreas(areas) {
+  const included = [];
+  const buy = [];
+  for (const area of areas || []) (Number(area.serves_food) ? buy : included).push(area);
+  return { included, buy };
+}
+function accessDetail(areas, opts = {}) {
+  const { included, buy } = splitAreas(areas);
+  const extra = opts.amenities || '';
+  const parts = [];
+  if (included.length || extra) parts.push(`<h4>Included access</h4>${included.length ? accessList(included, opts) : ''}${extra}`);
+  if (buy.length) parts.push(`<h4>On site to buy (not included)</h4>${accessList(buy, opts)}`);
+  return parts.join('');
 }
 function accessBlock(areas, opts) {
-  const list = accessList(areas, opts);
-  return list ? `<div class="inc-recap"><b>Included access</b>${list}</div>` : '';
+  const { included, buy } = splitAreas(areas);
+  const parts = [];
+  if (included.length) parts.push(`<div class="inc-recap"><b>Included access</b>${accessList(included, opts)}</div>`);
+  if (buy.length) parts.push(`<div class="inc-recap"><b>On site to buy (not included)</b>${accessList(buy, opts)}</div>`);
+  return parts.join('');
+}
+function linkedAreas(db, hotelId) {
+  return db.prepare(`SELECT DISTINCT a.* FROM access_areas a
+    JOIN pass_access pa ON pa.area_id=a.id
+    WHERE a.hotel_id=? ORDER BY a.sort, a.id`).all(hotelId);
 }
 function forPass(db, passId) {
   if (!passId) return [];
@@ -132,6 +150,10 @@ function readAreas(body) {
   const hours = many(body.area_hours);
   const photos = many(body.area_photo);
   const food = new Set(many(body.area_food).map(v => String(v)));
+  const typed = key => {
+    const value = body['area_type_' + key];
+    return value === 'buy' || value === 'included' ? value : '';
+  };
   const count = Math.max(ids.length, keys.length, names.length, blurbs.length, hours.length, photos.length);
   if (count > MAX_AREAS) return { err: `You can list up to ${MAX_AREAS} areas.` };
   const areas = [];
@@ -148,7 +170,8 @@ function readAreas(body) {
     if (seen.has(folded)) return { err: `Two areas are both called ${name}.` };
     seen.add(folded);
     if (rawPhoto && !safePhoto(rawPhoto)) return { err: `Choose a photo from the list for ${name}.` };
-    const servesFood = food.has(key) ? 1 : 0;
+    const kind = typed(key);
+    const servesFood = kind ? (kind === 'buy' ? 1 : 0) : (food.has(key) ? 1 : 0);
     if (servesFood && foodClaim(blurb)) return { err: `${name}: food and drink is not included. Say it is available to purchase.` };
     areas.push({
       id: parseInt(ids[i], 10) || 0,
@@ -209,7 +232,10 @@ function areaEditor(area) {
 </div>
 <label class="fl">Short description<input name="area_blurb" maxlength="140" value="${esc(area.blurb || '')}" placeholder="One line about this area"></label>
 <label class="fl">Photo, optional<select name="area_photo">${photoOptions}</select></label>
-<label class="tick"><input type="checkbox" name="area_food" value="${esc(area.key)}" ${Number(area.serves_food) ? 'checked' : ''}> Bar or café. Guests can be here. Food and drink is not included.</label>
+<div class="area-type">
+<label class="tick"><input type="radio" name="area_type_${esc(area.key)}" value="included" ${Number(area.serves_food) ? '' : 'checked'}> Access included</label>
+<label class="tick"><input type="radio" name="area_type_${esc(area.key)}" value="buy" ${Number(area.serves_food) ? 'checked' : ''}> Available to buy</label>
+</div>
 <button type="button" class="linkbtn remove-area">Remove</button>
 </div>`;
 }
@@ -223,7 +249,7 @@ function accessForm(areas, passes, linked) {
     return `<fieldset class="access-pass"><legend>${esc(spotLabel(pass))}</legend><div class="access-ticks" data-pass="${pass.id}">${boxes}</div></fieldset>`;
   }).join('');
   return `<form class="inc-form" id="included-access" method="post" action="/hotel/access"><h2>Included access</h2>
-<p class="muted small">Name the places a pass lets a guest into. Tick an area on each pass that includes it. A bar or café means the guest can be there. Food and drink is not included. Guests buy it, or add a food and drink credit when you offer one.</p>
+<p class="muted small">Name each area and choose its type. Access included is a place the pass lets guests into, such as a pool, sauna or steam room. Available to buy is a bar, café, kiosk or pool bar. Food and drink is not included. Tick an area on each pass that includes it.</p>
 <div id="access-areas">${editors}</div>
 <p class="offer-actions"><button type="button" class="btn btn-line" id="add-area">Add an area</button></p>
 <h3>Which passes include them</h3>
@@ -260,7 +286,7 @@ function accessForm(areas, passes, linked) {
     const tpl=document.getElementById('area-tpl');
     const row=tpl.content.firstElementChild.cloneNode(true);
     row.querySelector('[name=area_key]').value=key;
-    row.querySelector('[name=area_food]').value=key;
+    row.querySelectorAll('input[type=radio]').forEach(function(input){ input.name='area_type_'+key; });
     box.appendChild(row);
     bind(row);
     document.querySelectorAll('.access-ticks').forEach(function(ticks){
@@ -303,5 +329,5 @@ function ensureAccess(db) {
 
 module.exports = {
   PURCHASE, PRESETS, guestBlurb, accessLine, accessText, accessList, accessDetail, accessBlock,
-  forPass, byPass, hotelAreas, linkedIds, readAreas, saveAccess, accessForm, ensureAccess,
+  forPass, byPass, hotelAreas, linkedAreas, linkedIds, readAreas, saveAccess, accessForm, ensureAccess,
 };

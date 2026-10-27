@@ -27,8 +27,9 @@ function bookingNotice(info) {
     ['Pass', info.passLabel],
     ['Guests', info.guests],
     ['Included', info.included],
-    ['Included access', info.access],
-    ['Food and drink', 'Food and drink are not included in the pass. Buy them at the bar or café, or add an optional food and drink credit when the hotel offers one.'],
+    ['Included access', info.includedAccess != null ? info.includedAccess : info.access],
+    ['On site to buy (not included)', info.buyAccess],
+    ['Food and drink', 'Food and drink are not included in your pass.'],
     ['Extras', extras],
     ['Total', info.totalLabel],
     ['Booking code', info.code],
@@ -155,15 +156,18 @@ function bookingMessage(db, code) {
   const email = String(row.email || '').trim();
   if (!/^\S+@\S+\.\S+$/.test(email)) return { invalid: true };
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(row.hotel_id);
-  if (hotel) delete hotel.address;
   const adds = db.prepare('SELECT name, qty, total FROM booking_addons WHERE booking_id=? ORDER BY name').all(row.id);
   const view = hoursView(db, hotel, row.date);
-  const calendarUrl = passCalendarLink({ code: row.code }, hotel, eventWindow(db, hotel, row.date));
   const bookedAt = row.created_at ? new Date(String(row.created_at).replace(' ', 'T')) : new Date();
   const note = row.cancel_note || cancelNote(db, hotel, row.date, bookedAt);
+  const window = eventWindow(db, hotel, row.date);
+  if (hotel) delete hotel.address;
+  const calendarUrl = passCalendarLink({ code: row.code, cancel_note: note }, hotel, window);
   const party = row.party || row.qty * (row.holds || 1);
   const included = hotel ? includedText(loadInclusions(db, hotel.id), party) : '';
-  const access = accessText(forPass(db, row.pass_id));
+  const areas = forPass(db, row.pass_id);
+  const includedAccess = accessText(areas.filter(area => !Number(area.serves_food)));
+  const buyAccess = accessText(areas.filter(area => Number(area.serves_food)));
   return bookingNotice({
     demo: demoSite(),
     to: email,
@@ -175,7 +179,8 @@ function bookingMessage(db, code) {
     passLabel: `${spotLabel({ name: row.pass_name, holds: row.holds })} × ${row.qty}`,
     guests: String(party),
     included,
-    access,
+    includedAccess,
+    buyAccess,
     addons: adds.map(a => ({ name: a.name, qty: a.qty, totalLabel: money(a.total) })),
     totalLabel: money(row.total),
     cancel: note,

@@ -141,8 +141,11 @@ function shortName(name) {
   return String(name || '').replace(/\s*\(Demo\)\s*$/i, '').trim();
 }
 
-function listingTitle(name) {
-  return fullTitle(shortName(name) + ' day pass');
+function listingTitle(name, demo) {
+  const raw = String(name || '');
+  const mark = demo || /\(Demo\)\s*$/i.test(raw);
+  const lead = shortName(raw) + (mark ? ' (Demo)' : '') + ' day pass';
+  return fullTitle(lead);
 }
 
 function listingDescription(h) {

@@ -100,6 +100,7 @@ ensureCols('hotels', [
   ['room_only_from', 'TEXT'], ['room_only_to', 'TEXT'], ['marketing_opt_in', 'INTEGER DEFAULT 0'],
   ['dress_code', 'TEXT'],
   ['address', 'TEXT'], ['lat', 'REAL'], ['lng', 'REAL'],
+  ['state', 'TEXT'], ['timezone', 'TEXT'],
   ['transit_note', 'TEXT'], ['parking_entrance', 'TEXT'], ['day_entrance', 'TEXT'],
   ['is_demo', 'INTEGER NOT NULL DEFAULT 0'],
 ]);

@@ -1,7 +1,8 @@
 const { esc, money } = require('./util');
 const { instantConfirmationText } = require('./siteMode');
 const { KINDS } = require('./offering');
-const { seatPhoto, includedLines, includedNote, FOOD_NOTE } = require('./inclusions');
+const { seatPhoto, includedNote, amenityLines } = require('./inclusions');
+const { supervisionNote } = require('./offering');
 const { accessDetail } = require('./access');
 
 const KIND_NAME = Object.fromEntries(KINDS.map(k => [k.code, k.name]));
@@ -24,7 +25,7 @@ function passCard(p, av, h, pick) {
   const dis = !a || a.remaining < 1;
   const on = pick && p.code === pick.code && !dis;
   const state = !a || a.blocked || a.past ? 'Unavailable' : a.remaining < 1 ? 'Sold out' : 'Available';
-  const pop = p.featured ? '<span class="pop">Most popular</span>' : '';
+  const pop = p.featured && !isDemo(h) ? '<span class="pop">Most popular</span>' : '';
   const holds = Number(p.holds) || 1;
   const holdsText = holds > 1 ? `<span class="pc-holds">${holds} guests</span>` : '';
   const id = esc(p.code);
@@ -42,19 +43,16 @@ function passDetail(p, h, items, accessAreas) {
   const holds = Number(p.holds) || 1;
   const id = esc(p.code);
   const desc = String(p.description || '').trim();
-  const lines = includedLines(items, holds);
   const demo = isDemo(h);
-  const foodBuy = h.slug === 'palm-court' && h.food_rule ? `<p class="pass-inc-note">${esc(h.food_rule)}</p>` : '';
-  const included = lines.length || foodBuy
-    ? `<h4>What's included</h4>${lines.length ? `<ul class="pass-inc-list">${lines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : ''}${foodBuy}`
-    : '';
-  const access = accessDetail(accessAreas || [], { demo });
+  const areas = accessAreas || [];
+  const lines = amenityLines(items, holds, areas);
+  const amenities = lines.length ? `<ul class="pass-inc-list">${lines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : '';
+  const access = accessDetail(areas, { demo, amenities });
   return `<article class="pass-detail" id="pass-detail-${id}" data-code="${id}" role="region" aria-labelledby="pass-title-${id}" hidden>
 <figure class="pass-detail-photo"><img src="${esc(seatPhoto(p.kind))}" alt="${esc(passAlt(p, h))}" width="960" height="640" loading="lazy" decoding="async">${demo ? '<figcaption>Example photo, not this hotel.</figcaption>' : ''}</figure>
 <h3 id="pass-title-${id}" tabindex="-1">${esc(p.name)}</h3>
 ${desc ? `<p class="pass-desc">${esc(desc)}</p>` : ''}
 ${access}
-${included}
 </article>`;
 }
 
@@ -241,11 +239,13 @@ load();setInterval(load,15000);
 }
 
 function listingHtml(opts) {
-  const { h, date, minDate, maxDate, closed, passes, av, from, hoursLine, cancel, know, included, addonList, hours, policy, arrival, accessByPass } = opts;
+  const { h, date, minDate, maxDate, closed, passes, av, from, hoursLine, cancel, know, included, addonList, hours, policy, arrival, accessByPass, foodLine } = opts;
   const items = Array.isArray(included) ? included : [];
   const parkNote = includedNote(items);
   const short = shortName(h);
   const demo = isDemo(h);
+  const heading = demo ? `${short} (Demo)` : short;
+  const watch = supervisionNote(h);
   const pick = av.find(p => p.featured && p.remaining > 0) || av.find(p => p.remaining > 0) || av[0];
   const galAlt = demo ? 'Stock photo, not this hotel' : `Photo of ${short}`;
   const photos = (h.photos || []).map((p, i) => `<img class="g${i}" src="/assets/photos/${esc(p)}" alt="${esc(galAlt)}" width="1200" height="900" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`).join('');
@@ -262,15 +262,16 @@ ${reassureStrip(true)}
 <div class="listing-head">
 <div>
 <p class="eyebrow-s">${demo ? 'Fictional demo listing' : esc(h.area)}</p>
-<h1 class="l-title">Your day at ${esc(short)}</h1>
+<h1 class="l-title">Your day at ${esc(heading)}</h1>
 <div class="muted l-meta">New · ${esc(h.area)} · ${esc(hoursLine)}</div>
 <p class="day-lead"><b>${esc(h.tagline)}.</b> ${esc(h.blurb)}</p>
+${watch ? `<p class="guard-note">${esc(watch)}</p>` : ''}
 </div>
 ${arrival}
 </div>
 <h2 class="day-kicker">Passes</h2>
 ${passSection(passes, av, h, items, accessByPass)}
-<p class="pass-food">${esc(h.slug === 'palm-court' && h.food_rule ? h.food_rule : FOOD_NOTE)}</p>
+<p class="pass-food">${esc(foodLine || 'Food and drink are not included in the pass.')}</p>
 <div class="page-folds">
 ${parkFold}
 <details class="fold" id="cancel-fold"><summary>Cancellation</summary><p>${esc(know || cancel)} <a href="/refunds">Draft cancellation terms</a>.</p></details>

@@ -155,9 +155,10 @@ const DEMO_INTROS = {
   },
   'skyline-rooftop': {
     tagline: 'Sun, water and city views, high above the street',
-    blurb: 'Rise above the office towers to a heated rooftop pool with city views. Swim in the sun, then stretch out on a reserved daybed or gather friends in a rooftop cabana for four. The bar opens at noon, with food and drink available to buy, and Monday to Thursday are the quietest days.',
+    blurb: 'Rise above the office towers to a heated rooftop pool with city views. Swim in the sun, then stretch out on a reserved daybed or gather friends in a rooftop cabana for four. The bar opens at noon, with food and drink available to buy.',
     oldTaglines: ['Heated rooftop pool with city views'],
     oldBlurbs: [
+      'Rise above the office towers to a heated rooftop pool with city views. Swim in the sun, then stretch out on a reserved daybed or gather friends in a rooftop cabana for four. The bar opens at noon, with food and drink available to buy, and Monday to Thursday are the quietest days.',
       'Swim above the office towers. A heated rooftop pool, cabana daybeds, and a bar selling drinks from noon. Quietest Mon to Thu.',
       'Swim above the office towers. A heated rooftop pool, cabana daybeds and a bar that opens at noon. Quietest Mon to Thu.',
     ],

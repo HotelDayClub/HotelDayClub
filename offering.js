@@ -233,29 +233,22 @@ function heatWord(heated) {
   if (heated == null || heated === '') return '';
   return Number(heated) ? 'Heated' : 'Unheated';
 }
+const SUPERVISION = "Lifeguards don't replace adult supervision: an adult on the booking must actively supervise each child at all times.";
 function guardFacts(hotel) {
   const raw = hotel && hotel.lifeguard;
   const n = raw == null || raw === '' ? null : Number(raw);
   const hours = String((hotel && hotel.lifeguard_hours) || '').trim();
-  if (n === 1) {
+  if (n === 1 || n === 2) {
+    const when = n === 2 && hours ? ` during ${hours}` : '';
+    const duty = `A lifeguard is on duty${when}.`;
     return {
-      line: 'Lifeguard on duty',
-      risk: 'A lifeguard is on duty during day-pass hours.',
-      tick: 'a lifeguard is on duty during day-pass hours',
-      swim: 'A lifeguard is on duty during day-pass hours.',
+      line: n === 2 && hours ? `Lifeguard on duty ${hours}` : 'Lifeguard on duty',
+      risk: duty,
+      tick: `a lifeguard is on duty${when}`,
+      swim: duty,
       on: true,
-      policy: 'On duty',
-    };
-  }
-  if (n === 2) {
-    const when = hours ? `during ${hours}` : 'during the stated hours';
-    return {
-      line: hours ? `Lifeguard on duty ${hours}` : 'Lifeguard on duty for set hours',
-      risk: `A lifeguard is on duty ${when}.`,
-      tick: `a lifeguard is on duty ${when}`,
-      swim: `A lifeguard is on duty ${when}.`,
-      on: true,
-      policy: hours ? `On duty ${hours}` : 'On duty for set hours',
+      policy: n === 2 && hours ? `On duty ${hours}` : 'On duty',
+      watch: SUPERVISION,
     };
   }
   if (n === 0) {
@@ -266,6 +259,7 @@ function guardFacts(hotel) {
       swim: 'No lifeguard on duty.',
       on: false,
       policy: 'Not on duty',
+      watch: '',
     };
   }
   return {
@@ -275,7 +269,12 @@ function guardFacts(hotel) {
     swim: 'Lifeguard cover is not stated on this listing.',
     on: false,
     policy: 'Not set',
+    watch: '',
   };
+}
+function supervisionNote(hotel) {
+  const g = guardFacts(hotel || {});
+  return g.on ? g.watch : '';
 }
 function policyFacts(hotel) {
   const g = guardFacts(hotel || {});
@@ -308,10 +307,10 @@ function rulesLines(hotel, opts = {}) {
   if (hotel.age_policy) lines.push(hotel.age_policy);
   if (hotel.kids_hours) lines.push(`Kids: ${hotel.kids_hours}`);
   lines.push(hotel.towels ? 'Towels included' : 'Bring your own towel');
-  lines.push(hotel.food_rule || 'Food and drink are not included in the pass. Buy them at the bar or café, or add an optional food and drink credit when the hotel offers one.');
+  lines.push(opts.foodSentence || hotel.food_rule || 'Food and drink are not included in the pass.');
   lines.push(hotel.id_required ? 'Photo ID required' : 'Photo ID not required');
-  const guardLine = guardFacts(hotel).line;
-  if (guardLine) lines.push(guardLine);
+  const guard = guardFacts(hotel);
+  if (guard.line) lines.push(guard.on ? `${guard.line}. ${guard.watch}` : guard.line);
   if (opts.hoursLine) lines.push(opts.hoursLine);
   else if (hotel.hours) lines.push(hotel.hours);
   if (hotel.room_only_from && hotel.room_only_to) lines.push(`Room guests only ${fmtTime(hotel.room_only_from)}–${fmtTime(hotel.room_only_to)}`);
@@ -393,7 +392,7 @@ function venueFacts(hotel) {
   return {
     setting: poolSettingLabel(hotel.setting, hotel) || 'Not set',
     heat: heatWord(hotel.heated) || 'Not set',
-    guard: g.risk,
+    guard: g.on ? `${g.risk} ${g.watch}` : g.risk,
     age: hotel.age_policy || 'See the hotel rules',
     kids: hotel.kids_hours ? `Kids: ${hotel.kids_hours}.` : '',
     lifeguard: g.on,
@@ -420,12 +419,13 @@ function riskCard(hotel) {
   return `<div class="rules-card risk-card"><h3>Risk warning</h3><p>${esc(lines[0])}</p><ul>${lines.slice(1, 7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p><b>At this venue</b></p><ul>${lines.slice(7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p class="muted small">Shown in full before you confirm. <a href="/risk">Risk warning (draft)</a></p></div>`;
 }
 function riskTick(hotel) {
-  const who = guardFacts(hotel).tick;
-  return `I have read the risk warning. I understand that swimming and using spa facilities involve risks of injury and death, and that ${who}. I'll decide for myself whether I, and anyone in my care, am fit to take part, and I won't swim or use a spa or sauna after drinking.`;
+  const g = guardFacts(hotel);
+  const base = `I have read the risk warning. I understand that swimming and using spa facilities involve risks of injury and death, and that ${g.tick}. I'll decide for myself whether I, and anyone in my care, am fit to take part, and I won't swim or use a spa or sauna after drinking.`;
+  return g.on ? `${base} ${g.watch}` : base;
 }
 function swimNote(hotel) {
-  const guard = guardFacts(hotel).swim;
-  return `Before you swim: ${guard} Pools, spas and saunas carry risks of serious injury and drowning. No diving. No swimming after alcohol. Supervise children at all times. Follow staff directions and the hotel's rules. In an emergency, alert staff and call 000.`;
+  const g = guardFacts(hotel);
+  return `Before you swim: ${g.swim}${g.on ? ' ' + g.watch : ''} Pools, spas and saunas carry risks of serious injury and drowning. No diving. No swimming after alcohol. Supervise children at all times. Follow staff directions and the hotel's rules. In an emergency, alert staff and call 000.`;
 }
 function rulesText(hotel, opts) { return rulesLines(hotel, opts).join('. ') + '.'; }
 function rulesCard(hotel, opts) {
@@ -741,7 +741,7 @@ ${DAY_ORDER.map(wd => {
 <div class="two">${yn('towels', 'Towels included', h.towels)}${yn('id_required', 'Photo ID required', h.id_required !== 0)}</div>
 <div class="two"><label class="fl">Lifeguard<select name="lifeguard"><option value="" ${guardChoice(h.lifeguard) === '' ? 'selected' : ''}>Choose</option><option value="1" ${guardChoice(h.lifeguard) === '1' ? 'selected' : ''}>On duty</option><option value="0" ${guardChoice(h.lifeguard) === '0' ? 'selected' : ''}>Not on duty</option><option value="2" ${guardChoice(h.lifeguard) === '2' ? 'selected' : ''}>On duty for set hours</option></select></label>
 <label class="fl">Lifeguard hours<input name="lifeguard_hours" maxlength="120" value="${esc(h.lifeguard_hours || '')}" placeholder="10am to 4pm"></label></div>
-<label class="fl">Food and drink<input name="food_rule" maxlength="160" value="${esc(h.food_rule || '')}" placeholder="Not included. Available to buy at the bar or café."></label>
+<label class="fl">Food and drink<input name="food_rule" maxlength="160" value="${esc(h.food_rule || '')}" placeholder="Not included. Name where guests can buy them."></label>
 <p class="muted small">Food and drink is never included in the pass. Say where guests can buy it.</p>
 <label class="fl">Dress code<input name="dress_code" maxlength="160" value="${esc(h.dress_code || '')}" placeholder="Swimwear at the pool. A cover-up in the lobby."></label>
 ${account ? `<label class="tick"><input type="checkbox" name="marketing" value="1" ${h.marketing ? 'checked' : ''}> Email me about listing a hotel. Optional, and separate from this application.</label>
@@ -775,7 +775,7 @@ setInterval(refreshToday,8000);
 module.exports = {
   KINDS, PHOTOS, fmtTime, parseTime, minutes, spotLabel, hoursSummary, dayPlan, dayClosure, closureReason,
   rulesLines, rulesText, rulesCard, amenitiesFrom, slugify, hoursFor, blankJoin, readForm,
-  policyFacts, venueMissing, PICK_DATE_CANCEL,
+  policyFacts, guardFacts, supervisionNote, venueMissing, PICK_DATE_CANCEL,
   writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,
   listingHours, hoursView, hoursLines, syncHoursLabels, inSeason, latePossible, hotelLatePossible, lateWindow, syncLateAddons,
   cancelNote, riskLines, riskText, riskCard, riskTick, swimNote,

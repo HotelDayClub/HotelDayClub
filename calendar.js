@@ -1,8 +1,36 @@
 const { ymd, addDays } = require('./util');
-const { dayPlan } = require('./offering');
+const { dayPlan, fmtTime, cancelNote } = require('./offering');
 
-// Hotels do not store a timezone. Access hours are civil times in Australia/Sydney.
+// Civil access times use the hotel's stored timezone, or its stored state, or a
+// state abbreviation already in the stored address. Otherwise they use Sydney.
 // Instants are written in UTC so calendar apps in any zone show the right moment.
+
+const ZONES = {
+  NSW: 'Australia/Sydney',
+  'NEW SOUTH WALES': 'Australia/Sydney',
+  QLD: 'Australia/Brisbane',
+  QUEENSLAND: 'Australia/Brisbane',
+  WA: 'Australia/Perth',
+  'WESTERN AUSTRALIA': 'Australia/Perth',
+};
+
+function stateZone(state) {
+  return ZONES[String(state || '').trim().toUpperCase()] || '';
+}
+
+function addressZone(address) {
+  const text = String(address || '');
+  if (/\bQueensland\b/i.test(text) || /\bQLD\b/.test(text)) return 'Australia/Brisbane';
+  if (/\bWestern Australia\b/i.test(text) || /\bWA\b/.test(text)) return 'Australia/Perth';
+  if (/\bNew South Wales\b/i.test(text) || /\bNSW\b/.test(text)) return 'Australia/Sydney';
+  return '';
+}
+
+function hotelZone(hotel) {
+  const tz = String((hotel && hotel.timezone) || '').trim();
+  if (tz === 'Australia/Sydney' || tz === 'Australia/Brisbane' || tz === 'Australia/Perth') return tz;
+  return stateZone(hotel && hotel.state) || addressZone(hotel && hotel.address) || 'Australia/Sydney';
+}
 
 function firstSunday(year, monthIndex) {
   const dow = new Date(Date.UTC(year, monthIndex, 1)).getUTCDay();
@@ -28,8 +56,14 @@ function sydneyOffsetMinutes(year, month, day, hour, minute) {
   return mins < 3 * 60 ? 10 * 60 : 11 * 60;
 }
 
-function sydneyToUtc(year, month, day, hour, minute) {
-  const offset = sydneyOffsetMinutes(year, month, day, hour, minute);
+function zoneOffsetMinutes(zone, year, month, day, hour, minute) {
+  if (zone === 'Australia/Brisbane') return 10 * 60;
+  if (zone === 'Australia/Perth') return 8 * 60;
+  return sydneyOffsetMinutes(year, month, day, hour, minute);
+}
+
+function zoneToUtc(zone, year, month, day, hour, minute) {
+  const offset = zoneOffsetMinutes(zone, year, month, day, hour, minute);
   return new Date(Date.UTC(year, month - 1, day, hour, minute) - offset * 60000);
 }
 
@@ -42,13 +76,14 @@ function parseHm(hhmm) {
   return { hour, minute };
 }
 
-function accessInstants(date, opens, closes) {
+function accessInstants(date, opens, closes, hotel) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return null;
   const start = parseHm(opens);
   const end = parseHm(closes);
   if (!start || !end) return null;
+  const zone = hotelZone(hotel);
   const [year, month, day] = date.split('-').map(Number);
-  const startAt = sydneyToUtc(year, month, day, start.hour, start.minute);
+  const startAt = zoneToUtc(zone, year, month, day, start.hour, start.minute);
   let endYear = year;
   let endMonth = month;
   let endDay = day;
@@ -60,7 +95,7 @@ function accessInstants(date, opens, closes) {
     endMonth = next.getUTCMonth() + 1;
     endDay = next.getUTCDate();
   }
-  const endAt = sydneyToUtc(endYear, endMonth, endDay, end.hour, end.minute);
+  const endAt = zoneToUtc(zone, endYear, endMonth, endDay, end.hour, end.minute);
   if (!(startAt < endAt)) return null;
   return { start: startAt, end: endAt };
 }
@@ -73,7 +108,34 @@ function eventWindow(db, hotel, date) {
   if (!hotel) return null;
   const plan = dayPlan(db, hotel, date);
   if (!plan || !plan.open || !plan.opens) return null;
-  return accessInstants(date, plan.opens, plan.effective || plan.closes);
+  const closes = plan.effective || plan.closes;
+  const window = accessInstants(date, plan.opens, closes, hotel);
+  if (!window) return null;
+  window.span = `${fmtTime(plan.opens)}–${fmtTime(closes)}`;
+  window.cancel = cancelNote(db, hotel, date);
+  return window;
+}
+
+function lifeguardFact(hotel) {
+  const raw = hotel && hotel.lifeguard;
+  if (raw == null || raw === '') return '';
+  const n = Number(raw);
+  const hours = String((hotel && hotel.lifeguard_hours) || '').trim();
+  if (n === 1) return 'A lifeguard is on duty.';
+  if (n === 2) return hours ? `A lifeguard is on duty during ${hours}.` : 'A lifeguard is on duty.';
+  if (n === 0) return 'No lifeguard is on duty.';
+  return '';
+}
+
+function eventFacts(booking, hotel, window) {
+  const lines = ['Booking ' + (booking && booking.code ? booking.code : '') + '. Show this code at reception.'];
+  if (window && window.span) lines.push('Access hours ' + window.span + '.');
+  const cancel = String((booking && booking.cancel_note) || (window && window.cancel) || '').trim();
+  if (cancel) lines.push(cancel);
+  lines.push('Food and drink not included.');
+  const guard = lifeguardFact(hotel);
+  if (guard) lines.push(guard);
+  return lines.join('\n');
 }
 
 function icsEscape(value) {
@@ -83,7 +145,7 @@ function icsEscape(value) {
 function bookingIcs(b, hotel, window) {
   const where = String((hotel && (hotel.address || hotel.area)) || '').trim();
   const summary = 'Day pass at ' + ((hotel && hotel.name) || 'Hotel Day Club');
-  const description = 'Booking ' + b.code + '. Show this code at reception.';
+  const description = eventFacts(b, hotel, window);
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -127,12 +189,12 @@ function passCalendarLink(booking, hotel, window) {
     title: 'Day pass at ' + ((hotel && hotel.name) || 'Hotel Day Club'),
     start: window.start,
     end: window.end,
-    details: 'Booking ' + booking.code + '. Show this code at reception.',
+    details: eventFacts(booking, hotel, window),
     location: where,
   });
 }
 
 module.exports = {
-  sydneyOffsetMinutes, accessInstants, formatUtc, eventWindow,
+  sydneyOffsetMinutes, hotelZone, accessInstants, formatUtc, eventWindow,
   bookingIcs, googleCalendarUrl, passCalendarLink,
 };

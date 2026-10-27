@@ -8,7 +8,7 @@ const db = require('./db');
 const { seed, ensureAddons, ensureSchedules, seedPerformance } = require('./seed');
 const {
   seatPhoto, SEAT_PHOTO, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
-  includedBlock, addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml, FOOD_NOTE,
+  includedBlock, addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml, guestFoodLine, PASS_FOOD_LINE,
 } = require('./inclusions');
 const { ensureArrival, saveArrival, arrivalHtml, arrivalForm } = require('./arrival');
 const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hotelAreas, linkedIds } = require('./access');
@@ -263,14 +263,14 @@ function siteFooter(tone) {
 <div class="ftr-cols">
 <nav class="ftr-col ftr-dest" aria-label="Destinations"><p class="ftr-h">Destinations</p>${destLinks}</nav>
 <nav class="ftr-col" aria-label="Guides"><p class="ftr-h">Guides</p>${guideLinks}</nav>
-<nav class="ftr-col" aria-label="Site"><p class="ftr-h">Site</p><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/contact">Contact</a><a href="/for-hotels">For hotels</a><a href="/hotel/login">Hotel partner login</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a></nav>
+<nav class="ftr-col" aria-label="Site"><p class="ftr-h">Site</p><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/contact">Contact</a><a href="/for-hotels">For hotels</a><a href="/hotel/login">Hotel login</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a></nav>
 </div>
 <p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p>${abn}</div></footer>`;
 }
 const FONT_LINKS = `<link rel="preload" href="/golden/fonts/f3.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/golden/fonts/f5.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/golden/fonts.css">`;
 const HOME_SCRIPT = `<script>
 (function(){
-var S=[["8:00","Swim & gym"],["12:00","Long lunch"],["15:00","Spa afternoon"],["18:00","Golden hour"]],media=[0,1,2,3],cur=1;
+var S=[["8:00","Swim & gym"],["12:00","Long lunch (food and drink sold separately)"],["15:00","Spa afternoon"],["18:00","Golden hour"]],media=[0,1,2,3],cur=1;
 var hero=document.querySelector('.hero'),bs=document.querySelectorAll('.times button');
 function set(i){cur=i;if(!hero)return;hero.dataset.slot=String(i);bs.forEach(function(b,k){b.classList.toggle('on',k===i);b.setAttribute('aria-pressed',k===i?'true':'false')});
 var ct=document.getElementById('ct'),cl=document.getElementById('cl');if(ct)ct.textContent=S[i][0];if(cl)cl.textContent=S[i][1];
@@ -440,7 +440,7 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
 <picture class="layer" data-slot="2"><source type="image/webp" srcset="/golden/img/3-sm.webp"><img src="/golden/img/3-sm.jpg" alt="Spa treatment room" width="900" height="600" loading="lazy" decoding="async"></picture>
 <picture class="layer" data-slot="3"><source type="image/webp" srcset="/golden/img/1-sm.webp"><img src="/golden/img/1-sm.jpg" alt="Hotel pool at dusk" width="900" height="900" loading="lazy" decoding="async"></picture>
 <div class="shimmer" aria-hidden="true"></div><div class="tint"></div></div>
-<div class="clock"><span id="ct">12:00</span><small id="cl">Long lunch</small></div><span class="credit">Stock media · example only</span></div>
+<div class="clock"><span id="ct">12:00</span><small id="cl">Long lunch (food and drink sold separately)</small></div><span class="credit">Stock media · example only</span></div>
 <div class="copy"><h1 class="kicker">Hotel day passes in Australia</h1>
 <h2 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h2>
 <p class="lead">A hotel pool, gym, daybed or spa for the day — minutes from home, no room needed.</p>
@@ -456,7 +456,7 @@ ${reassureStrip()}
 <p class="home-note">One example day. You book the day. The hotel sets the hours.</p>
 <div class="day">
 ${slot('gym-sm', 'Hotel gym with free weights', '8 am', 'Swim &amp; gym', 'A gym session, then laps before the city wakes up.')}
-${slot('4-sm', 'Hotel daybed beside a pool', '12 pm', 'Daybed by the pool', 'Order food or a drink from the pool bar if you want them.')}
+${slot('4-sm', 'Hotel daybed beside a pool', '12 pm', 'Daybed by the pool', 'Buy food or a drink at the hotel if it sells them.')}
 ${slot('3-sm', 'Spa treatment table', '3 pm', 'Spa afternoon', 'Steam, sauna, a treatment if the hotel offers one.')}
 ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
 </div></section>
@@ -543,6 +543,7 @@ app.get('/h/:slug', (req, res) => {
   const av = date ? availability(h.id, date) : openAvailability(h.id);
   const from = passes.length ? Math.min(...passes.map(p => p.price)) : 0;
   const items = loadInclusions(db, h.id);
+  const foodLine = guestFoodLine(db, h);
   const closed = [];
   for (let i = 0; i < 90; i++) {
     const d = ymd(addDays(new Date(), i));
@@ -560,13 +561,14 @@ app.get('/h/:slug', (req, res) => {
     accessByPass: byPass(db, h.id),
     addonList: addonsHtml(items, getAddons(h.id, true)),
     hours: hoursHtml(hoursLines(db, h)),
-    policy: policyHtml(h),
+    foodLine,
+    policy: policyHtml(h, foodLine),
     arrival: arrivalHtml(h),
   }), {
     analytics: true,
     index: demo ? 'follow' : true,
     path: '/h/' + h.slug,
-    documentTitle: seo.listingTitle(h.name),
+    documentTitle: seo.listingTitle(h.name, demo),
     description: seo.listingDescription(h),
     image: photo,
     imageAlt: demo ? 'Stock photo, not this hotel' : seo.shortName(h.name),
@@ -609,8 +611,9 @@ app.get('/checkout', (req, res) => {
   const { h, p, date, qty, people } = v;
   const grand = p.price * qty + v.addonTotal;
   const cancel = cancelNote(db, h, date);
-  const foodBuy = h.slug === 'palm-court' && h.food_rule ? `<p class="pass-food">${esc(h.food_rule)}</p>` : '';
-  const included = includedBlock(loadInclusions(db, h.id), people) + foodBuy + accessBlock(forPass(db, p.id), { demo: Number(h.is_demo) === 1 });
+  const foodLine = guestFoodLine(db, h);
+  const included = includedBlock(loadInclusions(db, h.id), people) + accessBlock(forPass(db, p.id), { demo: Number(h.is_demo) === 1 });
+  const rulesOpts = { ...hoursView(db, h, date), foodSentence: foodLine };
   const picked = new Set(v.addons.map(x => x.code));
   const offer = addonAvailability(h.id, date);
   const addonFields = offer.length ? `<details class="extras" id="addon-block"><summary><span class="extra-label">Add extras <span class="extra-opt">(optional)</span></span></summary><div class="extra-list" id="co-addons">${offer.map(ad => {
@@ -636,7 +639,7 @@ ${addonFields}
 <label class="fl">Card number<input value="4242 4242 4242 4242" disabled></label>
 <div class="two"><label class="fl">Expiry<input value="12 / 30" disabled></label><label class="fl">CVC<input value="123" disabled></label></div></div>
 ${included}
-${rulesCard(h, hoursView(db, h, date))}
+${rulesCard(h, rulesOpts)}
 <p class="cancel-note">${esc(cancel)} <a href="/refunds">Cancellation and refunds</a></p>
 ${riskCard(h)}
 <label class="tick"><input type="checkbox" name="rules" value="1" required> <span>I've read and accept these pool rules.</span></label>
@@ -677,7 +680,7 @@ app.post('/book', async (req, res) => {
     if (!ticked('terms')) { v = { err: 'Please accept the customer terms.', h: v.h }; return; }
     if (!ticked('risk')) { v = { err: 'Please accept the risk warning.', h: v.h }; return; }
     code = newCode();
-    const seen = hoursView(db, v.h, v.date);
+    const seen = { ...hoursView(db, v.h, v.date), foodSentence: guestFoodLine(db, v.h) };
     const note = cancelNote(db, v.h, v.date);
     const info = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,party,rules_ack_at,rules_text,marketing_opt_in,terms_ack_at,risk_ack_at,risk_text,cancel_note)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),?,?,datetime('now','localtime'),datetime('now','localtime'),?,?)`)
@@ -767,7 +770,7 @@ app.get('/booking/:code', async (req, res) => {
 <p class="swim-note">${esc(swimNote(hotel))}</p>
 ${includedBlock(loadInclusions(db, hotel.id), party)}
 ${accessBlock(forPass(db, b.pass_type_id), { demo: /\(Demo\)/.test(b.hotel) })}
-<p>${esc(hotel.slug === 'palm-court' && hotel.food_rule ? hotel.food_rule : FOOD_NOTE)}</p>
+<p>${esc(PASS_FOOD_LINE)}</p>
 ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}</div>
 <p class="center cal-links" style="margin-top:16px"><a class="btn btn-line" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">Add to calendar</a>${googleCal ? ` <a class="btn btn-line" href="${esc(googleCal)}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>` : ''}${mapHref ? ` <a class="btn btn-line" href="${esc(mapHref)}">Directions</a>` : ''}</p>
 <div class="center" style="margin-top:12px"><a class="btn btn-line" href="/">Book another day</a></div></div>`, { analytics: true, analyticsPath: '/booking', index: false, canonical: false }));

@@ -70,10 +70,10 @@ function start(port) {
     assert.ok(!hotels.body.includes('demo-saltwater'));
     assert.ok(!hotels.body.includes('href="/hotel/join"'));
     assert.strictEqual((hotels.body.match(/<h1/g) || []).length, 1);
-    assert.ok(hotels.body.includes('href="/hotel/login">Hotel partner login</a>'));
+    assert.ok(hotels.body.includes('href="/hotel/login">Hotel login</a>'));
 
     const home = await get(port, '/');
-    assert.ok(home.body.includes('href="/hotel/login">Hotel partner login</a>'));
+    assert.ok(home.body.includes('href="/hotel/login">Hotel login</a>'));
 
     const login = await get(port, '/hotel/login');
     assert.strictEqual(login.status, 200);
