@@ -138,17 +138,13 @@ async function claimAndSend(db, claimSql, claimArgs, triesSql, triesArgs, stateS
   db.prepare(stateSql).run('failed', ...stateHead);
 }
 
-async function sendBookingConfirmation(db, code) {
+function bookingMessage(db, code) {
   const row = db.prepare(`SELECT b.id, b.code, b.date, b.qty, b.total, b.email, b.party, b.guest_name, b.cancel_note, b.created_at, b.hotel_id,
     p.name AS pass_name, p.holds
     FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id WHERE b.code=?`).get(code);
-  if (!row) return;
+  if (!row) return null;
   const email = String(row.email || '').trim();
-  if (!/^\S+@\S+\.\S+$/.test(email)) {
-    const marked = db.prepare(`UPDATE bookings SET guest_email_state='failed' WHERE code=? AND COALESCE(guest_email_state,'')=''`).run(code);
-    if (marked.changes === 1) console.error('booking confirmation email failed code=' + code + ' invalid address');
-    return;
-  }
+  if (!/^\S+@\S+\.\S+$/.test(email)) return { invalid: true };
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(row.hotel_id);
   if (hotel) delete hotel.address;
   const adds = db.prepare('SELECT name, qty, total FROM booking_addons WHERE booking_id=? ORDER BY name').all(row.id);
@@ -156,7 +152,7 @@ async function sendBookingConfirmation(db, code) {
   const bookedAt = row.created_at ? new Date(String(row.created_at).replace(' ', 'T')) : new Date();
   const note = row.cancel_note || cancelNote(db, hotel, row.date, bookedAt);
   const party = row.party || row.qty * (row.holds || 1);
-  const message = bookingNotice({
+  return bookingNotice({
     demo: demoSite(),
     to: email,
     code: row.code,
@@ -174,6 +170,19 @@ async function sendBookingConfirmation(db, code) {
     link: seo.ORIGIN + '/booking/' + encodeURIComponent(row.code),
     guest: maskName(row.guest_name),
   });
+}
+
+async function sendBookingConfirmation(db, code) {
+  const row = db.prepare('SELECT email FROM bookings WHERE code=?').get(code);
+  if (!row) return;
+  const email = String(row.email || '').trim();
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    const marked = db.prepare(`UPDATE bookings SET guest_email_state='failed' WHERE code=? AND COALESCE(guest_email_state,'')=''`).run(code);
+    if (marked.changes === 1) console.error('booking confirmation email failed code=' + code + ' invalid address');
+    return;
+  }
+  const message = bookingMessage(db, code);
+  if (!message || message.invalid) return;
   await claimAndSend(
     db,
     `UPDATE bookings SET guest_email_tries = guest_email_tries + 1, guest_email_state = 'sending'
@@ -214,4 +223,4 @@ async function sendContactAlert(db, id) {
   );
 }
 
-module.exports = { bookingNotice, contactAlert, sendBookingConfirmation, sendContactAlert };
+module.exports = { bookingNotice, bookingMessage, contactAlert, sendBookingConfirmation, sendContactAlert };
