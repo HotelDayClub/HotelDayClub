@@ -29,7 +29,7 @@ h1,h2,.l-title{font-family:Fraunces,Georgia,serif;font-weight:500}
   .app-ftr nav.ftr-dest{grid-column:1 / -1;flex-direction:row;flex-wrap:wrap;column-gap:14px;row-gap:8px}
   .app-ftr nav.ftr-dest .ftr-h{flex-basis:100%}
 }
-.fh{padding:36px 0 8px}
+.fh{padding-top:36px;padding-bottom:8px}
 .fh-kicker{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#9E2E20;font-weight:600;margin:0 0 12px}
 .fh h1{font-weight:500;font-size:clamp(40px,6vw,76px);line-height:.98;margin:0 0 16px;color:var(--ink)}
 .fh h1 em{font-style:italic;color:#9E2E20}
@@ -46,6 +46,17 @@ h1,h2,.l-title{font-family:Fraunces,Georgia,serif;font-weight:500}
 .fh-pilot .btn{margin-top:8px;border-radius:99px;padding:16px 26px}
 .fh-mail{margin:16px 0 0}
 .fh-mail a{color:#fff;text-decoration:underline;text-underline-offset:3px}
+.fh-intro{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:36px 40px;align-items:start}
+.fh-login{padding:28px 26px 22px;border-radius:24px;box-shadow:0 12px 40px rgba(14,30,58,.1)}
+.fh-login h1,.fh-login h2{margin:0 0 8px;font-size:clamp(28px,3vw,36px);line-height:1.1;color:var(--ink);font-weight:500}
+.fh-login-help{margin:0 0 16px;color:#243044;font-size:15px;line-height:1.45}
+.fh-login .fl{display:block;margin:0 0 14px;font-size:14px;font-weight:700;color:var(--ink)}
+.fh-login .fl input{display:block;width:100%;margin-top:6px;min-height:48px;border:1.5px solid #5a6478;border-radius:12px;padding:10px 12px;font:400 16px/1.4 Inter,system-ui,sans-serif;background:#fff;color:var(--ink)}
+.fh-login .btn-navy{width:100%;min-height:48px;border-radius:99px;margin-top:2px}
+.fh-forgot{margin:14px 0 0;color:#243044;font-size:14px;line-height:1.45}
+.fh-forgot a,.partner-back a{color:var(--navy);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.partner-back{margin-top:16px}
+.partner-login-page{padding-top:36px}
 .assure{background:var(--sand);border-top:1px solid #C4B5A4;border-bottom:1px solid #C4B5A4;padding:22px 0;margin:4px 0 8px}
 .assure ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px 14px}
 .assure li{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px}
@@ -86,6 +97,8 @@ h1,h2,.l-title{font-family:Fraunces,Georgia,serif;font-weight:500}
   .assure ul{grid-template-columns:1fr}
   .assure{padding:20px 0}
   .contact-card{padding:22px 16px}
+  .fh-intro{grid-template-columns:1fr;gap:22px}
+  .fh-login{padding:22px 16px}
 }
 @media(max-width:700px){
   .fh{padding-top:20px}

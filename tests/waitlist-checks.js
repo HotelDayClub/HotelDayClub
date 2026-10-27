@@ -169,7 +169,12 @@ function cookie(res) {
     assert.ok(hotels.body.includes('Talk to us'));
     assert.ok(hotels.body.includes('mailto:hello@hoteldayclub.com.au?subject=Hotel%20Day%20Club%20-%20partnership%20enquiry'));
     assert.ok(!/commission|75%|25%|partner hotel/i.test(hotels.body));
-    assert.ok(!hotels.body.includes('<form'));
+    assert.ok(hotels.body.includes('Hotel partner login'));
+    assert.ok(hotels.body.includes('action="/hotel/login"'));
+    assert.ok(hotels.body.includes('name="return" value="/for-hotels"'));
+    assert.ok(!hotels.body.includes('demo-logins'));
+    assert.ok(!hotels.body.includes('wait-hotel-test'));
+    assert.ok(home.body.includes('href="/hotel/login">Hotel partner login</a>'));
     const join = await get(port, '/hotel/join');
     assert.strictEqual(join.status, 302);
     assert.strictEqual(join.headers.location, '/for-hotels');
