@@ -2,6 +2,7 @@ const { esc, money } = require('./util');
 const { instantConfirmationText } = require('./siteMode');
 const { KINDS } = require('./offering');
 const { seatPhoto, includedLines, includedNote, FOOD_NOTE } = require('./inclusions');
+const { accessDetail } = require('./access');
 
 const KIND_NAME = Object.fromEntries(KINDS.map(k => [k.code, k.name]));
 const KIND_ORDER = KINDS.map(k => k.code);
@@ -37,7 +38,7 @@ function passCard(p, av, h, pick) {
 </article>`;
 }
 
-function passDetail(p, h, items) {
+function passDetail(p, h, items, accessAreas) {
   const holds = Number(p.holds) || 1;
   const id = esc(p.code);
   const desc = String(p.description || '').trim();
@@ -47,15 +48,17 @@ function passDetail(p, h, items) {
   const included = lines.length || foodBuy
     ? `<h4>What's included</h4>${lines.length ? `<ul class="pass-inc-list">${lines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : ''}${foodBuy}`
     : '';
+  const access = accessDetail(accessAreas || [], { demo });
   return `<article class="pass-detail" id="pass-detail-${id}" data-code="${id}" role="region" aria-labelledby="pass-title-${id}" hidden>
 <figure class="pass-detail-photo"><img src="${esc(seatPhoto(p.kind))}" alt="${esc(passAlt(p, h))}" width="960" height="640" loading="lazy" decoding="async">${demo ? '<figcaption>Example photo, not this hotel.</figcaption>' : ''}</figure>
 <h3 id="pass-title-${id}" tabindex="-1">${esc(p.name)}</h3>
 ${desc ? `<p class="pass-desc">${esc(desc)}</p>` : ''}
+${access}
 ${included}
 </article>`;
 }
 
-function passSection(passes, av, h, items) {
+function passSection(passes, av, h, items, accessByPass) {
   const open = av.filter(p => p.remaining > 0);
   const pick = open.find(p => p.featured) || open[0] || av[0];
   const kinds = [];
@@ -72,7 +75,7 @@ function passSection(passes, av, h, items) {
     const title = kinds.length > 1 ? `<h3 class="pass-group-title">${esc(KIND_NAME[k] || 'Pass')}</h3>` : '';
     return `<section class="pass-group" data-kind="${esc(k)}">${title}<div class="pass-grid">${list.map(p => passCard(p, av, h, pick)).join('')}</div></section>`;
   }).join('');
-  const details = passes.map(p => passDetail(p, h, items)).join('');
+  const details = passes.map(p => passDetail(p, h, items, (accessByPass && accessByPass[p.id]) || [])).join('');
   return `${filters}<div class="pass-groups" id="passes">${groups}</div><div id="pass-detail" hidden>${details}</div>`;
 }
 
@@ -238,7 +241,7 @@ load();setInterval(load,15000);
 }
 
 function listingHtml(opts) {
-  const { h, date, minDate, maxDate, closed, passes, av, from, hoursLine, cancel, know, included, addonList, hours, policy, arrival } = opts;
+  const { h, date, minDate, maxDate, closed, passes, av, from, hoursLine, cancel, know, included, addonList, hours, policy, arrival, accessByPass } = opts;
   const items = Array.isArray(included) ? included : [];
   const parkNote = includedNote(items);
   const short = shortName(h);
@@ -266,7 +269,7 @@ ${reassureStrip(true)}
 ${arrival}
 </div>
 <h2 class="day-kicker">Passes</h2>
-${passSection(passes, av, h, items)}
+${passSection(passes, av, h, items, accessByPass)}
 <p class="pass-food">${esc(h.slug === 'palm-court' && h.food_rule ? h.food_rule : FOOD_NOTE)}</p>
 <div class="page-folds">
 ${parkFold}

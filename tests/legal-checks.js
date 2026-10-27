@@ -62,6 +62,70 @@ assert.strictEqual(real.kids_hours, 'Until 2pm');
 assert.strictEqual(real.food_rule, 'Café on site. Packed lunches welcome.');
 db.prepare("UPDATE hotels SET kids_hours='All open hours' WHERE slug='saltwater-terrace'").run();
 
+const access = require('../access');
+const accessCount = db.prepare('SELECT COUNT(*) n FROM access_areas').get().n;
+access.ensureAccess(db);
+assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM access_areas').get().n, accessCount);
+assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM access_areas WHERE hotel_id=?').get(realId).n, 0);
+const skyHotelId = db.prepare("SELECT id FROM hotels WHERE slug='skyline-rooftop'").get().id;
+const gym = db.prepare("SELECT id FROM access_areas WHERE hotel_id=? AND name='Gym'").get(skyHotelId);
+assert.ok(gym);
+assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM pass_access WHERE area_id=?').get(gym.id).n, 0);
+const roof = db.prepare("SELECT id FROM access_areas WHERE hotel_id=? AND name='Heated rooftop pool'").get(skyHotelId);
+assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM pass_access WHERE area_id=?').get(roof.id).n, 3);
+const swId = db.prepare("SELECT id FROM hotels WHERE slug='saltwater-terrace'").get().id;
+const swPasses = db.prepare('SELECT id, code FROM pass_types WHERE hotel_id=?').all(swId);
+const swAreas = db.prepare('SELECT * FROM access_areas WHERE hotel_id=? ORDER BY sort, id').all(swId);
+const kept = {
+  area_id: swAreas.map(a => String(a.id)),
+  area_key: swAreas.map(a => String(a.id)),
+  area_name: swAreas.map(a => a.name),
+  area_blurb: swAreas.map(a => a.blurb),
+  area_hours: swAreas.map(a => a.hours),
+  area_photo: swAreas.map(a => a.photo),
+  area_food: swAreas.filter(a => a.serves_food).map(a => String(a.id)),
+};
+for (const pass of swPasses) kept['access_' + pass.id] = swAreas.map(a => String(a.id));
+const badPhoto = access.saveAccess(db, swId, { ...kept, area_photo: swAreas.map((a, i) => i === 1 ? '../secret.jpg' : a.photo) });
+assert.ok(badPhoto.err && /photo/i.test(badPhoto.err), badPhoto.err);
+const badFood = access.saveAccess(db, swId, { ...kept, area_blurb: swAreas.map(a => a.serves_food ? 'Drinks included.' : a.blurb) });
+assert.ok(badFood.err && /not included/i.test(badFood.err), badFood.err);
+assert.strictEqual(db.prepare('SELECT blurb FROM access_areas WHERE hotel_id=? AND name=?').get(swId, 'Pool bar').blurb, 'The pool bar sells drinks from 11.');
+const daybed = swPasses.find(p => p.code === 'daybed');
+const lounger = swPasses.find(p => p.code === 'lounger');
+const added = access.saveAccess(db, swId, {
+  ...kept,
+  area_id: kept.area_id.concat(['']),
+  area_key: kept.area_key.concat(['n9']),
+  area_name: kept.area_name.concat(['Lawn <b>']),
+  area_blurb: kept.area_blurb.concat(['A lawn beside the pool.']),
+  area_hours: kept.area_hours.concat(['Daily 10am–4pm']),
+  area_photo: kept.area_photo.concat(['not-a-file.png']),
+});
+assert.ok(added.err && /photo/i.test(added.err), added.err);
+const saved = access.saveAccess(db, swId, {
+  ...kept,
+  area_id: kept.area_id.concat(['']),
+  area_key: kept.area_key.concat(['n9']),
+  area_name: kept.area_name.concat(['Lawn <b>']),
+  area_blurb: kept.area_blurb.concat(['A lawn\nbeside the pool.']),
+  area_hours: kept.area_hours.concat(['Daily 10am–4pm']),
+  area_photo: kept.area_photo.concat(['']),
+  ['access_' + daybed.id]: ['n9'],
+});
+assert.ok(!saved.err, saved.err);
+const lawn = db.prepare('SELECT * FROM access_areas WHERE hotel_id=? AND name=?').get(swId, 'Lawn <b>');
+assert.ok(lawn);
+assert.strictEqual(lawn.blurb, 'A lawn beside the pool.');
+assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM pass_access WHERE area_id=? AND pass_type_id=?').get(lawn.id, daybed.id).n, 1);
+assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM pass_access WHERE area_id=? AND pass_type_id=?').get(lawn.id, lounger.id).n, 0);
+const html = access.accessDetail([lawn], { demo: true });
+assert.ok(html.includes('Included access'));
+assert.ok(html.includes('Lawn &lt;b&gt;'));
+assert.ok(!html.includes('Lawn <b>'));
+assert.ok(!html.includes('not-a-file'));
+db.prepare('DELETE FROM access_areas WHERE id=?').run(lawn.id);
+
 const ymd = d => {
   const p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;

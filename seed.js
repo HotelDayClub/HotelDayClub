@@ -235,6 +235,7 @@ db.transaction(() => {
   }
 })();
 seedPerformance(db);
+require('./access').ensureAccess(db);
 console.log('Seeded', db.prepare('SELECT COUNT(*) n FROM bookings').get().n, 'bookings');
 }
 

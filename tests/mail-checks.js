@@ -92,6 +92,7 @@ function recorder(decide) {
     passLabel: 'Pool chair × 1',
     guests: '1',
     included: '1 × Towels',
+    access: 'Bar & <grill>: Food and drink available to purchase. From noon',
     addons: [{ name: 'Gym', qty: 2, totalLabel: '$20' }],
     totalLabel: '$40',
     cancel: 'Free cancellation until 11am Wed 4 Nov.',
@@ -115,6 +116,11 @@ function recorder(decide) {
   assert.ok(direct.html.includes('Bondi Beach, Australia'));
   assert.ok(direct.html.includes('1 × Towels'));
   assert.ok(direct.text.includes('Included: 1 × Towels'));
+  assert.ok(direct.html.includes('Included access'));
+  assert.ok(direct.html.includes('Bar &amp; &lt;grill&gt;'));
+  assert.ok(direct.html.includes('Food and drink available to purchase'));
+  assert.ok(!direct.html.includes('<grill>'));
+  assert.ok(direct.text.includes('Included access: Bar & <grill>: Food and drink available to purchase. From noon'));
   assert.ok(direct.html.includes('This is a demo booking. No payment was taken and no real booking exists. This is not a reservation at a real hotel.'));
   assert.ok(direct.text.includes('No payment was taken'));
   assert.ok(direct.html.includes('https://www.hoteldayclub.com.au/booking/HDC-ABC'));
@@ -208,6 +214,9 @@ function recorder(decide) {
   assert.strictEqual(timed.result.ok, false);
   assert.ok(timed.lines.some(l => l === 'mail: send failed timeout'));
 
+  const areaId = db.prepare(`INSERT INTO access_areas (hotel_id, name, blurb, photo, hours, serves_food, sort)
+    VALUES (?, 'Pool bar <script>', 'The pool bar sells drinks from 11.', 'nope.jpg', 'From 11am', 1, 0)`).run(hotelId).lastInsertRowid;
+  db.prepare('INSERT INTO pass_access (pass_type_id, area_id) VALUES (?, ?)').run(passId, areaId);
   insertBooking('HDC-ONCE', GUEST);
   let sends = 0;
   const once = recorder(() => {
@@ -227,6 +236,13 @@ function recorder(decide) {
   assert.ok(booked.html.includes('Gym × 2'));
   assert.ok(booked.html.includes('2 × Towels'));
   assert.ok(booked.text.includes('Included: 2 × Towels'));
+  assert.ok(booked.html.includes('Included access'));
+  assert.ok(booked.html.includes('Pool bar &lt;script&gt;'));
+  assert.ok(booked.html.includes('Food and drink available to purchase'));
+  assert.ok(booked.text.includes('Food and drink available to purchase'));
+  assert.ok(!booked.html.includes('<script>'));
+  assert.ok(!booked.html.includes('nope.jpg'));
+  assert.ok(!booked.text.includes('nope.jpg'));
   assert.ok(booked.html.includes('$100'));
   assert.ok(booked.html.includes('10am–4pm'));
   assert.ok(booked.html.includes('Free cancellation until 11am Wed 4 Nov.'));
