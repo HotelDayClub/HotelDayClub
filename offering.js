@@ -220,9 +220,12 @@ function syncHoursLabels(db) {
     upd.run(sum.hours, sum.open_days, sum.opens, sum.closes, h.id);
   }
 }
-function poolSettingLabel(setting) {
+function poolSettingLabel(setting, hotel) {
   if (setting === 'indoor') return 'Indoor';
-  if (setting === 'both') return 'Indoor and outdoor';
+  if (setting === 'both') {
+    if (hotel && hotel.slug === 'bayview-spa') return 'Indoor bathhouse and outdoor pool';
+    return 'Indoor and outdoor';
+  }
   if (setting === 'outdoor') return 'Outdoor';
   return '';
 }
@@ -278,7 +281,7 @@ function policyFacts(hotel) {
   const g = guardFacts(hotel || {});
   const heated = !hotel || hotel.heated == null || hotel.heated === '' ? 'Not set' : (Number(hotel.heated) ? 'Yes' : 'No');
   return {
-    pool: poolSettingLabel(hotel && hotel.setting) || 'Not set',
+    pool: poolSettingLabel(hotel && hotel.setting, hotel) || 'Not set',
     heated,
     lifeguard: g.policy,
   };
@@ -298,14 +301,14 @@ function venueMissing(row) {
 }
 const PICK_DATE_CANCEL = 'Pick a date to see your free-cancellation deadline.';
 function rulesLines(hotel, opts = {}) {
-  const setting = poolSettingLabel(hotel.setting);
+  const setting = poolSettingLabel(hotel.setting, hotel);
   const heat = heatWord(hotel.heated);
   const lines = [];
   if (heat || setting) lines.push([heat || 'Heat not set', setting || 'Pool not set'].join(' · '));
   if (hotel.age_policy) lines.push(hotel.age_policy);
   if (hotel.kids_hours) lines.push(`Kids: ${hotel.kids_hours}`);
   lines.push(hotel.towels ? 'Towels included' : 'Bring your own towel');
-  if (hotel.food_rule) lines.push(hotel.food_rule);
+  lines.push(hotel.food_rule || 'Food and drink are not included in the pass. Buy them at the bar or café, or add an optional food and drink credit when the hotel offers one.');
   lines.push(hotel.id_required ? 'Photo ID required' : 'Photo ID not required');
   const guardLine = guardFacts(hotel).line;
   if (guardLine) lines.push(guardLine);
@@ -388,7 +391,7 @@ function cancelNote(db, hotel, date, now = new Date()) {
 function venueFacts(hotel) {
   const g = guardFacts(hotel);
   return {
-    setting: poolSettingLabel(hotel.setting) || 'Not set',
+    setting: poolSettingLabel(hotel.setting, hotel) || 'Not set',
     heat: heatWord(hotel.heated) || 'Not set',
     guard: g.risk,
     age: hotel.age_policy || 'See the hotel rules',
@@ -433,10 +436,10 @@ function amenitiesFrom(h) {
   const heat = heatWord(h.heated);
   if (heat === 'Heated') a.push('Heated pool');
   else if (heat === 'Unheated') a.push('Unheated pool');
-  const setting = poolSettingLabel(h.setting);
+  const setting = poolSettingLabel(h.setting, h);
   if (setting === 'Indoor') a.push('Indoor pool');
-  else if (setting === 'Indoor and outdoor') a.push('Indoor and outdoor');
   else if (setting === 'Outdoor') a.push('Outdoor pool');
+  else if (setting) a.push(setting);
   if (h.towels) a.push('Towels included');
   if (guardFacts(h).on) a.push('Lifeguard on duty');
   if (h.age_policy) a.push(h.age_policy);
@@ -459,7 +462,7 @@ function blankJoin() {
     hotel: {
       name: '', area: '', tagline: '', blurb: '', contact_name: '', contact_email: '', login: '',
       cutoff_hours: 2, heated: 0, setting: 'outdoor', age_policy: 'All ages', kids_hours: 'All open hours',
-      towels: 1, food_rule: 'Food and drink from the hotel only', id_required: 1, lifeguard: 0,
+      towels: 1, food_rule: 'Food and drink are not included. Buy them from the hotel.', id_required: 1, lifeguard: 0,
       season_start: '', season_end: '', season_opens: '', season_closes: '', room_only_from: '', room_only_to: '',
     },
     spots: [{ kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the pool, with a towel.', holds: 1, price: 45, daily_cap: 20, photo: 'hero-loungers.jpg' }],
@@ -738,7 +741,8 @@ ${DAY_ORDER.map(wd => {
 <div class="two">${yn('towels', 'Towels included', h.towels)}${yn('id_required', 'Photo ID required', h.id_required !== 0)}</div>
 <div class="two"><label class="fl">Lifeguard<select name="lifeguard"><option value="" ${guardChoice(h.lifeguard) === '' ? 'selected' : ''}>Choose</option><option value="1" ${guardChoice(h.lifeguard) === '1' ? 'selected' : ''}>On duty</option><option value="0" ${guardChoice(h.lifeguard) === '0' ? 'selected' : ''}>Not on duty</option><option value="2" ${guardChoice(h.lifeguard) === '2' ? 'selected' : ''}>On duty for set hours</option></select></label>
 <label class="fl">Lifeguard hours<input name="lifeguard_hours" maxlength="120" value="${esc(h.lifeguard_hours || '')}" placeholder="10am to 4pm"></label></div>
-<label class="fl">Food and drink<input name="food_rule" maxlength="160" value="${esc(h.food_rule || '')}" placeholder="Pool bar only"></label>
+<label class="fl">Food and drink<input name="food_rule" maxlength="160" value="${esc(h.food_rule || '')}" placeholder="Not included. Available to buy at the bar or café."></label>
+<p class="muted small">Food and drink is never included in the pass. Say where guests can buy it.</p>
 <label class="fl">Dress code<input name="dress_code" maxlength="160" value="${esc(h.dress_code || '')}" placeholder="Swimwear at the pool. A cover-up in the lobby."></label>
 ${account ? `<label class="tick"><input type="checkbox" name="marketing" value="1" ${h.marketing ? 'checked' : ''}> Email me about listing a hotel. Optional, and separate from this application.</label>
 <p class="privacy-note">We use your name, email and login to review this application and reply to you. <a href="/privacy">Privacy policy</a></p>` : ''}

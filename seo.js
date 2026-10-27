@@ -84,7 +84,7 @@ const GUIDES = [
     description: 'How to choose a hotel pool day pass in Australia: hours, what is included, who can come, and what the listing should spell out.',
     paras: [
       'Start with the hours. A day pass is not a room, and it is not the whole day unless the hotel says so. The listing should show when you can arrive and when you have to leave.',
-      'Read what is included before you compare prices. Pool, gym, spa, towel, parking and food credit are different things. A lower price that leaves them out is not the same pass.',
+      'Read what is included before you compare prices. Pool, gym, spa, towel and parking are different things. Food and drink are never part of the pass. A hotel may offer an optional food and drink credit, or sell food and drink at the bar or café.',
       'Check who can come. The person booking needs to be 18 or over. Each hotel sets its own age rule and kids’ hours, and those belong on the listing and in the risk warning.',
       'Look at the pool itself. Indoor or outdoor, heated or not, and whether rain on its own closes it. Rain is not a closure by itself. If the hotel closes the facility, the refund page is the place that explains the choice you get.',
       'We do not publish star ratings or review counts. Use the hours, the inclusions and the price on the page. On this demo, treat every hotel as an example. The photos are stock, and no real booking is taken.',

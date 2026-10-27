@@ -48,6 +48,21 @@ CREATE TABLE IF NOT EXISTS inclusions(
   note TEXT NOT NULL DEFAULT '',
   PRIMARY KEY(hotel_id, code)
 );
+CREATE TABLE IF NOT EXISTS access_areas(
+  id INTEGER PRIMARY KEY,
+  hotel_id INTEGER NOT NULL REFERENCES hotels(id),
+  name TEXT NOT NULL,
+  blurb TEXT NOT NULL DEFAULT '',
+  photo TEXT NOT NULL DEFAULT '',
+  hours TEXT NOT NULL DEFAULT '',
+  serves_food INTEGER NOT NULL DEFAULT 0,
+  sort INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS pass_access(
+  pass_type_id INTEGER NOT NULL REFERENCES pass_types(id) ON DELETE CASCADE,
+  area_id INTEGER NOT NULL REFERENCES access_areas(id) ON DELETE CASCADE,
+  PRIMARY KEY(pass_type_id, area_id)
+);
 CREATE TABLE IF NOT EXISTS waitlist(
   id INTEGER PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,

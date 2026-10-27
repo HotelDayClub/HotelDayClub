@@ -16,11 +16,150 @@ delete process.env.ABN;
 delete process.env.CONTACT_EMAIL;
 
 const db = require('../db');
-const { seed, ensureSchedules } = require('../seed');
+const { seed, ensureSchedules, DEMO_INTROS } = require('../seed');
 const offering = require('../offering');
 
 seed(db);
 ensureSchedules(db);
+
+for (const [slug, intro] of Object.entries(DEMO_INTROS)) {
+  const row = db.prepare('SELECT tagline, blurb, is_demo FROM hotels WHERE slug=?').get(slug);
+  assert.strictEqual(row.is_demo, 1, slug);
+  assert.strictEqual(row.tagline, intro.tagline, slug);
+  assert.strictEqual(row.blurb, intro.blurb, slug);
+  assert.ok(row.tagline.length <= 140 && row.blurb.length <= 500, slug);
+}
+
+const bayRow = db.prepare("SELECT * FROM hotels WHERE slug='bayview-spa'").get();
+assert.strictEqual(bayRow.setting, 'both');
+assert.strictEqual(bayRow.heated, 1);
+assert.strictEqual(offering.policyFacts(bayRow).pool, 'Indoor bathhouse and outdoor pool');
+assert.strictEqual(offering.policyFacts(bayRow).heated, 'Yes');
+assert.ok(offering.rulesText(bayRow).includes('Heated · Indoor bathhouse and outdoor pool'));
+assert.ok(offering.riskText(bayRow).includes('Pool: Indoor bathhouse and outdoor pool · Heated.'));
+assert.strictEqual(offering.policyFacts({ slug: 'other-hotel', setting: 'both', heated: 1, lifeguard: 0 }).pool, 'Indoor and outdoor');
+
+db.prepare("UPDATE hotels SET blurb=?, kids_hours=? WHERE slug='manly-sands'").run(
+  'Canopy daybeds right on the water line, a magnesium pool, and a kiosk selling food and drinks.',
+  'Until 2pm'
+);
+db.prepare("UPDATE hotels SET tagline=?, blurb=? WHERE slug='skyline-rooftop'").run(
+  'Heated rooftop pool with city views',
+  'Swim above the office towers. A heated rooftop pool, cabana daybeds and a bar that opens at noon. Quietest Mon to Thu.'
+);
+db.prepare("UPDATE hotels SET tagline=?, blurb=? WHERE slug='harbourside-lido'").run(
+  'Glass-roofed pool and day spa in the city',
+  'A light-filled pool under a glass roof, with steam room, sauna and a spa menu. Year-round, rain or shine.'
+);
+db.prepare("UPDATE hotels SET tagline=?, blurb=? WHERE slug='palm-court'").run(
+  'Lagoon pool in leafy palm gardens',
+  'A big lagoon pool ringed by palms, with plenty of shade and a family-friendly shallow end. Easy parking.'
+);
+db.prepare("UPDATE hotels SET tagline=?, blurb=? WHERE slug='bayview-spa'").run(
+  'Bathhouse, plunge pools and poolside cabanas',
+  'A calm bathhouse with hot and cold plunge, a heated outdoor pool and draped cabanas. 18+ on weekdays.'
+);
+db.prepare("UPDATE hotels SET blurb=? WHERE slug='saltwater-terrace'").run('A custom saltwater intro that the hotel wrote.');
+db.prepare("UPDATE hotels SET food_rule=? WHERE slug='palm-court'").run(
+  'Food and drink are not included. Buy them at the café, or add the optional food and drink credit. Packed lunches are welcome.'
+);
+db.prepare("UPDATE hotels SET kids_hours='Children welcome until 4pm' WHERE slug='saltwater-terrace'").run();
+const realId = db.prepare(`INSERT INTO hotels(slug,name,area,tagline,blurb,kids_hours,food_rule,login,status,is_demo)
+  VALUES ('real-pool','Real Pool','Sydney',?,?,?,?, 'real-pool','active',0)`).run(
+  'Heated rooftop pool with city views',
+  'Canopy daybeds right on the water line, a magnesium pool, and a kiosk selling food and drinks.',
+  'Until 2pm',
+  'Café on site. Packed lunches welcome.'
+).lastInsertRowid;
+ensureSchedules(db);
+const manlyFixed = db.prepare("SELECT tagline, blurb, age_policy, kids_hours FROM hotels WHERE slug='manly-sands'").get();
+assert.strictEqual(manlyFixed.tagline, DEMO_INTROS['manly-sands'].tagline);
+assert.strictEqual(manlyFixed.blurb, DEMO_INTROS['manly-sands'].blurb);
+assert.ok(!manlyFixed.blurb.includes('water line'));
+assert.strictEqual(manlyFixed.age_policy, 'All ages');
+assert.strictEqual(manlyFixed.kids_hours, 'Children welcome until 2pm');
+for (const slug of ['skyline-rooftop', 'harbourside-lido', 'palm-court', 'bayview-spa']) {
+  const row = db.prepare('SELECT tagline, blurb FROM hotels WHERE slug=?').get(slug);
+  assert.strictEqual(row.tagline, DEMO_INTROS[slug].tagline, slug);
+  assert.strictEqual(row.blurb, DEMO_INTROS[slug].blurb, slug);
+}
+assert.strictEqual(db.prepare("SELECT blurb FROM hotels WHERE slug='saltwater-terrace'").get().blurb, 'A custom saltwater intro that the hotel wrote.');
+db.prepare("UPDATE hotels SET blurb=? WHERE slug='saltwater-terrace'").run(DEMO_INTROS['saltwater-terrace'].blurb);
+assert.ok(!/adults only/i.test(offering.rulesText(db.prepare("SELECT * FROM hotels WHERE slug='manly-sands'").get())));
+const palmFixed = db.prepare("SELECT food_rule FROM hotels WHERE slug='palm-court'").get();
+assert.ok(palmFixed.food_rule.includes('available to buy at the café'));
+assert.ok(palmFixed.food_rule.includes('stays an extra'));
+assert.strictEqual(db.prepare("SELECT kids_hours FROM hotels WHERE slug='saltwater-terrace'").get().kids_hours, 'Children welcome until 4pm');
+const real = db.prepare('SELECT tagline, blurb, kids_hours, food_rule FROM hotels WHERE id=?').get(realId);
+assert.strictEqual(real.tagline, 'Heated rooftop pool with city views');
+assert.ok(real.blurb.includes('right on the water line'));
+assert.strictEqual(real.kids_hours, 'Until 2pm');
+assert.strictEqual(real.food_rule, 'Café on site. Packed lunches welcome.');
+db.prepare("UPDATE hotels SET kids_hours='All open hours' WHERE slug='saltwater-terrace'").run();
+
+const access = require('../access');
+const accessCount = db.prepare('SELECT COUNT(*) n FROM access_areas').get().n;
+access.ensureAccess(db);
+assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM access_areas').get().n, accessCount);
+assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM access_areas WHERE hotel_id=?').get(realId).n, 0);
+const skyHotelId = db.prepare("SELECT id FROM hotels WHERE slug='skyline-rooftop'").get().id;
+const gym = db.prepare("SELECT id FROM access_areas WHERE hotel_id=? AND name='Gym'").get(skyHotelId);
+assert.ok(gym);
+assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM pass_access WHERE area_id=?').get(gym.id).n, 0);
+const roof = db.prepare("SELECT id FROM access_areas WHERE hotel_id=? AND name='Heated rooftop pool'").get(skyHotelId);
+assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM pass_access WHERE area_id=?').get(roof.id).n, 3);
+const swId = db.prepare("SELECT id FROM hotels WHERE slug='saltwater-terrace'").get().id;
+const swPasses = db.prepare('SELECT id, code FROM pass_types WHERE hotel_id=?').all(swId);
+const swAreas = db.prepare('SELECT * FROM access_areas WHERE hotel_id=? ORDER BY sort, id').all(swId);
+const kept = {
+  area_id: swAreas.map(a => String(a.id)),
+  area_key: swAreas.map(a => String(a.id)),
+  area_name: swAreas.map(a => a.name),
+  area_blurb: swAreas.map(a => a.blurb),
+  area_hours: swAreas.map(a => a.hours),
+  area_photo: swAreas.map(a => a.photo),
+  area_food: swAreas.filter(a => a.serves_food).map(a => String(a.id)),
+};
+for (const pass of swPasses) kept['access_' + pass.id] = swAreas.map(a => String(a.id));
+const badPhoto = access.saveAccess(db, swId, { ...kept, area_photo: swAreas.map((a, i) => i === 1 ? '../secret.jpg' : a.photo) });
+assert.ok(badPhoto.err && /photo/i.test(badPhoto.err), badPhoto.err);
+const badFood = access.saveAccess(db, swId, { ...kept, area_blurb: swAreas.map(a => a.serves_food ? 'Drinks included.' : a.blurb) });
+assert.ok(badFood.err && /not included/i.test(badFood.err), badFood.err);
+assert.strictEqual(db.prepare('SELECT blurb FROM access_areas WHERE hotel_id=? AND name=?').get(swId, 'Pool bar').blurb, 'The pool bar sells drinks from 11.');
+const daybed = swPasses.find(p => p.code === 'daybed');
+const lounger = swPasses.find(p => p.code === 'lounger');
+const added = access.saveAccess(db, swId, {
+  ...kept,
+  area_id: kept.area_id.concat(['']),
+  area_key: kept.area_key.concat(['n9']),
+  area_name: kept.area_name.concat(['Lawn <b>']),
+  area_blurb: kept.area_blurb.concat(['A lawn beside the pool.']),
+  area_hours: kept.area_hours.concat(['Daily 10am–4pm']),
+  area_photo: kept.area_photo.concat(['not-a-file.png']),
+});
+assert.ok(added.err && /photo/i.test(added.err), added.err);
+const saved = access.saveAccess(db, swId, {
+  ...kept,
+  area_id: kept.area_id.concat(['']),
+  area_key: kept.area_key.concat(['n9']),
+  area_name: kept.area_name.concat(['Lawn <b>']),
+  area_blurb: kept.area_blurb.concat(['A lawn\nbeside the pool.']),
+  area_hours: kept.area_hours.concat(['Daily 10am–4pm']),
+  area_photo: kept.area_photo.concat(['']),
+  ['access_' + daybed.id]: ['n9'],
+});
+assert.ok(!saved.err, saved.err);
+const lawn = db.prepare('SELECT * FROM access_areas WHERE hotel_id=? AND name=?').get(swId, 'Lawn <b>');
+assert.ok(lawn);
+assert.strictEqual(lawn.blurb, 'A lawn beside the pool.');
+assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM pass_access WHERE area_id=? AND pass_type_id=?').get(lawn.id, daybed.id).n, 1);
+assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM pass_access WHERE area_id=? AND pass_type_id=?').get(lawn.id, lounger.id).n, 0);
+const html = access.accessDetail([lawn], { demo: true });
+assert.ok(html.includes('Included access'));
+assert.ok(html.includes('Lawn &lt;b&gt;'));
+assert.ok(!html.includes('Lawn <b>'));
+assert.ok(!html.includes('not-a-file'));
+db.prepare('DELETE FROM access_areas WHERE id=?').run(lawn.id);
 
 const ymd = d => {
   const p = n => String(n).padStart(2, '0');
@@ -105,10 +244,17 @@ assert.ok(offering.riskText(sky.h).includes('No lifeguard is on duty'));
 assert.ok(offering.riskText(db.prepare("SELECT * FROM hotels WHERE slug='palm-court'").get()).includes('A lifeguard is on duty'));
 require('../inclusions').ensureInclusions(db);
 db.prepare("UPDATE addons SET name='Spa treatment discount', blurb='A discount on a spa treatment booked at the hotel.' WHERE code='discount'").run();
-db.prepare("UPDATE hotels SET blurb=REPLACE(blurb, 'Adults only (18+).', '18+ on weekdays.') WHERE slug='bayview-spa'").run();
+db.prepare("UPDATE hotels SET blurb=? WHERE slug='bayview-spa'").run(
+  'A calm bathhouse with hot and cold plunge, a heated outdoor pool and draped cabanas. 18+ on weekdays.'
+);
 db.alignStoredCopy(db);
+const repaired = db.prepare("SELECT blurb FROM hotels WHERE slug='bayview-spa'").get();
+assert.strictEqual(repaired.blurb, 'A calm bathhouse with hot and cold plunge, a heated outdoor pool and draped cabanas. Adults only (18+).');
+assert.ok(!repaired.blurb.includes('18+ on weekdays'));
+ensureSchedules(db);
 const bayview = db.prepare("SELECT blurb, age_policy, kids_hours FROM hotels WHERE slug='bayview-spa'").get();
-assert.ok(bayview.blurb.includes('Adults only (18+).'));
+assert.strictEqual(bayview.blurb, DEMO_INTROS['bayview-spa'].blurb);
+assert.ok(!bayview.blurb.includes('Adults only (18+).'));
 assert.ok(!bayview.blurb.includes('18+ on weekdays'));
 assert.strictEqual(bayview.age_policy, '18+');
 assert.strictEqual(bayview.kids_hours, 'No children');

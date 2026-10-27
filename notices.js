@@ -6,6 +6,8 @@ const seo = require('./seo');
 const { demoSite, operatorEmail } = require('./siteMode');
 const mailer = require('./mailer');
 const { eventWindow, passCalendarLink } = require('./calendar');
+const { loadInclusions, includedText } = require('./inclusions');
+const { forPass, accessText } = require('./access');
 
 function htmlValue(value) {
   return esc(value).replace(/\n/g, '<br>');
@@ -24,6 +26,9 @@ function bookingNotice(info) {
     ['Access hours', info.hours],
     ['Pass', info.passLabel],
     ['Guests', info.guests],
+    ['Included', info.included],
+    ['Included access', info.access],
+    ['Food and drink', 'Food and drink are not included in the pass. Buy them at the bar or café, or add an optional food and drink credit when the hotel offers one.'],
     ['Extras', extras],
     ['Total', info.totalLabel],
     ['Booking code', info.code],
@@ -144,7 +149,7 @@ async function claimAndSend(db, claimSql, claimArgs, triesSql, triesArgs, stateS
 
 function bookingMessage(db, code) {
   const row = db.prepare(`SELECT b.id, b.code, b.date, b.qty, b.total, b.email, b.party, b.guest_name, b.cancel_note, b.created_at, b.hotel_id,
-    p.name AS pass_name, p.holds
+    p.name AS pass_name, p.holds, p.id AS pass_id
     FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id WHERE b.code=?`).get(code);
   if (!row) return null;
   const email = String(row.email || '').trim();
@@ -157,6 +162,8 @@ function bookingMessage(db, code) {
   const bookedAt = row.created_at ? new Date(String(row.created_at).replace(' ', 'T')) : new Date();
   const note = row.cancel_note || cancelNote(db, hotel, row.date, bookedAt);
   const party = row.party || row.qty * (row.holds || 1);
+  const included = hotel ? includedText(loadInclusions(db, hotel.id), party) : '';
+  const access = accessText(forPass(db, row.pass_id));
   return bookingNotice({
     demo: demoSite(),
     to: email,
@@ -167,6 +174,8 @@ function bookingMessage(db, code) {
     hours: view.span || view.hoursLine,
     passLabel: `${spotLabel({ name: row.pass_name, holds: row.holds })} × ${row.qty}`,
     guests: String(party),
+    included,
+    access,
     addons: adds.map(a => ({ name: a.name, qty: a.qty, totalLabel: money(a.total) })),
     totalLabel: money(row.total),
     cancel: note,
