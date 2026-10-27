@@ -29,7 +29,7 @@ h1,h2,.l-title{font-family:Fraunces,Georgia,serif;font-weight:500}
   .app-ftr nav.ftr-dest{grid-column:1 / -1;flex-direction:row;flex-wrap:wrap;column-gap:14px;row-gap:8px}
   .app-ftr nav.ftr-dest .ftr-h{flex-basis:100%}
 }
-.fh{padding:36px 0 8px}
+.fh{padding-top:36px;padding-bottom:8px}
 .fh-kicker{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#9E2E20;font-weight:600;margin:0 0 12px}
 .fh h1{font-weight:500;font-size:clamp(40px,6vw,76px);line-height:.98;margin:0 0 16px;color:var(--ink)}
 .fh h1 em{font-style:italic;color:#9E2E20}
