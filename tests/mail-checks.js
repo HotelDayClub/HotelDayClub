@@ -102,6 +102,8 @@ function recorder(decide) {
     address: STREET,
     phone: PHONE,
   });
+  assert.ok(direct.html.includes('Food and drink are not included in the pass.'));
+  assert.ok(direct.text.includes('Food and drink are not included in the pass.'));
   assert.ok(direct.html.includes('Salt &amp; &lt;Sea&gt;'));
   assert.ok(!direct.html.includes('<Sea>'));
   assert.ok(!direct.html.includes(STREET) && !direct.text.includes(STREET));

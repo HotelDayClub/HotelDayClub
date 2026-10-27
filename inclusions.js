@@ -35,9 +35,9 @@ const INCLUSIONS = [
   { code: 'lockers', name: 'Lockers', per: 'booking', cap: 40, blurb: 'A locker for the visit.' },
   { code: 'toiletries', name: 'Toiletries', per: 'guest', cap: 40, blurb: 'Basic toiletries.' },
   { code: 'robe', name: 'Robe and slippers', per: 'guest', cap: 30, blurb: 'A robe and slippers.' },
-  { code: 'welcome', name: 'Welcome drink', per: 'guest', cap: 40, blurb: 'One welcome drink.' },
-  { code: 'food', name: 'Food and beverage credit', per: 'guest', cap: 40, blurb: 'To spend at the bar or café.' },
-  { code: 'poolside', name: 'Poolside food and drink service', per: 'booking', cap: 30, blurb: 'Poolside service during the visit.' },
+  { code: 'welcome', name: 'Welcome drink', per: 'guest', cap: 40, blurb: 'Optional drink from the bar. Not included in the pass.' },
+  { code: 'food', name: 'Food and drink credit', per: 'guest', cap: 40, blurb: 'Optional credit to spend at the bar or café. Not included in the pass.' },
+  { code: 'poolside', name: 'Poolside food and drink', per: 'booking', cap: 30, blurb: 'Optional poolside order. Not included in the pass.' },
   { code: 'kids', name: "Kids' pool access", per: 'guest', cap: 30, blurb: 'Access for children, within the hotel age rules.' },
   { code: 'discount', name: 'Spa treatment credit', per: 'booking', cap: 20, blurb: 'A credit toward a spa treatment booked at the hotel.' },
   { code: 'late', name: 'Late stay', per: 'guest', cap: 12, blurb: 'Stay until the pool closes, after day-pass hours end.' },
@@ -47,6 +47,11 @@ const INCLUSIONS = [
 ];
 
 const BY_CODE = Object.fromEntries(INCLUSIONS.map(item => [item.code, item]));
+const FOOD_DRINK = new Set(['welcome', 'food', 'poolside']);
+const FOOD_NOTE = 'Food and drink are not included in the pass. Buy them at the bar or café, or add an optional food and drink credit when the hotel offers one.';
+function foodMode(mode) {
+  return mode === 'addon' ? 'addon' : 'off';
+}
 
 const row = (mode, price = 0, cap = 0, note = '') => ({ mode, price, cap, note });
 
@@ -70,7 +75,7 @@ const PRESETS = {
   },
   'palm-court': {
     wifi: row('included'), pool: row('included'), towels: row('included'), showers: row('included'),
-    kids: row('included'), poolside: row('included'),
+    kids: row('included'),
     parking: row('included', 0, 0, 'On-site parking is included with the pass in this demo.'),
     food: row('addon', 22, 40),
   },
@@ -154,6 +159,30 @@ function ensureInclusions(db) {
         else db.prepare('UPDATE addons SET enabled=0 WHERE hotel_id=? AND code=?').run(hotel.id, item.code);
       }
     }
+    db.prepare(`UPDATE inclusions SET mode='off', price=0, daily_cap=0 WHERE code IN ('welcome','food','poolside') AND mode='included'`).run();
+    db.prepare(`UPDATE addons SET enabled=0 WHERE code IN ('welcome','food','poolside') AND EXISTS (SELECT 1 FROM inclusions i WHERE i.hotel_id = addons.hotel_id AND i.code = addons.code AND i.mode != 'addon')`).run();
+    for (const code of FOOD_DRINK) {
+      const item = BY_CODE[code];
+      db.prepare('UPDATE addons SET name=?, blurb=? WHERE code=?').run(item.name, item.blurb, code);
+    }
+    const foodRules = [
+      ['Food and drink from the pool bar only', 'Food and drink are not included. Buy them from the pool bar.'],
+      ['Food and drink from the hotel only', 'Food and drink are not included. Buy them from the hotel.'],
+      ['Bar from noon. No outside food or drink.', 'Food and drink are not included. The bar sells them from noon. No outside food or drink.'],
+      ['No outside food. Café on site.', 'Food and drink are not included. Buy them at the café. No outside food.'],
+      ['Café on site. Packed lunches welcome.', 'Food and drink are not included. Buy them at the café, or add the optional food and drink credit. Packed lunches are welcome.'],
+      ['Kiosk on site. No glass.', 'Food and drink are not included. Buy them at the kiosk. No glass.'],
+      ['No outside food or drink.', 'Food and drink are not included. No outside food or drink.'],
+    ];
+    const setRule = db.prepare('UPDATE hotels SET food_rule=? WHERE food_rule=?');
+    for (const [from, to] of foodRules) setRule.run(to, from);
+    const blurbs = [
+      ['A heated infinity pool on level one, looking straight out to the Pacific. Loungers, towels and a pool bar doing frozen margs from 11.', 'A heated infinity pool on level one, looking straight out to the Pacific. Loungers and towels. The pool bar sells drinks from 11.'],
+      ['Canopy daybeds right on the water line, a magnesium pool and a kiosk doing smashed avo and cold ones.', 'Canopy daybeds right on the water line, a magnesium pool, and a kiosk selling food and drinks.'],
+      ['Swim above the office towers. A heated rooftop pool, cabana daybeds and a bar that opens at noon. Quietest Mon to Thu.', 'Swim above the office towers. A heated rooftop pool, cabana daybeds, and a bar selling drinks from noon. Quietest Mon to Thu.'],
+    ];
+    const setBlurb = db.prepare('UPDATE hotels SET blurb=? WHERE blurb=?');
+    for (const [from, to] of blurbs) setBlurb.run(to, from);
   })();
 }
 
@@ -163,6 +192,7 @@ function saveInclusions(db, hotelId, body, { allowLate }) {
   db.transaction(() => {
     for (const item of INCLUSIONS) {
       let mode = ['included', 'addon', 'off'].includes(body['inc_' + item.code]) ? body['inc_' + item.code] : 'off';
+      if (FOOD_DRINK.has(item.code)) mode = foodMode(mode);
       const price = Math.max(0, parseInt(body['price_' + item.code], 10) || 0);
       let cap = Math.max(0, parseInt(body['cap_' + item.code], 10) || 0);
       const note = String(body['note_' + item.code] || '').trim().slice(0, 160);
@@ -183,7 +213,8 @@ function syncAddonEdit(db, hotelId, code, enabled, price, cap) {
   const current = db.prepare('SELECT mode FROM inclusions WHERE hotel_id=? AND code=?').get(hotelId, code);
   const was = current ? current.mode : 'off';
   let mode = was;
-  if (was === 'included') mode = 'included';
+  if (FOOD_DRINK.has(code)) mode = enabled ? 'addon' : 'off';
+  else if (was === 'included') mode = 'included';
   else if (enabled) mode = 'addon';
   else mode = 'off';
   const on = mode === 'addon' ? 1 : 0;
@@ -193,7 +224,7 @@ function syncAddonEdit(db, hotelId, code, enabled, price, cap) {
 }
 
 function includedRows(items) {
-  return (items || []).filter(i => i.mode === 'included');
+  return (items || []).filter(i => i.mode === 'included' && !FOOD_DRINK.has(i.code));
 }
 function includedQty(item, people) {
   const guests = Math.max(1, Number(people) || 1);
@@ -248,7 +279,7 @@ function dayBeats(items) {
   const inc = code => mode(code) === 'included';
   const mid = [];
   if (on('pool')) mid.push({ h: 'Swim', p: 'The pool is yours for the day-pass hours.' });
-  if (on('food') || on('poolside') || on('welcome')) mid.push({ h: 'Eat and drink', p: inc('poolside') || inc('food') || inc('welcome') ? 'Food and drink are part of the visit.' : 'Add a food and drink credit if you want it.' });
+  if (on('food') || on('poolside') || on('welcome')) mid.push({ h: 'Eat and drink', p: 'Food and drink are not included. Buy them at the bar or café, or add an optional credit.' });
   if (on('spa') || on('sauna')) mid.push({ h: 'Warm up', p: inc('spa') || inc('sauna') ? 'Heat, steam or the hot tub is included.' : 'Add the spa if you want it.' });
   if (on('gym')) mid.push({ h: 'Move', p: inc('gym') ? 'The fitness centre is included.' : 'Add the fitness centre if you want it.' });
   return [
@@ -273,7 +304,7 @@ function policyHtml(hotel) {
     ['Children', hotel.kids_hours || 'See the age line'],
     ['ID at check-in', hotel.id_required ? 'Bring photo ID.' : 'Photo ID is not required in this demo.'],
     ['Dress', hotel.dress_code || 'Swimwear at the pool.'],
-    ['Outside food', hotel.food_rule || 'See the hotel.'],
+    ['Food and drink', hotel.food_rule || FOOD_NOTE],
     ['Cancellation', 'Free cancellation until 24 hours before the day starts, in this demo.'],
   ];
   const note = Number(hotel.is_demo) === 1
@@ -281,27 +312,37 @@ function policyHtml(hotel) {
     : '<a href="/refunds">Cancellation and refunds</a>.';
   return `<details class="fold" id="policy"><summary>Guest policy</summary><dl class="policy">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><p class="muted small">${note}</p></details>`;
 }
+function offerSelect(item) {
+  if (FOOD_DRINK.has(item.code)) {
+    const mode = foodMode(item.mode);
+    return `<select name="inc_${item.code}" aria-label="${esc(item.name)} offer">
+<option value="addon" ${mode === 'addon' ? 'selected' : ''}>Optional extra</option>
+<option value="off" ${mode === 'off' ? 'selected' : ''}>Available to purchase</option>
+</select>`;
+  }
+  return `<select name="inc_${item.code}" aria-label="${esc(item.name)} offer">
+<option value="included" ${item.mode === 'included' ? 'selected' : ''}>Included</option>
+<option value="addon" ${item.mode === 'addon' ? 'selected' : ''}>Paid add-on</option>
+<option value="off" ${item.mode === 'off' ? 'selected' : ''}>Not offered</option>
+</select>`;
+}
 function inclusionsForm(items) {
   const rows = items.map(i => `<div class="inc-edit">
 <span>${esc(i.name)}</span>
-<select name="inc_${i.code}" aria-label="${esc(i.name)} offer">
-<option value="included" ${i.mode === 'included' ? 'selected' : ''}>Included</option>
-<option value="addon" ${i.mode === 'addon' ? 'selected' : ''}>Paid add-on</option>
-<option value="off" ${i.mode === 'off' ? 'selected' : ''}>Not offered</option>
-</select>
+${offerSelect(i)}
 <label>Price<input class="num" type="number" min="0" step="1" name="price_${i.code}" value="${i.price ? i.price : ''}" placeholder="Blank" aria-label="${esc(i.name)} price. Leave blank if there is no charge."></label>
 <label>A day<input class="num" type="number" min="0" step="1" name="cap_${i.code}" value="${i.daily_cap || 0}" aria-label="${esc(i.name)} per day"></label>
 ${i.code === 'parking' ? `<label class="inc-note">Note<input name="note_parking" maxlength="160" value="${esc(i.note || '')}" placeholder="Where to park"></label>` : `<input type="hidden" name="note_${i.code}" value="${esc(i.note || '')}">`}
 </div>`).join('');
   return `<form class="inc-form" method="post" action="/hotel/inclusions"><h2>What's included</h2>
-<p class="muted small">Included items come with the pass. Paid add-ons are optional at booking and use the daily number as a cap. Leave the price blank when there is no charge. Parking uses that cap as spaces per day. Not offered stays off the listing.</p>
+<p class="muted small">Included items come with the pass. Food and drink is never included: offer it as an optional extra, or leave it as available to purchase at the bar or café. Paid add-ons are optional at booking and use the daily number as a cap. Leave the price blank when there is no charge. Parking uses that cap as spaces per day. Not offered stays off the listing.</p>
 <div class="inc-edit inc-head"><span>Item</span><span>Offer</span><span>Price</span><span>A day</span></div>
 ${rows}
 <div class="offer-save"><button class="btn btn-navy" type="submit">Save what's included</button></div></form>`;
 }
 
 module.exports = {
-  INCLUSIONS, SEAT_PHOTO, seatPhoto, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
+  INCLUSIONS, FOOD_NOTE, SEAT_PHOTO, seatPhoto, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
   includedHtml, includedLines, includedText, includedNote, includedBlock,
   addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml,
 };

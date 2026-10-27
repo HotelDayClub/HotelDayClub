@@ -26,6 +26,7 @@ function bookingNotice(info) {
     ['Pass', info.passLabel],
     ['Guests', info.guests],
     ['Included', info.included],
+    ['Food and drink', 'Food and drink are not included in the pass. Buy them at the bar or café, or add an optional food and drink credit when the hotel offers one.'],
     ['Extras', extras],
     ['Total', info.totalLabel],
     ['Booking code', info.code],

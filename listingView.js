@@ -1,7 +1,7 @@
 const { esc, money } = require('./util');
 const { instantConfirmationText } = require('./siteMode');
 const { KINDS } = require('./offering');
-const { seatPhoto, includedLines, includedNote } = require('./inclusions');
+const { seatPhoto, includedLines, includedNote, FOOD_NOTE } = require('./inclusions');
 
 const KIND_NAME = Object.fromEntries(KINDS.map(k => [k.code, k.name]));
 const KIND_ORDER = KINDS.map(k => k.code);
@@ -263,6 +263,7 @@ ${arrival}
 </div>
 <h2 class="day-kicker">Passes</h2>
 ${passSection(passes, av, h, items)}
+<p class="pass-food">${esc(FOOD_NOTE)}</p>
 <div class="page-folds">
 ${parkFold}
 <details class="fold" id="cancel-fold"><summary>Cancellation</summary><p>${esc(know || cancel)} <a href="/refunds">Draft cancellation terms</a>.</p></details>

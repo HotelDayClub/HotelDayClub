@@ -6,7 +6,7 @@ const { demoHotelPassword } = require('./passwords');
 const CATALOG = [
   { code: 'gym', name: 'Gym access', blurb: 'Use the gym on the same day.', per: 'guest', price: 25, cap: 20 },
   { code: 'parking', name: 'Parking', blurb: 'One car space for the day.', per: 'booking', price: 20, cap: 25 },
-  { code: 'food', name: 'Food & drink credit', blurb: 'To spend at the bar or café.', per: 'guest', price: 30, cap: 40 },
+  { code: 'food', name: 'Food and drink credit', blurb: 'Optional credit to spend at the bar or café. Not included in the pass.', per: 'guest', price: 30, cap: 40 },
   { code: 'cabana', name: 'Cabana upgrade', blurb: 'A reserved cabana for your group.', per: 'booking', price: 80, cap: 6 },
   { code: 'robe', name: 'Towel & robe pack', blurb: 'An extra towel and a robe.', per: 'guest', price: 15, cap: 30 },
   { code: 'late', name: 'Late access', blurb: 'Stay until the pool closes, after day-pass hours end. It does not run past closing time.', per: 'guest', price: 35, cap: 12 },
@@ -28,7 +28,7 @@ function week(days, opens, closes) {
 const OFFERINGS = {
   'saltwater-terrace': {
     hours: week(ALL_WEEK, '10:00', '16:00'), cutoff_hours: 2, heated: 1, setting: 'outdoor',
-    age_policy: 'All ages', kids_hours: 'All open hours', towels: 1, food_rule: 'Food and drink from the pool bar only',
+    age_policy: 'All ages', kids_hours: 'All open hours', towels: 1, food_rule: 'Food and drink are not included. Buy them from the pool bar.',
     id_required: 1, lifeguard: 0,
     spots: [
       { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the infinity pool, with a towel.', holds: 1, price: 45, daily_cap: 24, photo: 'hero-loungers.jpg', featured: 1 },
@@ -38,7 +38,7 @@ const OFFERINGS = {
   },
   'skyline-rooftop': {
     hours: week('0,1,2,3,4,6', '11:00', '17:00'), cutoff_hours: 1, heated: 1, setting: 'outdoor',
-    age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: 'Bar from noon. No outside food or drink.',
+    age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: 'Food and drink are not included. The bar sells them from noon. No outside food or drink.',
     id_required: 1, lifeguard: 0, room_only_from: '16:00', room_only_to: '17:00',
     spots: [
       { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair on the rooftop deck, with a towel.', holds: 1, price: 55, daily_cap: 20, photo: 'rooftop-city.jpg', featured: 1 },
@@ -48,7 +48,7 @@ const OFFERINGS = {
   },
   'harbourside-lido': {
     hours: week(ALL_WEEK, '09:00', '18:00'), cutoff_hours: 2, heated: 1, setting: 'indoor',
-    age_policy: '16+', kids_hours: '16 and over only', towels: 1, food_rule: 'No outside food. Café on site.',
+    age_policy: '16+', kids_hours: '16 and over only', towels: 1, food_rule: 'Food and drink are not included. Buy them at the café. No outside food.',
     id_required: 1, lifeguard: 0,
     season_start: '12-01', season_end: '03-31', season_opens: '08:00', season_closes: '19:00',
     spots: [
@@ -59,7 +59,7 @@ const OFFERINGS = {
   },
   'palm-court': {
     hours: week('0,4,5,6', '10:00', '17:00'), cutoff_hours: 1, heated: 0, setting: 'outdoor',
-    age_policy: 'All ages', kids_hours: 'All open hours, shallow end', towels: 1, food_rule: 'Café on site. Packed lunches welcome.',
+    age_policy: 'All ages', kids_hours: 'All open hours, shallow end', towels: 1, food_rule: 'Food and drink are not included. Buy them at the café, or add the optional food and drink credit. Packed lunches are welcome.',
     id_required: 1, lifeguard: 1,
     spots: [
       { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger in the palm gardens, with a towel.', holds: 1, price: 35, daily_cap: 40, photo: 'tropical-resort.jpg', featured: 1 },
@@ -69,7 +69,7 @@ const OFFERINGS = {
   },
   'manly-sands': {
     hours: week(ALL_WEEK, '10:00', '16:00'), cutoff_hours: 2, heated: 0, setting: 'outdoor',
-    age_policy: 'All ages', kids_hours: 'Until 2pm', towels: 1, food_rule: 'Kiosk on site. No glass.',
+    age_policy: 'All ages', kids_hours: 'Until 2pm', towels: 1, food_rule: 'Food and drink are not included. Buy them at the kiosk. No glass.',
     id_required: 1, lifeguard: 0,
     spots: [
       { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the magnesium pool, with a towel.', holds: 1, price: 40, daily_cap: 28, photo: 'infinity-palms.jpg', featured: 1 },
@@ -78,7 +78,7 @@ const OFFERINGS = {
   },
   'bayview-spa': {
     hours: week('0,2,3,4,5,6', '09:00', '16:00'), cutoff_hours: 3, heated: 1, setting: 'both',
-    age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: 'No outside food or drink.',
+    age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: 'Food and drink are not included. No outside food or drink.',
     id_required: 1, lifeguard: 0,
     spots: [
       { code: 'entry', kind: 'entry', name: 'General entry', description: 'Bathhouse, plunge pools and the outdoor pool.', holds: 1, price: 80, daily_cap: 24, photo: 'spa-steps.jpg', featured: 1 },
@@ -128,10 +128,10 @@ function ensureSchedules(db) {
 function seed(db) {
 const hotels = [
   ['saltwater-terrace', 'The Saltwater Terrace (Demo)', 'Eastern Beaches', 'Ocean-facing infinity pool above the sand',
-   'A heated infinity pool on level one, looking straight out to the Pacific. Loungers, towels and a pool bar doing frozen margs from 11.',
+   'A heated infinity pool on level one, looking straight out to the Pacific. Loungers and towels. The pool bar sells drinks from 11.',
    ['infinity-ocean.jpg', 'beach-resort-pool.jpg', 'loungers-snacks.jpg', 'infinity-palms.jpg'], ['Heated pool', 'Ocean view', 'Pool bar', 'Towels included', 'Showers & lockers'], 'demo-saltwater'],
   ['skyline-rooftop', 'Skyline Rooftop Hotel (Demo)', 'North Sydney', 'Heated rooftop pool with city views',
-   'Swim above the office towers. A heated rooftop pool, cabana daybeds and a bar that opens at noon. Quietest Mon to Thu.',
+   'Swim above the office towers. A heated rooftop pool, cabana daybeds, and a bar selling drinks from noon. Quietest Mon to Thu.',
    ['rooftop-city.jpg', 'hero-loungers.jpg', 'daybed-canopy.jpg', 'cabana-drapes.jpg'], ['Heated pool', 'Rooftop', 'City views', 'Daybeds', 'Gym access'], 'demo-skyline'],
   ['harbourside-lido', 'Harbourside Lido (Demo)', 'CBD & Harbour', 'Glass-roofed pool and day spa in the city',
    'A light-filled pool under a glass roof, with steam room, sauna and a spa menu.',
@@ -140,7 +140,7 @@ const hotels = [
    'A big lagoon pool ringed by palms, with plenty of shade and a family-friendly shallow end. Easy parking.',
    ['tropical-resort.jpg', 'resort-palms.jpg', 'thatched-umbrellas.jpg'], ['Lagoon pool', 'Kid-friendly', 'Free parking', 'Shade umbrellas', 'Café'], 'demo-palmcourt'],
   ['manly-sands', 'Manly Sands House (Demo)', 'Northern Beaches', 'Canopy daybeds steps from the beach',
-   'Canopy daybeds right on the water line, a magnesium pool and a kiosk doing smashed avo and cold ones.',
+   'Canopy daybeds right on the water line, a magnesium pool, and a kiosk selling food and drinks.',
    ['daybed-canopy.jpg', 'thatched-umbrellas.jpg', 'infinity-palms.jpg', 'beach-resort-pool.jpg'], ['Magnesium pool', 'Beachside', 'Daybeds', 'Kiosk', 'Towels included'], 'demo-manly'],
   ['bayview-spa', 'Bayview Spa Hotel (Demo)', 'Eastern Suburbs', 'Bathhouse, plunge pools and poolside cabanas',
    'A calm bathhouse with hot and cold plunge, a heated outdoor pool and draped cabanas. Adults only (18+).',

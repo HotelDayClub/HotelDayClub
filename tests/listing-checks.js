@@ -175,6 +175,11 @@ function start(port) {
     assert.ok(palm.body.includes('<summary>Parking</summary>'));
     assert.ok(palm.body.includes('On-site parking is included'));
     assert.ok(!palm.body.includes('Parking is not offered'));
+    assert.ok(palm.body.includes('Food and drink are not included'));
+    assert.ok(palm.body.includes('Food and drink credit'));
+    assert.ok(palm.body.includes('$22'));
+    assert.ok(!palm.body.includes('part of the visit'));
+    assert.ok(!palm.body.includes('Poolside food and drink'));
     assert.ok(palm.body.includes('id="getting-there"'));
     assert.ok(palm.body.includes('7 Demo Avenue'));
 
@@ -208,6 +213,14 @@ function start(port) {
     assert.ok(authed.body.includes("What's included"));
     assert.ok(authed.body.includes('Most popular label'));
     assert.ok(authed.body.includes('name="cap_parking"'));
+    assert.ok(authed.body.includes('Food and drink is never included'));
+    for (const name of ['inc_food', 'inc_welcome', 'inc_poolside']) {
+      const block = authed.body.match(new RegExp(`<select name="${name}"[\\s\\S]*?</select>`));
+      assert.ok(block, name);
+      assert.ok(!block[0].includes('value="included"'), name);
+      assert.ok(block[0].includes('Optional extra'), name);
+      assert.ok(block[0].includes('Available to purchase'), name);
+    }
 
     const Database = require('better-sqlite3');
     const live = new Database(dbPath);
@@ -232,6 +245,8 @@ function start(port) {
     assert.ok(checkout.body.includes('1 × Towels'));
     assert.ok(checkout.body.includes('1 × Pool access'));
     assert.ok(checkout.body.includes('1 × Complimentary Wi-Fi'));
+    assert.ok(checkout.body.includes('Food and drink are not included'));
+    assert.ok(!checkout.body.includes('Poolside food and drink'));
     assert.ok(checkout.body.includes('Parking'));
     assert.ok(!checkout.body.includes('30 a day'));
     assert.ok(!/\b\d+ a day\b/.test(checkout.body));
@@ -261,6 +276,8 @@ function start(port) {
     assert.ok(confirm.body.includes('2 × Towels'));
     assert.ok(confirm.body.includes('2 × Pool access'));
     assert.ok(confirm.body.includes('1 × Complimentary Wi-Fi'));
+    assert.ok(confirm.body.includes('Food and drink are not included in the pass.'));
+    assert.ok(!confirm.body.includes('Poolside food and drink'));
     assert.ok(confirm.body.includes('Cancellation'));
     assert.ok(confirm.body.includes('Fitness centre access'));
     assert.ok(confirm.body.includes('Parking'));
