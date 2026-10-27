@@ -15,7 +15,7 @@
 3.4 Prices are set by the Hotel and may change, but not for a booking already confirmed.
 
 ## 4. What your pass includes
-4.1 Your pass includes only what the listing says (for example, pool access, a lounger, a towel, change rooms) for the date and hours shown. Food, drinks, treatments and other items are not included unless listed.
+4.1 Your pass includes only what the listing says (for example, pool access, a lounger, a towel, change rooms) for the date and hours shown. Food and drink are never included. You can buy them at the hotel, or add an optional food and drink credit when the listing offers one. Treatments and other items are not included unless listed.
 4.2 "Per person", "per daybed" and "per cabana" mean what the listing says about how many people that spot holds. Each person entering must be on a booking.
 4.3 Facilities can occasionally be limited on the day (for example, a sauna under maintenance). If something you paid for isn't available, see our [Cancellation & Refund Policy](/refunds). You may be entitled to a refund or partial refund.
 

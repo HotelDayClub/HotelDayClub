@@ -1,4 +1,5 @@
 const assert = require('assert');
+const { DEMO_INTROS } = require('../seed');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -31,6 +32,22 @@ function post(port, urlPath, fields, headers = {}) {
     req.end(body);
   });
 }
+function leadAndMeta(body, slug, name, area) {
+  const intro = DEMO_INTROS[slug];
+  assert.ok(body.includes(`<b>${intro.tagline}.</b> ${intro.blurb}`), slug);
+  const meta = body.match(/<meta name="description" content="([^"]*)">/);
+  const og = body.match(/<meta property="og:description" content="([^"]*)">/);
+  const tw = body.match(/<meta name="twitter:description" content="([^"]*)">/);
+  const expected = `${name} is a fictional example in ${area}. Stock photos. No real booking is taken on this demo.`.replace(/&/g, '&amp;');
+  assert.ok(meta && meta[1].length <= 155, slug);
+  assert.strictEqual(meta[1], expected, slug);
+  assert.strictEqual(og[1], expected, slug);
+  assert.strictEqual(tw[1], expected, slug);
+  assert.ok(!meta[1].includes(intro.blurb.slice(0, 24)), slug);
+  const ld = body.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  assert.ok(ld && !ld[1].includes(intro.blurb.slice(0, 24)), slug);
+}
+
 function start(port) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['server.js'], {
@@ -59,10 +76,13 @@ function start(port) {
     assert.ok(home.body.includes('id="wl-dest"'));
     const pool = await get(port, '/?want=pool');
     assert.ok(pool.body.includes('Saltwater Terrace'));
+    assert.ok(!home.body.includes(DEMO_INTROS['bayview-spa'].blurb));
+    assert.ok(!pool.body.includes(DEMO_INTROS['saltwater-terrace'].blurb));
     const spa = await get(port, '/?want=spa');
     assert.ok(spa.body.includes('Bayview Spa'));
     assert.ok(spa.body.includes('Harbourside Lido'));
     assert.ok(!spa.body.includes('Saltwater Terrace'));
+    assert.ok(!spa.body.includes(DEMO_INTROS['harbourside-lido'].blurb));
     const gym = await get(port, '/?want=gym');
     assert.ok(gym.body.includes('Skyline Rooftop'));
     assert.ok(!gym.body.includes('Palm Court'));
@@ -72,9 +92,33 @@ function start(port) {
 
     const salt = await get(port, '/h/saltwater-terrace');
     assert.strictEqual(salt.status, 200);
+    leadAndMeta(salt.body, 'saltwater-terrace', 'The Saltwater Terrace', 'Eastern Beaches');
     assert.ok(salt.body.includes('Your day at The Saltwater Terrace'));
-    assert.ok(salt.body.includes('id="included"'));
+    assert.ok(salt.body.includes('id="passes"'));
+    assert.ok(!salt.body.includes('id="included"'));
+    assert.ok(!salt.body.includes('class="inc-grid"'));
+    assert.ok(salt.body.includes('class="pass-open"'));
+    assert.ok(salt.body.includes('class="pass-filter"'));
+    assert.ok(salt.body.includes('aria-pressed="true">All</button>'));
+    assert.ok(salt.body.includes('aria-expanded="false"'));
+    assert.ok(salt.body.includes('aria-controls="pass-detail-lounger"'));
+    assert.ok(salt.body.includes('type="button"'));
+    assert.ok(salt.body.includes("What's included"));
+    assert.ok(salt.body.includes('From $'));
+    assert.ok(!salt.body.includes('1 guest'));
+    assert.ok(salt.body.includes('2 guests'));
+    assert.ok(salt.body.includes('4 guests'));
+    assert.ok(salt.body.includes('1 × Towels'));
+    assert.ok(salt.body.includes('2 × Towels'));
+    assert.ok(salt.body.includes('4 × Towels'));
+    assert.ok(salt.body.includes('1 × Pool access'));
     assert.ok(salt.body.includes('Complimentary Wi-Fi'));
+    assert.ok(salt.body.includes('id="pass-detail-lounger" data-code="lounger" role="region" aria-labelledby="pass-title-lounger" hidden'));
+    assert.ok(salt.body.includes('<summary>Opening hours</summary>'));
+    assert.ok(salt.body.includes('<summary>Guest policy</summary>'));
+    assert.ok(salt.body.includes('<summary>Cancellation</summary>'));
+    assert.ok(!salt.body.includes('<summary>Parking</summary>'));
+    assert.ok(!salt.body.includes('Train and bus'));
     assert.ok(salt.body.includes('id="addons-list"'));
     assert.ok(salt.body.includes('id="addons-pick"'));
     assert.ok(salt.body.includes('name="addon"'));
@@ -83,7 +127,7 @@ function start(port) {
     assert.ok(salt.body.includes('value="parking"'));
     assert.ok(salt.body.includes('type="checkbox"'));
     assert.ok(salt.body.includes('Fitness centre access'));
-    assert.ok(salt.body.includes('Food and beverage credit'));
+    assert.ok(salt.body.includes('Food and drink credit'));
     assert.ok(!salt.body.includes('extra-static'));
     assert.ok(salt.body.includes('Parking'));
     assert.ok(salt.body.includes('$18'));
@@ -124,6 +168,13 @@ function start(port) {
     assert.ok(salt.body.includes('Help when you need it'));
     assert.ok(salt.body.includes('href="/contact"'));
     assert.ok(salt.body.includes('Book your day'));
+    const poolBar = salt.body.match(/<li class="access-item">[\s\S]*?<b>Pool bar<\/b>[\s\S]*?<\/li>/);
+    assert.ok(poolBar, 'pool bar access');
+    assert.ok(poolBar[0].includes('Food and drink available to purchase'));
+    assert.ok(poolBar[0].includes('From 11am'));
+    assert.ok(!/included/i.test(poolBar[0]));
+    assert.ok(salt.body.includes('<b>Infinity pool</b>'));
+    assert.ok(salt.body.includes('/assets/photos/infinity-ocean.jpg'));
     assert.ok(salt.body.includes('<option value="1" selected>1</option>'));
     assert.ok(salt.body.includes('select[name="qty"]'));
     assert.ok(!salt.body.includes("$('#qty').value"));
@@ -134,14 +185,42 @@ function start(port) {
     assert.strictEqual(popular, 1);
 
     const bay = await get(port, '/h/bayview-spa');
-    assert.ok(bay.body.includes('Adults only (18+).'));
+    leadAndMeta(bay.body, 'bayview-spa', 'Bayview Spa Hotel', 'Eastern Suburbs');
+    assert.ok(bay.body.includes('>Age</dt><dd>18+</dd>'));
+    assert.ok(bay.body.includes('>Children</dt><dd>No children</dd>'));
     assert.ok(!bay.body.includes('18+ on weekdays'));
+    assert.ok(!bay.body.includes('Adults only (18+).'));
     assert.ok(bay.body.includes('Spa treatment credit'));
     assert.ok(bay.body.includes('$30'));
     assert.ok(!bay.body.includes('Spa treatment discount'));
-    assert.ok(bay.body.includes('>Pool</dt><dd>Indoor and outdoor</dd>'));
+    assert.ok(bay.body.includes('>Pool</dt><dd>Indoor bathhouse and outdoor pool</dd>'));
+    assert.ok(!bay.body.includes('>Pool</dt><dd>Indoor and outdoor</dd>'));
+    assert.ok(bay.body.includes('>Heated</dt><dd>Yes</dd>'));
+    assert.ok(bay.body.includes('heated outdoor pool'));
+    assert.ok(bay.body.includes('Included access'));
+    assert.ok(bay.body.includes('<b>Bathhouse</b>'));
+    assert.ok(bay.body.includes('<b>Plunge pools</b>'));
+    assert.ok(bay.body.includes('<b>Heated outdoor pool</b>'));
+    assert.ok(bay.body.includes('<b>Sauna and steam room</b>'));
+    assert.ok(!bay.body.includes('<b>Café</b>'));
+    assert.ok(!bay.body.includes('<b>Bar</b>'));
+
+    const manly = await get(port, '/h/manly-sands');
+    leadAndMeta(manly.body, 'manly-sands', 'Manly Sands House', 'Northern Beaches');
+    assert.ok(manly.body.includes('steps from the beach'));
+    assert.ok(!manly.body.includes('water line'));
+    assert.ok(manly.body.includes('>Age</dt><dd>All ages</dd>'));
+    assert.ok(manly.body.includes('>Children</dt><dd>Children welcome until 2pm</dd>'));
+    assert.ok(!manly.body.includes('>Children</dt><dd>Until 2pm</dd>'));
+    assert.ok(!/adults only after 2pm/i.test(manly.body));
+    const kiosk = manly.body.match(/<li class="access-item">[\s\S]*?<b>Kiosk<\/b>[\s\S]*?<\/li>/);
+    assert.ok(kiosk, 'kiosk access');
+    assert.ok(kiosk[0].includes('Food and drink available to purchase'));
+    assert.ok(!/included/i.test(kiosk[0]));
+    assert.ok(manly.body.includes('<b>Magnesium pool</b>'));
 
     const palm = await get(port, '/h/palm-court');
+    leadAndMeta(palm.body, 'palm-court', 'Palm Court Resort', 'Parramatta');
     assert.ok(palm.body.includes('>Lifeguard</dt><dd>On duty</dd>'));
     assert.ok(palm.body.includes('>Heated</dt><dd>No</dd>'));
     assert.ok(!palm.body.includes('kids-float.jpg'));
@@ -149,13 +228,42 @@ function start(port) {
     assert.ok(palm.body.includes('resort-palms.jpg'));
     assert.ok(palm.body.includes('thatched-umbrellas.jpg'));
     assert.strictEqual((palm.body.match(/class="g\d+"/g) || []).length, 3);
+    assert.ok(palm.body.includes('<summary>Parking</summary>'));
     assert.ok(palm.body.includes('On-site parking is included'));
     assert.ok(!palm.body.includes('Parking is not offered'));
+    assert.ok(palm.body.includes('Food and drink are not included'));
+    assert.ok(palm.body.includes('available to buy at the café'));
+    assert.ok(palm.body.includes('The optional food and drink credit stays an extra.'));
+    assert.ok(palm.body.includes("What's included"));
+    assert.ok(palm.body.includes('Included access'));
+    assert.ok(palm.body.includes('<b>Lagoon pool</b>'));
+    const cafe = palm.body.match(/<li class="access-item">[\s\S]*?<b>Café<\/b>[\s\S]*?<\/li>/);
+    assert.ok(cafe, 'café access');
+    assert.ok(cafe[0].includes('Food and drink available to purchase'));
+    assert.ok(!/included/i.test(cafe[0]));
+    assert.ok(palm.body.includes('Food and drink credit'));
+    assert.ok(palm.body.includes('$22'));
+    assert.ok(!palm.body.includes('part of the visit'));
+    assert.ok(!palm.body.includes('Poolside food and drink'));
     assert.ok(palm.body.includes('id="getting-there"'));
     assert.ok(palm.body.includes('7 Demo Avenue'));
 
+    const harbour = await get(port, '/h/harbourside-lido');
+    leadAndMeta(harbour.body, 'harbourside-lido', 'Harbourside Lido', 'CBD & Harbour');
+    assert.ok(harbour.body.includes('>Pool</dt><dd>Indoor</dd>'));
+    assert.ok(harbour.body.includes('>Heated</dt><dd>Yes</dd>'));
+    assert.ok(harbour.body.includes('heated indoor pool'));
+
     const sky = await get(port, '/h/skyline-rooftop');
+    leadAndMeta(sky.body, 'skyline-rooftop', 'Skyline Rooftop Hotel', 'North Sydney');
     assert.ok(sky.body.includes('Mon–Thu · 11am–4pm'));
+    assert.ok(sky.body.includes('<b>Heated rooftop pool</b>'));
+    assert.ok(!sky.body.includes('<b>Gym</b>'));
+    const skyBar = sky.body.match(/<li class="access-item">[\s\S]*?<b>Bar<\/b>[\s\S]*?<\/li>/);
+    assert.ok(skyBar, 'bar access');
+    assert.ok(skyBar[0].includes('Food and drink available to purchase'));
+    assert.ok(skyBar[0].includes('From noon'));
+    assert.ok(!/included/i.test(skyBar[0]));
     assert.ok(!sky.body.includes('Wed ·'));
     assert.ok(sky.body.includes('Parking'));
     assert.ok(sky.body.includes('$40'));
@@ -182,8 +290,21 @@ function start(port) {
     assert.ok(authed.body.includes('Getting there'));
     assert.ok(authed.body.includes('name="address"'));
     assert.ok(authed.body.includes("What's included"));
+    assert.ok(authed.body.includes('Included access'));
+    assert.ok(authed.body.includes('name="area_name"'));
+    assert.ok(authed.body.includes('Infinity pool'));
+    assert.ok(authed.body.includes('Pool bar'));
+    assert.ok(authed.body.includes('Food and drink is not included'));
     assert.ok(authed.body.includes('Most popular label'));
     assert.ok(authed.body.includes('name="cap_parking"'));
+    assert.ok(authed.body.includes('Food and drink is never included'));
+    for (const name of ['inc_food', 'inc_welcome', 'inc_poolside']) {
+      const block = authed.body.match(new RegExp(`<select name="${name}"[\\s\\S]*?</select>`));
+      assert.ok(block, name);
+      assert.ok(!block[0].includes('value="included"'), name);
+      assert.ok(block[0].includes('Optional extra'), name);
+      assert.ok(block[0].includes('Available to purchase'), name);
+    }
 
     const Database = require('better-sqlite3');
     const live = new Database(dbPath);
@@ -204,6 +325,12 @@ function start(port) {
     assert.ok(!checkout.body.includes('Spots left'));
     assert.ok(checkout.body.includes('>Pass</dt>'));
     assert.ok(checkout.body.includes('>Guests</dt>'));
+    assert.ok(checkout.body.includes("What's included"));
+    assert.ok(checkout.body.includes('1 × Towels'));
+    assert.ok(checkout.body.includes('1 × Pool access'));
+    assert.ok(checkout.body.includes('1 × Complimentary Wi-Fi'));
+    assert.ok(checkout.body.includes('Food and drink are not included'));
+    assert.ok(!checkout.body.includes('Poolside food and drink'));
     assert.ok(checkout.body.includes('Parking'));
     assert.ok(!checkout.body.includes('30 a day'));
     assert.ok(!/\b\d+ a day\b/.test(checkout.body));
@@ -229,6 +356,16 @@ function start(port) {
     pricedDb.close();
     assert.ok(win && win.start < win.end);
     const confirm = await get(port, priced.headers.location);
+    assert.ok(confirm.body.includes("What's included"));
+    assert.ok(confirm.body.includes('2 × Towels'));
+    assert.ok(confirm.body.includes('2 × Pool access'));
+    assert.ok(confirm.body.includes('1 × Complimentary Wi-Fi'));
+    assert.ok(confirm.body.includes('Food and drink are not included in the pass.'));
+    assert.ok(!confirm.body.includes('Poolside food and drink'));
+    assert.ok(confirm.body.includes('Cancellation'));
+    assert.ok(confirm.body.includes('Included access'));
+    assert.ok(confirm.body.includes('Infinity pool'));
+    assert.ok(confirm.body.includes('Food and drink available to purchase'));
     assert.ok(confirm.body.includes('Fitness centre access'));
     assert.ok(confirm.body.includes('Parking'));
     assert.ok(confirm.body.includes('$158'));
