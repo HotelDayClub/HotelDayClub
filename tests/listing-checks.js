@@ -104,6 +104,8 @@ function start(port) {
     assert.ok(salt.body.includes('data-inline="1"'));
     assert.ok(salt.body.includes('Most popular'));
     assert.ok(salt.body.includes('Instant confirmation'));
+    assert.ok(salt.body.includes('a confirmation email is sent to the address you give'));
+    assert.ok(salt.body.includes('This demo does not take a payment and is not a reservation at a real hotel.'));
     assert.ok(salt.body.includes('class="assure assure-lite"'));
     assert.ok(salt.body.includes('24 hours to cancel'));
     assert.ok(salt.body.includes('Show your QR code at check-in.'));
