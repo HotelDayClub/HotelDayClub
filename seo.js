@@ -85,7 +85,7 @@ const GUIDES = [
     paras: [
       'Start with the hours. A day pass is not a room, and it is not the whole day unless the hotel says so. The listing should show when you can arrive and when you have to leave.',
       'Read what is included before you compare prices. Pool, gym, spa, towel, parking and food credit are different things. A lower price that leaves them out is not the same pass.',
-      'Check who can come. The person booking needs to be 18 or over. Each hotel sets its own age rule and kids hours, and those belong on the listing and in the risk warning.',
+      'Check who can come. The person booking needs to be 18 or over. Each hotel sets its own age rule and kids’ hours, and those belong on the listing and in the risk warning.',
       'Look at the pool itself. Indoor or outdoor, heated or not, and whether rain on its own closes it. Rain is not a closure by itself. If the hotel closes the facility, the refund page is the place that explains the choice you get.',
       'We do not publish star ratings or review counts. Use the hours, the inclusions and the price on the page. On this demo, treat every hotel as an example. The photos are stock, and no real booking is taken.',
     ],
@@ -334,7 +334,10 @@ const CANONICAL_HOSTS = new Set(['hoteldayclub.com.au', 'www.hoteldayclub.com.au
 
 function canonicalRedirect(req, res, next) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  const pathOnly = String(req.path || '').split('?')[0];
+  if (pathOnly === '/healthz') return next();
   const host = String(req.headers.host || '').replace(/:\d+$/, '').toLowerCase();
+  if (host === 'hotel-day-club.onrender.com') return res.redirect(301, ORIGIN + req.originalUrl);
   if (!CANONICAL_HOSTS.has(host)) return next();
   const proto = String(req.get('x-forwarded-proto') || req.protocol || '').split(',')[0].trim().toLowerCase();
   if (host === 'www.hoteldayclub.com.au' && proto === 'https') return next();
@@ -355,7 +358,7 @@ function faqItems(mailHtml, mailText) {
     { q: 'What do I accept at checkout?', html: 'Three separate boxes: the hotel\'s pool rules, the <a href="/terms">customer terms</a> (including the <a href="/refunds">refund policy</a> and <a href="/privacy">privacy notice</a>), and the <a href="/risk">risk warning</a> for that hotel. The warning is shown in full on checkout. Marketing email is optional and is not required.' },
     { q: 'What are the hours?', html: 'Each hotel sets its own hours. A day pass is not sold past the time a room-guests-only period starts. Late access, where a hotel offers it, starts only after that period ends and stops when the pool closes.' },
     { q: 'What should I bring?', html: 'Swimwear, and sunscreen if the pool is outdoors. The listing says if a towel is included and if photo ID is required.' },
-    { q: 'Do you sell gift cards or pass packs?', html: 'Not on this demo. Any gift card offered later is valid for at least 3 years from the date of issue. A 5-pass pack is not offered, and it is not sold as a gift.' },
+    { q: 'Do you sell gift cards or pass packs?', html: "Not on this demo. If we offer gift cards later, they'll be valid for at least 3 years from purchase." },
     { q: 'Do you show ratings or reviews?', html: 'No. Listings say New. This site does not publish star ratings or review counts.' },
     { q: 'How do I contact you?', html: `Email ${mailHtml} for a booking, a complaint, or a privacy request.`, text: `Email ${mailText} for a booking, a complaint, or a privacy request.` },
   ];

@@ -102,9 +102,13 @@ function arrivalHtml(hotel) {
     parking ? `<li><b>Parking</b><span>${esc(parking)}</span></li>` : '',
     entrance ? `<li><b>Day guests</b><span>${esc(entrance)}</span></li>` : '',
   ].join('');
+  const demo = Number(hotel.is_demo) === 1;
+  const directions = address && !demo
+    ? `<a class="btn btn-navy" href="${esc(google)}" target="_blank" rel="noopener noreferrer">Get directions</a><a class="btn btn-line" href="${esc(apple)}" target="_blank" rel="noopener noreferrer">Apple Maps</a>`
+    : '';
   return `<section class="l-sec" id="getting-there"><h3>Getting there</h3>
 <div class="arrive-line">${address ? `<p class="arrive-addr">${esc(address)}</p>` : ''}${preview}</div>
-<div class="arrive-acts">${address ? `<a class="btn btn-navy" href="${esc(google)}" target="_blank" rel="noopener noreferrer">Get directions</a><a class="btn btn-line" href="${esc(apple)}" target="_blank" rel="noopener noreferrer">Apple Maps</a>` : ''}</div>
+<div class="arrive-acts">${directions}</div>
 ${notes ? `<ul class="arrive-notes">${notes}</ul>` : ''}
 <p class="muted small">This is a fictional demo address. <a href="${esc(osm)}" rel="noopener noreferrer">Open the map</a>.</p>
 ${sheet}</section>`;

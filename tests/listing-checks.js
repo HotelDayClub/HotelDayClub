@@ -86,8 +86,14 @@ function start(port) {
     assert.ok(salt.body.includes('Guest policy'));
     assert.ok(salt.body.includes('id="getting-there"'));
     assert.ok(salt.body.includes('18 Demo Terrace'));
-    assert.ok(salt.body.includes('Get directions'));
-    assert.ok(salt.body.includes('Apple Maps'));
+    assert.ok(!salt.body.includes('Get directions'));
+    assert.ok(!salt.body.includes('Apple Maps'));
+    assert.ok(salt.body.includes('Pick a date to see your free-cancellation deadline.'));
+    assert.ok(!salt.body.includes("can't be cancelled for free"));
+    assert.ok(salt.body.includes('>Lifeguard</dt><dd>Not on duty</dd>'));
+    assert.ok(salt.body.includes('>Pool</dt><dd>Outdoor</dd>'));
+    assert.ok(salt.body.includes('>Heated</dt><dd>Yes</dd>'));
+    assert.ok(salt.body.includes('Example information for a fictional hotel.'));
     assert.ok(salt.body.includes('class="map-peek"'));
     assert.ok(salt.body.includes('View map'));
     assert.ok(salt.body.includes('data-lat="-33.8915"'));
@@ -100,7 +106,7 @@ function start(port) {
     assert.ok(salt.body.includes('Instant confirmation'));
     assert.ok(salt.body.includes('class="assure assure-lite"'));
     assert.ok(salt.body.includes('24 hours to cancel'));
-    assert.ok(salt.body.includes('Show your QR code at reception to check in.'));
+    assert.ok(salt.body.includes('Show your QR code at check-in.'));
     assert.ok(salt.body.includes('Help when you need it'));
     assert.ok(salt.body.includes('href="/contact"'));
     assert.ok(salt.body.includes('Book your day'));
@@ -113,7 +119,17 @@ function start(port) {
     const popular = salt.body.split('Most popular').length - 1;
     assert.strictEqual(popular, 1);
 
+    const bay = await get(port, '/h/bayview-spa');
+    assert.ok(bay.body.includes('Adults only (18+).'));
+    assert.ok(!bay.body.includes('18+ on weekdays'));
+    assert.ok(bay.body.includes('Spa treatment credit'));
+    assert.ok(bay.body.includes('$30'));
+    assert.ok(!bay.body.includes('Spa treatment discount'));
+    assert.ok(bay.body.includes('>Pool</dt><dd>Indoor and outdoor</dd>'));
+
     const palm = await get(port, '/h/palm-court');
+    assert.ok(palm.body.includes('>Lifeguard</dt><dd>On duty</dd>'));
+    assert.ok(palm.body.includes('>Heated</dt><dd>No</dd>'));
     assert.ok(!palm.body.includes('kids-float.jpg'));
     assert.ok(palm.body.includes('tropical-resort.jpg'));
     assert.ok(palm.body.includes('resort-palms.jpg'));

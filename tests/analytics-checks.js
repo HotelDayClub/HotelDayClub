@@ -133,8 +133,8 @@ assert.strictEqual(afterReal.bookings, before + 1);
 assert.strictEqual(afterReal.gross, r7.gross + pass.price);
 assert.strictEqual(afterReal.example, true);
 
-const id = db.prepare(`INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status)
-  VALUES ('independent-pool','Independent Pool','CBD','A quiet pool','','[]','[]','',null,'independent','x','active')`).run().lastInsertRowid;
+const id = db.prepare(`INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status,heated,setting,lifeguard)
+  VALUES ('independent-pool','Independent Pool','CBD','A quiet pool','','[]','[]','',null,'independent','x','active',1,'outdoor',0)`).run().lastInsertRowid;
 for (let wd = 0; wd < 7; wd++) db.prepare('INSERT INTO hotel_hours(hotel_id,weekday,open,opens,closes) VALUES (?,?,1,?,?)').run(id, wd, '10:00', '16:00');
 const pid = db.prepare(`INSERT INTO pass_types(hotel_id,code,name,description,price,daily_cap,sort,holds,kind)
   VALUES (?,?,?,?,?,?,?,?,?)`).run(id, 'lounger', 'Sun lounger', '', 80, 10, 0, 1, 'lounger').lastInsertRowid;
