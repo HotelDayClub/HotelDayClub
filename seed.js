@@ -143,8 +143,8 @@ const hotels = [
    'Canopy daybeds right on the water line, a magnesium pool and a kiosk doing smashed avo and cold ones.',
    ['daybed-canopy.jpg', 'thatched-umbrellas.jpg', 'infinity-palms.jpg', 'beach-resort-pool.jpg'], ['Magnesium pool', 'Beachside', 'Daybeds', 'Kiosk', 'Towels included'], 'demo-manly'],
   ['bayview-spa', 'Bayview Spa Hotel (Demo)', 'Eastern Suburbs', 'Bathhouse, plunge pools and poolside cabanas',
-   'A calm bathhouse with hot and cold plunge, a heated outdoor pool and draped cabanas. 18+ on weekdays.',
-   ['cabana-drapes.jpg', 'indoor-spa-pool.jpg', 'spa-steps.jpg', 'loungers-snacks.jpg'], ['Heated pool', 'Hot & cold plunge', 'Cabanas', '18+ weekdays', 'Robes'], 'demo-bayview'],
+   'A calm bathhouse with hot and cold plunge, a heated outdoor pool and draped cabanas. Adults only (18+).',
+   ['cabana-drapes.jpg', 'indoor-spa-pool.jpg', 'spa-steps.jpg', 'loungers-snacks.jpg'], ['Heated pool', 'Hot & cold plunge', 'Cabanas', 'Adults only (18+)', 'Robes'], 'demo-bayview'],
 ];
 const insH = db.prepare('INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status,is_demo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
 const insB = db.prepare('INSERT INTO blocked_dates(hotel_id,date,reason) VALUES (?,?,?)');

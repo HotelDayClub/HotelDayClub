@@ -111,7 +111,11 @@ function cookie(res) {
     assert.ok(home.body.includes('24 hours to cancel'));
     assert.ok(home.body.includes('Free until 24 hours before your access hours start.'));
     assert.ok(home.body.includes('No room needed'));
-    assert.ok(home.body.includes('Show your QR code at reception to check in.'));
+    assert.ok(home.body.includes('Show your QR code at check-in.'));
+    assert.ok(home.body.includes('Plan your day'));
+    assert.ok(home.body.includes('A hotel day, your way'));
+    assert.ok(home.body.includes('One example day. You book the day. The hotel sets the hours.'));
+    assert.ok(!home.body.includes('by the hour'));
     assert.ok(home.body.includes('If the pool closes'));
     assert.ok(home.body.includes('full refund or a free rebooking'));
     assert.ok(home.body.includes('Help when you need it'));
@@ -168,7 +172,8 @@ function cookie(res) {
     assert.ok(hotels.body.includes('A short pilot'));
     assert.ok(hotels.body.includes('Talk to us'));
     assert.ok(hotels.body.includes('mailto:hello@hoteldayclub.com.au?subject=Hotel%20Day%20Club%20-%20partnership%20enquiry'));
-    assert.ok(!/commission|75%|25%|partner hotel/i.test(hotels.body));
+    assert.ok(!/75%|25%|partner hotel/i.test(hotels.body));
+    assert.ok(hotels.body.includes('We earn a commission on bookings and pay you the rest monthly, with a statement.'));
     assert.ok(hotels.body.includes('Hotel partner login'));
     assert.ok(hotels.body.includes('action="/hotel/login"'));
     assert.ok(hotels.body.includes('name="return" value="/for-hotels"'));

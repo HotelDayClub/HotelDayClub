@@ -26,7 +26,7 @@ Part of the Hotel Day Club Customer Terms.
 - We decide refunds on the hotel's behalf, under our agreement with the hotel.
 
 ## Contact and complaints
-If you're not happy with the outcome, contact us at {{CONTACT_EMAIL}}. You can also contact NSW Fair Trading.
+If you're not happy with the outcome, contact us at {{CONTACT_EMAIL}}. You can also contact NSW Fair Trading, or the consumer affairs agency in your state or territory.
 
 ---
 *Sources: [ACCC repair, replace, refund, cancel](https://www.accc.gov.au/business/problem-with-a-product-or-service-you-sold/repair-replace-refund-cancel) · [ACCC consumer guarantees](https://www.accc.gov.au/consumers/buying-products-and-services/consumer-rights-and-guarantees)*
