@@ -30,6 +30,7 @@ const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
   hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST,
   fmtTime, cancelNote, riskCard, riskText, riskTick, swimNote, hotelLatePossible, lateWindow,
+  venueMissing, PICK_DATE_CANCEL,
 } = require('./offering');
 const app = express();
 app.set('trust proxy', 1);
@@ -70,7 +71,9 @@ app.get('/sitemap.xml', (req, res) => {
     if (seo.legalPagesIndexable()) paths.push('/privacy', '/terms', '/refunds', '/risk');
     paths.push('/guides');
     for (const g of seo.GUIDES) paths.push('/guides/' + g.slug);
-    for (const d of DESTINATIONS) paths.push('/destinations/' + d.slug);
+    for (const d of DESTINATIONS) {
+      if (destinationHasListings(d)) paths.push('/destinations/' + d.slug);
+    }
     const hotels = db.prepare("SELECT slug FROM hotels WHERE COALESCE(status,'active')='active' AND COALESCE(is_demo,0)=0 ORDER BY slug").all();
     for (const h of hotels) paths.push('/h/' + h.slug);
   }
@@ -112,6 +115,22 @@ const hotelRow = h => {
   return row;
 };
 const getHotels = () => db.prepare("SELECT * FROM hotels WHERE COALESCE(status,'active')='active' ORDER BY id").all().map(hotelRow);
+function destinationHasListings(d) {
+  return getHotels().some(h => d.areas.includes(h.area));
+}
+function chosenDate(raw) {
+  const date = String(raw || '');
+  const maxDate = ymd(addDays(new Date(), 90));
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date) && date >= today() && date <= maxDate) return date;
+  return '';
+}
+function openAvailability(hid) {
+  return getPasses(hid).map(p => ({
+    id: p.id, code: p.code, name: p.name, kind: p.kind || '', holds: p.holds || 1, featured: p.featured ? 1 : 0,
+    description: p.description || '', photo: p.photo || '', price: p.price, cap: p.daily_cap, sold: 0,
+    remaining: p.daily_cap, blocked: null, past: false,
+  }));
+}
 const getHotel = slug => hotelRow(db.prepare('SELECT * FROM hotels WHERE slug=?').get(slug));
 const publicHotel = slug => { const h = getHotel(slug); return h && (!h.status || h.status === 'active') ? h : null; };
 const getPasses = hid => db.prepare('SELECT * FROM pass_types WHERE hotel_id=? ORDER BY sort, id').all(hid);
@@ -421,7 +440,7 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
 <div class="shimmer" aria-hidden="true"></div><div class="tint"></div></div>
 <div class="clock"><span id="ct">12:00</span><small id="cl">Long lunch</small></div><span class="credit">Stock media · example only</span></div>
 <div class="copy"><h1 class="kicker">Hotel day passes in Australia</h1>
-<h2 class="hero-line">Take the day <em>off.</em><br>Swim till&nbsp;six.</h2>
+<h2 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h2>
 <p class="lead">A hotel pool, gym, daybed or spa for the day — minutes from home, no room needed.</p>
 <div class="times"><button type="button" data-i="0" aria-pressed="false">Swim &amp; gym</button><button type="button" data-i="1" class="on" aria-pressed="true">Long lunch</button><button type="button" data-i="2" aria-pressed="false">Spa afternoon</button><button type="button" data-i="3" aria-pressed="false">Golden hour</button></div>
 <form class="search" action="/#explore" method="get">
@@ -431,7 +450,8 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
 <button type="submit">Search</button></form></div></header>
 <div class="marquee" aria-label="Pool day, gym session, spa afternoon, daybed for two, cabana with friends, golden-hour swim"><div class="track" aria-hidden="true"><span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺<span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺</div></div>
 ${reassureStrip()}
-<section data-rv><span class="kicker sand">Plan your day by the hour</span><h2>A hotel day by the hour</h2>
+<section data-rv><span class="kicker sand">Plan your day</span><h2>A hotel day, your way</h2>
+<p class="home-note">One example day. You book the day. The hotel sets the hours.</p>
 <div class="day">
 ${slot('gym-sm', 'Hotel gym with free weights', '8 am', 'Swim &amp; gym', 'A gym session, then laps before the city wakes up.')}
 ${slot('4-sm', 'Hotel daybed beside a pool', '12 pm', 'Daybed &amp; long lunch', 'Order from the pool bar, stay put till three.')}
@@ -516,9 +536,9 @@ app.get('/h/:slug', (req, res) => {
   const h = publicHotel(req.params.slug); if (!h) return sendNotFound(res);
   recordListingView(db, h.id, today(), req);
   const maxDate = ymd(addDays(new Date(), 90));
-  let date = req.query.date && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date) && req.query.date >= today() && req.query.date <= maxDate ? req.query.date : today();
+  const date = chosenDate(req.query.date);
   const passes = getPasses(h.id);
-  const av = availability(h.id, date);
+  const av = date ? availability(h.id, date) : openAvailability(h.id);
   const from = passes.length ? Math.min(...passes.map(p => p.price)) : 0;
   const items = loadInclusions(db, h.id);
   const closed = [];
@@ -531,7 +551,8 @@ app.get('/h/:slug', (req, res) => {
   res.send(page(h.name, listingHtml({
     h, date, minDate: today(), maxDate, closed: closed.join(','), passes, av, from,
     hoursLine: hoursView(db, h, date).hoursLine,
-    cancel: cancelNote(db, h, date),
+    cancel: date ? cancelNote(db, h, date) : PICK_DATE_CANCEL,
+    know: date ? cancelNote(db, h, date) : 'Free cancellation until 24 hours before access hours start.',
     beats: beatsHtml(items),
     included: includedHtml(items),
     addonList: addonsHtml(items),
@@ -552,7 +573,11 @@ app.get('/h/:slug', (req, res) => {
 
 app.get('/api/availability', (req, res) => {
   const h = publicHotel(req.query.hotel); if (!h) return res.status(404).json({ error: 'not found' });
-  const date = req.query.date || today();
+  const date = chosenDate(req.query.date);
+  if (!date) {
+    const passes = openAvailability(h.id);
+    return res.json({ hotel: h.slug, date: '', passes, day_left: null, addons: [], cancel: PICK_DATE_CANCEL });
+  }
   const passes = availability(h.id, date);
   res.json({ hotel: h.slug, date, passes, day_left: passes.day_left ?? null, addons: addonAvailability(h.id, date), cancel: cancelNote(db, h, date) });
 });
@@ -817,7 +842,7 @@ ${hotelLoginPanel(req.query.e === 'lock' ? 'lock' : req.query.e ? '1' : '')}
 <article class="fh-card"><h2>Fill the quiet hours</h2><p>Weekday pool, gym and spa time often has room in it. Day guests can take that time.</p></article>
 <article class="fh-card"><h2>Welcome local guests</h2><p>They are new people through the door. While they are with you, they may spend on food and drinks.</p></article>
 </div>
-<article class="fh-card fh-wide"><h2>You stay in control</h2><p>What the hotel offers is tailored with you. The details are agreed together, and nothing is set until you are happy with it.</p></article>
+<article class="fh-card fh-wide"><h2>You stay in control</h2><p>You stay in control. Free to list, no monthly fee. You set the seating, prices, numbers and hours. We earn a commission on bookings and pay you the rest monthly, with a statement.</p></article>
 </div>
 <section class="fh-pilot"><div class="wrap">
 <p class="fh-kicker">A short pilot</p>
@@ -1270,9 +1295,12 @@ app.post('/admin/login', (req, res) => {
 app.get('/admin/logout', (req, res) => { clearStaffCookie(res, 'admin'); res.redirect('/'); });
 app.post('/admin/approve', adminAuth, (req, res) => {
   const id = parseInt(req.body.id, 10);
-  const h = id && db.prepare('SELECT name FROM hotels WHERE id=? AND status=?').get(id, 'pending');
-  if (h) db.prepare("UPDATE hotels SET status='active' WHERE id=?").run(id);
-  res.redirect('/admin?msg=' + encodeURIComponent(h ? `Approved ${h.name}.` : 'Nothing to approve.'));
+  const h = id && db.prepare('SELECT * FROM hotels WHERE id=? AND status=?').get(id, 'pending');
+  if (!h) return res.redirect('/admin?msg=' + encodeURIComponent('Nothing to approve.'));
+  const gaps = venueMissing(h);
+  if (gaps.length) return res.redirect('/admin?msg=' + encodeURIComponent(`${h.name} is not live yet. Set ${gaps.join(', ')} first.`));
+  db.prepare("UPDATE hotels SET status='active' WHERE id=?").run(id);
+  res.redirect('/admin?msg=' + encodeURIComponent(`Approved ${h.name}.`));
 });
 app.get('/admin', adminAuth, (req, res) => {
   const hid = parseInt(req.query.hotel) || 0, q = String(req.query.q || '').trim();
@@ -1422,7 +1450,7 @@ app.get('/how-it-works', (req, res) => {
 <div class="how-grid">
 <div><span class="n">1</span><h3>Browse</h3><p class="muted">Search by neighbourhood, date and what you want: pool, gym or spa. Each listing shows what's included and the pool rules.</p></div>
 <div><span class="n">2</span><h3>Book</h3><p class="muted">Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking, gym access or a food and drink credit if you want. Tick the pool rules, the terms and the risk warning. The total updates before you confirm. This demo doesn't charge a card.</p></div>
-<div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">At the front desk when the hotel opens for day passes. The hours are on your confirmation. Reception checks you in and hands you a wristband.</p></div>
+<div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">At the check-in point on your listing. The hours are on your confirmation. Reception checks you in and hands you a wristband.</p></div>
 <div><span class="n">4</span><h3>Enjoy</h3><p class="muted">Your spot, for the hours that hotel has set. Add-ons stay optional.</p></div>
 </div>
 <p style="margin-top:18px"><a class="btn btn-coral" href="/#explore">Browse pools</a></p>
@@ -1648,7 +1676,7 @@ function destinationPage(d) {
     return `<article class="fh-card"><h2><a href="/h/${esc(h.slug)}">${esc(seo.shortName(h.name))}</a></h2><p>Fictional example listing in ${esc(h.area)}. Stock photos. Not a hotel that has signed up. From ${money(from)}.</p></article>`;
   }).join('');
   const body = hotels.length
-    ? `<p>These are fictional example listings, not hotels that have signed up.</p><div class="fh-grid">${cards}</div>`
+    ? `<div class="fh-grid">${cards}</div>`
     : `<p>Coming soon. No listings here yet.</p><p><a class="btn btn-coral" href="/?destination=${encodeURIComponent(d.id)}#waitlist">Join the waitlist</a></p>`;
   return `<div class="wrap sec"><h1 class="l-title">${esc(d.title)}</h1><p class="lead">${esc(d.intro)}</p>${body}</div>`;
 }
@@ -1657,7 +1685,7 @@ app.get('/destinations/:slug', (req, res) => {
   if (!d) return sendNotFound(res);
   res.send(page(d.name, destinationPage(d), {
     analytics: true,
-    index: true,
+    index: destinationHasListings(d) ? true : 'follow',
     path: '/destinations/' + d.slug,
     documentTitle: seo.fullTitle(d.title),
     description: d.description,

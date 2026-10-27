@@ -65,7 +65,7 @@ const salt = nextOpen('saltwater-terrace');
 const freeSky = nextOpen('skyline-rooftop', 3);
 const insideDay = nextOpen('skyline-rooftop', 0);
 const insideWindow = /can't be cancelled for free/.test(offering.cancelNote(db, insideDay.h, insideDay.date));
-assert.ok(/^Free cancellation until 11am /.test(offering.cancelNote(db, freeSky.h, freeSky.date)), offering.cancelNote(db, freeSky.h, freeSky.date));
+assert.ok(/^Free cancellation until 11am, /.test(offering.cancelNote(db, freeSky.h, freeSky.date)), offering.cancelNote(db, freeSky.h, freeSky.date));
 assert.strictEqual(offering.lateWindow(db, salt.h, salt.date), null);
 assert.strictEqual(offering.hotelLatePossible(db, salt.h), false);
 assert.strictEqual(offering.hotelLatePossible(db, sky.h), false);
@@ -97,12 +97,42 @@ db.prepare("UPDATE addons SET enabled=0 WHERE code='late' AND hotel_id=?").run(s
 const freeAt = new Date(y, m - 1, d, 10, 0, 0);
 freeAt.setDate(freeAt.getDate() - 2);
 const future = offering.cancelNote(db, sky.h, sky.date, freeAt);
-assert.ok(/^Free cancellation until 11am /.test(future), future);
+assert.ok(/^Free cancellation until 11am, /.test(future), future);
 const inside = offering.cancelNote(db, sky.h, sky.date, new Date(y, m - 1, d, 10, 0, 0));
 assert.ok(/can't be cancelled for free/.test(inside), inside);
 assert.ok(!/hotel terms apply/.test(offering.rulesText(sky.h)));
 assert.ok(offering.riskText(sky.h).includes('No lifeguard is on duty'));
 assert.ok(offering.riskText(db.prepare("SELECT * FROM hotels WHERE slug='palm-court'").get()).includes('A lifeguard is on duty'));
+require('../inclusions').ensureInclusions(db);
+db.prepare("UPDATE addons SET name='Spa treatment discount', blurb='A discount on a spa treatment booked at the hotel.' WHERE code='discount'").run();
+db.prepare("UPDATE hotels SET blurb=REPLACE(blurb, 'Adults only (18+).', '18+ on weekdays.') WHERE slug='bayview-spa'").run();
+db.alignStoredCopy(db);
+const bayview = db.prepare("SELECT blurb, age_policy, kids_hours FROM hotels WHERE slug='bayview-spa'").get();
+assert.ok(bayview.blurb.includes('Adults only (18+).'));
+assert.ok(!bayview.blurb.includes('18+ on weekdays'));
+assert.strictEqual(bayview.age_policy, '18+');
+assert.strictEqual(bayview.kids_hours, 'No children');
+const spa = db.prepare("SELECT name, blurb, price FROM addons WHERE code='discount' AND hotel_id=(SELECT id FROM hotels WHERE slug='bayview-spa')").get();
+assert.strictEqual(spa.name, 'Spa treatment credit');
+assert.ok(!/discount/i.test(spa.name + spa.blurb));
+assert.strictEqual(spa.price, 30);
+const pendingId = db.prepare("INSERT INTO hotels(slug,name,area,status,is_demo) VALUES ('pending-blank','Blank Pool','Melbourne','pending',0)").run().lastInsertRowid;
+assert.ok(offering.venueMissing(db.prepare('SELECT * FROM hotels WHERE id=?').get(pendingId)).length);
+const savedBlank = offering.saveOffering(db, pendingId, {
+  hotel_name: 'Blank Pool', area: 'Melbourne', spot_name: 'Sun lounger', kind: 'lounger', holds: '1', price: '40', cap: '8',
+  day_open: '1', cutoff_hours: '2', opens_1: '10:00', closes_1: '16:00', heated: '', setting: '', lifeguard: '',
+});
+assert.ok(!savedBlank.err, savedBlank.err);
+assert.strictEqual(db.prepare('SELECT heated, setting, lifeguard FROM hotels WHERE id=?').get(pendingId).heated, null);
+db.prepare("UPDATE hotels SET status='active' WHERE id=?").run(pendingId);
+const blockedLive = offering.saveOffering(db, pendingId, {
+  hotel_name: 'Blank Pool', area: 'Melbourne', spot_name: 'Sun lounger', kind: 'lounger', holds: '1', price: '40', cap: '8',
+  day_open: '1', cutoff_hours: '2', opens_1: '10:00', closes_1: '16:00', heated: '', setting: '', lifeguard: '',
+});
+assert.ok(blockedLive.err && /heated/.test(blockedLive.err), blockedLive.err);
+db.prepare('DELETE FROM hotel_hours WHERE hotel_id=?').run(pendingId);
+db.prepare('DELETE FROM pass_types WHERE hotel_id=?').run(pendingId);
+db.prepare('DELETE FROM hotels WHERE id=?').run(pendingId);
 assert.ok(!db.prepare("SELECT blurb FROM hotels WHERE slug='harbourside-lido'").get().blurb.includes('rain or shine'));
 
 db.close();
@@ -160,8 +190,8 @@ function start(port, extra = {}) {
 
     const faq = await get(port, '/faq');
     assert.strictEqual(faq.status, 200);
-    assert.ok(faq.body.includes('at least 3 years'));
-    assert.ok(faq.body.includes('5-pass pack is not offered'));
+    assert.ok(faq.body.includes("If we offer gift cards later, they'll be valid for at least 3 years from purchase."));
+    assert.ok(!faq.body.includes('5-pass pack is not offered'));
     assert.ok(faq.body.includes('24 hours before'));
     assert.ok(faq.body.includes('A free date change may be available once, subject to availability.'));
     assert.ok(faq.body.includes('content="index, follow"'));
@@ -239,6 +269,8 @@ function start(port, extra = {}) {
     const refunds = await get(port, '/refunds');
     onlyThisMail(refunds.body, 'refunds');
     assert.ok(refunds.body.includes('Contact and complaints') && refunds.body.includes('contact us at ' + link));
+    assert.ok(terms.body.includes('You can also contact NSW Fair Trading, or the consumer affairs agency in your state or territory.'));
+    assert.ok(refunds.body.includes('You can also contact NSW Fair Trading, or the consumer affairs agency in your state or territory.'));
     onlyThisMail(faq.body, 'faq');
     assert.ok(faq.body.includes('How do I contact you?') && faq.body.includes('Email ' + link));
     assert.ok(!faq.body.includes('Jason Baranov') && !faq.body.includes('registration pending'));
@@ -247,7 +279,8 @@ function start(port, extra = {}) {
     assert.strictEqual(forHotels.status, 200);
     onlyThisMail(forHotels.body, 'for-hotels');
     assert.ok(forHotels.body.includes('mailto:hello@hoteldayclub.com.au?subject=Hotel%20Day%20Club%20-%20partnership%20enquiry'));
-    assert.ok(!/commission|75%|25%/i.test(forHotels.body));
+    assert.ok(!/75%|25%/.test(forHotels.body));
+    assert.ok(forHotels.body.includes('We earn a commission on bookings and pay you the rest monthly, with a statement.'));
     const join = await get(port, '/hotel/join');
     assert.strictEqual(join.status, 302);
     assert.strictEqual(join.headers.location, '/for-hotels');
@@ -263,7 +296,7 @@ function start(port, extra = {}) {
     const avail = await get(port, `/api/availability?hotel=skyline-rooftop&date=${freeSky.date}`);
     const data = JSON.parse(avail.body);
     assert.ok(!data.addons.some(a => a.code === 'late'), JSON.stringify(data.addons));
-    assert.ok(/Free cancellation until 11am /.test(data.cancel), data.cancel);
+    assert.ok(/Free cancellation until 11am, /.test(data.cancel), data.cancel);
     if (insideWindow) {
       const soon = JSON.parse((await get(port, `/api/availability?hotel=skyline-rooftop&date=${insideDay.date}`)).body);
       assert.ok(/can't be cancelled for free/.test(soon.cancel), soon.cancel);

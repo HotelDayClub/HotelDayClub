@@ -39,7 +39,7 @@ const INCLUSIONS = [
   { code: 'food', name: 'Food and beverage credit', per: 'guest', cap: 40, blurb: 'To spend at the bar or café.' },
   { code: 'poolside', name: 'Poolside food and drink service', per: 'booking', cap: 30, blurb: 'Poolside service during the visit.' },
   { code: 'kids', name: "Kids' pool access", per: 'guest', cap: 30, blurb: 'Access for children, within the hotel age rules.' },
-  { code: 'discount', name: 'Spa treatment discount', per: 'booking', cap: 20, blurb: 'A discount on a spa treatment booked at the hotel.' },
+  { code: 'discount', name: 'Spa treatment credit', per: 'booking', cap: 20, blurb: 'A credit toward a spa treatment booked at the hotel.' },
   { code: 'late', name: 'Late stay', per: 'guest', cap: 12, blurb: 'Stay until the pool closes, after day-pass hours end.' },
   { code: 'room-shower', name: 'Room shower access', per: 'guest', cap: 20, blurb: 'Use of a room shower. No overnight stay.' },
   { code: 'luggage', name: 'Luggage storage', per: 'booking', cap: 20, blurb: 'Leave a bag while you visit.' },
@@ -234,7 +234,11 @@ function hoursHtml(lines) {
   return `<section class="l-sec" id="hours"><h3>Opening hours</h3><ul class="hours-list">${lines.map(r => `<li><span>${esc(r.day)}</span><b>${esc(r.time)}</b></li>`).join('')}</ul><p class="muted small">These are the day-pass hours for this demo listing.</p></section>`;
 }
 function policyHtml(hotel) {
+  const facts = require('./offering').policyFacts(hotel);
   const rows = [
+    ['Lifeguard', facts.lifeguard],
+    ['Pool', facts.pool],
+    ['Heated', facts.heated],
     ['Age', hotel.age_policy || 'See the hotel'],
     ['Children', hotel.kids_hours || 'See the age line'],
     ['ID at check-in', hotel.id_required ? 'Bring photo ID.' : 'Photo ID is not required in this demo.'],
@@ -242,7 +246,10 @@ function policyHtml(hotel) {
     ['Outside food', hotel.food_rule || 'See the hotel.'],
     ['Cancellation', 'Free cancellation until 24 hours before the day starts, in this demo.'],
   ];
-  return `<section class="l-sec" id="policy"><h3>Guest policy</h3><dl class="policy">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><p class="muted small">Example information for a fictional hotel. It is not a contract. <a href="/refunds">Draft cancellation terms</a>.</p></section>`;
+  const note = Number(hotel.is_demo) === 1
+    ? 'Example information for a fictional hotel. It is not a contract. <a href="/refunds">Draft cancellation terms</a>.'
+    : '<a href="/refunds">Cancellation and refunds</a>.';
+  return `<section class="l-sec" id="policy"><h3>Guest policy</h3><dl class="policy">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><p class="muted small">${note}</p></section>`;
 }
 function inclusionsForm(items) {
   const rows = items.map(i => `<div class="inc-edit">

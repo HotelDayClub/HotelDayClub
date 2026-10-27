@@ -80,7 +80,7 @@ ensureCols('hotels', [
   ['open_days', 'TEXT'], ['opens', 'TEXT'], ['closes', 'TEXT'], ['status', "TEXT DEFAULT 'active'"],
   ['contact_name', 'TEXT'], ['contact_email', 'TEXT'], ['heated', 'INTEGER'], ['setting', 'TEXT'],
   ['age_policy', 'TEXT'], ['kids_hours', 'TEXT'], ['towels', 'INTEGER'], ['food_rule', 'TEXT'],
-  ['id_required', 'INTEGER'], ['lifeguard', 'INTEGER'], ['cutoff_hours', 'INTEGER DEFAULT 2'],
+  ['id_required', 'INTEGER'], ['lifeguard', 'INTEGER'], ['lifeguard_hours', 'TEXT'], ['cutoff_hours', 'INTEGER DEFAULT 2'],
   ['season_start', 'TEXT'], ['season_end', 'TEXT'], ['season_opens', 'TEXT'], ['season_closes', 'TEXT'],
   ['room_only_from', 'TEXT'], ['room_only_to', 'TEXT'], ['marketing_opt_in', 'INTEGER DEFAULT 0'],
   ['dress_code', 'TEXT'],
@@ -113,4 +113,51 @@ function dropKidsFloatPhoto(database) {
 }
 dropKidsFloatPhoto(db);
 db.dropKidsFloatPhoto = dropKidsFloatPhoto;
+
+// Fills blank pool facts on the fictional demo hotels, and corrects stored
+// example copy. Real hotels are left alone. Safe to run on every boot.
+function alignStoredCopy(database) {
+  const hotelCols = new Set(database.prepare('PRAGMA table_info(hotels)').all().map(c => c.name));
+  const tables = new Set(database.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(r => r.name));
+  const demoVenue = {
+    'saltwater-terrace': [1, 'outdoor', 0],
+    'skyline-rooftop': [1, 'outdoor', 0],
+    'harbourside-lido': [1, 'indoor', 0],
+    'palm-court': [0, 'outdoor', 1],
+    'manly-sands': [0, 'outdoor', 0],
+    'bayview-spa': [1, 'both', 0],
+  };
+  database.transaction(() => {
+    if (hotelCols.has('slug') && hotelCols.has('heated') && hotelCols.has('setting') && hotelCols.has('lifeguard') && hotelCols.has('is_demo')) {
+      const fill = database.prepare(`UPDATE hotels SET
+        heated=COALESCE(heated, ?),
+        setting=CASE WHEN setting IS NULL OR setting='' THEN ? ELSE setting END,
+        lifeguard=COALESCE(lifeguard, ?)
+        WHERE slug=? AND COALESCE(is_demo,0)=1`);
+      for (const [slug, spec] of Object.entries(demoVenue)) fill.run(spec[0], spec[1], spec[2], slug);
+    }
+    if (hotelCols.has('slug') && hotelCols.has('blurb')) {
+      database.prepare("UPDATE hotels SET blurb=REPLACE(blurb, '18+ on weekdays.', 'Adults only (18+).') WHERE slug='bayview-spa' AND blurb LIKE '%18+ on weekdays.%'").run();
+    }
+    if (hotelCols.has('slug') && hotelCols.has('amenities')) {
+      const row = database.prepare("SELECT id, amenities FROM hotels WHERE slug='bayview-spa'").get();
+      if (row && row.amenities && String(row.amenities).includes('18+ weekdays')) {
+        let amenities;
+        try { amenities = JSON.parse(row.amenities); } catch { amenities = null; }
+        if (Array.isArray(amenities)) {
+          const next = amenities.map(item => item === '18+ weekdays' ? 'Adults only (18+)' : item);
+          database.prepare('UPDATE hotels SET amenities=? WHERE id=?').run(JSON.stringify(next), row.id);
+        }
+      }
+    }
+    if (tables.has('addons')) {
+      database.prepare("UPDATE addons SET name='Spa treatment credit', blurb='A credit toward a spa treatment booked at the hotel.' WHERE code='discount' AND (name LIKE '%discount%' OR blurb LIKE '%discount%')").run();
+    }
+    if (tables.has('booking_addons')) {
+      database.prepare("UPDATE booking_addons SET name='Spa treatment credit' WHERE name LIKE '%Spa treatment discount%'").run();
+    }
+  })();
+}
+alignStoredCopy(db);
+db.alignStoredCopy = alignStoredCopy;
 module.exports = db;

@@ -96,7 +96,12 @@ function alts(html, where) {
     assert.ok(home.includes('rel="canonical" href="https://www.hoteldayclub.com.au/"'));
     const homeDesc = 'Book a hotel pool, spa or gym for the day in Australia, no room needed. We&#39;re launching soon, so join the waitlist.';
     assert.ok(home.includes('<h1 class="kicker">Hotel day passes in Australia</h1>'));
-    assert.ok(home.includes('<h2 class="hero-line">Take the day <em>off.</em><br>Swim till&nbsp;six.</h2>'));
+    assert.ok(home.includes('<h2 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h2>'));
+    assert.ok(home.includes('>Plan your day</span>'));
+    assert.ok(home.includes('A hotel day, your way'));
+    assert.ok(home.includes('One example day. You book the day. The hotel sets the hours.'));
+    assert.ok(!home.includes('by the hour'));
+    assert.ok(!/swim till six/i.test(home));
     assert.ok(home.includes('How a hotel day pass works'));
     assert.ok(home.includes('<h2>Destinations</h2>'));
     assert.ok(home.includes('Questions about hotel day passes'));
@@ -207,6 +212,9 @@ function alts(html, where) {
     assert.ok(map.includes('https://www.hoteldayclub.com.au/faq'));
     assert.ok(map.includes('https://www.hoteldayclub.com.au/contact'));
     assert.ok(map.includes('https://www.hoteldayclub.com.au/destinations/sydney'));
+    for (const empty of ['melbourne', 'brisbane', 'gold-coast', 'byron-bay', 'cairns', 'perth']) {
+      assert.ok(!map.includes('/destinations/' + empty), empty);
+    }
     assert.ok(map.includes('https://www.hoteldayclub.com.au/guides/what-is-a-hotel-day-pass'));
     assert.ok(map.includes('<lastmod>'));
     assert.ok(!map.includes('/h/saltwater-terrace'));
@@ -247,9 +255,26 @@ function alts(html, where) {
     assert.strictEqual((await get(port, '/destinations/nope')).status, 404);
 
     const melbourne = text(await get(port, '/destinations/melbourne'));
+    assert.ok(melbourne.includes('content="noindex, follow"'));
     assert.ok(melbourne.includes('Coming soon'));
     assert.ok(melbourne.includes('href="/?destination=melbourne#waitlist"'));
     assert.ok(!melbourne.includes('Saltwater Terrace'));
+    assert.ok(!melbourne.includes('These are fictional example listings, not hotels that have signed up.'));
+    const sydneyCards = sydney;
+    assert.ok(sydneyCards.includes('Fictional example listing'));
+    assert.ok(sydneyCards.includes('Not a hotel that has signed up.'));
+    assert.ok(!sydneyCards.includes('These are fictional example listings, not hotels that have signed up.'));
+    const flip = new Database(dbPath);
+    flip.prepare("UPDATE hotels SET area='Melbourne' WHERE slug='manly-sands'").run();
+    flip.close();
+    const listed = text(await get(port, '/destinations/melbourne'));
+    assert.ok(listed.includes('content="index, follow"'));
+    assert.ok(listed.includes('Manly Sands'));
+    assert.ok(text(await get(port, '/sitemap.xml')).includes('/destinations/melbourne'));
+    const back = new Database(dbPath);
+    back.prepare("UPDATE hotels SET area='Northern Beaches' WHERE slug='manly-sands'").run();
+    back.close();
+    assert.ok(text(await get(port, '/destinations/melbourne')).includes('content="noindex, follow"'));
 
     const guides = text(await get(port, '/guides'));
     assert.ok(guides.includes('content="index, follow"'));
@@ -319,9 +344,21 @@ function alts(html, where) {
     assert.strictEqual(wwwHttps.status, 200);
     const local = await get(port, '/faq');
     assert.strictEqual(local.status, 200);
+    const onrender = await get(port, '/faq?x=1', { Host: 'hotel-day-club.onrender.com', 'X-Forwarded-Proto': 'https' });
+    assert.strictEqual(onrender.status, 301);
+    assert.strictEqual(onrender.headers.location, 'https://www.hoteldayclub.com.au/faq?x=1');
+    const healthRender = await get(port, '/healthz', { Host: 'hotel-day-club.onrender.com', 'X-Forwarded-Proto': 'https' });
+    assert.strictEqual(healthRender.status, 200);
+    assert.ok(text(healthRender).includes('"ok":true'));
+    const healthApex = await get(port, '/healthz', { Host: 'hoteldayclub.com.au', 'X-Forwarded-Proto': 'http' });
+    assert.strictEqual(healthApex.status, 200);
+    const healthWww = await get(port, '/healthz', { Host: 'www.hoteldayclub.com.au', 'X-Forwarded-Proto': 'https' });
+    assert.strictEqual(healthWww.status, 200);
 
     const hiw = text(await get(port, '/how-it-works'));
     assert.ok(hiw.includes('href="/hotel"'));
+    assert.ok(hiw.includes('At the check-in point on your listing.'));
+    assert.ok(text(await get(port, '/guides/how-to-choose-a-hotel-pool-day-pass')).includes('kids\u2019 hours'));
     assert.ok(hiw.includes('href="/guides"'));
     assert.strictEqual(titleOf(hiw), 'How hotel day passes work · Hotel Day Club');
 
@@ -332,6 +369,8 @@ function alts(html, where) {
     assert.ok(real.includes('content="index, follow"'));
     assert.ok(!real.includes('noindex'));
     assert.ok(!real.includes('Fictional demo listing'));
+    assert.ok(real.includes('Get directions'));
+    assert.ok(real.includes('Apple Maps'));
     const realLd = ld(real);
     assert.ok(realLd.some(n => n['@type'] === 'Product' || n['@type'] === 'LodgingBusiness'));
     const offer = JSON.stringify(realLd);

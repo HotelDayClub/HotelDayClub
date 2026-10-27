@@ -77,7 +77,7 @@ function render(){
  if(p) showSeat(SEATS[p.kind]||SEATS.custom);
  document.querySelectorAll('#passes input, #addons-pick input').forEach(r=>{r.onchange=render});
 }
-async function load(){const el=$('#date');if(!el)return;const r=await fetch('/api/availability?hotel=${slug}&date='+encodeURIComponent(el.value));const data=await r.json();av=data.passes||[];addons=data.addons||[];const note=document.getElementById('cancel-note');if(note)note.textContent=data.cancel||'';render()}
+ async function load(){const el=$('#date');if(!el)return;const r=await fetch('/api/availability?hotel=${slug}&date='+encodeURIComponent(el.value));const data=await r.json();av=data.passes||[];addons=data.addons||[];const note=document.getElementById('cancel-note');if(note)note.textContent=data.cancel||'';render();if(!el.value){const st=$('#status');if(st){st.className='status';st.textContent='Pick a date'}}}
 document.getElementById('date').addEventListener('change',load);
 document.querySelector('select[name="qty"]').addEventListener('change',render);
 document.querySelectorAll('.gal-nav').forEach(btn=>btn.addEventListener('click',()=>{const gal=document.querySelector('.gallery.swipe');if(!gal)return;const w=gal.clientWidth*0.86;gal.scrollBy({left:btn.dataset.dir==='next'?w:-w,behavior:'smooth'})}));
@@ -119,7 +119,7 @@ if(peek&&sheet){
   sheet.querySelector('.map-close').focus();
   ensure().then(draw).catch(function(){
    const box=sheet.querySelector('.map-canvas');
-   if(!box.querySelector('.map-fail')) box.insertAdjacentHTML('beforeend','<p class="map-fail">The map could not load. Use Get directions instead.</p>');
+   if(!box.querySelector('.map-fail')) box.insertAdjacentHTML('beforeend','<p class="map-fail">The map could not load. The address is on the page.</p>');
   });
  }
  peek.addEventListener('click',openMap);
@@ -131,7 +131,7 @@ load();setInterval(load,15000);
 }
 
 function listingHtml(opts) {
-  const { h, date, minDate, maxDate, closed, passes, av, from, hoursLine, cancel, beats, included, addonList, hours, policy, arrival } = opts;
+  const { h, date, minDate, maxDate, closed, passes, av, from, hoursLine, cancel, know, beats, included, addonList, hours, policy, arrival } = opts;
   const short = shortName(h);
   const demo = isDemo(h);
   const pick = av.find(p => p.featured && p.remaining > 0) || av.find(p => p.remaining > 0) || av[0];
@@ -162,7 +162,7 @@ ${hours}
 ${policy}
 ${arrival}
 <section class="l-sec" id="before"><h3>Good to know</h3>
-<ul class="reassure"><li><b>Cancellation</b><span>${esc(cancel)} <a href="/refunds">Draft cancellation terms</a>.</span></li>
+<ul class="reassure"><li><b>Cancellation</b><span>${esc(know || cancel)} <a href="/refunds">Draft cancellation terms</a>.</span></li>
 <li><b>Instant confirmation</b><span>${esc(instantConfirmationText())}</span></li></ul>
 </section>
 </div>
@@ -199,7 +199,7 @@ const ASSURE = [
   {
     icon: '<path d="M5 9V5h4M15 5h4v4M19 15v4h-4M9 19H5v-4"/><path d="M10 10h1.6v1.6H10zM12.6 12.6H14V14h-1.4z"/>',
     title: 'Code at the desk',
-    text: 'Show your QR code at reception to check in.',
+    text: 'Show your QR code at check-in.',
   },
   {
     icon: '<path d="M7.2 8.2A5.2 5.2 0 1 1 6 13"/><path d="M5.2 5.4V9H9"/>',
