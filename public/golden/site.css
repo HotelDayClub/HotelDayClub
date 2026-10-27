@@ -57,7 +57,46 @@ h1,h2,.l-title{font-family:Fraunces,Georgia,serif;font-weight:500}
 .fh-forgot a,.partner-back a{color:var(--navy);font-weight:700;text-decoration:underline;text-underline-offset:3px}
 .partner-back{margin-top:16px}
 .partner-login-page{padding-top:36px}
+.assure{background:var(--sand);border-top:1px solid #C4B5A4;border-bottom:1px solid #C4B5A4;padding:22px 0;margin:4px 0 8px}
+.assure ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px 14px}
+.assure li{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px}
+.assure .ico{width:24px;height:24px;color:var(--navy);stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.assure b{font-size:15px;line-height:1.3;color:var(--ink);font-weight:700}
+.assure span{font-size:13.5px;line-height:1.45;color:#243044;max-width:16rem}
+.assure-link{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;color:inherit;text-decoration:none;border-radius:16px;padding:8px 4px;margin:-8px -4px}
+.assure-link:hover,.assure-link:focus-visible{background:rgba(14,30,58,.06)}
+.assure-link:hover b,.assure-link:focus-visible b{text-decoration:underline;text-underline-offset:3px}
+.contact-kicker{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#9E2E20;font-weight:600;margin:0 0 10px}
+.contact-page .l-title{font-size:clamp(40px,6vw,64px);line-height:1.02;color:var(--ink);margin:0 0 12px}
+.contact-page .lead{color:#243044;font-size:1.08rem;line-height:1.5;margin:0 0 22px;max-width:36rem}
+.contact-card{padding:32px 28px 26px}
+.contact-card .fl{display:block;font-size:14px;font-weight:700;color:var(--ink);margin:0 0 14px}
+.contact-card .opt{font-weight:600;color:#243044}
+.contact-card .fl input,.contact-card .fl select,.contact-card .fl textarea{display:block;width:100%;margin-top:6px;min-height:48px;border:1.5px solid #5a6478;border-radius:12px;padding:10px 12px;font:400 16px/1.4 Inter,system-ui,sans-serif;background:#fff;color:var(--ink)}
+.contact-card .fl textarea{min-height:148px;resize:vertical}
+.contact-card .btn-navy{min-height:48px;margin-top:4px}
+.contact-note,.contact-alt{color:#243044;line-height:1.5}
+.contact-note{font-size:14px;margin:14px 0 0}
+.contact-alt{margin:18px 0 0;font-size:15px}
+.contact-note a,.contact-alt a,.contact-ok a{color:var(--navy);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.contact-ok p{margin:0 0 12px;color:#243044;line-height:1.5}
+.contact-ok p:last-child{margin-bottom:0}
+.msg-list{display:grid;gap:12px}
+.msg-card{border:1px solid #C4B5A4;border-radius:16px;padding:14px 16px;background:#fff}
+.msg-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.msg-top b{color:var(--ink);font-size:16px}
+.msg-new{color:var(--navy);font-weight:700;font-size:13px}
+.msg-done{color:#243044;font-weight:700;font-size:13px}
+.msg-meta{color:#243044;font-size:13px;line-height:1.45;margin:4px 0 8px}
+.msg-body{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink);margin:0 0 12px;line-height:1.45}
+.msg-card .btn{min-height:44px}
+@media(max-width:1100px){
+  .assure ul{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 @media(max-width:800px){
+  .assure ul{grid-template-columns:1fr}
+  .assure{padding:20px 0}
+  .contact-card{padding:22px 16px}
   .fh-intro{grid-template-columns:1fr;gap:22px}
   .fh-login{padding:22px 16px}
 }

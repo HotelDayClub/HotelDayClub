@@ -205,6 +205,7 @@ function alts(html, where) {
 
     const map = text(await get(port, '/sitemap.xml'));
     assert.ok(map.includes('https://www.hoteldayclub.com.au/faq'));
+    assert.ok(map.includes('https://www.hoteldayclub.com.au/contact'));
     assert.ok(map.includes('https://www.hoteldayclub.com.au/destinations/sydney'));
     assert.ok(map.includes('https://www.hoteldayclub.com.au/guides/what-is-a-hotel-day-pass'));
     assert.ok(map.includes('<lastmod>'));

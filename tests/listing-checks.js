@@ -98,6 +98,11 @@ function start(port) {
     assert.ok(salt.body.includes('data-inline="1"'));
     assert.ok(salt.body.includes('Most popular'));
     assert.ok(salt.body.includes('Instant confirmation'));
+    assert.ok(salt.body.includes('class="assure assure-lite"'));
+    assert.ok(salt.body.includes('24 hours to cancel'));
+    assert.ok(salt.body.includes('Show your QR code at reception to check in.'));
+    assert.ok(salt.body.includes('Help when you need it'));
+    assert.ok(salt.body.includes('href="/contact"'));
     assert.ok(salt.body.includes('Book your day'));
     assert.ok(salt.body.includes('<option value="1" selected>1</option>'));
     assert.ok(salt.body.includes('select[name="qty"]'));
