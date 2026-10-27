@@ -1456,7 +1456,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <div class="partner-card"><b>You set the offering</b><p>Seating types, how many people each holds, daily numbers, hours and pool rules.</p></div>
 <div class="partner-card"><b>Guest list the night before</b><p>We email the next day's guest list the evening before. The same list is on your dashboard, ready for check-in.</p></div>
 <div class="partner-card"><b>You keep food and drink spend</b><p>Food and drink is never included in the pass. What guests buy at your bar or café stays with you.</p></div>
-<div class="partner-card"><b>Paid monthly</b><p>Seating and add-on sales are paid out once a month. You keep ${hotelPct()}%. Hotel Day Club keeps ${feePct()}%.</p></div>
+<div class="partner-card"><b>Paid monthly</b><p>Seating and add-on sales are paid out once a month. Your share is set out in your hotel agreement.</p></div>
 </div>
 <p class="hiw-cta"><a class="btn btn-coral" href="/for-hotels">Talk to us</a> <a class="btn btn-line" href="/hotel">Hotel login</a></p>
 </div></section>
