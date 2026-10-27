@@ -1,7 +1,7 @@
 const { esc, money, nice } = require('./util');
 const { instantConfirmationText } = require('./siteMode');
 const { spotLabel } = require('./offering');
-const { seatPhoto } = require('./inclusions');
+const { seatPhoto, includedLines, includedNote } = require('./inclusions');
 
 const KIND_ALT = { lounger: 'sun lounger', daybed: 'daybed', cabana: 'cabana', chair: 'pool chair', entry: 'spa or pool entry', custom: 'pool pass' };
 function kindAlt(kind) { return KIND_ALT[kind] || 'day pass'; }
@@ -12,21 +12,37 @@ function passAlt(p, h) {
   return isDemo(h) ? `Example photo of a ${kind}, not this hotel` : `${kind} at ${shortName(h)}`;
 }
 
-function passCards(passes, av, h) {
+function passCards(passes, av, h, items) {
   const open = av.filter(p => p.remaining > 0);
   const pick = open.find(p => p.featured) || open[0] || av[0];
+  const note = includedNote(items);
   return passes.map(p => {
     const a = av.find(x => x.id === p.id);
     const dis = !a || a.remaining < 1;
     const on = pick && p.code === pick.code && !dis;
     const state = !a || a.blocked || a.past ? 'Unavailable' : a.remaining < 1 ? 'Sold out' : 'Available';
     const pop = p.featured ? '<span class="pop">Most popular</span>' : '';
-    return `<label class="pass-card${dis ? ' dis' : ''}">
-<input type="radio" name="pass" value="${esc(p.code)}" data-kind="${esc(p.kind || 'custom')}" data-price="${p.price}" data-holds="${p.holds || 1}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}>
+    const holds = Number(p.holds) || 1;
+    const holdsText = holds === 1 ? '1 guest' : `${holds} guests`;
+    const id = esc(p.code);
+    const lines = includedLines(items, holds);
+    const desc = String(p.description || '').trim();
+    const detail = lines.length || desc || note;
+    const panel = detail ? `<button type="button" class="pass-toggle" id="pass-btn-${id}" aria-expanded="false" aria-controls="pass-inc-${id}">What's included</button>
+<div class="pass-inc" id="pass-inc-${id}" role="region" aria-labelledby="pass-btn-${id}" hidden>
+${desc ? `<p class="pass-desc">${esc(desc)}</p>` : ''}
+${lines.length ? `<ul class="pass-inc-list">${lines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : ''}
+${note ? `<p class="pass-note">${esc(note)}</p>` : ''}
+</div>` : '';
+    return `<article class="pass-card${dis ? ' dis' : ''}">
+<input type="radio" id="pass-${id}" name="pass" value="${esc(p.code)}" data-kind="${esc(p.kind || 'custom')}" data-price="${p.price}" data-holds="${holds}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}>
 ${pop}
+<label class="pass-face" for="pass-${id}">
 <img src="${esc(seatPhoto(p.kind))}" alt="${esc(passAlt(p, h))}" width="480" height="360" loading="lazy" decoding="async">
-<span class="pc-body"><b>${esc(spotLabel(p))}</b><span class="pc-desc">${esc(p.description || '')}</span><span class="pc-price">From ${money(p.price)}</span><span class="avail">${state}</span></span>
-</label>`;
+<span class="pc-body"><b>${esc(spotLabel(p))}</b><span class="pc-holds">${holdsText}</span><span class="pc-price">${money(p.price)}</span><span class="avail">${state}</span></span>
+</label>
+${panel}
+</article>`;
   }).join('');
 }
 
@@ -79,6 +95,45 @@ function render(){
  st.textContent=blocked?blocked:!any?'Sold out this day':'Available this day';
  if(p) showSeat(SEATS[p.kind]||SEATS.custom);
  document.querySelectorAll('#passes input, #addons-pick input').forEach(r=>{r.onchange=render});
+}
+function setPassOpen(card, on){
+ if(!card) return;
+ const btn=card.querySelector('.pass-toggle');
+ const panel=card.querySelector('.pass-inc');
+ if(!btn||!panel) return;
+ btn.setAttribute('aria-expanded', on?'true':'false');
+ panel.hidden=!on;
+}
+function openPass(card){
+ document.querySelectorAll('#passes .pass-card').forEach(c=>setPassOpen(c, c===card));
+}
+const passBox=document.getElementById('passes');
+if(passBox){
+ passBox.addEventListener('click', function(e){
+  const btn=e.target.closest('.pass-toggle');
+  if(btn){
+   const card=btn.closest('.pass-card');
+   const on=btn.getAttribute('aria-expanded')==='true';
+   if(on) setPassOpen(card, false);
+   else {
+    openPass(card);
+    const radio=card.querySelector('input[name="pass"]');
+    if(radio && !radio.disabled && !radio.checked){ radio.checked=true; render(); }
+   }
+   return;
+  }
+  if(e.target.closest('.pass-face')) openPass(e.target.closest('.pass-card'));
+ });
+ passBox.addEventListener('change', function(e){
+  if(e.target && e.target.name==='pass' && e.target.checked) openPass(e.target.closest('.pass-card'));
+ });
+ passBox.addEventListener('keydown', function(e){
+  if(e.key!=='Escape') return;
+  const card=e.target.closest('.pass-card');
+  if(!card) return;
+  const btn=card.querySelector('.pass-toggle');
+  if(btn && btn.getAttribute('aria-expanded')==='true'){ setPassOpen(card, false); btn.focus(); }
+ });
 }
  async function load(){const el=$('#date');if(!el)return;const r=await fetch('/api/availability?hotel=${slug}&date='+encodeURIComponent(el.value));const data=await r.json();av=data.passes||[];addons=data.addons||[];const note=document.getElementById('cancel-note');if(note)note.textContent=data.cancel||'';render();if(!el.value){const st=$('#status');if(st){st.className='status';st.textContent='Pick a date'}}}
 document.getElementById('date').addEventListener('change',load);
@@ -135,6 +190,8 @@ load();setInterval(load,15000);
 
 function listingHtml(opts) {
   const { h, date, minDate, maxDate, closed, passes, av, from, hoursLine, cancel, know, beats, included, addonList, hours, policy, arrival } = opts;
+  const items = Array.isArray(included) ? included : [];
+  const parkNote = includedNote(items);
   const short = shortName(h);
   const demo = isDemo(h);
   const pick = av.find(p => p.featured && p.remaining > 0) || av.find(p => p.remaining > 0) || av[0];
@@ -158,14 +215,14 @@ ${reassureStrip(true)}
 <h2 class="day-kicker">Your day</h2>
 ${beats}
 <h2 class="day-kicker">Choose a pass</h2>
-<div class="pass-cards" id="passes">${passCards(passes, av, h)}</div>
-${included}
+<div class="pass-cards" id="passes">${passCards(passes, av, h, items)}</div>
 ${addonList}
 ${hours}
 ${policy}
 ${arrival}
 <section class="l-sec" id="before"><h3>Good to know</h3>
 <ul class="reassure"><li><b>Cancellation</b><span>${esc(know || cancel)} <a href="/refunds">Draft cancellation terms</a>.</span></li>
+${parkNote ? `<li><b>Parking</b><span>${esc(parkNote)}</span></li>` : ''}
 <li><b>Instant confirmation</b><span>${esc(instantConfirmationText())}</span></li></ul>
 </section>
 </div>

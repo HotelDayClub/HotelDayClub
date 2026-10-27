@@ -6,6 +6,7 @@ const seo = require('./seo');
 const { demoSite, operatorEmail } = require('./siteMode');
 const mailer = require('./mailer');
 const { eventWindow, passCalendarLink } = require('./calendar');
+const { loadInclusions, includedText } = require('./inclusions');
 
 function htmlValue(value) {
   return esc(value).replace(/\n/g, '<br>');
@@ -24,6 +25,7 @@ function bookingNotice(info) {
     ['Access hours', info.hours],
     ['Pass', info.passLabel],
     ['Guests', info.guests],
+    ['Included', info.included],
     ['Extras', extras],
     ['Total', info.totalLabel],
     ['Booking code', info.code],
@@ -157,6 +159,7 @@ function bookingMessage(db, code) {
   const bookedAt = row.created_at ? new Date(String(row.created_at).replace(' ', 'T')) : new Date();
   const note = row.cancel_note || cancelNote(db, hotel, row.date, bookedAt);
   const party = row.party || row.qty * (row.holds || 1);
+  const included = hotel ? includedText(loadInclusions(db, hotel.id), party) : '';
   return bookingNotice({
     demo: demoSite(),
     to: email,
@@ -167,6 +170,7 @@ function bookingMessage(db, code) {
     hours: view.span || view.hoursLine,
     passLabel: `${spotLabel({ name: row.pass_name, holds: row.holds })} × ${row.qty}`,
     guests: String(party),
+    included,
     addons: adds.map(a => ({ name: a.name, qty: a.qty, totalLabel: money(a.total) })),
     totalLabel: money(row.total),
     cancel: note,

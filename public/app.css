@@ -531,17 +531,32 @@ form.check-code input,form.check-code .btn{width:100%}
 .day-beats span{color:#3b4458;font-size:.92rem}
 .pass-cards{display:grid;gap:12px}
 @media(min-width:720px){.pass-cards{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}}
-.pass-card{position:relative;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff;cursor:pointer}
+.pass-card{position:relative;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff}
+.pass-face{display:flex;flex-direction:column;color:#0A1428;cursor:pointer}
 .pass-card img{width:100%;aspect-ratio:4/3;object-fit:cover;background:#E7EEF5}
 .pass-card input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .pass-card:has(input:checked){border-color:#0E1E3A;box-shadow:0 0 0 2px #0E1E3A}
 .pass-card:has(input:focus-visible){outline:3px solid #0E1E3A;outline-offset:3px}
 .pass-card .pop{position:absolute;top:10px;left:10px;background:#FF6B57;color:#0A1428;font-weight:700;font-size:.75rem;padding:4px 8px;border-radius:999px}
-.pass-card .pc-body{display:flex;flex-direction:column;gap:4px;padding:12px 14px 14px}
-.pass-card .pc-desc{color:#3b4458;font-size:.9rem}
-.pass-card .pc-price{font-weight:700}
+.pass-card .pc-body{display:flex;flex-direction:column;gap:4px;padding:12px 14px 10px}
+.pass-card .pc-holds,.pass-card .pc-price{color:#0A1428;font-weight:700}
 .pass-card .avail{font-size:.82rem;font-weight:700;color:#0E1E3A}
+.pass-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:48px;margin:0;padding:12px 14px;border:0;border-top:1px solid var(--line);background:#fff;color:#0A1428;font:inherit;font-weight:700;font-size:1rem;line-height:1.3;text-align:left;cursor:pointer}
+.pass-toggle::after{content:"";width:8px;height:8px;border-right:2px solid #0A1428;border-bottom:2px solid #0A1428;transform:rotate(45deg);flex:0 0 auto}
+.pass-toggle[aria-expanded="true"]::after{transform:rotate(-135deg)}
+.pass-toggle:focus-visible{outline:3px solid #0E1E3A;outline-offset:-3px}
+.pass-inc{padding:0 14px 14px;color:#0A1428;background:#fff}
+.pass-desc,.pass-note{margin:0 0 8px;color:#0A1428;font-size:.95rem;line-height:1.4}
+.pass-inc-list{list-style:none;margin:0;padding:0}
+.pass-inc-list li{padding:8px 0;border-top:1px solid var(--line);color:#0A1428;font-weight:650}
 .pass-card.dis{opacity:.55}
+.inc-recap{margin:12px 0;color:#0A1428}
+.inc-recap b{display:block;margin:0 0 6px;color:#0A1428}
+.inc-recap ul{list-style:none;margin:0;padding:0}
+.inc-recap li{padding:4px 0;color:#0A1428;font-weight:650}
+@media (prefers-reduced-motion: reduce){
+  .pass-toggle::after{transition:none}
+}
 .l-sec{margin-top:32px}
 .l-sec h3{font-family:var(--font-display);font-weight:560;font-size:1.35rem;margin:0 0 10px}
 .inc-grid{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:0;padding:0}

@@ -40,6 +40,7 @@ const hotelId = db.prepare(`INSERT INTO hotels (slug, name, area, login, address
 db.prepare('INSERT INTO hotel_hours (hotel_id, weekday, open, opens, closes) VALUES (?, ?, 1, ?, ?)').run(hotelId, day.getDay(), '10:00', '16:00');
 const passId = db.prepare(`INSERT INTO pass_types (hotel_id, code, name, price, holds) VALUES (?, 'chair', 'Pool chair', 40, 1)`).run(hotelId).lastInsertRowid;
 const addonId = db.prepare(`INSERT INTO addons (hotel_id, code, name, price, per, enabled) VALUES (?, 'gym', 'Gym', 10, 'person', 1)`).run(hotelId).lastInsertRowid;
+db.prepare(`INSERT INTO inclusions (hotel_id, code, mode, price, daily_cap, note) VALUES (?, 'towels', 'included', 0, 0, '')`).run(hotelId);
 
 function insertBooking(code, email) {
   const id = db.prepare(`INSERT INTO bookings (code, hotel_id, pass_type_id, date, qty, unit_price, total, guest_name, email, phone, party, cancel_note)
@@ -90,6 +91,7 @@ function recorder(decide) {
     hours: '10am–4pm',
     passLabel: 'Pool chair × 1',
     guests: '1',
+    included: '1 × Towels',
     addons: [{ name: 'Gym', qty: 2, totalLabel: '$20' }],
     totalLabel: '$40',
     cancel: 'Free cancellation until 11am Wed 4 Nov.',
@@ -109,6 +111,8 @@ function recorder(decide) {
   assert.ok(!direct.html.includes('Alex Citizen') && !direct.text.includes('Alex Citizen'));
   assert.ok(direct.html.includes('Alex C.') && direct.text.includes('Alex C.'));
   assert.ok(direct.html.includes('Bondi Beach, Australia'));
+  assert.ok(direct.html.includes('1 × Towels'));
+  assert.ok(direct.text.includes('Included: 1 × Towels'));
   assert.ok(direct.html.includes('This is a demo booking. No payment was taken and no real booking exists. This is not a reservation at a real hotel.'));
   assert.ok(direct.text.includes('No payment was taken'));
   assert.ok(direct.html.includes('https://www.hoteldayclub.com.au/booking/HDC-ABC'));
@@ -219,6 +223,8 @@ function recorder(decide) {
   assert.ok(booked.html.includes('Bondi Beach, Australia'));
   assert.ok(booked.html.includes('Pool chair × 2'));
   assert.ok(booked.html.includes('Gym × 2'));
+  assert.ok(booked.html.includes('2 × Towels'));
+  assert.ok(booked.text.includes('Included: 2 × Towels'));
   assert.ok(booked.html.includes('$100'));
   assert.ok(booked.html.includes('10am–4pm'));
   assert.ok(booked.html.includes('Free cancellation until 11am Wed 4 Nov.'));

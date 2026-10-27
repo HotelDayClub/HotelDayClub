@@ -192,12 +192,39 @@ function syncAddonEdit(db, hotelId, code, enabled, price, cap) {
   return on;
 }
 
+function includedRows(items) {
+  return (items || []).filter(i => i.mode === 'included');
+}
+function includedQty(item, people) {
+  const guests = Math.max(1, Number(people) || 1);
+  return item.per === 'booking' ? 1 : guests;
+}
+function includedLines(items, people) {
+  return includedRows(items).map(item => {
+    const qty = includedQty(item, people);
+    return { qty, name: item.name, text: `${qty} × ${item.name}` };
+  });
+}
+function includedText(items, people) {
+  return includedLines(items, people).map(line => line.text).join('\n');
+}
+function includedNote(items) {
+  const park = (items || []).find(i => i.code === 'parking' && i.mode === 'included' && String(i.note || '').trim());
+  return park ? String(park.note).trim() : '';
+}
+function includedBlock(items, people) {
+  const lines = includedLines(items, people);
+  const note = includedNote(items);
+  if (!lines.length && !note) return '';
+  const list = lines.length ? `<ul>${lines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : '';
+  const extra = note ? `<p class="pass-note">${esc(note)}</p>` : '';
+  return `<div class="inc-recap"><b>What's included</b>${list}${extra}</div>`;
+}
 function includedHtml(items) {
-  const rows = items.filter(i => i.mode === 'included');
+  const rows = includedRows(items);
   if (!rows.length) return '';
-  const park = rows.find(i => i.code === 'parking' && i.note);
-  const note = park ? `<p class="muted small">${esc(park.note)}</p>` : '';
-  return `<section class="l-sec" id="included"><h3>What's included</h3><ul class="inc-grid">${rows.map(i => `<li>${ICONS[i.code] || ''}<span>${esc(i.name)}</span></li>`).join('')}</ul>${note}</section>`;
+  const note = includedNote(items);
+  return `<section class="l-sec" id="included"><h3>What's included</h3><ul class="inc-grid">${rows.map(i => `<li>${ICONS[i.code] || ''}<span>${esc(i.name)}</span></li>`).join('')}</ul>${note ? `<p class="muted small">${esc(note)}</p>` : ''}</section>`;
 }
 
 function priceBit(n) {
@@ -275,5 +302,6 @@ ${rows}
 
 module.exports = {
   INCLUSIONS, SEAT_PHOTO, seatPhoto, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
-  includedHtml, addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml,
+  includedHtml, includedLines, includedText, includedNote, includedBlock,
+  addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml,
 };

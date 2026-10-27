@@ -8,7 +8,7 @@ const db = require('./db');
 const { seed, ensureAddons, ensureSchedules, seedPerformance } = require('./seed');
 const {
   seatPhoto, SEAT_PHOTO, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
-  includedHtml, addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml,
+  includedBlock, addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml,
 } = require('./inclusions');
 const { ensureArrival, saveArrival, arrivalHtml, arrivalForm } = require('./arrival');
 const { listingHtml, reassureStrip } = require('./listingView');
@@ -555,7 +555,7 @@ app.get('/h/:slug', (req, res) => {
     cancel: date ? cancelNote(db, h, date) : PICK_DATE_CANCEL,
     know: date ? cancelNote(db, h, date) : 'Free cancellation until 24 hours before access hours start.',
     beats: beatsHtml(items),
-    included: includedHtml(items),
+    included: items,
     addonList: addonsHtml(items, getAddons(h.id, true)),
     hours: hoursHtml(hoursLines(db, h)),
     policy: policyHtml(h),
@@ -607,6 +607,7 @@ app.get('/checkout', (req, res) => {
   const { h, p, date, qty, people } = v;
   const grand = p.price * qty + v.addonTotal;
   const cancel = cancelNote(db, h, date);
+  const included = includedBlock(loadInclusions(db, h.id), people);
   const picked = new Set(v.addons.map(x => x.code));
   const offer = addonAvailability(h.id, date);
   const addonFields = offer.length ? `<details class="extras" id="addon-block"><summary><span class="extra-label">Add extras <span class="extra-opt">(optional)</span></span></summary><div class="extra-list" id="co-addons">${offer.map(ad => {
@@ -631,6 +632,7 @@ ${addonFields}
 <p class="small">This is a mock checkout. No card is needed and nothing is charged. In the live version this step is Stripe.</p>
 <label class="fl">Card number<input value="4242 4242 4242 4242" disabled></label>
 <div class="two"><label class="fl">Expiry<input value="12 / 30" disabled></label><label class="fl">CVC<input value="123" disabled></label></div></div>
+${included}
 ${rulesCard(h, hoursView(db, h, date))}
 <p class="cancel-note">${esc(cancel)} <a href="/refunds">Cancellation and refunds</a></p>
 ${riskCard(h)}
@@ -642,6 +644,7 @@ ${riskCard(h)}
 <button class="btn btn-coral full" id="co-btn" type="submit">Confirm booking · ${money(grand)} (demo)</button></form>
 <aside class="co-sum"><img src="/assets/photos/${h.photos[0]}" alt="${esc(Number(h.is_demo) === 1 ? 'Stock photo, not this hotel' : 'Photo of ' + seo.shortName(h.name))}" width="1200" height="900"><div class="pad"><h3>${esc(h.name)}</h3><p class="muted small">${esc(h.area)}</p>
 <dl><dt>Date</dt><dd>${esc(nice(date))}</dd><dt>Pass</dt><dd>${esc(spotLabel(p))} × ${qty}</dd><dt>Guests</dt><dd>${people}</dd></dl>
+${included}
 <p class="cancel-note">${esc(cancel)}</p>
 <ul class="addon-lines" id="addon-lines">${v.addons.map(ad => `<li><span>${esc(ad.name)} × ${ad.qty}</span><b>${money(ad.line)}</b></li>`).join('')}</ul>
 <div class="bb-total"><span>Total</span><b id="co-total">${money(grand)}</b></div><p class="muted small">Prices include GST. Demo only.</p></div></aside></div></div>
@@ -759,6 +762,7 @@ app.get('/booking/:code', async (req, res) => {
 <div class="t-mid"><img class="qr" src="${qr}" alt="QR code for ${esc(b.code)}"><div class="code">${esc(b.code)}</div><p class="muted small">Show this at reception</p></div>
 <dl><dt>Guest</dt><dd>${esc(shownName)}</dd>${shownEmail ? `<dt>Email</dt><dd>${esc(shownEmail)}</dd>` : ''}<dt>Date</dt><dd>${esc(nice(b.date))}${when ? ` · ${esc(when)}` : ''}</dd><dt>Pass</dt><dd>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</dd><dt>Guests</dt><dd>${party}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Cancellation</dt><dd>${esc(note)}</dd><dt>Rules</dt><dd>${b.rules_ack_at ? 'Accepted' : '—'}</dd><dt>Terms</dt><dd>${b.terms_ack_at ? 'Accepted' : '—'}</dd><dt>Risk warning</dt><dd>${b.risk_ack_at ? 'Accepted' : '—'}</dd><dt>Status</dt><dd>${esc(status)}</dd></dl>
 <p class="swim-note">${esc(swimNote(hotel))}</p>
+${includedBlock(loadInclusions(db, hotel.id), party)}
 ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}</div>
 <p class="center cal-links" style="margin-top:16px"><a class="btn btn-line" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">Add to calendar</a>${googleCal ? ` <a class="btn btn-line" href="${esc(googleCal)}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>` : ''}${mapHref ? ` <a class="btn btn-line" href="${esc(mapHref)}">Directions</a>` : ''}</p>
 <div class="center" style="margin-top:12px"><a class="btn btn-line" href="/">Book another day</a></div></div>`, { analytics: true, analyticsPath: '/booking', index: false, canonical: false }));
