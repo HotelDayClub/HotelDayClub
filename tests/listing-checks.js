@@ -127,7 +127,7 @@ function start(port) {
     assert.ok(salt.body.includes('value="parking"'));
     assert.ok(salt.body.includes('type="checkbox"'));
     assert.ok(salt.body.includes('Fitness centre access'));
-    assert.ok(salt.body.includes('Food and beverage credit'));
+    assert.ok(salt.body.includes('Food and drink credit'));
     assert.ok(!salt.body.includes('extra-static'));
     assert.ok(salt.body.includes('Parking'));
     assert.ok(salt.body.includes('$18'));
