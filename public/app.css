@@ -554,10 +554,14 @@ form.check-code input,form.check-code .btn{width:100%}
 .hours-list{list-style:none;margin:0;padding:0;background:#fff;border:1px solid var(--line);border-radius:16px}
 .hours-list li{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;border-top:1px solid var(--line)}
 .hours-list li:first-child{border-top:0}
-.policy{display:grid;grid-template-columns:1fr;gap:10px;margin:0}
-.policy div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px}
-.policy dt{color:#3b4458;font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
-.policy dd{margin:2px 0 0;font-weight:650}
+#policy{margin-top:18px}
+#policy h3{font-size:1.05rem;margin-bottom:6px}
+.policy{display:grid;grid-template-columns:1fr;gap:6px;margin:0}
+.policy div{background:#fff;border:1px solid var(--line);border-radius:10px;padding:5px 10px}
+.policy dt{color:#3b4458;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.policy dd{margin:0;font-size:.9rem;font-weight:600;line-height:1.3}
+#policy .muted{margin:6px 0 0;font-size:.8rem}
+@media(min-width:720px){.policy{grid-template-columns:1fr 1fr;gap:6px 8px}}
 .reassure{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .reassure li{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
 .reassure b{display:block;margin-bottom:4px}
@@ -602,16 +606,18 @@ form.check-code input,form.check-code .btn{width:100%}
 .extras summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;padding:6px 12px;cursor:pointer;font-weight:650;font-size:.9rem;list-style:none}
 .extras summary::-webkit-details-marker{display:none}
 .extras summary:focus-visible{outline:3px solid #0E1E3A;outline-offset:2px}
-.extra-opt{color:#667085;font-weight:500;font-size:.78em}
+.extra-opt{color:#3b4458;font-weight:600;font-size:.85em}
 .extras summary::after{content:"";width:7px;height:7px;border-right:1.6px solid #0A1428;border-bottom:1.6px solid #0A1428;transform:rotate(45deg);flex:0 0 auto}
 .extras[open] summary::after{transform:rotate(-135deg)}
-.extra-list{list-style:none;margin:0;padding:0 6px 6px}
-.extra{display:flex;align-items:center;gap:8px;min-height:26px;margin:0;padding:1px 4px;font-size:.8rem;line-height:1.25;font-weight:600;cursor:pointer}
-.extra input{width:14px;height:14px;margin:0;flex:0 0 auto;accent-color:#0E1E3A}
+.extra-list{list-style:none;margin:0;padding:0 8px 8px;display:grid;gap:4px}
+.extra{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;padding:8px 10px;font-size:1rem;line-height:1.3;font-weight:650;cursor:pointer;border-radius:10px;color:#0A1428}
+.extra:focus-within{outline:3px solid #0E1E3A;outline-offset:2px}
+.extra input{width:22px;height:22px;margin:0;flex:0 0 auto;accent-color:#0E1E3A}
 .extra-name{flex:1;min-width:0}
-.extra-price,.extra-note{margin-left:auto;color:#3b4458;font-size:.74rem;font-weight:650;white-space:nowrap}
+.extra-price,.extra-note{margin-left:auto;color:#3b4458;font-size:.95rem;font-weight:700;white-space:nowrap}
 .extra.is-off{opacity:.55;cursor:not-allowed}
-.extra-static .extra{cursor:default}
+.cal-links{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.cal-links .btn{margin:0}
 .fl .pk-btn,.pk-cal{text-transform:none;letter-spacing:0}
 .inc-form,.arrive-form{margin-top:28px}
 .inc-edit{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(110px,.8fr) 88px 88px;gap:8px;align-items:end;padding:10px 0;border-top:1px solid var(--line)}

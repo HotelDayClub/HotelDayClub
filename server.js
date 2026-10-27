@@ -17,6 +17,8 @@ const { adminPassword, verifyPassword, safeEqual, migrateHotelPasswords, maskNam
 const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
 const { ymd, addDays, esc, money, nice } = require('./util');
 const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
+const { HOTEL_SHARE, hotelPct, feePct } = require('./commission');
+const { eventWindow, bookingIcs, passCalendarLink } = require('./calendar');
 const { sendBookingConfirmation, sendContactAlert } = require('./notices');
 const { DESTINATIONS, destIcon, destinationBySlug } = require('./destinations');
 const seo = require('./seo');
@@ -37,7 +39,6 @@ app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3030;
 const SECRET = resolveCookieSecret();
 const ADMIN_USER = 'jason';
-const HOTEL_SHARE = 0.75;
 app.use(seo.canonicalRedirect);
 app.use(compress);
 app.use(express.urlencoded({ extended: false }));
@@ -555,7 +556,7 @@ app.get('/h/:slug', (req, res) => {
     know: date ? cancelNote(db, h, date) : 'Free cancellation until 24 hours before access hours start.',
     beats: beatsHtml(items),
     included: includedHtml(items),
-    addonList: addonsHtml(items),
+    addonList: addonsHtml(items, getAddons(h.id, true)),
     hours: hoursHtml(hoursLines(db, h)),
     policy: policyHtml(h),
     arrival: arrivalHtml(h),
@@ -723,31 +724,6 @@ function directionsHref(hotel) {
   if (!address) return '';
   return 'https://www.openstreetmap.org/search?query=' + encodeURIComponent(address);
 }
-function icsEscape(value) {
-  return String(value || '').replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
-}
-function bookingIcs(b, hotel) {
-  const day = String(b.date || '').replace(/-/g, '');
-  const end = day && /^\d{8}$/.test(day) ? ymd(addDays(new Date(b.date + 'T00:00:00'), 1)).replace(/-/g, '') : day;
-  const where = String(hotel.address || hotel.area || '').trim();
-  const lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Hotel Day Club//EN',
-    'BEGIN:VEVENT',
-    `UID:${icsEscape(b.code)}@hoteldayclub.com.au`,
-    `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z')}`,
-    `DTSTART;VALUE=DATE:${day}`,
-    `DTEND;VALUE=DATE:${end}`,
-    `SUMMARY:${icsEscape('Day pass at ' + (hotel.name || 'Hotel Day Club'))}`,
-    `DESCRIPTION:${icsEscape('Booking ' + b.code + '. Show this code at reception.')}`,
-    where ? `LOCATION:${icsEscape(where)}` : '',
-    'END:VEVENT',
-    'END:VCALENDAR',
-    '',
-  ];
-  return lines.filter(Boolean).join('\r\n');
-}
 app.get('/booking/:code/calendar.ics', (req, res) => {
   if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);
   const b = bookingFull(String(req.params.code || '').toUpperCase());
@@ -756,7 +732,7 @@ app.get('/booking/:code/calendar.ics', (req, res) => {
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(b.hotel_id);
   res.type('text/calendar; charset=utf-8');
   res.set('Content-Disposition', `attachment; filename="${b.code}.ics"`);
-  res.send(bookingIcs(b, hotel));
+  res.send(bookingIcs(b, hotel, eventWindow(db, hotel, b.date)));
 });
 app.get('/booking/:code', async (req, res) => {
   if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);
@@ -773,6 +749,7 @@ app.get('/booking/:code', async (req, res) => {
   const shownName = maskName(b.guest_name);
   const shownEmail = maskEmail(b.email);
   const mapHref = directionsHref(hotel);
+  const googleCal = passCalendarLink(b, hotel, eventWindow(db, hotel, b.date));
   const status = b.status === 'cancelled' ? 'Cancelled' : b.checked_in_at ? 'Checked in ' + b.checked_in_at : 'Confirmed';
   bookingPrivate(res);
   res.send(page('Booking confirmed', `<div class="wrap sec narrow confirm">
@@ -783,7 +760,7 @@ app.get('/booking/:code', async (req, res) => {
 <dl><dt>Guest</dt><dd>${esc(shownName)}</dd>${shownEmail ? `<dt>Email</dt><dd>${esc(shownEmail)}</dd>` : ''}<dt>Date</dt><dd>${esc(nice(b.date))}${when ? ` · ${esc(when)}` : ''}</dd><dt>Pass</dt><dd>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</dd><dt>Guests</dt><dd>${party}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Cancellation</dt><dd>${esc(note)}</dd><dt>Rules</dt><dd>${b.rules_ack_at ? 'Accepted' : '—'}</dd><dt>Terms</dt><dd>${b.terms_ack_at ? 'Accepted' : '—'}</dd><dt>Risk warning</dt><dd>${b.risk_ack_at ? 'Accepted' : '—'}</dd><dt>Status</dt><dd>${esc(status)}</dd></dl>
 <p class="swim-note">${esc(swimNote(hotel))}</p>
 ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}</div>
-<p class="center" style="margin-top:16px"><a class="btn btn-line" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">Add to calendar</a>${mapHref ? ` <a class="btn btn-line" href="${esc(mapHref)}">Directions</a>` : ''}</p>
+<p class="center cal-links" style="margin-top:16px"><a class="btn btn-line" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">Add to calendar</a>${googleCal ? ` <a class="btn btn-line" href="${esc(googleCal)}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>` : ''}${mapHref ? ` <a class="btn btn-line" href="${esc(mapHref)}">Directions</a>` : ''}</p>
 <div class="center" style="margin-top:12px"><a class="btn btn-line" href="/">Book another day</a></div></div>`, { analytics: true, analyticsPath: '/booking', index: false, canonical: false }));
 });
 
@@ -1028,7 +1005,7 @@ ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <div class="dash-head"><div><p class="eyebrow-s">Hotel dashboard</p><h1 class="l-title">G'day, ${esc(h.name.replace(' (Demo)', ''))}</h1><p class="muted">${esc(nice(t))} · ${inToday} of ${dueToday} spots checked in today</p></div>
 <div class="dash-actions"><a class="btn btn-line" href="/hotel/analytics">Analytics</a><a class="btn btn-navy" href="/hotel/checkin">Check in a guest</a></div></div>
 ${opsBar(h, passes)}
-<div class="stats">${stat('Spots booked', s.spots, `${s.n} bookings · ${s.people} people`)}${stat('Gross sales', money(s.gross), `Includes ${money(addonGross)} add-ons · last 30 days ${money(s30.gross)}`)}${stat('Hotel share (75%)', money(s.gross * HOTEL_SHARE), 'Paid out to you')}${stat('Platform commission (25%)', money(s.gross * (1 - HOTEL_SHARE)), 'Hotel Day Club fee')}</div>
+<div class="stats">${stat('Spots booked', s.spots, `${s.n} bookings · ${s.people} people`)}${stat('Gross sales', money(s.gross), `Includes ${money(addonGross)} add-ons · last 30 days ${money(s30.gross)}`)}${stat(`Hotel share (${hotelPct()}%)`, money(s.gross * HOTEL_SHARE), 'Paid out to you')}${stat(`Platform commission (${feePct()}%)`, money(s.gross * (1 - HOTEL_SHARE)), 'Hotel Day Club fee')}</div>
 <div class="seat-stats">${bySeat.map(r => `<span><b>${esc(spotLabel(r))}</b> ${r.spots} booked · ${r.people} people</span>`).join('')}</div>
 ${todaySection(h)}
 <section id="lookup" class="panel"><h2 class="ph2">Booking lookup</h2><form class="lookup" method="get" action="/hotel#lookup"><input name="q" value="${esc(q)}" placeholder="Booking code (HDC-12345), name, email or phone"><button class="btn btn-navy">${ICON.search} Find</button>${q ? '<a class="link" href="/hotel">Clear</a>' : ''}</form>
@@ -1326,9 +1303,9 @@ ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <p><a class="btn btn-line" href="/admin/backups">Backups and exports</a></p>
 ${pending.length ? `<section class="panel"><h2 class="ph2">Pending approval</h2>${pendingHtml}</section>` : ''}
 ${contactMessagesHtml()}
-<div class="stats">${stat('Bookings', tot.n, tot.passes + ' spots')}${stat('Gross sales', money(tot.gross), `Includes ${money(addonAll)} add-ons`)}${stat('Paid to hotels (75%)', money(tot.gross * HOTEL_SHARE))}${stat('Platform commission (25%)', money(tot.gross * (1 - HOTEL_SHARE)), 'Hotel Day Club revenue')}</div>
-<p class="muted small" style="margin:-8px 0 16px">Gross includes add-ons. Commission stays at 25% of that gross.</p>
-<section class="panel"><h2 class="ph2">By hotel</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Hotel</th><th>Bookings</th><th>Spots</th><th>Today</th><th>Gross</th><th>Hotel 75%</th><th>Commission 25%</th></tr></thead><tbody>
+<div class="stats">${stat('Bookings', tot.n, tot.passes + ' spots')}${stat('Gross sales', money(tot.gross), `Includes ${money(addonAll)} add-ons`)}${stat(`Paid to hotels (${hotelPct()}%)`, money(tot.gross * HOTEL_SHARE))}${stat(`Platform commission (${feePct()}%)`, money(tot.gross * (1 - HOTEL_SHARE)), 'Hotel Day Club revenue')}</div>
+<p class="muted small" style="margin:-8px 0 16px">Gross includes add-ons. Commission stays at ${feePct()}% of that gross.</p>
+<section class="panel"><h2 class="ph2">By hotel</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Hotel</th><th>Bookings</th><th>Spots</th><th>Today</th><th>Gross</th><th>Hotel ${hotelPct()}%</th><th>Commission ${feePct()}%</th></tr></thead><tbody>
 ${per.map(r => `<tr><td><a class="link" href="/admin?hotel=${r.id}#all"><b>${esc(r.name)}</b></a><div class="muted small">${esc(r.area)}</div></td><td>${r.n}</td><td>${r.passes}</td><td>${r.today}</td><td>${money(r.gross)}</td><td>${money(r.gross * HOTEL_SHARE)}</td><td><b>${money(r.gross * (1 - HOTEL_SHARE))}</b></td></tr>`).join('')}
 <tr class="tot"><td>Total</td><td>${tot.n}</td><td>${tot.passes}</td><td>${tot.today}</td><td>${money(tot.gross)}</td><td>${money(tot.gross * HOTEL_SHARE)}</td><td>${money(tot.gross * (1 - HOTEL_SHARE))}</td></tr></tbody></table></div></section>
 <section class="panel" id="all"><h2 class="ph2">Latest bookings</h2><form class="lookup" method="get" action="/admin#all"><select name="hotel"><option value="">All hotels</option>${per.map(r => `<option value="${r.id}" ${r.id === hid ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select><input name="q" value="${esc(q)}" placeholder="Code, name or email"><button class="btn btn-navy">Filter</button></form>
@@ -1464,7 +1441,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <div class="partner-card"><b>You set the offering</b><p>Seating types, how many people each holds, daily numbers, hours and pool rules.</p></div>
 <div class="partner-card"><b>Guest list the night before</b><p>We email the next day's guest list the evening before. The same list is on your dashboard, ready for check-in.</p></div>
 <div class="partner-card"><b>You keep food and drink spend</b><p>What guests buy at your bar or café stays with you.</p></div>
-<div class="partner-card"><b>Paid monthly</b><p>Seating and add-on sales are paid out once a month. You keep 75%. Hotel Day Club keeps 25%.</p></div>
+<div class="partner-card"><b>Paid monthly</b><p>Seating and add-on sales are paid out once a month. You keep ${hotelPct()}%. Hotel Day Club keeps ${feePct()}%.</p></div>
 </div>
 <p class="hiw-cta"><a class="btn btn-coral" href="/for-hotels">Talk to us</a> <a class="btn btn-line" href="/hotel">Hotel login</a></p>
 </div></section>

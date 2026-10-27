@@ -5,6 +5,7 @@ const { topicLabel } = require('./contact');
 const seo = require('./seo');
 const { demoSite, operatorEmail } = require('./siteMode');
 const mailer = require('./mailer');
+const { eventWindow, passCalendarLink } = require('./calendar');
 
 function htmlValue(value) {
   return esc(value).replace(/\n/g, '<br>');
@@ -32,6 +33,7 @@ function bookingNotice(info) {
   const heading = demo ? 'Your demo booking' : "You're booked in.";
   const intro = demo ? warning : 'This email confirms the booking you just made.';
   const linkLine = `Your QR code is on the confirmation page:\n${info.link}`;
+  const calendarLine = info.calendarUrl ? `Add to Google Calendar:\n${info.calendarUrl}` : '';
   const contactLine = `Questions: ${info.contact}`;
   const guestLine = info.guest ? `Guest: ${info.guest}` : '';
   const text = [
@@ -48,6 +50,7 @@ function bookingNotice(info) {
     '',
     linkLine,
     '',
+    calendarLine,
     contactLine,
   ].filter(line => line !== '').join('\n');
   const rows = facts.map(([label, value]) => `<tr>
@@ -68,6 +71,7 @@ ${guestLine ? `<p style="margin:0 0 12px;color:#0A1428;">${esc(guestLine)}</p>` 
 <p style="margin:20px 0;color:#0A1428;">${esc(info.risk)}</p>
 <p style="margin:0 0 12px;color:#0A1428;">Your QR code is on the confirmation page:</p>
 <p style="margin:0 0 20px;color:#0E1E3A;font-weight:700;overflow-wrap:anywhere;"><a href="${esc(info.link)}" style="color:#0E1E3A;font-weight:700;">${esc(info.link)}</a></p>
+${info.calendarUrl ? `<p style="margin:0 0 8px;color:#0A1428;">Add to Google Calendar:</p><p style="margin:0 0 20px;color:#0E1E3A;font-weight:700;overflow-wrap:anywhere;"><a href="${esc(info.calendarUrl)}" style="color:#0E1E3A;font-weight:700;">${esc(info.calendarUrl)}</a></p>` : ''}
 <p style="margin:0;color:#0A1428;">${esc(contactLine)}</p>
 </div></body></html>`;
   const subject = demo
@@ -149,6 +153,7 @@ function bookingMessage(db, code) {
   if (hotel) delete hotel.address;
   const adds = db.prepare('SELECT name, qty, total FROM booking_addons WHERE booking_id=? ORDER BY name').all(row.id);
   const view = hoursView(db, hotel, row.date);
+  const calendarUrl = passCalendarLink({ code: row.code }, hotel, eventWindow(db, hotel, row.date));
   const bookedAt = row.created_at ? new Date(String(row.created_at).replace(' ', 'T')) : new Date();
   const note = row.cancel_note || cancelNote(db, hotel, row.date, bookedAt);
   const party = row.party || row.qty * (row.holds || 1);
@@ -168,6 +173,7 @@ function bookingMessage(db, code) {
     risk: swimNote(hotel || {}),
     contact: operatorEmail(),
     link: seo.ORIGIN + '/booking/' + encodeURIComponent(row.code),
+    calendarUrl,
     guest: maskName(row.guest_name),
   });
 }

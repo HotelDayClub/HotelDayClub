@@ -59,15 +59,18 @@ function render(){
  const c=document.querySelector('#passes input:checked');
  const p=c&&av.find(x=>x.code===c.value);
  const holds=p?p.holds||1:1;
- const prev=[...document.querySelectorAll('#addons-pick input:checked')].map(i=>i.value);
  const box=$('#addons-pick');
  const wrap=document.getElementById('extras');
- if(wrap) wrap.hidden=!addons.length;
- box.innerHTML=addons.map(a=>{const dis=a.remaining<need(a,q,holds);const on=!dis&&prev.indexOf(a.code)>=0;const price=!dis&&a.price>0?'<span class="extra-price">'+fmt(a.price)+'</span>':'';const note=dis?'<span class="extra-note">Sold out for this date</span>':'';return '<label class="extra'+(dis?' is-off':'')+'"><input type="checkbox" name="addon" value="'+h(a.code)+'" '+(dis?'disabled':'')+(on?' checked':'')+'><span class="extra-name">'+h(a.name)+'</span>'+price+note+'</label>'}).join('');
- let extra=0;document.querySelectorAll('#addons-pick input:checked').forEach(i=>{const a=addons.find(x=>x.code===i.value);if(a)extra+=a.price*need(a,q,holds)});
+ const dated=!!($('#date')&&$('#date').value);
+ if(dated&&box){
+  const prev=[...box.querySelectorAll('input:checked')].map(i=>i.value);
+  box.innerHTML=addons.map(a=>{const dis=a.remaining<need(a,q,holds);const on=!dis&&prev.indexOf(a.code)>=0;const price=!dis&&a.price>0?'<span class="extra-price">'+fmt(a.price)+'</span>':'';const note=dis?'<span class="extra-note">Sold out for this date</span>':'';return '<label class="extra'+(dis?' is-off':'')+'"><input type="checkbox" name="addon" value="'+h(a.code)+'" data-price="'+(+a.price||0)+'" data-per="'+h(a.per||'guest')+'" '+(dis?'disabled':'')+(on?' checked':'')+'><span class="extra-name">'+h(a.name)+'</span>'+price+note+'</label>'}).join('');
+  if(wrap) wrap.hidden=!addons.length;
+ }
+ let extra=0;document.querySelectorAll('#addons-pick input:checked').forEach(i=>{const price=+i.dataset.price||0;const qty=i.dataset.per==='booking'?1:q*(holds||1);extra+=price*qty});
  const people=p?q*holds:q;
  const sum=p?p.price*q+extra:0;
- $('#total').innerHTML=p?'<span>'+fmt(p.price)+' × '+q+(people>q?' · '+people+' guests':'')+(extra?' + add-ons':'')+'</span><b>'+fmt(sum)+'</b>':'';
+ $('#total').innerHTML=p?'<span>'+fmt(p.price)+' × '+q+(people>q?' · '+people+' guests':'')+(extra?' + '+fmt(extra)+' extras':'')+'</span><b>'+fmt(sum)+'</b>':'';
  const bar=$('#bar-total'); if(bar) bar.textContent=p?fmt(sum):($('#from-price')?$('#from-price').textContent:'');
  $('#go').disabled=!p;
  const blocked=av[0]&&av[0].blocked;
@@ -173,7 +176,6 @@ ${arrival}
 <div id="status" class="status"></div>
 <figure class="seat-shot" id="seat-photo"><img id="seat-img" src="${esc(seatPhoto(pick && pick.kind))}" alt="${esc(seatAlt)}" width="480" height="360" loading="lazy" decoding="async">${demo ? '<figcaption>Example photo, not this hotel.</figcaption>' : `<figcaption>${esc(short)}</figcaption>`}</figure>
 <label class="fl" for="qty">Guests<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === 1 ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
-<details class="extras" id="extras"><summary><span class="extra-label">Add extras <span class="extra-opt">(optional)</span></span></summary><div class="extra-list" id="addons-pick"></div></details>
 <div class="bb-total" id="total"></div>
 <p class="cancel-note" id="cancel-note">${esc(cancel)}</p>
 <button class="btn btn-coral full" id="go" type="submit">Book your day</button>

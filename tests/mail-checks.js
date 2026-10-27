@@ -224,6 +224,12 @@ function recorder(decide) {
   assert.ok(booked.html.includes('Free cancellation until 11am Wed 4 Nov.'));
   assert.ok(booked.html.includes('No lifeguard on duty.'));
   assert.ok(booked.html.includes('https://www.hoteldayclub.com.au/booking/HDC-ONCE'));
+  assert.ok(booked.html.includes('https://calendar.google.com/calendar/render?'));
+  assert.ok(booked.html.includes('action=TEMPLATE'));
+  assert.ok(booked.html.includes('20261103T230000Z'));
+  assert.ok(booked.html.includes('20261104T050000Z'));
+  assert.ok(booked.text.includes('Add to Google Calendar:'));
+  assert.ok(booked.text.includes('HDC-ONCE'));
   assert.ok(booked.html.includes('This is a demo booking. No payment was taken and no real booking exists.'));
   assert.ok(booked.text.includes('Questions: hello@hoteldayclub.com.au'));
   assert.ok(!booked.html.includes(STREET) && !booked.text.includes(STREET));

@@ -1,7 +1,6 @@
 const { ymd, addDays, esc, money, nice } = require('./util');
 const { dayPlan, spotLabel } = require('./offering');
-
-const HOTEL_SHARE = 0.75;
+const { HOTEL_SHARE, share } = require('./commission');
 const RANGES = [7, 30, 90];
 const WEEKDAYS = [
   { weekday: 1, label: 'Monday' },
@@ -26,11 +25,6 @@ function eachDate(start, end) {
   const last = parseYmd(end);
   for (let d = parseYmd(start); d <= last; d = addDays(d, 1)) out.push(ymd(d));
   return out;
-}
-function share(gross) {
-  const payout = Math.round(Number(gross) * 75) / 100;
-  const fee = Math.round((Number(gross) - payout) * 100) / 100;
-  return { payout, fee };
 }
 function pct(ratio) {
   if (ratio == null || !Number.isFinite(ratio)) return '—';
