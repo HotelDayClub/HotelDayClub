@@ -341,6 +341,9 @@ function start(port, extra = {}) {
     assert.ok(page.body.includes(', Australia'));
     assert.ok(!page.body.includes(', Sydney'));
     assert.ok(page.body.includes('Before you swim'));
+    assert.ok(page.body.includes('A confirmation email is sent to the address you gave.'));
+    assert.ok(page.body.includes('This is a demo booking. No payment was taken and no real booking exists.'));
+    assert.ok(!page.body.includes('No email is sent'));
     assert.ok(page.body.includes('Terms') && page.body.includes('Accepted'));
     assert.ok(page.body.includes('Hotel Day Club · ABN 98 227 458 028'));
     assert.ok(!page.body.includes('Jason Baranov') && !page.body.includes('registration pending'));

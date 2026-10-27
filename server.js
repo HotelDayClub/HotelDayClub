@@ -16,6 +16,8 @@ const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = requ
 const { adminPassword, verifyPassword, safeEqual, migrateHotelPasswords, maskName, maskEmail } = require('./passwords');
 const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
 const { ymd, addDays, esc, money, nice } = require('./util');
+const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
+const { sendBookingConfirmation, sendContactAlert } = require('./notices');
 const { DESTINATIONS, destIcon, destinationBySlug } = require('./destinations');
 const seo = require('./seo');
 const compress = require('./compress');
@@ -197,11 +199,9 @@ function logoLink(tone) {
   const src = light ? '/assets/hdc-lockup-light.svg' : '/assets/hdc-lockup-dark.svg';
   return `<a class="logo" href="/"><img src="${src}" alt="Hotel Day Club" width="187" height="32"></a>`;
 }
-const DEFAULT_CONTACT_EMAIL = 'hello@hoteldayclub.com.au';
 const DEFAULT_ABN = '98 227 458 028';
 function contactEmail() {
-  const raw = String(process.env.CONTACT_EMAIL || DEFAULT_CONTACT_EMAIL).trim();
-  return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(raw) ? raw : DEFAULT_CONTACT_EMAIL;
+  return operatorEmail();
 }
 function contactMail() {
   const email = esc(contactEmail());
@@ -312,7 +312,7 @@ function page(title, body, opts = {}) {
   const header = home ? '' : `<header class="hdr"><div class="wrap hdr-in">${logoLink('dark')}${nav === 'guest' ? guestNav : '<nav class="hdr-nav"></nav>'}<div class="hdr-right">${right}</div></div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
-<div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>
+${demoSite() ? '<div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>' : ''}
 ${header}<main>${body}</main>
 ${bare ? '' : siteFooter(home ? 'light' : 'dark')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}
 </body></html>`;
@@ -633,7 +633,7 @@ document.querySelectorAll('#co-addons input').forEach(i=>i.onchange=paint);paint
 </script>`, { analytics: true, index: false, canonical: false }));
 });
 
-app.post('/book', (req, res) => {
+app.post('/book', async (req, res) => {
   const b = req.body;
   const name = String(b.name || '').trim(), email = String(b.email || '').trim(), phone = String(b.phone || '').trim();
   if (!name || !/^\S+@\S+\.\S+$/.test(email) || phone.replace(/\D/g, '').length < 8) return errPage({ err: 'Please enter your name, a valid email and a mobile number.', h: publicHotel(b.hotel) }, res);
@@ -654,6 +654,11 @@ app.post('/book', (req, res) => {
     for (const ad of v.addons) insAdd.run(info.lastInsertRowid, ad.id, ad.name, ad.qty, ad.price, ad.line);
   }).immediate();
   if (v.err) return errPage(v, res);
+  try {
+    await sendBookingConfirmation(db, code);
+  } catch (err) {
+    console.error('booking confirmation email failed code=' + code);
+  }
   res.redirect(303, '/booking/' + code);
 });
 
@@ -747,7 +752,7 @@ app.get('/booking/:code', async (req, res) => {
   bookingPrivate(res);
   res.send(page('Booking confirmed', `<div class="wrap sec narrow confirm">
 <div class="ok-badge">${ICON.check}</div><h1 class="l-title center">You're booked in.</h1>
-<p class="center muted">Your confirmation is saved on this page. No email is sent in this demo.</p>
+<p class="center muted">${esc(confirmationBlurb())}</p>
 <div class="ticket"><div class="t-top"><img src="/assets/photos/${JSON.parse(b.photos)[0]}" alt="${esc(/\(Demo\)/.test(b.hotel) ? 'Stock photo, not this hotel' : 'Photo of ' + seo.shortName(b.hotel))}" width="1200" height="900"><div><h3>${esc(b.hotel)}</h3><p class="muted small">${esc(b.area)}, Australia</p></div></div>
 <div class="t-mid"><img class="qr" src="${qr}" alt="QR code for ${esc(b.code)}"><div class="code">${esc(b.code)}</div><p class="muted small">Show this at reception</p></div>
 <dl><dt>Guest</dt><dd>${esc(shownName)}</dd>${shownEmail ? `<dt>Email</dt><dd>${esc(shownEmail)}</dd>` : ''}<dt>Date</dt><dd>${esc(nice(b.date))}${when ? ` · ${esc(when)}` : ''}</dd><dt>Pass</dt><dd>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</dd><dt>Guests</dt><dd>${party}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Cancellation</dt><dd>${esc(note)}</dd><dt>Rules</dt><dd>${b.rules_ack_at ? 'Accepted' : '—'}</dd><dt>Terms</dt><dd>${b.terms_ack_at ? 'Accepted' : '—'}</dd><dt>Risk warning</dt><dd>${b.risk_ack_at ? 'Accepted' : '—'}</dd><dt>Status</dt><dd>${esc(status)}</dd></dl>
@@ -1498,7 +1503,7 @@ ${error ? `<div class="alert" role="alert">${esc(error)}</div>` : ''}
 app.get('/contact', (req, res) => {
   res.send(contactHtml({ sent: req.query.sent === '1' }));
 });
-app.post('/contact', (req, res) => {
+app.post('/contact', async (req, res) => {
   const parsed = parseMessage(req.body || {});
   const show = (status, extra) => res.status(status).send(contactHtml({ error: extra.error, values: parsed.values || {} }));
   if (contactLimited(req.ip || 'unknown')) {
@@ -1508,11 +1513,17 @@ app.post('/contact', (req, res) => {
   if (parsed.honeypot) return res.redirect(303, '/contact?sent=1');
   if (!sameSitePost(req)) return show(403, { error: 'That message could not be sent. Use the form on this page.' });
   if (parsed.error) return show(400, parsed);
+  let messageId;
   try {
-    saveMessage(db, parsed.row);
+    messageId = saveMessage(db, parsed.row);
   } catch (err) {
     console.error('contact: database save failed ' + err.message);
     return show(500, { error: 'We could not save that message. Email us and we will reply.' });
+  }
+  try {
+    await sendContactAlert(db, messageId);
+  } catch (err) {
+    console.error('contact alert email failed id=' + messageId);
   }
   res.redirect(303, '/contact?sent=1');
 });

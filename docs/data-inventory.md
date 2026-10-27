@@ -16,6 +16,7 @@ The app does not take payment. Checkout shows disabled card fields and the text 
 | Optional webhook | Waitlist row plus `WAITLIST_WEBHOOK_TOKEN` | `POST` to `WAITLIST_WEBHOOK_URL` when that variable is set. The README script appends the row to a Google Sheet. |
 | Browser | Signed `admin` cookie (value `jason`) and signed `hotel` cookie (hotel id) | httpOnly, SameSite=Lax, 12-hour expiry. Secure when `NODE_ENV` is `production`. No server-side session table. No guest account cookie. |
 | Google Analytics | Page views on public guest pages | Measurement ID `G-9F5ZH1T4YN` in production unless `GA_MEASUREMENT_ID` overrides it. Not loaded on `/hotel` or `/admin`. A booking confirmation is sent as path `/booking` and title `Booking`, so the booking code in the address bar is not the hit path. The waitlist success page can send a `generate_lead` event with no name or email. |
+| Resend (email processor) | A transactional booking confirmation to the guest, and a contact-form alert to the contact address | Only when `RESEND_API_KEY` and `MAIL_FROM` are set. The app POSTs to `https://api.resend.com/emails`. If the key is unset, nothing is sent and the booking or message is still saved. Marketing email is not sent. |
 
 There is no separate session store, no payment table, and no copy of a photo ID.
 
@@ -41,6 +42,7 @@ Written by `POST /book`.
 | `cancel_note` | The free-cancellation sentence for that date (for example `Free cancellation until …`). Not a note the guest wrote |
 | `created_at` | Insert time |
 | `seeded`, `refunded` | Sample-data flag, and a refund flag used by demo history. Live checkout does not set `refunded` |
+| `guest_email_tries`, `guest_email_state` | How many times a confirmation was attempted, and `sending`, `sent`, `skipped` or `failed`. Not the address. One booking sends one email. A failure is tried once more. |
 
 There is no IP column, no card column, and no version id separate from the stored text.
 
@@ -67,6 +69,20 @@ Written by `POST /waitlist`. The same email updates the existing row (`ON CONFLI
 | `created_at`, `updated_at` | Insert and last update |
 
 The public site does not list these rows. Admin can delete one row (`POST /admin/waitlist/delete`). That does not delete a Google Sheet row, a log line, or a backup file.
+
+### `contact_messages`
+
+Written by `POST /contact` after the form checks pass. A honeypot submission is not stored.
+
+| Column | Contents |
+| --- | --- |
+| `name`, `email` | Name and email from the form. Email is stored lower-case |
+| `booking_code` | Optional code the person typed |
+| `topic`, `message` | Topic (`booking`, `change`, `partnership`, `other`) and the message, up to 2,000 characters |
+| `handled`, `handled_at` | Unused by the public form |
+| `alert_tries`, `alert_state` | How many times the operator alert was attempted, and `sending`, `sent`, `skipped` or `failed` |
+
+When email is configured, one alert is sent to `CONTACT_EMAIL` (default `hello@hoteldayclub.com.au`) through Resend. The alert contains the name, email, topic, booking code and message. A failure is tried once more.
 
 ### `hotels` (hotel staff and listing)
 
@@ -96,6 +112,7 @@ Not guest checkout data. Still personal where it names a person.
 - **Admin** (`admin` cookie after logging in as `jason`) sees every hotel, every booking (name, email, phone), guest notes, and the waitlist. Admin can download the SQLite backup and the CSV files. Hotel CSV columns are id, slug, name, area, status, login, contact name, contact email and address. The password column is not exported. Booking CSV includes name, email, mobile and the booking fields, not the stored rules text.
 - **The waitlist webhook**, if configured, receives email, first name, place, role, hotel name and destination.
 - **Google Analytics** receives the page path as implemented above. The code does not put the guest name, email, phone or booking code in the GA config or the lead event.
+- **Resend**, when `RESEND_API_KEY` and `MAIL_FROM` are set, receives the guest confirmation (hotel name, area, date, access hours, pass, guests, extras, total, booking code, confirmation-page link, cancellation sentence, short risk line, masked guest name, and the guest address as the recipient). It does not receive the hotel street address or the guest's mobile. The contact-form alert sends the name, email, topic, booking code and message to the contact address. Resend's own retention is not set by this app.
 
 Unauthenticated requests to `/admin`, `/admin/backups`, `/admin/backups/latest`, `/admin/export/bookings.csv`, `/admin/export/hotels.csv` and `/admin/waitlist.csv` are redirected to `/admin/login`. `/healthz` is public and returns only `{"ok":true,"db":true}` or, on failure, `{"ok":false,"db":false}`.
 
@@ -120,6 +137,8 @@ An admin can delete a waitlist row from `/admin`. Nothing in the admin UI delete
 
 When `WAITLIST_WEBHOOK_URL` is unset, every successful signup logs the email, first name, place, role, hotel name and destination (`waitlist.js`, "stored locally"). The same fields are logged if the webhook URL is invalid, the webhook returns an error, it times out, or the database insert throws (`server.js`). A successful webhook logs only the HTTP status, not the row.
 
+A mail skip logs that `RESEND_API_KEY` or `MAIL_FROM` is unset. A mail failure logs the booking code or the contact-message id, and a status, timeout, or the word `network`. Those lines do not include the guest's address. The contact-form alert itself does include that address, because the operator needs it to reply.
+
 If `ADMIN_PASSWORD` is unset at startup, `passwords.js` generates a password and writes it to the log. If `DEMO_HOTEL_PASSWORD` is unset, a password is generated and is not written to the log, so demo hotel login will not work until the variable is set and the process restarts. Set both variables.
 
 The in-memory rate limit uses `req.ip` and does not log it on its own.
@@ -138,13 +157,13 @@ These are differences between the code and the draft policy. They are not a rewr
 
 5. **No-show notes.** The policy's incident line is "if the hotel reports an incident or refused entry linked to your booking, a short note of what happened." The app also stores `kind = no_show`, with the same free-text note. There is no refused-entry flag separate from that note.
 
-6. **Marketing send and unsubscribe.** The policy says: "We send marketing emails or SMS (for example, hot-day alerts, new hotels and offers) only if you've opted in. Every marketing message identifies us and has an unsubscribe option, and we act on unsubscribes within 5 working days." The app stores `marketing_opt_in` and does not send email or SMS at all. The confirmation page says "No email is sent in this demo." There is no unsubscribe route and no record of an unsubscribe. The only in-product instruction is to email the contact address.
+6. **Marketing send and unsubscribe.** The policy says: "We send marketing emails or SMS (for example, hot-day alerts, new hotels and offers) only if you've opted in. Every marketing message identifies us and has an unsubscribe option, and we act on unsubscribes within 5 working days." The app stores `marketing_opt_in` and does not send marketing email or SMS. It does send two transactional messages through Resend when `RESEND_API_KEY` and `MAIL_FROM` are set: a booking confirmation to the guest, and a contact-form alert to the contact address. Those are not marketing, and they have no unsubscribe link. There is no unsubscribe route and no record of an unsubscribe. The confirmation page says a confirmation email is sent to the address given. While the demo banner is on, that page and the guest email say no payment was taken and no real booking exists.
 
 7. **Security claims.** The policy says: "We use reasonable steps to protect personal information: access controls, strong passwords and two-factor authentication on admin accounts, encrypted connections, and giving hotels only the minimum details." Hotel passwords are scrypt hashes, compared in constant time. Admin login is still one shared password, compared in constant time, with a lockout after 5 failures in 15 minutes. The admin cookie is HttpOnly, SameSite=Lax, expires after 12 hours, and is Secure when `NODE_ENV` is `production`. There is no second factor. In production, a missing `COOKIE_SECRET` or the built-in demo value is refused: the process logs an error and uses a random in-memory secret, so sessions reset on restart. Outside production, an unset `COOKIE_SECRET` still uses that demo default. A logged-in hotel still sees email and mobile for its own bookings, which is more than the "minimum details" list in section 5. A hotel's queries are limited to that hotel's id.
 
 8. **Retention.** The policy says: "We keep booking and payment records for as long as needed for tax and legal purposes. We delete or de-identify guest lists and marketing data when no longer needed. Hotels are asked to delete guest lists after the visit." There are no payment records. There is no deletion or de-identification job, no maximum age, and no message in the product asking a hotel to delete a guest list. Guest lists, notes and the marketing flag remain in SQLite, and in backups, until a person removes them.
 
-9. **Communications.** The policy lists "Communications: emails, messages and complaints you send us." The app does not store inbound email or a complaint form. Contact is a `mailto:` link.
+9. **Communications.** The policy lists "Communications: emails, messages and complaints you send us." The contact form at `/contact` stores the message in `contact_messages` and, when email is configured, sends a copy to the contact address through Resend. Inbound mail to the mailbox is still not copied into the database. The `mailto:` link is still on the site.
 
 10. **Server logs and backups.** The policy does not mention server logs or database backups. Logs can contain the full waitlist row (item above). Backups and the admin CSV downloads are extra copies of the booking, hotel and waitlist data. The 14 backup files are not described as a retention period.
 

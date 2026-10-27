@@ -23,6 +23,10 @@ services:
         sync: false
       - key: CONTACT_EMAIL
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
       - key: GA_MEASUREMENT_ID
         value: G-9F5ZH1T4YN
       - key: WAITLIST_WEBHOOK_URL

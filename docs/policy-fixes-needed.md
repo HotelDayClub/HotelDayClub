@@ -66,9 +66,9 @@ Suggested wording: "The hotel can record a no-show or an incident against your b
 
 The policy says: "We send marketing emails or SMS (for example, hot-day alerts, new hotels and offers) only if you've opted in. Every marketing message identifies us and has an unsubscribe option, and we act on unsubscribes within 5 working days."
 
-The app still only stores `marketing_opt_in` as 0 or 1. It does not send email or SMS. The confirmation page says no email is sent. There is no unsubscribe link and no record of an unsubscribe. The waitlist form tells people to email the contact address.
+The app still only stores `marketing_opt_in` as 0 or 1. It does not send marketing email or SMS. It does send transactional email through Resend (HTTPS, not SMTP) when `RESEND_API_KEY` and `MAIL_FROM` are set: a booking confirmation to the guest, and an alert to the contact address for each contact-form message. If the key is unset, those sends are skipped and logged, and the booking or message is still saved. The messages are not marketing and have no unsubscribe link. There is no unsubscribe route and no record of an unsubscribe. The confirmation page says a confirmation email is sent to the address given. While the demo banner is on, the page and the guest email say no payment was taken and no real booking exists. The waitlist form tells people to email the contact address.
 
-Suggested wording until a sender exists: "You can tick a box to say we may email you about day passes. We do not send marketing email or SMS yet. To withdraw that choice, or to leave the waitlist, email us at the address in this policy. We do not have an unsubscribe link in the product yet."
+Suggested wording: "After you book, we email you a confirmation of that booking. If you use the contact form, we email that message to ourselves so we can reply. These are not marketing messages, so they do not include an unsubscribe link. You can tick a box to say we may email you about day passes. We do not send marketing email or SMS yet. To withdraw that choice, or to leave the waitlist, email us at the address in this policy. We do not have an unsubscribe link in the product yet."
 
 ### 8. Retention and deletion (later feature)
 
@@ -82,9 +82,9 @@ Suggested wording: "We keep booking details, guest notes and the marketing choic
 
 The policy lists "Communications: emails, messages and complaints you send us."
 
-The app still does not store inbound email or a complaint form. Contact is a `mailto:` link.
+The contact form at `/contact` stores the name, email, optional booking code, topic and message in `contact_messages`. When `RESEND_API_KEY` and `MAIL_FROM` are set, a copy is sent to the contact address through Resend. Inbound email to the mailbox is still not stored in the database. The `mailto:` link is still on the site.
 
-Suggested wording: "If you email us, we keep that email in our mail, not in the booking database."
+Suggested wording: "If you send us a message through the contact form, we store your name, email, topic, message and any booking code, and we email a copy to our contact address so we can reply. If you email us directly, we keep that email in our mail, not in the booking database."
 
 ### 10. Server logs and backups
 

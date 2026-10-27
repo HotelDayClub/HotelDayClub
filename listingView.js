@@ -1,4 +1,5 @@
 const { esc, money, nice } = require('./util');
+const { instantConfirmationText } = require('./siteMode');
 const { spotLabel } = require('./offering');
 const { seatPhoto } = require('./inclusions');
 
@@ -162,7 +163,7 @@ ${policy}
 ${arrival}
 <section class="l-sec" id="before"><h3>Good to know</h3>
 <ul class="reassure"><li><b>Cancellation</b><span>${esc(cancel)} <a href="/refunds">Draft cancellation terms</a>.</span></li>
-<li><b>Instant confirmation</b><span>The booking is confirmed as soon as you finish checkout. This demo does not take a card or a payment.</span></li></ul>
+<li><b>Instant confirmation</b><span>${esc(instantConfirmationText())}</span></li></ul>
 </section>
 </div>
 <aside class="book-box" id="book">
