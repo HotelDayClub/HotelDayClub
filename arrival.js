@@ -75,8 +75,12 @@ function saveArrival(db, hotelId, body) {
     }
   }
   const clip = key => String(body[key] || '').trim().slice(0, 240);
-  db.prepare('UPDATE hotels SET address=?, lat=?, lng=?, transit_note=?, parking_entrance=?, day_entrance=? WHERE id=?')
-    .run(address, hasLat ? lat : null, hasLng ? lng : null, clip('transit_note'), clip('parking_entrance'), clip('day_entrance'), hotelId);
+  const state = ['NSW', 'QLD', 'WA'].includes(String(body.state || '').trim()) ? String(body.state).trim() : '';
+  const timezone = ['Australia/Sydney', 'Australia/Brisbane', 'Australia/Perth'].includes(String(body.timezone || '').trim())
+    ? String(body.timezone).trim()
+    : '';
+  db.prepare('UPDATE hotels SET address=?, lat=?, lng=?, transit_note=?, parking_entrance=?, day_entrance=?, state=?, timezone=? WHERE id=?')
+    .run(address, hasLat ? lat : null, hasLng ? lng : null, clip('transit_note'), clip('parking_entrance'), clip('day_entrance'), state || null, timezone || null, hotelId);
   return {};
 }
 
@@ -110,6 +114,19 @@ function arrivalForm(hotel) {
   return `<form class="arrive-form" method="post" action="/hotel/arrival" id="arrive-edit"><h2>Getting there</h2>
 <p class="muted small">Guests see a small map beside the description when this listing has an address. Directions stay off demo listings. Train, parking and entrance notes stay on this form. They are not shown on the public page. Leave latitude and longitude blank to hide the map.</p>
 <label class="fl">Address<input name="address" maxlength="160" required value="${esc(hotel.address || '')}"></label>
+<div class="two"><label class="fl">State<select name="state">
+<option value="" ${hotel.state ? '' : 'selected'}>Not stored</option>
+<option value="NSW" ${hotel.state === 'NSW' ? 'selected' : ''}>NSW</option>
+<option value="QLD" ${hotel.state === 'QLD' ? 'selected' : ''}>QLD</option>
+<option value="WA" ${hotel.state === 'WA' ? 'selected' : ''}>WA</option>
+</select></label>
+<label class="fl">Time zone<select name="timezone">
+<option value="" ${hotel.timezone ? '' : 'selected'}>Not stored</option>
+<option value="Australia/Sydney" ${hotel.timezone === 'Australia/Sydney' ? 'selected' : ''}>Australia/Sydney</option>
+<option value="Australia/Brisbane" ${hotel.timezone === 'Australia/Brisbane' ? 'selected' : ''}>Australia/Brisbane (no daylight saving)</option>
+<option value="Australia/Perth" ${hotel.timezone === 'Australia/Perth' ? 'selected' : ''}>Australia/Perth</option>
+</select></label></div>
+<p class="muted small">Used for the calendar invite. Leave both blank to use NSW, QLD or WA when that is already in the address. Otherwise the invite uses Sydney time.</p>
 <div class="two"><label class="fl">Latitude<input name="lat" inputmode="decimal" value="${esc(lat)}" placeholder="-33.8688"></label>
 <label class="fl">Longitude<input name="lng" inputmode="decimal" value="${esc(lng)}" placeholder="151.2093"></label></div>
 <label class="fl">Train or bus<textarea name="transit_note" maxlength="240">${esc(hotel.transit_note || '')}</textarea></label>

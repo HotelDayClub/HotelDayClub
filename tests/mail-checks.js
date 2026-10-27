@@ -92,7 +92,7 @@ function recorder(decide) {
     passLabel: 'Pool chair × 1',
     guests: '1',
     included: '1 × Towels',
-    access: 'Bar & <grill>: Food and drink available to purchase. From noon',
+    buyAccess: 'Bar & <grill>: Food and drink available to purchase. From noon',
     addons: [{ name: 'Gym', qty: 2, totalLabel: '$20' }],
     totalLabel: '$40',
     cancel: 'Free cancellation until 11am Wed 4 Nov.',
@@ -103,8 +103,8 @@ function recorder(decide) {
     address: STREET,
     phone: PHONE,
   });
-  assert.ok(direct.html.includes('Food and drink are not included in the pass.'));
-  assert.ok(direct.text.includes('Food and drink are not included in the pass.'));
+  assert.ok(direct.html.includes('Food and drink are not included in your pass.'));
+  assert.ok(direct.text.includes('Food and drink are not included in your pass.'));
   assert.ok(direct.html.includes('Salt &amp; &lt;Sea&gt;'));
   assert.ok(!direct.html.includes('<Sea>'));
   assert.ok(!direct.html.includes(STREET) && !direct.text.includes(STREET));
@@ -116,11 +116,12 @@ function recorder(decide) {
   assert.ok(direct.html.includes('Bondi Beach, Australia'));
   assert.ok(direct.html.includes('1 × Towels'));
   assert.ok(direct.text.includes('Included: 1 × Towels'));
-  assert.ok(direct.html.includes('Included access'));
+  assert.ok(direct.html.includes('On site to buy (not included)'));
+  assert.ok(!direct.text.includes('Included access:'));
   assert.ok(direct.html.includes('Bar &amp; &lt;grill&gt;'));
   assert.ok(direct.html.includes('Food and drink available to purchase'));
   assert.ok(!direct.html.includes('<grill>'));
-  assert.ok(direct.text.includes('Included access: Bar & <grill>: Food and drink available to purchase. From noon'));
+  assert.ok(direct.text.includes('On site to buy (not included): Bar & <grill>: Food and drink available to purchase. From noon'));
   assert.ok(direct.html.includes('This is a demo booking. No payment was taken and no real booking exists. This is not a reservation at a real hotel.'));
   assert.ok(direct.text.includes('No payment was taken'));
   assert.ok(direct.html.includes('https://www.hoteldayclub.com.au/booking/HDC-ABC'));
@@ -236,7 +237,8 @@ function recorder(decide) {
   assert.ok(booked.html.includes('Gym × 2'));
   assert.ok(booked.html.includes('2 × Towels'));
   assert.ok(booked.text.includes('Included: 2 × Towels'));
-  assert.ok(booked.html.includes('Included access'));
+  assert.ok(booked.html.includes('On site to buy (not included)'));
+  assert.ok(booked.html.includes('Food and drink are not included in your pass.'));
   assert.ok(booked.html.includes('Pool bar &lt;script&gt;'));
   assert.ok(booked.html.includes('Food and drink available to purchase'));
   assert.ok(booked.text.includes('Food and drink available to purchase'));

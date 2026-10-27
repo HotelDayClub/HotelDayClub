@@ -577,6 +577,9 @@ form.check-code input,form.check-code .btn{width:100%}
 .access-ticks{display:flex;flex-direction:column;gap:6px}
 .access-ticks label{font-weight:650;color:#0A1428}
 .pass-food{margin:18px 0 0;color:#0A1428;font-weight:650;line-height:1.45}
+.guard-note{margin:8px 0 0;max-width:40rem;color:#0A1428;font-weight:650;line-height:1.45}
+.area-type{display:flex;flex-wrap:wrap;gap:8px 18px;margin:8px 0 4px}
+.area-type .tick{margin:0}
 .page-folds{margin-top:28px;border-top:1px solid var(--line)}
 .fold{border-bottom:1px solid var(--line)}
 .fold summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:8px 0;cursor:pointer;font-weight:700;color:#0A1428;list-style:none}

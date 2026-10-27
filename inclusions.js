@@ -48,7 +48,8 @@ const INCLUSIONS = [
 
 const BY_CODE = Object.fromEntries(INCLUSIONS.map(item => [item.code, item]));
 const FOOD_DRINK = new Set(['welcome', 'food', 'poolside']);
-const FOOD_NOTE = 'Food and drink are not included in the pass. Buy them at the bar or café, or add an optional food and drink credit when the hotel offers one.';
+const FOOD_NOTE = 'Food and drink are not included in the pass.';
+const PASS_FOOD_LINE = 'Food and drink are not included in your pass.';
 function foodMode(mode) {
   return mode === 'addon' ? 'addon' : 'off';
 }
@@ -178,9 +179,9 @@ function ensureInclusions(db) {
     for (const [from, to] of foodRules) setRule.run(to, from);
     const blurbs = [
       ['A heated infinity pool on level one, looking straight out to the Pacific. Loungers, towels and a pool bar doing frozen margs from 11.', 'A heated infinity pool on level one, looking straight out to the Pacific. Loungers and towels. The pool bar sells drinks from 11.'],
-      ['Swim above the office towers. A heated rooftop pool, cabana daybeds and a bar that opens at noon. Quietest Mon to Thu.', 'Swim above the office towers. A heated rooftop pool, cabana daybeds, and a bar selling drinks from noon. Quietest Mon to Thu.'],
+      ['Swim above the office towers. A heated rooftop pool, cabana daybeds and a bar that opens at noon. Quietest Mon to Thu.', 'Rise above the office towers to a heated rooftop pool with city views. Swim in the sun, then stretch out on a reserved daybed or gather friends in a rooftop cabana for four. The bar opens at noon, with food and drink available to buy.'],
     ];
-    const setBlurb = db.prepare('UPDATE hotels SET blurb=? WHERE blurb=?');
+    const setBlurb = db.prepare('UPDATE hotels SET blurb=? WHERE blurb=? AND COALESCE(is_demo,0)=1');
     for (const [from, to] of blurbs) setBlurb.run(to, from);
     const manlyBlurb = require('./seed').DEMO_INTROS['manly-sands'].blurb;
     const setManly = db.prepare(`UPDATE hotels SET blurb=? WHERE slug='manly-sands' AND COALESCE(is_demo,0)=1 AND blurb=?`);
@@ -245,6 +246,85 @@ function includedLines(items, people) {
 function includedText(items, people) {
   return includedLines(items, people).map(line => line.text).join('\n');
 }
+function placeCodes(areas) {
+  const covered = new Set();
+  for (const area of areas || []) {
+    if (Number(area.serves_food)) continue;
+    const name = String(area.name || '').toLowerCase();
+    if (/gym|fitness/.test(name)) covered.add('gym');
+    if (/sauna|steam/.test(name)) covered.add('sauna');
+    if (/hot tub|\bspa\b/.test(name)) covered.add('spa');
+    if (/\bpools?\b/.test(name)) covered.add('pool');
+  }
+  return covered;
+}
+function amenityItems(items, areas) {
+  const covered = placeCodes(areas);
+  return includedRows(items).filter(item => {
+    if (item.code === 'pool' && covered.has('pool')) return false;
+    if (item.code === 'sauna' && covered.has('sauna')) return false;
+    if (item.code === 'spa' && covered.has('spa')) return false;
+    if (item.code === 'gym' && covered.has('gym')) return false;
+    return true;
+  });
+}
+function amenityLines(items, people, areas) {
+  return includedLines(amenityItems(items, areas), people);
+}
+function outletPhrase(name) {
+  const text = String(name || '').trim();
+  if (!text) return '';
+  return /^the\s/i.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : 'the ' + text.charAt(0).toLowerCase() + text.slice(1);
+}
+function joinOutlets(names) {
+  const parts = [];
+  const seen = new Set();
+  for (const name of names || []) {
+    const phrase = outletPhrase(name);
+    const key = phrase.toLowerCase();
+    if (!phrase || seen.has(key)) continue;
+    seen.add(key);
+    parts.push(phrase);
+  }
+  if (parts.length < 2) return parts[0] || '';
+  if (parts.length === 2) return `${parts[0]} or ${parts[1]}`;
+  return `${parts.slice(0, -1).join(', ')} or ${parts[parts.length - 1]}`;
+}
+function storedFoodNotes(rule) {
+  const text = String(rule || '');
+  const notes = [];
+  if (/no outside food or drink/i.test(text)) notes.push('No outside food or drink.');
+  else if (/no outside food/i.test(text)) notes.push('No outside food.');
+  if (/no glass/i.test(text)) notes.push('No glass.');
+  if (/packed lunches are welcome/i.test(text)) notes.push('Packed lunches are welcome.');
+  return notes;
+}
+function foodSentence(hotel, areas, items) {
+  const outlets = [];
+  const seen = new Set();
+  for (const area of areas || []) {
+    if (!Number(area.serves_food)) continue;
+    const name = String(area.name || '').trim();
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) continue;
+    seen.add(key);
+    outlets.push(name);
+  }
+  const where = joinOutlets(outlets);
+  const credit = (items || []).some(item => item.code === 'food' && item.mode === 'addon');
+  let sentence = 'Food and drink are not included in the pass.';
+  if (where && credit) sentence += ` Buy them at ${where}, or add the optional food and drink credit.`;
+  else if (where) sentence += ` Buy them at ${where}.`;
+  else if (credit) sentence += ' Add the optional food and drink credit.';
+  const notes = storedFoodNotes(hotel && hotel.food_rule);
+  if (notes.length) sentence += ' ' + notes.join(' ');
+  return sentence;
+}
+function guestFoodLine(db, hotel) {
+  if (!hotel) return FOOD_NOTE;
+  const { linkedAreas } = require('./access');
+  return foodSentence(hotel, linkedAreas(db, hotel.id), loadInclusions(db, hotel.id));
+}
 function includedNote(items) {
   const park = (items || []).find(i => i.code === 'parking' && i.mode === 'included' && String(i.note || '').trim());
   return park ? String(park.note).trim() : '';
@@ -285,7 +365,10 @@ function dayBeats(items) {
   const inc = code => mode(code) === 'included';
   const mid = [];
   if (on('pool')) mid.push({ h: 'Swim', p: 'The pool is yours for the day-pass hours.' });
-  if (on('food') || on('poolside') || on('welcome')) mid.push({ h: 'Eat and drink', p: 'Food and drink are not included. Buy them at the bar or café, or add an optional credit.' });
+  if (on('food') || on('poolside') || on('welcome')) {
+    const credit = mode('food') === 'addon';
+    mid.push({ h: 'Eat and drink', p: credit ? 'Food and drink are not included. Add the optional food and drink credit if you want one.' : 'Food and drink are not included.' });
+  }
   if (on('spa') || on('sauna')) mid.push({ h: 'Warm up', p: inc('spa') || inc('sauna') ? 'Heat, steam or the hot tub is included.' : 'Add the spa if you want it.' });
   if (on('gym')) mid.push({ h: 'Move', p: inc('gym') ? 'The fitness centre is included.' : 'Add the fitness centre if you want it.' });
   return [
@@ -300,18 +383,20 @@ function beatsHtml(items) {
 function hoursHtml(lines) {
   return `<details class="fold" id="hours"><summary>Opening hours</summary><ul class="hours-list">${lines.map(r => `<li><span>${esc(r.day)}</span><b>${esc(r.time)}</b></li>`).join('')}</ul><p class="muted small">These are the day-pass hours for this demo listing.</p></details>`;
 }
-function policyHtml(hotel) {
-  const facts = require('./offering').policyFacts(hotel);
+function policyHtml(hotel, foodLine) {
+  const offering = require('./offering');
+  const facts = offering.policyFacts(hotel);
+  const watch = offering.supervisionNote(hotel);
   const rows = [
-    ['Lifeguard', facts.lifeguard],
+    ['Lifeguard', watch ? `${facts.lifeguard}. ${watch}` : facts.lifeguard],
     ['Pool', facts.pool],
     ['Heated', facts.heated],
     ['Age', hotel.age_policy || 'See the hotel'],
     ['Children', hotel.kids_hours || 'See the age line'],
     ['ID at check-in', hotel.id_required ? 'Bring photo ID.' : 'Photo ID is not required in this demo.'],
     ['Dress', hotel.dress_code || 'Swimwear at the pool.'],
-    ['Food and drink', hotel.food_rule || FOOD_NOTE],
-    ['Cancellation', 'Free cancellation until 24 hours before the day starts, in this demo.'],
+    ['Food and drink', foodLine || hotel.food_rule || FOOD_NOTE],
+    ['Cancellation', 'Free cancellation until 24 hours before your access hours start, in this demo.'],
   ];
   const note = Number(hotel.is_demo) === 1
     ? 'Example information for a fictional hotel. It is not a contract. <a href="/refunds">Draft cancellation terms</a>.'
@@ -341,14 +426,14 @@ ${offerSelect(i)}
 ${i.code === 'parking' ? `<label class="inc-note">Note<input name="note_parking" maxlength="160" value="${esc(i.note || '')}" placeholder="Where to park"></label>` : `<input type="hidden" name="note_${i.code}" value="${esc(i.note || '')}">`}
 </div>`).join('');
   return `<form class="inc-form" method="post" action="/hotel/inclusions"><h2>What's included</h2>
-<p class="muted small">Included items come with the pass. Food and drink is never included: offer it as an optional extra, or leave it as available to purchase at the bar or café. Paid add-ons are optional at booking and use the daily number as a cap. Leave the price blank when there is no charge. Parking uses that cap as spaces per day. Not offered stays off the listing.</p>
+<p class="muted small">Included items come with the pass. Food and drink is never included: offer it as an optional extra, or leave it as available to purchase on site. Paid add-ons are optional at booking and use the daily number as a cap. Leave the price blank when there is no charge. Parking uses that cap as spaces per day. Not offered stays off the listing.</p>
 <div class="inc-edit inc-head"><span>Item</span><span>Offer</span><span>Price</span><span>A day</span></div>
 ${rows}
 <div class="offer-save"><button class="btn btn-navy" type="submit">Save what's included</button></div></form>`;
 }
 
 module.exports = {
-  INCLUSIONS, FOOD_NOTE, SEAT_PHOTO, seatPhoto, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
-  includedHtml, includedLines, includedText, includedNote, includedBlock,
+  INCLUSIONS, FOOD_NOTE, PASS_FOOD_LINE, SEAT_PHOTO, seatPhoto, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
+  includedHtml, includedLines, includedText, includedNote, includedBlock, amenityLines, foodSentence, guestFoodLine,
   addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml,
 };

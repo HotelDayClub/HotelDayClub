@@ -3,8 +3,8 @@ const { accessInstants, formatUtc, bookingIcs, googleCalendarUrl } = require('..
 const { HOTEL_SHARE, PLATFORM_FEE, hotelPct, feePct, share } = require('../commission');
 const { addonsHtml } = require('../inclusions');
 
-function at(date, opens, closes) {
-  const window = accessInstants(date, opens, closes);
+function at(date, opens, closes, hotel) {
+  const window = accessInstants(date, opens, closes, hotel);
   assert.ok(window, date + ' ' + opens + '-' + closes);
   return { start: formatUtc(window.start), end: formatUtc(window.end) };
 }
@@ -37,17 +37,42 @@ assert.deepStrictEqual(at('2026-07-14', '22:00', '02:00'), {
   start: '20260714T120000Z',
   end: '20260714T160000Z',
 });
+// Queensland has no daylight saving. Western Australia stays on UTC+8. A stored timezone wins over the state.
+assert.deepStrictEqual(at('2026-01-20', '11:00', '16:00', { address: '1 Demo St, Brisbane QLD 4000' }), {
+  start: '20260120T010000Z',
+  end: '20260120T060000Z',
+});
+assert.deepStrictEqual(at('2026-07-14', '11:00', '16:00', { state: 'QLD' }), {
+  start: '20260714T010000Z',
+  end: '20260714T060000Z',
+});
+assert.deepStrictEqual(at('2026-01-20', '11:00', '16:00', { state: 'WA' }), {
+  start: '20260120T030000Z',
+  end: '20260120T080000Z',
+});
+assert.deepStrictEqual(at('2026-01-20', '11:00', '16:00', { state: 'NSW', timezone: 'Australia/Perth' }), {
+  start: '20260120T030000Z',
+  end: '20260120T080000Z',
+});
+assert.deepStrictEqual(at('2026-01-20', '11:00', '16:00', { address: 'Bondi Beach NSW 2026', state: 'QLD' }), {
+  start: '20260120T010000Z',
+  end: '20260120T060000Z',
+});
 
 const summer = accessInstants('2026-01-20', '11:00', '16:00');
 const ics = bookingIcs(
-  { code: 'HDC-TEST', date: '2026-01-20' },
-  { name: 'Skyline Rooftop', address: '4 Demo Street', area: 'North Sydney' },
-  summer,
+  { code: 'HDC-TEST', date: '2026-01-20', cancel_note: 'Free cancellation until 11am, Mon 19 Jan.' },
+  { name: 'Skyline Rooftop', address: '4 Demo Street', area: 'North Sydney', lifeguard: 0 },
+  { ...summer, span: '11am–4pm' },
 );
 assert.ok(ics.includes('DTSTART:20260120T000000Z'));
 assert.ok(ics.includes('DTEND:20260120T050000Z'));
 assert.ok(!ics.includes('VALUE=DATE'));
-assert.ok(ics.includes('DESCRIPTION:Booking HDC-TEST. Show this code at reception.'));
+assert.ok(ics.includes('Booking HDC-TEST. Show this code at reception.'));
+assert.ok(ics.includes('Access hours 11am–4pm.'));
+assert.ok(ics.includes('Free cancellation until 11am\\, Mon 19 Jan.'));
+assert.ok(ics.includes('Food and drink not included.'));
+assert.ok(ics.includes('No lifeguard is on duty.'));
 assert.ok(ics.includes('LOCATION:4 Demo Street'));
 assert.ok(ics.includes('SUMMARY:Day pass at Skyline Rooftop'));
 

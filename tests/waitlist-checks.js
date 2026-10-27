@@ -179,7 +179,7 @@ function cookie(res) {
     assert.ok(hotels.body.includes('name="return" value="/for-hotels"'));
     assert.ok(!hotels.body.includes('demo-logins'));
     assert.ok(!hotels.body.includes('wait-hotel-test'));
-    assert.ok(home.body.includes('href="/hotel/login">Hotel partner login</a>'));
+    assert.ok(home.body.includes('href="/hotel/login">Hotel login</a>'));
     const join = await get(port, '/hotel/join');
     assert.strictEqual(join.status, 302);
     assert.strictEqual(join.headers.location, '/for-hotels');

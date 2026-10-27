@@ -103,7 +103,9 @@ function start(port) {
     assert.ok(salt.body.includes('aria-expanded="false"'));
     assert.ok(salt.body.includes('aria-controls="pass-detail-lounger"'));
     assert.ok(salt.body.includes('type="button"'));
-    assert.ok(salt.body.includes("What's included"));
+    assert.ok(salt.body.includes('Included access'));
+    assert.ok(salt.body.includes('On site to buy (not included)'));
+    assert.ok(!salt.body.includes("What's included"));
     assert.ok(salt.body.includes('From $'));
     assert.ok(!salt.body.includes('1 guest'));
     assert.ok(salt.body.includes('2 guests'));
@@ -111,7 +113,7 @@ function start(port) {
     assert.ok(salt.body.includes('1 × Towels'));
     assert.ok(salt.body.includes('2 × Towels'));
     assert.ok(salt.body.includes('4 × Towels'));
-    assert.ok(salt.body.includes('1 × Pool access'));
+    assert.ok(!salt.body.includes('Pool access'));
     assert.ok(salt.body.includes('Complimentary Wi-Fi'));
     assert.ok(salt.body.includes('id="pass-detail-lounger" data-code="lounger" role="region" aria-labelledby="pass-title-lounger" hidden'));
     assert.ok(salt.body.includes('<summary>Opening hours</summary>'));
@@ -158,7 +160,12 @@ function start(port) {
     assert.ok(!salt.body.includes('<script src="/vendor/leaflet/leaflet.js">'));
     assert.ok(salt.body.includes('class="hdc-date"'));
     assert.ok(salt.body.includes('data-inline="1"'));
-    assert.ok(salt.body.includes('Most popular'));
+    assert.ok(!salt.body.includes('Most popular'));
+    assert.ok(salt.body.includes('Buy them at the pool bar, or add the optional food and drink credit.'));
+    assert.ok(salt.body.includes('24 hours before your access hours start'));
+    assert.ok(!salt.body.includes('before the day starts'));
+    assert.ok(salt.body.includes('<h1 class="l-title">Your day at The Saltwater Terrace (Demo)</h1>'));
+    assert.ok(salt.body.includes('The Saltwater Terrace (Demo) day pass'));
     assert.ok(salt.body.includes('Instant confirmation'));
     assert.ok(salt.body.includes('a confirmation email is sent to the address you give'));
     assert.ok(salt.body.includes('This demo does not take a payment and is not a reservation at a real hotel.'));
@@ -168,7 +175,7 @@ function start(port) {
     assert.ok(salt.body.includes('Help when you need it'));
     assert.ok(salt.body.includes('href="/contact"'));
     assert.ok(salt.body.includes('Book your day'));
-    const poolBar = salt.body.match(/<li class="access-item">[\s\S]*?<b>Pool bar<\/b>[\s\S]*?<\/li>/);
+    const poolBar = salt.body.match(/<li class="access-item">(?:(?!<\/li>)[\s\S])*?<b>Pool bar<\/b>[\s\S]*?<\/li>/);
     assert.ok(poolBar, 'pool bar access');
     assert.ok(poolBar[0].includes('Food and drink available to purchase'));
     assert.ok(poolBar[0].includes('From 11am'));
@@ -181,8 +188,7 @@ function start(port) {
     assert.ok(!salt.body.includes('spots left'));
     assert.ok(!salt.body.includes('Wed ·'));
     assert.ok(!/>\s*Seat\s*</.test(salt.body));
-    const popular = salt.body.split('Most popular').length - 1;
-    assert.strictEqual(popular, 1);
+    assert.ok(!salt.body.includes('quietest'));
 
     const bay = await get(port, '/h/bayview-spa');
     leadAndMeta(bay.body, 'bayview-spa', 'Bayview Spa Hotel', 'Eastern Suburbs');
@@ -213,7 +219,7 @@ function start(port) {
     assert.ok(manly.body.includes('>Children</dt><dd>Children welcome until 2pm</dd>'));
     assert.ok(!manly.body.includes('>Children</dt><dd>Until 2pm</dd>'));
     assert.ok(!/adults only after 2pm/i.test(manly.body));
-    const kiosk = manly.body.match(/<li class="access-item">[\s\S]*?<b>Kiosk<\/b>[\s\S]*?<\/li>/);
+    const kiosk = manly.body.match(/<li class="access-item">(?:(?!<\/li>)[\s\S])*?<b>Kiosk<\/b>[\s\S]*?<\/li>/);
     assert.ok(kiosk, 'kiosk access');
     assert.ok(kiosk[0].includes('Food and drink available to purchase'));
     assert.ok(!/included/i.test(kiosk[0]));
@@ -221,7 +227,9 @@ function start(port) {
 
     const palm = await get(port, '/h/palm-court');
     leadAndMeta(palm.body, 'palm-court', 'Palm Court Resort', 'Parramatta');
-    assert.ok(palm.body.includes('>Lifeguard</dt><dd>On duty</dd>'));
+    assert.ok(palm.body.includes('>Lifeguard</dt><dd>On duty. Lifeguards don&#39;t replace adult supervision: an adult on the booking must actively supervise each child at all times.</dd>'));
+    assert.ok(palm.body.includes('class="guard-note">Lifeguards don&#39;t replace adult supervision: an adult on the booking must actively supervise each child at all times.</p>'));
+    assert.ok(!palm.body.includes('during day-pass hours'));
     assert.ok(palm.body.includes('>Heated</dt><dd>No</dd>'));
     assert.ok(!palm.body.includes('kids-float.jpg'));
     assert.ok(palm.body.includes('tropical-resort.jpg'));
@@ -231,13 +239,14 @@ function start(port) {
     assert.ok(palm.body.includes('<summary>Parking</summary>'));
     assert.ok(palm.body.includes('On-site parking is included'));
     assert.ok(!palm.body.includes('Parking is not offered'));
-    assert.ok(palm.body.includes('Food and drink are not included'));
-    assert.ok(palm.body.includes('available to buy at the café'));
-    assert.ok(palm.body.includes('The optional food and drink credit stays an extra.'));
-    assert.ok(palm.body.includes("What's included"));
+    assert.ok(palm.body.includes('Food and drink are not included in the pass. Buy them at the café, or add the optional food and drink credit.'));
+    assert.ok(palm.body.includes('Packed lunches are welcome.'));
+    assert.ok(!palm.body.includes('The optional food and drink credit stays an extra.'));
+    assert.ok(!palm.body.includes("What's included"));
     assert.ok(palm.body.includes('Included access'));
+    assert.ok(palm.body.includes('On site to buy (not included)'));
     assert.ok(palm.body.includes('<b>Lagoon pool</b>'));
-    const cafe = palm.body.match(/<li class="access-item">[\s\S]*?<b>Café<\/b>[\s\S]*?<\/li>/);
+    const cafe = palm.body.match(/<li class="access-item">(?:(?!<\/li>)[\s\S])*?<b>Café<\/b>[\s\S]*?<\/li>/);
     assert.ok(cafe, 'café access');
     assert.ok(cafe[0].includes('Food and drink available to purchase'));
     assert.ok(!/included/i.test(cafe[0]));
@@ -258,8 +267,9 @@ function start(port) {
     leadAndMeta(sky.body, 'skyline-rooftop', 'Skyline Rooftop Hotel', 'North Sydney');
     assert.ok(sky.body.includes('Mon–Thu · 11am–4pm'));
     assert.ok(sky.body.includes('<b>Heated rooftop pool</b>'));
+    assert.ok(!sky.body.includes('quietest'));
     assert.ok(!sky.body.includes('<b>Gym</b>'));
-    const skyBar = sky.body.match(/<li class="access-item">[\s\S]*?<b>Bar<\/b>[\s\S]*?<\/li>/);
+    const skyBar = sky.body.match(/<li class="access-item">(?:(?!<\/li>)[\s\S])*?<b>Bar<\/b>[\s\S]*?<\/li>/);
     assert.ok(skyBar, 'bar access');
     assert.ok(skyBar[0].includes('Food and drink available to purchase'));
     assert.ok(skyBar[0].includes('From noon'));
@@ -295,6 +305,10 @@ function start(port) {
     assert.ok(authed.body.includes('Infinity pool'));
     assert.ok(authed.body.includes('Pool bar'));
     assert.ok(authed.body.includes('Food and drink is not included'));
+    assert.ok(authed.body.includes('Access included'));
+    assert.ok(authed.body.includes('Available to buy'));
+    assert.ok(authed.body.includes('name="state"'));
+    assert.ok(authed.body.includes('name="timezone"'));
     assert.ok(authed.body.includes('Most popular label'));
     assert.ok(authed.body.includes('name="cap_parking"'));
     assert.ok(authed.body.includes('Food and drink is never included'));
@@ -360,7 +374,8 @@ function start(port) {
     assert.ok(confirm.body.includes('2 × Towels'));
     assert.ok(confirm.body.includes('2 × Pool access'));
     assert.ok(confirm.body.includes('1 × Complimentary Wi-Fi'));
-    assert.ok(confirm.body.includes('Food and drink are not included in the pass.'));
+    assert.ok(confirm.body.includes('Food and drink are not included in your pass.'));
+    assert.ok(confirm.body.includes('On site to buy (not included)'));
     assert.ok(!confirm.body.includes('Poolside food and drink'));
     assert.ok(confirm.body.includes('Cancellation'));
     assert.ok(confirm.body.includes('Included access'));
