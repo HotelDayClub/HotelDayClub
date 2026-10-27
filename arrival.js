@@ -86,30 +86,29 @@ function arrivalHtml(hotel) {
   const lng = Number(hotel.lng);
   const mapped = Number.isFinite(lat) && Number.isFinite(lng);
   if (!address && !mapped) return '';
+  const demo = Number(hotel.is_demo) === 1;
   const q = encodeURIComponent(address || `${lat},${lng}`);
   const google = `https://www.google.com/maps/dir/?api=1&destination=${q}`;
   const apple = `https://maps.apple.com/?daddr=${q}&dirflg=d`;
   const osm = mapped
     ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`
     : `https://www.openstreetmap.org/search?query=${q}`;
-  const preview = mapped ? `<button type="button" class="map-peek" data-lat="${lat}" data-lng="${lng}" data-label="${esc(address || 'Hotel')}" aria-haspopup="dialog" aria-controls="map-sheet" aria-expanded="false"><svg class="map-peek-art" viewBox="0 0 160 72" aria-hidden="true"><rect width="160" height="72" fill="#E7EEF5"/><path d="M0 24h160M0 48h160M36 0v72M92 0v72" stroke="#C5D4E4" stroke-width="4"/><path d="M0 12h160M68 0v72" stroke="#D7E3EF" stroke-width="2"/><circle cx="80" cy="34" r="6" fill="#FF6B57" stroke="#0A1428" stroke-width="1.6"/></svg><span class="map-peek-label">View map</span></button>` : '';
-  const sheet = mapped ? `<dialog class="map-sheet" id="map-sheet" aria-labelledby="map-sheet-title"><div class="map-sheet-bar"><h4 id="map-sheet-title">${esc(address || 'Map')}</h4><button type="button" class="map-close">Close</button></div><div class="map-canvas" aria-label="Map. You can pan and zoom."></div><p class="map-credit">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors. Fictional demo address.</p></dialog>` : '';
-  const demo = Number(hotel.is_demo) === 1;
+  const label = address || 'Hotel';
+  const preview = mapped ? `<button type="button" class="map-peek" data-lat="${lat}" data-lng="${lng}" data-label="${esc(label)}" aria-haspopup="dialog" aria-controls="map-sheet" aria-expanded="false"><svg class="map-peek-art" viewBox="0 0 160 72" aria-hidden="true"><rect width="160" height="72" fill="#E7EEF5"/><path d="M0 24h160M0 48h160M36 0v72M92 0v72" stroke="#C5D4E4" stroke-width="4"/><path d="M0 12h160M68 0v72" stroke="#D7E3EF" stroke-width="2"/><circle cx="80" cy="34" r="6" fill="#FF6B57" stroke="#0A1428" stroke-width="1.6"/></svg><span class="map-peek-label">View map</span></button>` : '';
+  const credit = demo ? ' Fictional demo address.' : '';
+  const sheet = mapped ? `<dialog class="map-sheet" id="map-sheet" aria-labelledby="map-sheet-title"><div class="map-sheet-bar"><h4 id="map-sheet-title">${esc(label)}</h4><button type="button" class="map-close">Close</button></div><div class="map-canvas" aria-label="Map. You can pan and zoom."></div><p class="map-credit">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.${credit}</p></dialog>` : '';
   const directions = address && !demo
-    ? `<a class="btn btn-navy" href="${esc(google)}" target="_blank" rel="noopener noreferrer">Get directions</a><a class="btn btn-line" href="${esc(apple)}" target="_blank" rel="noopener noreferrer">Apple Maps</a>`
+    ? `<div class="arrive-acts"><a class="btn btn-navy" href="${esc(google)}" target="_blank" rel="noopener noreferrer">Get directions</a><a class="btn btn-line" href="${esc(apple)}" target="_blank" rel="noopener noreferrer">Apple Maps</a></div>`
     : '';
-  return `<section class="l-sec" id="getting-there"><h3>Getting there</h3>
-<div class="arrive-line">${address ? `<p class="arrive-addr">${esc(address)}</p>` : ''}${preview}</div>
-${directions ? `<div class="arrive-acts">${directions}</div>` : ''}
-<p class="muted small">This is a fictional demo address. <a href="${esc(osm)}" rel="noopener noreferrer">Open the map</a>.</p>
-${sheet}</section>`;
+  const fiction = demo ? `<p class="muted small">This is a fictional demo address. <a href="${esc(osm)}" rel="noopener noreferrer">Open the map</a>.</p>` : '';
+  return `<aside class="arrive" id="getting-there"><p class="arrive-kicker">Location</p>${address ? `<p class="arrive-addr">${esc(address)}</p>` : ''}${preview}${directions}${fiction}${sheet}</aside>`;
 }
 
 function arrivalForm(hotel) {
   const lat = hotel.lat == null ? '' : hotel.lat;
   const lng = hotel.lng == null ? '' : hotel.lng;
   return `<form class="arrive-form" method="post" action="/hotel/arrival" id="arrive-edit"><h2>Getting there</h2>
-<p class="muted small">Guests see the address and a map preview. Directions open in Google Maps or Apple Maps when this is not a demo listing. Train, bus and parking notes stay on this form and are not shown on the public listing. Leave latitude and longitude blank to hide the map.</p>
+<p class="muted small">Guests see a small map beside the description when this listing has an address. Directions stay off demo listings. Train, parking and entrance notes stay on this form. They are not shown on the public page. Leave latitude and longitude blank to hide the map.</p>
 <label class="fl">Address<input name="address" maxlength="160" required value="${esc(hotel.address || '')}"></label>
 <div class="two"><label class="fl">Latitude<input name="lat" inputmode="decimal" value="${esc(lat)}" placeholder="-33.8688"></label>
 <label class="fl">Longitude<input name="lng" inputmode="decimal" value="${esc(lng)}" placeholder="151.2093"></label></div>

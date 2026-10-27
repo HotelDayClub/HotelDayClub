@@ -1,8 +1,10 @@
-const { esc, money, nice } = require('./util');
+const { esc, money } = require('./util');
 const { instantConfirmationText } = require('./siteMode');
-const { spotLabel } = require('./offering');
+const { KINDS } = require('./offering');
 const { seatPhoto, includedLines, includedNote } = require('./inclusions');
 
+const KIND_NAME = Object.fromEntries(KINDS.map(k => [k.code, k.name]));
+const KIND_ORDER = KINDS.map(k => k.code);
 const KIND_ALT = { lounger: 'sun lounger', daybed: 'daybed', cabana: 'cabana', chair: 'pool chair', entry: 'spa or pool entry', custom: 'pool pass' };
 function kindAlt(kind) { return KIND_ALT[kind] || 'day pass'; }
 function isDemo(h) { return Number(h && h.is_demo) === 1; }
@@ -11,50 +13,72 @@ function passAlt(p, h) {
   const kind = kindAlt(p.kind);
   return isDemo(h) ? `Example photo of a ${kind}, not this hotel` : `${kind} at ${shortName(h)}`;
 }
+function kindRank(kind) {
+  const i = KIND_ORDER.indexOf(kind || 'custom');
+  return i < 0 ? KIND_ORDER.length : i;
+}
 
-function passCards(passes, av, h, items) {
+function passCard(p, av, h, pick) {
+  const a = av.find(x => x.id === p.id);
+  const dis = !a || a.remaining < 1;
+  const on = pick && p.code === pick.code && !dis;
+  const state = !a || a.blocked || a.past ? 'Unavailable' : a.remaining < 1 ? 'Sold out' : 'Available';
+  const pop = p.featured ? '<span class="pop">Most popular</span>' : '';
+  const holds = Number(p.holds) || 1;
+  const holdsText = holds > 1 ? `<span class="pc-holds">${holds} guests</span>` : '';
+  const id = esc(p.code);
+  const desc = String(p.description || '').trim();
+  return `<article class="pass-card${dis ? ' dis' : ''}" data-kind="${esc(p.kind || 'custom')}">
+<input type="radio" id="pass-${id}" name="pass" value="${esc(p.code)}" data-kind="${esc(p.kind || 'custom')}" data-price="${p.price}" data-holds="${holds}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}>
+<button type="button" class="pass-open" id="pass-btn-${id}" data-code="${id}" aria-expanded="false" aria-controls="pass-detail-${id}">
+<span class="pc-copy">${pop}<b>${esc(p.name)}</b>${desc ? `<span class="pc-desc">${esc(desc)}</span>` : ''}<span class="pc-meta"><span class="pc-price">From ${money(p.price)}</span>${holdsText}<span class="avail">${state}</span></span></span>
+<img src="${esc(seatPhoto(p.kind))}" alt="${esc(passAlt(p, h))}" width="480" height="360" loading="lazy" decoding="async">
+</button>
+</article>`;
+}
+
+function passDetail(p, h, items) {
+  const holds = Number(p.holds) || 1;
+  const id = esc(p.code);
+  const desc = String(p.description || '').trim();
+  const lines = includedLines(items, holds);
+  const demo = isDemo(h);
+  return `<article class="pass-detail" id="pass-detail-${id}" data-code="${id}" role="region" aria-labelledby="pass-title-${id}" hidden>
+<figure class="pass-detail-photo"><img src="${esc(seatPhoto(p.kind))}" alt="${esc(passAlt(p, h))}" width="960" height="640" loading="lazy" decoding="async">${demo ? '<figcaption>Example photo, not this hotel.</figcaption>' : ''}</figure>
+<h3 id="pass-title-${id}" tabindex="-1">${esc(p.name)}</h3>
+${desc ? `<p class="pass-desc">${esc(desc)}</p>` : ''}
+${lines.length ? `<h4>What's included</h4><ul class="pass-inc-list">${lines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : ''}
+</article>`;
+}
+
+function passSection(passes, av, h, items) {
   const open = av.filter(p => p.remaining > 0);
   const pick = open.find(p => p.featured) || open[0] || av[0];
-  const note = includedNote(items);
-  return passes.map(p => {
-    const a = av.find(x => x.id === p.id);
-    const dis = !a || a.remaining < 1;
-    const on = pick && p.code === pick.code && !dis;
-    const state = !a || a.blocked || a.past ? 'Unavailable' : a.remaining < 1 ? 'Sold out' : 'Available';
-    const pop = p.featured ? '<span class="pop">Most popular</span>' : '';
-    const holds = Number(p.holds) || 1;
-    const holdsText = holds === 1 ? '1 guest' : `${holds} guests`;
-    const id = esc(p.code);
-    const lines = includedLines(items, holds);
-    const desc = String(p.description || '').trim();
-    const detail = lines.length || desc || note;
-    const panel = detail ? `<button type="button" class="pass-toggle" id="pass-btn-${id}" aria-expanded="false" aria-controls="pass-inc-${id}">What's included</button>
-<div class="pass-inc" id="pass-inc-${id}" role="region" aria-labelledby="pass-btn-${id}" hidden>
-${desc ? `<p class="pass-desc">${esc(desc)}</p>` : ''}
-${lines.length ? `<ul class="pass-inc-list">${lines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : ''}
-${note ? `<p class="pass-note">${esc(note)}</p>` : ''}
-</div>` : '';
-    return `<article class="pass-card${dis ? ' dis' : ''}">
-<input type="radio" id="pass-${id}" name="pass" value="${esc(p.code)}" data-kind="${esc(p.kind || 'custom')}" data-price="${p.price}" data-holds="${holds}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}>
-${pop}
-<label class="pass-face" for="pass-${id}">
-<img src="${esc(seatPhoto(p.kind))}" alt="${esc(passAlt(p, h))}" width="480" height="360" loading="lazy" decoding="async">
-<span class="pc-body"><b>${esc(spotLabel(p))}</b><span class="pc-holds">${holdsText}</span><span class="pc-price">${money(p.price)}</span><span class="avail">${state}</span></span>
-</label>
-${panel}
-</article>`;
+  const kinds = [];
+  passes.forEach(p => {
+    const k = p.kind || 'custom';
+    if (!kinds.includes(k)) kinds.push(k);
+  });
+  kinds.sort((a, b) => kindRank(a) - kindRank(b));
+  const filters = kinds.length > 1
+    ? `<div class="pass-filters" role="group" aria-label="Filter passes"><button type="button" class="pass-filter" data-kind="" aria-pressed="true">All</button>${kinds.map(k => `<button type="button" class="pass-filter" data-kind="${esc(k)}" aria-pressed="false">${esc(KIND_NAME[k] || 'Pass')}</button>`).join('')}</div>`
+    : '';
+  const groups = kinds.map(k => {
+    const list = passes.filter(p => (p.kind || 'custom') === k);
+    const title = kinds.length > 1 ? `<h3 class="pass-group-title">${esc(KIND_NAME[k] || 'Pass')}</h3>` : '';
+    return `<section class="pass-group" data-kind="${esc(k)}">${title}<div class="pass-grid">${list.map(p => passCard(p, av, h, pick)).join('')}</div></section>`;
   }).join('');
+  const details = passes.map(p => passDetail(p, h, items)).join('');
+  return `${filters}<div class="pass-groups" id="passes">${groups}</div><div id="pass-detail" hidden>${details}</div>`;
 }
 
 function listingScript(slug) {
   return `<script>
-const SEATS=${JSON.stringify(require('./inclusions').SEAT_PHOTO)};
 const $=s=>document.querySelector(s);
 let av=[],addons=[];
 function fmt(n){return '$'+n.toLocaleString('en-AU')}
 function h(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function need(a,q,holds){return a.per==='booking'?1:q*(holds||1)}
-function showSeat(src){const img=$('#seat-img');if(!img||!src||img.getAttribute('src')===src)return;img.classList.add('is-swap');setTimeout(function(){img.src=src;img.classList.remove('is-swap')},160)}
 function guests(){
  const sel=document.querySelector('select[name="qty"]');
  const n=sel?parseInt(sel.value,10):NaN;
@@ -93,52 +117,73 @@ function render(){
  const any=av.some(x=>x.remaining>0);
  const st=$('#status'); st.className='status'+(blocked||!any?' out':'');
  st.textContent=blocked?blocked:!any?'Sold out this day':'Available this day';
- if(p) showSeat(SEATS[p.kind]||SEATS.custom);
  document.querySelectorAll('#passes input, #addons-pick input').forEach(r=>{r.onchange=render});
+ const openBtn=document.querySelector('.pass-open[aria-expanded="true"]');
+ if(openBtn){
+  const radio=document.getElementById('pass-'+openBtn.dataset.code);
+  if(radio&&radio.disabled) closeDetail();
+ }
 }
-function setPassOpen(card, on){
- if(!card) return;
- const btn=card.querySelector('.pass-toggle');
- const panel=card.querySelector('.pass-inc');
- if(!btn||!panel) return;
- btn.setAttribute('aria-expanded', on?'true':'false');
- panel.hidden=!on;
+function closeDetail(){
+ document.querySelectorAll('.pass-open').forEach(b=>b.setAttribute('aria-expanded','false'));
+ document.querySelectorAll('.pass-detail').forEach(p=>{p.hidden=true});
+ const box=document.getElementById('pass-detail');
+ if(box) box.hidden=true;
 }
-function openPass(card){
- document.querySelectorAll('#passes .pass-card').forEach(c=>setPassOpen(c, c===card));
+function openDetail(code){
+ let shown=null;
+ document.querySelectorAll('.pass-open').forEach(b=>b.setAttribute('aria-expanded', b.dataset.code===code?'true':'false'));
+ document.querySelectorAll('.pass-detail').forEach(p=>{
+  const on=p.dataset.code===code;
+  p.hidden=!on;
+  if(on) shown=p;
+ });
+ const box=document.getElementById('pass-detail');
+ if(box) box.hidden=!shown;
+ if(!shown) return;
+ const title=shown.querySelector('h3');
+ if(title) title.focus();
+ shown.scrollIntoView({block:'nearest'});
 }
 const passBox=document.getElementById('passes');
 if(passBox){
  passBox.addEventListener('click', function(e){
-  const btn=e.target.closest('.pass-toggle');
-  if(btn){
-   const card=btn.closest('.pass-card');
-   const on=btn.getAttribute('aria-expanded')==='true';
-   if(on) setPassOpen(card, false);
-   else {
-    openPass(card);
-    const radio=card.querySelector('input[name="pass"]');
-    if(radio && !radio.disabled && !radio.checked){ radio.checked=true; render(); }
-   }
-   return;
-  }
-  if(e.target.closest('.pass-face')) openPass(e.target.closest('.pass-card'));
- });
- passBox.addEventListener('change', function(e){
-  if(e.target && e.target.name==='pass' && e.target.checked) openPass(e.target.closest('.pass-card'));
- });
- passBox.addEventListener('keydown', function(e){
-  if(e.key!=='Escape') return;
-  const card=e.target.closest('.pass-card');
-  if(!card) return;
-  const btn=card.querySelector('.pass-toggle');
-  if(btn && btn.getAttribute('aria-expanded')==='true'){ setPassOpen(card, false); btn.focus(); }
+  const btn=e.target.closest('.pass-open');
+  if(!btn) return;
+  const code=btn.dataset.code;
+  if(btn.getAttribute('aria-expanded')==='true'){ closeDetail(); return; }
+  const radio=document.getElementById('pass-'+code);
+  if(radio && !radio.disabled && !radio.checked){ radio.checked=true; render(); }
+  openDetail(code);
  });
 }
+const filters=document.querySelector('.pass-filters');
+if(filters){
+ filters.addEventListener('click', function(e){
+  const btn=e.target.closest('.pass-filter');
+  if(!btn) return;
+  const kind=btn.dataset.kind||'';
+  filters.querySelectorAll('.pass-filter').forEach(b=>b.setAttribute('aria-pressed', b===btn?'true':'false'));
+  document.querySelectorAll('.pass-group').forEach(g=>{ g.hidden=!!(kind && g.dataset.kind!==kind); });
+  const open=document.querySelector('.pass-open[aria-expanded="true"]');
+  if(open){
+   const group=open.closest('.pass-group');
+   if(group && group.hidden) closeDetail();
+  }
+ });
+}
+document.addEventListener('keydown', function(e){
+ if(e.key!=='Escape') return;
+ if(e.target.closest && e.target.closest('.map-sheet')) return;
+ const open=document.querySelector('.pass-open[aria-expanded="true"]');
+ if(!open) return;
+ closeDetail();
+ open.focus();
+});
  async function load(){const el=$('#date');if(!el)return;const r=await fetch('/api/availability?hotel=${slug}&date='+encodeURIComponent(el.value));const data=await r.json();av=data.passes||[];addons=data.addons||[];const note=document.getElementById('cancel-note');if(note)note.textContent=data.cancel||'';render();if(!el.value){const st=$('#status');if(st){st.className='status';st.textContent='Pick a date'}}}
 document.getElementById('date').addEventListener('change',load);
 document.querySelector('select[name="qty"]').addEventListener('change',render);
-document.querySelectorAll('.gal-nav').forEach(btn=>btn.addEventListener('click',()=>{const gal=document.querySelector('.gallery.swipe');if(!gal)return;const w=gal.clientWidth*0.86;gal.scrollBy({left:btn.dataset.dir==='next'?w:-w,behavior:'smooth'})}));
+document.querySelectorAll('.gal-nav').forEach(btn=>btn.addEventListener('click',()=>{const gal=document.querySelector('.gallery.swipe');if(!gal)return;const w=gal.clientWidth*0.86;const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;gal.scrollBy({left:btn.dataset.dir==='next'?w:-w,behavior:reduce?'auto':'smooth'})}));
 const peek=document.querySelector('.map-peek');
 const sheet=document.querySelector('.map-sheet');
 if(peek&&sheet){
@@ -189,7 +234,7 @@ load();setInterval(load,15000);
 }
 
 function listingHtml(opts) {
-  const { h, date, minDate, maxDate, closed, passes, av, from, hoursLine, cancel, know, beats, included, addonList, hours, policy, arrival } = opts;
+  const { h, date, minDate, maxDate, closed, passes, av, from, hoursLine, cancel, know, included, addonList, hours, policy, arrival } = opts;
   const items = Array.isArray(included) ? included : [];
   const parkNote = includedNote(items);
   const short = shortName(h);
@@ -197,8 +242,7 @@ function listingHtml(opts) {
   const pick = av.find(p => p.featured && p.remaining > 0) || av.find(p => p.remaining > 0) || av[0];
   const galAlt = demo ? 'Stock photo, not this hotel' : `Photo of ${short}`;
   const photos = (h.photos || []).map((p, i) => `<img class="g${i}" src="/assets/photos/${esc(p)}" alt="${esc(galAlt)}" width="1200" height="900" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`).join('');
-  const seatKind = kindAlt(pick && pick.kind);
-  const seatAlt = demo ? `Example photo of a ${seatKind}, not this hotel` : `${seatKind} at ${short}`;
+  const parkFold = parkNote ? `<details class="fold" id="parking"><summary>Parking</summary><p>${esc(parkNote)}</p></details>` : '';
   return `<div class="wrap listing">
 <div class="gallery swipe" aria-label="Photos">${photos}
 <button type="button" class="gal-nav prev" data-dir="prev" aria-label="Previous photo">‹</button>
@@ -208,22 +252,26 @@ ${reassureStrip(true)}
 <form action="/checkout" method="get" id="bf" class="l-body">
 <input type="hidden" name="hotel" value="${esc(h.slug)}">
 <div class="l-main">
+<div class="listing-head">
+<div>
 <p class="eyebrow-s">${demo ? 'Fictional demo listing' : esc(h.area)}</p>
 <h1 class="l-title">Your day at ${esc(short)}</h1>
 <div class="muted l-meta">New · ${esc(h.area)} · ${esc(hoursLine)}</div>
 <p class="day-lead"><b>${esc(h.tagline)}.</b> ${esc(h.blurb)}</p>
-<h2 class="day-kicker">Your day</h2>
-${beats}
-<h2 class="day-kicker">Choose a pass</h2>
-<div class="pass-cards" id="passes">${passCards(passes, av, h, items)}</div>
-${addonList}
+</div>
+${arrival}
+</div>
+<h2 class="day-kicker">Passes</h2>
+${passSection(passes, av, h, items)}
+<div class="page-folds">
+${parkFold}
+<details class="fold" id="cancel-fold"><summary>Cancellation</summary><p>${esc(know || cancel)} <a href="/refunds">Draft cancellation terms</a>.</p></details>
 ${hours}
 ${policy}
-${arrival}
+</div>
+${addonList}
 <section class="l-sec" id="before"><h3>Good to know</h3>
-<ul class="reassure"><li><b>Cancellation</b><span>${esc(know || cancel)} <a href="/refunds">Draft cancellation terms</a>.</span></li>
-${parkNote ? `<li><b>Parking</b><span>${esc(parkNote)}</span></li>` : ''}
-<li><b>Instant confirmation</b><span>${esc(instantConfirmationText())}</span></li></ul>
+<ul class="reassure"><li><b>Instant confirmation</b><span>${esc(instantConfirmationText())}</span></li></ul>
 </section>
 </div>
 <aside class="book-box" id="book">
@@ -231,7 +279,6 @@ ${parkNote ? `<li><b>Parking</b><span>${esc(parkNote)}</span></li>` : ''}
 <p class="bb-label" id="date-label">Date</p>
 <input type="date" class="hdc-date" data-inline="1" data-closed="${esc(closed)}" name="date" id="date" min="${minDate}" max="${maxDate}" value="${esc(date)}" required>
 <div id="status" class="status"></div>
-<figure class="seat-shot" id="seat-photo"><img id="seat-img" src="${esc(seatPhoto(pick && pick.kind))}" alt="${esc(seatAlt)}" width="480" height="360" loading="lazy" decoding="async">${demo ? '<figcaption>Example photo, not this hotel.</figcaption>' : `<figcaption>${esc(short)}</figcaption>`}</figure>
 <label class="fl" for="qty">Guests<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === 1 ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
 <div class="bb-total" id="total"></div>
 <p class="cancel-note" id="cancel-note">${esc(cancel)}</p>

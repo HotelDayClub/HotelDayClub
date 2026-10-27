@@ -261,7 +261,7 @@ function beatsHtml(items) {
   return `<ol class="day-beats">${dayBeats(items).map(s => `<li><b>${esc(s.h)}</b><span>${esc(s.p)}</span></li>`).join('')}</ol>`;
 }
 function hoursHtml(lines) {
-  return `<section class="l-sec" id="hours"><h3>Opening hours</h3><ul class="hours-list">${lines.map(r => `<li><span>${esc(r.day)}</span><b>${esc(r.time)}</b></li>`).join('')}</ul><p class="muted small">These are the day-pass hours for this demo listing.</p></section>`;
+  return `<details class="fold" id="hours"><summary>Opening hours</summary><ul class="hours-list">${lines.map(r => `<li><span>${esc(r.day)}</span><b>${esc(r.time)}</b></li>`).join('')}</ul><p class="muted small">These are the day-pass hours for this demo listing.</p></details>`;
 }
 function policyHtml(hotel) {
   const facts = require('./offering').policyFacts(hotel);
@@ -279,7 +279,7 @@ function policyHtml(hotel) {
   const note = Number(hotel.is_demo) === 1
     ? 'Example information for a fictional hotel. It is not a contract. <a href="/refunds">Draft cancellation terms</a>.'
     : '<a href="/refunds">Cancellation and refunds</a>.';
-  return `<section class="l-sec" id="policy"><h3>Guest policy</h3><dl class="policy">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><p class="muted small">${note}</p></section>`;
+  return `<details class="fold" id="policy"><summary>Guest policy</summary><dl class="policy">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><p class="muted small">${note}</p></details>`;
 }
 function inclusionsForm(items) {
   const rows = items.map(i => `<div class="inc-edit">
