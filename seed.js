@@ -59,7 +59,7 @@ const OFFERINGS = {
   },
   'palm-court': {
     hours: week('0,4,5,6', '10:00', '17:00'), cutoff_hours: 1, heated: 0, setting: 'outdoor',
-    age_policy: 'All ages', kids_hours: 'All open hours, shallow end', towels: 1, food_rule: 'Food and drink are not included. Buy them at the café, or add the optional food and drink credit. Packed lunches are welcome.',
+    age_policy: 'All ages', kids_hours: 'All open hours, shallow end', towels: 1, food_rule: 'Food and drink are not included. They are available to buy at the café. The optional food and drink credit stays an extra. Packed lunches are welcome.',
     id_required: 1, lifeguard: 1,
     spots: [
       { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger in the palm gardens, with a towel.', holds: 1, price: 35, daily_cap: 40, photo: 'tropical-resort.jpg', featured: 1 },
@@ -69,7 +69,7 @@ const OFFERINGS = {
   },
   'manly-sands': {
     hours: week(ALL_WEEK, '10:00', '16:00'), cutoff_hours: 2, heated: 0, setting: 'outdoor',
-    age_policy: 'All ages', kids_hours: 'Until 2pm', towels: 1, food_rule: 'Food and drink are not included. Buy them at the kiosk. No glass.',
+    age_policy: 'All ages', kids_hours: 'Children welcome until 2pm', towels: 1, food_rule: 'Food and drink are not included. Buy them at the kiosk. No glass.',
     id_required: 1, lifeguard: 0,
     spots: [
       { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the magnesium pool, with a towel.', holds: 1, price: 40, daily_cap: 28, photo: 'infinity-palms.jpg', featured: 1 },
@@ -122,6 +122,16 @@ function ensureSchedules(db) {
     db.prepare("UPDATE pass_types SET kind='lounger' WHERE (kind IS NULL OR kind='') AND code='pool'").run();
     db.prepare("UPDATE pass_types SET kind='entry' WHERE (kind IS NULL OR kind='') AND code='spa'").run();
     db.prepare("UPDATE pass_types SET kind=code WHERE kind IS NULL OR kind=''").run();
+    const demo = 'slug=? AND COALESCE(is_demo,0)=1';
+    db.prepare(`UPDATE hotels SET blurb=REPLACE(blurb, 'right on the water line', 'steps from the beach') WHERE ${demo} AND blurb LIKE '%right on the water line%'`).run('manly-sands');
+    db.prepare(`UPDATE hotels SET kids_hours='Children welcome until 2pm' WHERE ${demo} AND kids_hours='Until 2pm'`).run('manly-sands');
+    const palmFood = OFFERINGS['palm-court'].food_rule;
+    db.prepare(`UPDATE hotels SET food_rule=? WHERE ${demo} AND food_rule IN (?, ?)`).run(
+      palmFood,
+      'palm-court',
+      'Café on site. Packed lunches welcome.',
+      'Food and drink are not included. Buy them at the café, or add the optional food and drink credit. Packed lunches are welcome.'
+    );
   })();
 }
 
@@ -140,7 +150,7 @@ const hotels = [
    'A big lagoon pool ringed by palms, with plenty of shade and a family-friendly shallow end. Easy parking.',
    ['tropical-resort.jpg', 'resort-palms.jpg', 'thatched-umbrellas.jpg'], ['Lagoon pool', 'Kid-friendly', 'Free parking', 'Shade umbrellas', 'Café'], 'demo-palmcourt'],
   ['manly-sands', 'Manly Sands House (Demo)', 'Northern Beaches', 'Canopy daybeds steps from the beach',
-   'Canopy daybeds right on the water line, a magnesium pool, and a kiosk selling food and drinks.',
+   'Canopy daybeds steps from the beach, a magnesium pool, and a kiosk selling food and drinks.',
    ['daybed-canopy.jpg', 'thatched-umbrellas.jpg', 'infinity-palms.jpg', 'beach-resort-pool.jpg'], ['Magnesium pool', 'Beachside', 'Daybeds', 'Kiosk', 'Towels included'], 'demo-manly'],
   ['bayview-spa', 'Bayview Spa Hotel (Demo)', 'Eastern Suburbs', 'Bathhouse, plunge pools and poolside cabanas',
    'A calm bathhouse with hot and cold plunge, a heated outdoor pool and draped cabanas. Adults only (18+).',

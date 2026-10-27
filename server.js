@@ -607,7 +607,8 @@ app.get('/checkout', (req, res) => {
   const { h, p, date, qty, people } = v;
   const grand = p.price * qty + v.addonTotal;
   const cancel = cancelNote(db, h, date);
-  const included = includedBlock(loadInclusions(db, h.id), people);
+  const foodBuy = h.slug === 'palm-court' && h.food_rule ? `<p class="pass-food">${esc(h.food_rule)}</p>` : '';
+  const included = includedBlock(loadInclusions(db, h.id), people) + foodBuy;
   const picked = new Set(v.addons.map(x => x.code));
   const offer = addonAvailability(h.id, date);
   const addonFields = offer.length ? `<details class="extras" id="addon-block"><summary><span class="extra-label">Add extras <span class="extra-opt">(optional)</span></span></summary><div class="extra-list" id="co-addons">${offer.map(ad => {
@@ -763,7 +764,7 @@ app.get('/booking/:code', async (req, res) => {
 <dl><dt>Guest</dt><dd>${esc(shownName)}</dd>${shownEmail ? `<dt>Email</dt><dd>${esc(shownEmail)}</dd>` : ''}<dt>Date</dt><dd>${esc(nice(b.date))}${when ? ` · ${esc(when)}` : ''}</dd><dt>Pass</dt><dd>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</dd><dt>Guests</dt><dd>${party}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Cancellation</dt><dd>${esc(note)}</dd><dt>Rules</dt><dd>${b.rules_ack_at ? 'Accepted' : '—'}</dd><dt>Terms</dt><dd>${b.terms_ack_at ? 'Accepted' : '—'}</dd><dt>Risk warning</dt><dd>${b.risk_ack_at ? 'Accepted' : '—'}</dd><dt>Status</dt><dd>${esc(status)}</dd></dl>
 <p class="swim-note">${esc(swimNote(hotel))}</p>
 ${includedBlock(loadInclusions(db, hotel.id), party)}
-<p>${esc(FOOD_NOTE)}</p>
+<p>${esc(hotel.slug === 'palm-court' && hotel.food_rule ? hotel.food_rule : FOOD_NOTE)}</p>
 ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}</div>
 <p class="center cal-links" style="margin-top:16px"><a class="btn btn-line" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">Add to calendar</a>${googleCal ? ` <a class="btn btn-line" href="${esc(googleCal)}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>` : ''}${mapHref ? ` <a class="btn btn-line" href="${esc(mapHref)}">Directions</a>` : ''}</p>
 <div class="center" style="margin-top:12px"><a class="btn btn-line" href="/">Book another day</a></div></div>`, { analytics: true, analyticsPath: '/booking', index: false, canonical: false }));
@@ -1541,12 +1542,12 @@ app.post('/contact', async (req, res) => {
 // Full demo seed runs only when there are no hotels. A database that already has rows is not replaced.
 if (db.prepare('SELECT COUNT(*) n FROM hotels').get().n === 0) seed(db);
 else ensureAddons(db);
+db.prepare("UPDATE hotels SET is_demo=1 WHERE login LIKE 'demo-%' OR name LIKE '%(Demo)%'").run();
 ensureSchedules(db);
 ensureInclusions(db);
 ensureArrival(db);
 seedPerformance(db);
 syncHoursLabels(db);
-db.prepare("UPDATE hotels SET is_demo=1 WHERE login LIKE 'demo-%' OR name LIKE '%(Demo)%'").run();
 migrateHotelPasswords(db);
 adminPassword();
 

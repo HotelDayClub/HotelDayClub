@@ -178,11 +178,17 @@ function ensureInclusions(db) {
     for (const [from, to] of foodRules) setRule.run(to, from);
     const blurbs = [
       ['A heated infinity pool on level one, looking straight out to the Pacific. Loungers, towels and a pool bar doing frozen margs from 11.', 'A heated infinity pool on level one, looking straight out to the Pacific. Loungers and towels. The pool bar sells drinks from 11.'],
-      ['Canopy daybeds right on the water line, a magnesium pool and a kiosk doing smashed avo and cold ones.', 'Canopy daybeds right on the water line, a magnesium pool, and a kiosk selling food and drinks.'],
       ['Swim above the office towers. A heated rooftop pool, cabana daybeds and a bar that opens at noon. Quietest Mon to Thu.', 'Swim above the office towers. A heated rooftop pool, cabana daybeds, and a bar selling drinks from noon. Quietest Mon to Thu.'],
     ];
     const setBlurb = db.prepare('UPDATE hotels SET blurb=? WHERE blurb=?');
     for (const [from, to] of blurbs) setBlurb.run(to, from);
+    const manlyBlurb = 'Canopy daybeds steps from the beach, a magnesium pool, and a kiosk selling food and drinks.';
+    const setManly = db.prepare(`UPDATE hotels SET blurb=? WHERE slug='manly-sands' AND COALESCE(is_demo,0)=1 AND blurb=?`);
+    for (const from of [
+      'Canopy daybeds right on the water line, a magnesium pool and a kiosk doing smashed avo and cold ones.',
+      'Canopy daybeds right on the water line, a magnesium pool, and a kiosk selling food and drinks.',
+      'Canopy daybeds steps from the beach, a magnesium pool and a kiosk doing smashed avo and cold ones.',
+    ]) setManly.run(manlyBlurb, from);
   })();
 }
 

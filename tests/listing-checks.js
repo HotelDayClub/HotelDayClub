@@ -162,7 +162,18 @@ function start(port) {
     assert.ok(bay.body.includes('Spa treatment credit'));
     assert.ok(bay.body.includes('$30'));
     assert.ok(!bay.body.includes('Spa treatment discount'));
-    assert.ok(bay.body.includes('>Pool</dt><dd>Indoor and outdoor</dd>'));
+    assert.ok(bay.body.includes('>Pool</dt><dd>Indoor bathhouse and outdoor pool</dd>'));
+    assert.ok(!bay.body.includes('>Pool</dt><dd>Indoor and outdoor</dd>'));
+    assert.ok(bay.body.includes('>Heated</dt><dd>Yes</dd>'));
+    assert.ok(bay.body.includes('heated outdoor pool'));
+
+    const manly = await get(port, '/h/manly-sands');
+    assert.ok(manly.body.includes('steps from the beach'));
+    assert.ok(!manly.body.includes('water line'));
+    assert.ok(manly.body.includes('>Age</dt><dd>All ages</dd>'));
+    assert.ok(manly.body.includes('>Children</dt><dd>Children welcome until 2pm</dd>'));
+    assert.ok(!manly.body.includes('>Children</dt><dd>Until 2pm</dd>'));
+    assert.ok(!/adults only after 2pm/i.test(manly.body));
 
     const palm = await get(port, '/h/palm-court');
     assert.ok(palm.body.includes('>Lifeguard</dt><dd>On duty</dd>'));
@@ -176,6 +187,9 @@ function start(port) {
     assert.ok(palm.body.includes('On-site parking is included'));
     assert.ok(!palm.body.includes('Parking is not offered'));
     assert.ok(palm.body.includes('Food and drink are not included'));
+    assert.ok(palm.body.includes('available to buy at the café'));
+    assert.ok(palm.body.includes('The optional food and drink credit stays an extra.'));
+    assert.ok(palm.body.includes("What's included"));
     assert.ok(palm.body.includes('Food and drink credit'));
     assert.ok(palm.body.includes('$22'));
     assert.ok(!palm.body.includes('part of the visit'));

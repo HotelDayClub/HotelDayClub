@@ -564,6 +564,7 @@ form.check-code input,form.check-code .btn{width:100%}
 .pass-detail h4{margin:16px 0 6px;font-size:1rem;color:#0A1428}
 .pass-inc-list{list-style:none;margin:0;padding:0}
 .pass-inc-list li{padding:8px 0;border-top:1px solid var(--line);color:#0A1428;font-weight:650}
+.pass-inc-note{margin:10px 0 0;color:#0A1428;font-weight:650;line-height:1.45}
 .pass-food{margin:18px 0 0;color:#0A1428;font-weight:650;line-height:1.45}
 .page-folds{margin-top:28px;border-top:1px solid var(--line)}
 .fold{border-bottom:1px solid var(--line)}

@@ -220,9 +220,12 @@ function syncHoursLabels(db) {
     upd.run(sum.hours, sum.open_days, sum.opens, sum.closes, h.id);
   }
 }
-function poolSettingLabel(setting) {
+function poolSettingLabel(setting, hotel) {
   if (setting === 'indoor') return 'Indoor';
-  if (setting === 'both') return 'Indoor and outdoor';
+  if (setting === 'both') {
+    if (hotel && hotel.slug === 'bayview-spa') return 'Indoor bathhouse and outdoor pool';
+    return 'Indoor and outdoor';
+  }
   if (setting === 'outdoor') return 'Outdoor';
   return '';
 }
@@ -278,7 +281,7 @@ function policyFacts(hotel) {
   const g = guardFacts(hotel || {});
   const heated = !hotel || hotel.heated == null || hotel.heated === '' ? 'Not set' : (Number(hotel.heated) ? 'Yes' : 'No');
   return {
-    pool: poolSettingLabel(hotel && hotel.setting) || 'Not set',
+    pool: poolSettingLabel(hotel && hotel.setting, hotel) || 'Not set',
     heated,
     lifeguard: g.policy,
   };
@@ -298,7 +301,7 @@ function venueMissing(row) {
 }
 const PICK_DATE_CANCEL = 'Pick a date to see your free-cancellation deadline.';
 function rulesLines(hotel, opts = {}) {
-  const setting = poolSettingLabel(hotel.setting);
+  const setting = poolSettingLabel(hotel.setting, hotel);
   const heat = heatWord(hotel.heated);
   const lines = [];
   if (heat || setting) lines.push([heat || 'Heat not set', setting || 'Pool not set'].join(' · '));
@@ -388,7 +391,7 @@ function cancelNote(db, hotel, date, now = new Date()) {
 function venueFacts(hotel) {
   const g = guardFacts(hotel);
   return {
-    setting: poolSettingLabel(hotel.setting) || 'Not set',
+    setting: poolSettingLabel(hotel.setting, hotel) || 'Not set',
     heat: heatWord(hotel.heated) || 'Not set',
     guard: g.risk,
     age: hotel.age_policy || 'See the hotel rules',
@@ -433,10 +436,10 @@ function amenitiesFrom(h) {
   const heat = heatWord(h.heated);
   if (heat === 'Heated') a.push('Heated pool');
   else if (heat === 'Unheated') a.push('Unheated pool');
-  const setting = poolSettingLabel(h.setting);
+  const setting = poolSettingLabel(h.setting, h);
   if (setting === 'Indoor') a.push('Indoor pool');
-  else if (setting === 'Indoor and outdoor') a.push('Indoor and outdoor');
   else if (setting === 'Outdoor') a.push('Outdoor pool');
+  else if (setting) a.push(setting);
   if (h.towels) a.push('Towels included');
   if (guardFacts(h).on) a.push('Lifeguard on duty');
   if (h.age_policy) a.push(h.age_policy);

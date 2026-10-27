@@ -22,6 +22,46 @@ const offering = require('../offering');
 seed(db);
 ensureSchedules(db);
 
+const bayRow = db.prepare("SELECT * FROM hotels WHERE slug='bayview-spa'").get();
+assert.strictEqual(bayRow.setting, 'both');
+assert.strictEqual(bayRow.heated, 1);
+assert.strictEqual(offering.policyFacts(bayRow).pool, 'Indoor bathhouse and outdoor pool');
+assert.strictEqual(offering.policyFacts(bayRow).heated, 'Yes');
+assert.ok(offering.rulesText(bayRow).includes('Heated · Indoor bathhouse and outdoor pool'));
+assert.ok(offering.riskText(bayRow).includes('Pool: Indoor bathhouse and outdoor pool · Heated.'));
+assert.strictEqual(offering.policyFacts({ slug: 'other-hotel', setting: 'both', heated: 1, lifeguard: 0 }).pool, 'Indoor and outdoor');
+
+db.prepare("UPDATE hotels SET blurb=?, kids_hours=? WHERE slug='manly-sands'").run(
+  'Canopy daybeds right on the water line, a magnesium pool, and a kiosk selling food and drinks.',
+  'Until 2pm'
+);
+db.prepare("UPDATE hotels SET food_rule=? WHERE slug='palm-court'").run(
+  'Food and drink are not included. Buy them at the café, or add the optional food and drink credit. Packed lunches are welcome.'
+);
+db.prepare("UPDATE hotels SET kids_hours='Children welcome until 4pm' WHERE slug='saltwater-terrace'").run();
+const realId = db.prepare(`INSERT INTO hotels(slug,name,area,blurb,kids_hours,food_rule,login,status,is_demo)
+  VALUES ('real-pool','Real Pool','Sydney',?,?,?, 'real-pool','active',0)`).run(
+  'Canopy daybeds right on the water line, a magnesium pool, and a kiosk selling food and drinks.',
+  'Until 2pm',
+  'Café on site. Packed lunches welcome.'
+).lastInsertRowid;
+ensureSchedules(db);
+const manlyFixed = db.prepare("SELECT blurb, age_policy, kids_hours FROM hotels WHERE slug='manly-sands'").get();
+assert.ok(manlyFixed.blurb.includes('steps from the beach'));
+assert.ok(!manlyFixed.blurb.includes('water line'));
+assert.strictEqual(manlyFixed.age_policy, 'All ages');
+assert.strictEqual(manlyFixed.kids_hours, 'Children welcome until 2pm');
+assert.ok(!/adults only/i.test(offering.rulesText(db.prepare("SELECT * FROM hotels WHERE slug='manly-sands'").get())));
+const palmFixed = db.prepare("SELECT food_rule FROM hotels WHERE slug='palm-court'").get();
+assert.ok(palmFixed.food_rule.includes('available to buy at the café'));
+assert.ok(palmFixed.food_rule.includes('stays an extra'));
+assert.strictEqual(db.prepare("SELECT kids_hours FROM hotels WHERE slug='saltwater-terrace'").get().kids_hours, 'Children welcome until 4pm');
+const real = db.prepare('SELECT blurb, kids_hours, food_rule FROM hotels WHERE id=?').get(realId);
+assert.ok(real.blurb.includes('right on the water line'));
+assert.strictEqual(real.kids_hours, 'Until 2pm');
+assert.strictEqual(real.food_rule, 'Café on site. Packed lunches welcome.');
+db.prepare("UPDATE hotels SET kids_hours='All open hours' WHERE slug='saltwater-terrace'").run();
+
 const ymd = d => {
   const p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;

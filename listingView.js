@@ -43,11 +43,15 @@ function passDetail(p, h, items) {
   const desc = String(p.description || '').trim();
   const lines = includedLines(items, holds);
   const demo = isDemo(h);
+  const foodBuy = h.slug === 'palm-court' && h.food_rule ? `<p class="pass-inc-note">${esc(h.food_rule)}</p>` : '';
+  const included = lines.length || foodBuy
+    ? `<h4>What's included</h4>${lines.length ? `<ul class="pass-inc-list">${lines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : ''}${foodBuy}`
+    : '';
   return `<article class="pass-detail" id="pass-detail-${id}" data-code="${id}" role="region" aria-labelledby="pass-title-${id}" hidden>
 <figure class="pass-detail-photo"><img src="${esc(seatPhoto(p.kind))}" alt="${esc(passAlt(p, h))}" width="960" height="640" loading="lazy" decoding="async">${demo ? '<figcaption>Example photo, not this hotel.</figcaption>' : ''}</figure>
 <h3 id="pass-title-${id}" tabindex="-1">${esc(p.name)}</h3>
 ${desc ? `<p class="pass-desc">${esc(desc)}</p>` : ''}
-${lines.length ? `<h4>What's included</h4><ul class="pass-inc-list">${lines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : ''}
+${included}
 </article>`;
 }
 
@@ -263,7 +267,7 @@ ${arrival}
 </div>
 <h2 class="day-kicker">Passes</h2>
 ${passSection(passes, av, h, items)}
-<p class="pass-food">${esc(FOOD_NOTE)}</p>
+<p class="pass-food">${esc(h.slug === 'palm-court' && h.food_rule ? h.food_rule : FOOD_NOTE)}</p>
 <div class="page-folds">
 ${parkFold}
 <details class="fold" id="cancel-fold"><summary>Cancellation</summary><p>${esc(know || cancel)} <a href="/refunds">Draft cancellation terms</a>.</p></details>
