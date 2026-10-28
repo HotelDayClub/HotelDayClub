@@ -271,11 +271,11 @@ async function main() {
     const other = await get(port, '/hotel?q=' + encodeURIComponent('Onlysky Guest'), { Cookie: jar });
     assert.ok(other.body.includes('0 results'));
     assert.ok(!other.body.includes('onlysky-unique@example.com'));
-    const check = await post(port, '/hotel/checkin', { code: skyCode, r: '/hotel/checkin' }, { Cookie: jar });
+    const check = await post(port, '/hotel/checkin', { code: skyCode, confirm: '1', r: '/hotel/checkin' }, { Cookie: jar });
     assert.strictEqual(check.status, 303);
-    assert.ok(check.headers.location.includes('st=missing'));
+    assert.ok(check.headers.location.includes('st=other'));
     const checkPage = await get(port, check.headers.location, { Cookie: jar });
-    assert.ok(checkPage.body.includes('No booking'));
+    assert.ok(checkPage.body.includes('This booking is for another hotel.'));
     assert.ok(!checkPage.body.includes('Onlysky Guest'));
     assert.ok(!checkPage.body.includes('onlysky-unique@example.com'));
     const settings = await get(port, '/hotel/settings', { Cookie: jar });

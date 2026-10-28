@@ -2,7 +2,7 @@ const { csvCell } = require('./waitlist');
 
 const BOOKING_COLUMNS = [
   'code', 'hotel', 'hotel_slug', 'date', 'qty', 'party', 'guest_name', 'email', 'phone',
-  'status', 'unit_price', 'total', 'created_at', 'checked_in_at', 'marketing_opt_in',
+  'status', 'unit_price', 'total', 'created_at', 'checked_in_at', 'arrived_count', 'marketing_opt_in',
   'rules_ack_at', 'terms_ack_at', 'risk_ack_at', 'cancel_note', 'seeded',
 ];
 

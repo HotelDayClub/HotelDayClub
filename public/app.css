@@ -395,9 +395,25 @@ form.check-code input,form.check-code .btn{width:100%}
 .scan-status{border-radius:18px;padding:18px 16px;text-align:center;margin:0 0 16px}
 .scan-status b{display:block;font-family:var(--font-display);font-weight:560;font-size:clamp(1.8rem,6vw,2.6rem);line-height:1.1}
 .scan-status span{display:block;margin-top:6px;font-weight:600}
-.scan-status.valid{background:#E7F6EC;color:#067647}
-.scan-status.used{background:#FFF6E5;color:#B54708}
-.scan-status.bad{background:#FFF1EF;color:#B42318}
+.scan-status.valid{background:#E7F6EC;color:#0A1428}
+.scan-status.used{background:#FFF6E5;color:#0A1428}
+.scan-status.bad{background:#FFF1EF;color:#0A1428}
+.checkin-page .l-title{margin-bottom:8px}
+.checkin-search{display:flex;flex-direction:column;gap:8px;margin:8px 0 18px}
+.checkin-search input,.check-code input{min-height:48px;font-size:1rem}
+.checkin-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin:0 0 14px;text-align:left;color:#0A1428}
+.checkin-card.scan-status{text-align:left;color:#0A1428}
+.checkin-card h2{margin:0 0 8px;font-size:1.7rem;color:#0E1E3A}
+.checkin-card dl{margin:8px 0}
+.checkin-card p{margin:8px 0 0;font-weight:650}
+.btn-checkin{min-height:56px;width:100%;font-size:1.15rem;margin-top:12px}
+.arrived-field{display:flex;flex-direction:column;align-items:stretch;gap:4px;margin:8px 0;font-weight:700;color:#0A1428;text-align:left}
+.arrived-field input{min-height:48px;width:100%;max-width:160px;font:600 1.15rem var(--font-body);color:#0A1428;background:#fff;border:1px solid #0A1428;border-radius:10px;padding:8px 12px}
+.checkin-card .arrived-field input{max-width:none;font-size:1.25rem}
+.pill.ok.checkin-state{color:#0A1428;background:#E7F6EC;white-space:normal}
+.checkin-results{display:flex;flex-direction:column;gap:10px}
+.checkin-empty{font-weight:650;color:#0A1428}
+#scan-btn,.checkin-search .btn,.check-code .btn{min-height:48px}
 .scan-box{margin:0 0 12px}
 #scan-video{width:100%;max-height:280px;border-radius:16px;background:#0B2545;object-fit:cover;margin-bottom:8px}
 #scan-btn{margin-bottom:12px}

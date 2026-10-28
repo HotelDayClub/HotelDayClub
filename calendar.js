@@ -32,6 +32,17 @@ function hotelZone(hotel) {
   return stateZone(hotel && hotel.state) || addressZone(hotel && hotel.address) || 'Australia/Sydney';
 }
 
+function hotelToday(hotel, now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: hotelZone(hotel),
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const get = type => parts.find(part => part.type === type).value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
 function firstSunday(year, monthIndex) {
   const dow = new Date(Date.UTC(year, monthIndex, 1)).getUTCDay();
   return dow === 0 ? 1 : 1 + (7 - dow);
@@ -195,6 +206,6 @@ function passCalendarLink(booking, hotel, window) {
 }
 
 module.exports = {
-  sydneyOffsetMinutes, hotelZone, accessInstants, formatUtc, eventWindow,
+  sydneyOffsetMinutes, hotelZone, hotelToday, accessInstants, formatUtc, eventWindow,
   bookingIcs, googleCalendarUrl, passCalendarLink,
 };
