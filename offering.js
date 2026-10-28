@@ -416,7 +416,7 @@ function riskLines(hotel) {
 function riskText(hotel) { return riskLines(hotel).join(' '); }
 function riskCard(hotel) {
   const lines = riskLines(hotel);
-  return `<div class="rules-card risk-card"><h3>Risk warning</h3><p>${esc(lines[0])}</p><ul>${lines.slice(1, 7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p><b>At this venue</b></p><ul>${lines.slice(7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p class="muted small">Shown in full before you confirm. <a href="/risk">Risk warning (draft)</a></p></div>`;
+  return `<div class="co-risk"><h3>Risk warning</h3><p>${esc(lines[0])}</p><ul class="co-facts">${lines.slice(1, 7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p><b>At this venue</b></p><ul class="co-facts">${lines.slice(7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p class="muted small">Shown in full before you confirm. <a href="/risk">Risk warning (draft)</a></p></div>`;
 }
 function riskTick(hotel) {
   const g = guardFacts(hotel);
@@ -429,7 +429,7 @@ function swimNote(hotel) {
 }
 function rulesText(hotel, opts) { return rulesLines(hotel, opts).join('. ') + '.'; }
 function rulesCard(hotel, opts) {
-  return `<div class="rules-card"><h3>Pool rules</h3><ul>${rulesLines(hotel, opts).map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
+  return `<div class="co-facts-block"><h3>Pool rules</h3><ul class="co-facts">${rulesLines(hotel, opts).map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
 }
 function amenitiesFrom(h) {
   const a = [];

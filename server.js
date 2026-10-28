@@ -8,7 +8,7 @@ const db = require('./db');
 const { seed, ensureAddons, ensureSchedules, seedPerformance } = require('./seed');
 const {
   seatPhoto, SEAT_PHOTO, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
-  includedBlock, addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml, guestFoodLine, PASS_FOOD_LINE,
+  includedBlock, includedLines, includedNote, addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml, guestFoodLine, PASS_FOOD_LINE,
 } = require('./inclusions');
 const { ensureArrival, saveArrival, arrivalHtml, arrivalForm } = require('./arrival');
 const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hotelAreas, linkedIds } = require('./access');
@@ -612,48 +612,73 @@ app.get('/checkout', (req, res) => {
   const grand = p.price * qty + v.addonTotal;
   const cancel = cancelNote(db, h, date);
   const foodLine = guestFoodLine(db, h);
-  const included = includedBlock(loadInclusions(db, h.id), people) + accessBlock(forPass(db, p.id), { demo: Number(h.is_demo) === 1 });
+  const incItems = loadInclusions(db, h.id);
+  const incLines = includedLines(incItems, people);
+  const parkNote = includedNote(incItems);
+  const demo = Number(h.is_demo) === 1;
+  const hotelLabel = demo && !/\(Demo\)\s*$/i.test(h.name) ? `${seo.shortName(h.name)} (Demo)` : h.name;
+  const passLabel = `${spotLabel(p)} × ${qty}`;
+  const includedBody = `${incLines.length ? `<ul class="co-inc-list">${incLines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : ''}${parkNote ? `<p class="pass-note">${esc(parkNote)}</p>` : ''}${accessBlock(forPass(db, p.id), { demo })}`;
+  const included = includedBody.trim() ? `<details class="co-inc"><summary>What's included</summary><div class="co-inc-body">${includedBody}</div></details>` : '';
   const rulesOpts = { ...hoursView(db, h, date), foodSentence: foodLine };
   const picked = new Set(v.addons.map(x => x.code));
   const offer = addonAvailability(h.id, date);
-  const addonFields = offer.length ? `<details class="extras" id="addon-block"><summary><span class="extra-label">Add extras <span class="extra-opt">(optional)</span></span></summary><div class="extra-list" id="co-addons">${offer.map(ad => {
+  const addonFields = offer.length ? `<section class="co-card" id="addon-block"><h2><span class="co-step">2</span> Add extras <span class="extra-opt">(optional)</span></h2><div class="extra-list" id="co-addons">${offer.map(ad => {
     const need = ad.per === 'booking' ? 1 : people;
     const dis = ad.remaining < need;
     const on = !dis && picked.has(ad.code);
     const price = !dis && Number(ad.price) > 0 ? `<span class="extra-price">${money(ad.price)}</span>` : '';
     const note = dis ? '<span class="extra-note">Sold out for this date</span>' : '';
     return `<label class="extra${dis ? ' is-off' : ''}"><input type="checkbox" name="addon" value="${esc(ad.code)}" data-price="${Number(ad.price) || 0}" data-per="${esc(ad.per)}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}><span class="extra-name">${esc(ad.name)}</span>${price}${note}</label>`;
-  }).join('')}</div></details>` : '';
+  }).join('')}</div></section>` : '';
+  const payStep = offer.length ? '3' : '2';
+  const confirmLabel = `Confirm booking · ${money(grand)} (demo)`;
   res.send(page('Checkout', `<div class="wrap sec checkout">
 <a class="link small" href="/h/${h.slug}?date=${date}">← Back to listing</a><h1 class="l-title">Confirm and pay</h1>
-<div class="co-grid"><form class="co-form" method="post" action="/book">
+<div class="co-layout">
+<aside class="co-sum" id="co-sum">
+<button type="button" class="co-sum-bar" id="co-sum-bar" aria-expanded="false" aria-controls="co-sum-body"><span>${esc(passLabel)}</span><b class="co-total">${money(grand)}</b></button>
+<div class="co-sum-body" id="co-sum-body">
+<img src="/assets/photos/${h.photos[0]}" alt="${esc(demo ? 'Stock photo, not this hotel' : 'Photo of ' + seo.shortName(h.name))}" width="640" height="360">
+<div class="pad">
+<h2>${esc(hotelLabel)}</h2>
+<p class="muted small">${esc(h.area)}</p>
+<dl><dt>Date</dt><dd>${esc(nice(date))}</dd><dt>Pass</dt><dd>${esc(passLabel)}</dd><dt>Guests</dt><dd>${people}</dd></dl>
+${included}
+<ul class="addon-lines" id="addon-lines">${v.addons.map(ad => `<li><span>${esc(ad.name)} × ${ad.qty}</span><b>${money(ad.line)}</b></li>`).join('')}</ul>
+<p class="cancel-note">${esc(cancel)}</p>
+<div class="bb-total"><span>Total</span><b class="co-total" id="co-total">${money(grand)}</b></div>
+<p class="muted small">Prices include GST. Demo only.</p>
+<button class="btn btn-coral full co-btn" id="co-btn" type="submit" form="co-form">${confirmLabel}</button>
+</div></div></aside>
+<form class="co-form" id="co-form" method="post" action="/book">
 ${['hotel', 'date', 'qty'].map(k => `<input type="hidden" name="${k}" value="${esc(req.query[k])}">`).join('')}<input type="hidden" name="pass" value="${p.code}">
 <p class="demo-caution">Demo site, please don't enter real personal or payment details</p>
-<h3>Your details</h3>
+<section class="co-card"><h2><span class="co-step">1</span> Your details</h2>
 <label class="fl">Full name<input name="name" required autocomplete="name" placeholder="Alex Citizen"></label>
 <div class="two"><label class="fl">Email<input name="email" type="email" required autocomplete="email" placeholder="alex@example.com"></label>
 <label class="fl">Mobile<input name="phone" type="tel" required pattern="[0-9 +()-]{8,}" autocomplete="tel" placeholder="0412 345 678"></label></div>
+</section>
 ${addonFields}
+<section class="co-card"><h2><span class="co-step">${payStep}</span> Payment</h2>
 <div class="demo-pay"><div class="dp-head">${ICON.lock} <b>Demo payment, no charge</b></div>
 <p class="small">This is a mock checkout. No card is needed and nothing is charged. In the live version this step is Stripe.</p>
 <label class="fl">Card number<input value="4242 4242 4242 4242" disabled></label>
 <div class="two"><label class="fl">Expiry<input value="12 / 30" disabled></label><label class="fl">CVC<input value="123" disabled></label></div></div>
-${included}
+</section>
+<section class="co-card co-before"><h2>Before you book</h2>
 ${rulesCard(h, rulesOpts)}
-<p class="cancel-note">${esc(cancel)} <a href="/refunds">Cancellation and refunds</a></p>
 ${riskCard(h)}
+<p class="cancel-note">${esc(cancel)} <a href="/refunds">Cancellation and refunds</a></p>
 <label class="tick"><input type="checkbox" name="rules" value="1" required> <span>I've read and accept these pool rules.</span></label>
 <label class="tick"><input type="checkbox" name="terms" value="1" required> <span>I accept the <a href="/terms">customer terms</a>, the <a href="/refunds">cancellation and refund policy</a>, and the <a href="/privacy">privacy notice</a>.</span></label>
 <label class="tick"><input type="checkbox" name="risk" value="1" required> <span>${esc(riskTick(h))}</span></label>
 <label class="tick"><input type="checkbox" name="marketing" value="1"> <span>Email me about day passes. Optional, and separate from this booking.</span></label>
 <p class="privacy-note">We use your name, email and mobile to hold this booking and show it to the hotel. Some providers store data overseas. <a href="/privacy">Privacy policy</a></p>
-<button class="btn btn-coral full" id="co-btn" type="submit">Confirm booking · ${money(grand)} (demo)</button></form>
-<aside class="co-sum"><img src="/assets/photos/${h.photos[0]}" alt="${esc(Number(h.is_demo) === 1 ? 'Stock photo, not this hotel' : 'Photo of ' + seo.shortName(h.name))}" width="1200" height="900"><div class="pad"><h3>${esc(h.name)}</h3><p class="muted small">${esc(h.area)}</p>
-<dl><dt>Date</dt><dd>${esc(nice(date))}</dd><dt>Pass</dt><dd>${esc(spotLabel(p))} × ${qty}</dd><dt>Guests</dt><dd>${people}</dd></dl>
-${included}
-<p class="cancel-note">${esc(cancel)}</p>
-<ul class="addon-lines" id="addon-lines">${v.addons.map(ad => `<li><span>${esc(ad.name)} × ${ad.qty}</span><b>${money(ad.line)}</b></li>`).join('')}</ul>
-<div class="bb-total"><span>Total</span><b id="co-total">${money(grand)}</b></div><p class="muted small">Prices include GST. Demo only.</p></div></aside></div></div>
+</section>
+</form>
+<div class="co-dock"><div class="co-dock-total"><span>Total</span><b class="co-total">${money(grand)}</b></div><button class="btn btn-coral co-btn" type="submit" form="co-form">${confirmLabel}</button></div>
+</div></div>
 <script>
 const pass=${p.price}, spots=${qty}, people=${people};
 const fmt=n=>'$'+n.toLocaleString('en-AU');
@@ -661,10 +686,13 @@ function paint(){let extra=0;const lines=[];
  document.querySelectorAll('#co-addons input:checked').forEach(i=>{const price=+i.dataset.price,q=i.dataset.per==='booking'?1:people;extra+=price*q;const name=i.parentElement.querySelector('.extra-name').textContent;const cost=price>0?'<b>'+fmt(price*q)+'</b>':'';lines.push('<li><span>'+name+' × '+q+'</span>'+cost+'</li>')});
  const total=pass*spots+extra;
  const box=document.getElementById('addon-lines'); if(box) box.innerHTML=lines.join('');
- const el=document.getElementById('co-total'); if(el) el.textContent=fmt(total);
- const btn=document.getElementById('co-btn'); if(btn) btn.textContent='Confirm booking · '+fmt(total)+' (demo)';
+ const label='Confirm booking · '+fmt(total)+' (demo)';
+ document.querySelectorAll('.co-total').forEach(el=>{el.textContent=fmt(total)});
+ document.querySelectorAll('.co-btn').forEach(btn=>{btn.textContent=label});
 }
 document.querySelectorAll('#co-addons input').forEach(i=>i.onchange=paint);paint();
+const sumBar=document.getElementById('co-sum-bar');
+if(sumBar) sumBar.addEventListener('click',function(){const open=document.getElementById('co-sum').classList.toggle('is-open');sumBar.setAttribute('aria-expanded',open?'true':'false')});
 </script>`, { analytics: true, index: false, canonical: false }));
 });
 
