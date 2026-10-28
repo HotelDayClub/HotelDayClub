@@ -576,11 +576,16 @@ form.check-code input,form.check-code .btn{width:100%}
 .day-beats li{flex:1 0 160px;scroll-snap-align:start;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 14px}
 .day-beats b{display:block;font-family:var(--font-display);font-size:1.15rem;margin-bottom:4px}
 .day-beats span{color:#3b4458;font-size:.92rem}
-.listing-head{display:grid;gap:18px;align-items:start}
-@media(min-width:800px){.listing-head{grid-template-columns:minmax(0,1fr) 240px}}
-.arrive{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px}
+.listing-head{max-width:40rem}
+.l-more{display:flex;flex-direction:column;gap:28px;margin-top:8px}
+.l-more .page-folds{margin-top:8px}
+.arrive{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px 22px 16px}
+.arrive h3{margin:0 0 12px}
+.arrive-row{display:grid;gap:16px;align-items:center}
+.arrive-copy{min-width:0}
 .arrive-kicker{margin:0 0 4px;font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#3b4458}
-.arrive .map-peek{width:100%;height:132px;flex:none}
+.arrive .map-peek{width:100%;height:160px;flex:none}
+@media(min-width:700px){.arrive-row{grid-template-columns:minmax(0,1fr) 280px}}
 .pass-filters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px}
 .pass-filter{min-height:44px;padding:8px 14px;border-radius:999px;border:1px solid #D0D5DD;background:#fff;color:#0A1428;font:inherit;font-weight:700;cursor:pointer}
 .pass-filter[aria-pressed="true"]{background:#0E1E3A;color:#fff;border-color:#0E1E3A}

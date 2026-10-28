@@ -143,7 +143,17 @@ function start(port) {
     assert.ok(salt.body.includes('id="policy"'));
     assert.ok(salt.body.includes('Guest policy'));
     assert.ok(salt.body.includes('id="getting-there"'));
+    assert.ok(salt.body.includes('Getting there'));
     assert.ok(salt.body.includes('18 Demo Terrace'));
+    const saltPass = salt.body.indexOf('id="passes"');
+    const saltExtras = salt.body.indexOf('id="addons-list"');
+    const saltHours = salt.body.indexOf('id="hours"');
+    const saltThere = salt.body.indexOf('id="getting-there"');
+    const saltKnow = salt.body.indexOf('id="before"');
+    assert.ok(saltPass < saltExtras && saltExtras < saltHours && saltHours < saltThere && saltThere < saltKnow);
+    const saltHead = salt.body.slice(salt.body.indexOf('listing-head'), salt.body.indexOf('day-kicker'));
+    assert.ok(!saltHead.includes('18 Demo Terrace'));
+    assert.ok(!saltHead.includes('View map'));
     assert.ok(!salt.body.includes('Get directions'));
     assert.ok(!salt.body.includes('Apple Maps'));
     assert.ok(salt.body.includes('Pick a date to see your free-cancellation deadline.'));

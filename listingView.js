@@ -255,33 +255,19 @@ function listingHtml(opts) {
 <button type="button" class="gal-nav prev" data-dir="prev" aria-label="Previous photo">‹</button>
 <button type="button" class="gal-nav next" data-dir="next" aria-label="Next photo">›</button>
 ${demo ? '<span class="photo-credit">Stock photos · not this hotel</span>' : ''}</div>
-${reassureStrip(true)}
 <form action="/checkout" method="get" id="bf" class="l-body">
 <input type="hidden" name="hotel" value="${esc(h.slug)}">
-<div class="l-main">
+<div class="l-top">
 <div class="listing-head">
-<div>
 <p class="eyebrow-s">${demo ? 'Fictional demo listing' : esc(h.area)}</p>
 <h1 class="l-title">Your day at ${esc(heading)}</h1>
 <div class="muted l-meta">New · ${esc(h.area)} · ${esc(hoursLine)}</div>
 <p class="day-lead"><b>${esc(h.tagline)}.</b> ${esc(h.blurb)}</p>
 ${watch ? `<p class="guard-note">${esc(watch)}</p>` : ''}
 </div>
-${arrival}
-</div>
 <h2 class="day-kicker">Passes</h2>
 ${passSection(passes, av, h, items, accessByPass)}
 <p class="pass-food">${esc(foodLine || 'Food and drink are not included in the pass.')}</p>
-<div class="page-folds">
-${parkFold}
-<details class="fold" id="cancel-fold"><summary>Cancellation</summary><p>${esc(know || cancel)} <a href="/refunds">Draft cancellation terms</a>.</p></details>
-${hours}
-${policy}
-</div>
-${addonList}
-<section class="l-sec" id="before"><h3>Good to know</h3>
-<ul class="reassure"><li><b>Instant confirmation</b><span>${esc(instantConfirmationText())}</span></li></ul>
-</section>
 </div>
 <aside class="book-box" id="book">
 <div class="bb-price">From <b id="from-price">${money(from)}</b></div>
@@ -294,6 +280,20 @@ ${addonList}
 <button class="btn btn-coral full" id="go" type="submit">Book your day</button>
 <p class="muted small center">You won't be charged. Demo payment only.</p>
 </aside>
+<div class="l-more">
+${addonList}
+<div class="page-folds">
+${parkFold}
+<details class="fold" id="cancel-fold"><summary>Cancellation</summary><p>${esc(know || cancel)} <a href="/refunds">Draft cancellation terms</a>.</p></details>
+${hours}
+${policy}
+</div>
+${arrival}
+${reassureStrip(true)}
+<section class="l-sec" id="before"><h3>Good to know</h3>
+<ul class="reassure"><li><b>Instant confirmation</b><span>${esc(instantConfirmationText())}</span></li></ul>
+</section>
+</div>
 </form>
 <div class="book-bar"><div class="bar-price"><span>Total</span><b id="bar-total">${money(pick ? pick.price : from)}</b></div><a class="btn btn-coral" href="#book">Book your day</a></div>
 </div>

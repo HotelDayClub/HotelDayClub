@@ -105,14 +105,14 @@ function arrivalHtml(hotel) {
     ? `<div class="arrive-acts"><a class="btn btn-navy" href="${esc(google)}" target="_blank" rel="noopener noreferrer">Get directions</a><a class="btn btn-line" href="${esc(apple)}" target="_blank" rel="noopener noreferrer">Apple Maps</a></div>`
     : '';
   const fiction = demo ? `<p class="muted small">This is a fictional demo address. <a href="${esc(osm)}" rel="noopener noreferrer">Open the map</a>.</p>` : '';
-  return `<aside class="arrive" id="getting-there"><p class="arrive-kicker">Location</p>${address ? `<p class="arrive-addr">${esc(address)}</p>` : ''}${preview}${directions}${fiction}${sheet}</aside>`;
+  return `<section class="arrive" id="getting-there"><h3>Getting there</h3><div class="arrive-row"><div class="arrive-copy">${address ? `<p class="arrive-addr">${esc(address)}</p>` : ''}${directions}${fiction}</div>${preview}</div>${sheet}</section>`;
 }
 
 function arrivalForm(hotel) {
   const lat = hotel.lat == null ? '' : hotel.lat;
   const lng = hotel.lng == null ? '' : hotel.lng;
   return `<form class="arrive-form" method="post" action="/hotel/arrival" id="arrive-edit"><h2>Getting there</h2>
-<p class="muted small">Guests see a small map beside the description when this listing has an address. Directions stay off demo listings. Train, parking and entrance notes stay on this form. They are not shown on the public page. Leave latitude and longitude blank to hide the map.</p>
+<p class="muted small">Guests see the address and map lower on the listing, after the passes. Directions stay off demo listings. Train, parking and entrance notes stay on this form. They are not shown on the public page. Leave latitude and longitude blank to hide the map.</p>
 <label class="fl">Address<input name="address" maxlength="160" required value="${esc(hotel.address || '')}"></label>
 <div class="two"><label class="fl">State<select name="state">
 <option value="" ${hotel.state ? '' : 'selected'}>Not stored</option>
