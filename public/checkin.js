@@ -43,12 +43,11 @@
         canvas.height = h;
         ctx.drawImage(video, 0, 0, w, h);
         const hit = jsQR(ctx.getImageData(0, 0, w, h).data, w, h);
-        if (hit && hit.data) {
-          const match = String(hit.data).toUpperCase().match(/HDC-[A-Z0-9]+/);
+        if (hit && hit.data && typeof parseBookingCode === 'function') {
+          const match = parseBookingCode(hit.data);
           if (match) {
             stop();
-            form.querySelector('input[name=code]').value = match[0];
-            form.submit();
+            window.location.href = '/hotel/checkin?code=' + encodeURIComponent(match);
             return;
           }
         }

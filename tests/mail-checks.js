@@ -1,4 +1,6 @@
 const assert = require('assert');
+const { PNG } = require('pngjs');
+const jsQR = require('jsqr');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -260,6 +262,13 @@ function recorder(decide) {
   assert.ok(booked.html.includes('Free cancellation until 11am Wed 4 Nov.'));
   assert.ok(booked.html.includes('No lifeguard on duty.'));
   assert.ok(booked.html.includes('https://www.hoteldayclub.com.au/booking/HDC-ONCE'));
+  assert.ok(booked.text.includes('https://www.hoteldayclub.com.au/hotel/checkin?code=HDC-ONCE'));
+  const emailQr = (booked.html.match(/src="(data:image\/png;base64,[^"]+)"/) || [])[1];
+  assert.ok(emailQr, 'confirmation email QR missing');
+  const emailPng = PNG.sync.read(Buffer.from(emailQr.split(',')[1], 'base64'));
+  const emailHit = jsQR(Uint8ClampedArray.from(emailPng.data), emailPng.width, emailPng.height);
+  assert.ok(emailHit);
+  assert.strictEqual(emailHit.data, 'https://www.hoteldayclub.com.au/hotel/checkin?code=HDC-ONCE');
   assert.ok(booked.html.includes('https://calendar.google.com/calendar/render?'));
   assert.ok(booked.html.includes('action=TEMPLATE'));
   assert.ok(booked.html.includes('20261103T230000Z'));
