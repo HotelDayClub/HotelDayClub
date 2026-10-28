@@ -1,3 +1,4 @@
+const QRCode = require('qrcode');
 const { esc, money, nice } = require('./util');
 const { spotLabel, hoursView, cancelNote, swimNote } = require('./offering');
 const { maskName } = require('./passwords');
@@ -39,6 +40,7 @@ function bookingNotice(info) {
   const heading = demo ? 'Your demo booking' : "You're booked in.";
   const intro = demo ? warning : 'This email confirms the booking you just made.';
   const linkLine = `Your QR code is on the confirmation page:\n${info.link}`;
+  const checkinLine = info.checkinUrl ? `Show this QR code at reception. It opens:\n${info.checkinUrl}` : '';
   const calendarLine = info.calendarUrl ? `Add to Google Calendar:\n${info.calendarUrl}` : '';
   const contactLine = `Questions: ${info.contact}`;
   const guestLine = info.guest ? `Guest: ${info.guest}` : '';
@@ -55,6 +57,8 @@ function bookingNotice(info) {
     info.risk,
     '',
     linkLine,
+    '',
+    checkinLine,
     '',
     calendarLine,
     contactLine,
@@ -75,6 +79,7 @@ ${demoBox}
 ${guestLine ? `<p style="margin:0 0 12px;color:#0A1428;">${esc(guestLine)}</p>` : ''}
 <table role="presentation" style="width:100%;border-collapse:collapse;font-size:18px;line-height:1.4;">${rows}</table>
 <p style="margin:20px 0;color:#0A1428;">${esc(info.risk)}</p>
+${info.qr ? `<p style="margin:20px 0 8px;color:#0A1428;">Show this QR code at reception.</p><p style="margin:0 0 20px;"><img src="${esc(info.qr)}" alt="QR code for ${esc(info.code)}" width="180" height="180"></p>` : ''}
 <p style="margin:0 0 12px;color:#0A1428;">Your QR code is on the confirmation page:</p>
 <p style="margin:0 0 20px;color:#0E1E3A;font-weight:700;overflow-wrap:anywhere;"><a href="${esc(info.link)}" style="color:#0E1E3A;font-weight:700;">${esc(info.link)}</a></p>
 ${info.calendarUrl ? `<p style="margin:0 0 8px;color:#0A1428;">Add to Google Calendar:</p><p style="margin:0 0 20px;color:#0E1E3A;font-weight:700;overflow-wrap:anywhere;"><a href="${esc(info.calendarUrl)}" style="color:#0E1E3A;font-weight:700;">${esc(info.calendarUrl)}</a></p>` : ''}
@@ -148,7 +153,7 @@ async function claimAndSend(db, claimSql, claimArgs, triesSql, triesArgs, stateS
   db.prepare(stateSql).run('failed', ...stateHead);
 }
 
-function bookingMessage(db, code) {
+async function bookingMessage(db, code) {
   const row = db.prepare(`SELECT b.id, b.code, b.date, b.qty, b.total, b.email, b.party, b.guest_name, b.cancel_note, b.created_at, b.hotel_id,
     p.name AS pass_name, p.holds, p.id AS pass_id
     FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id WHERE b.code=?`).get(code);
@@ -163,6 +168,8 @@ function bookingMessage(db, code) {
   const window = eventWindow(db, hotel, row.date);
   if (hotel) delete hotel.address;
   const calendarUrl = passCalendarLink({ code: row.code, cancel_note: note }, hotel, window);
+  const checkinUrl = seo.ORIGIN + '/hotel/checkin?code=' + encodeURIComponent(row.code);
+  const qr = await QRCode.toDataURL(checkinUrl, { margin: 1, width: 260, color: { dark: '#0B2545' } });
   const party = row.party || row.qty * (row.holds || 1);
   const included = hotel ? includedText(loadInclusions(db, hotel.id), party) : '';
   const areas = forPass(db, row.pass_id);
@@ -187,6 +194,8 @@ function bookingMessage(db, code) {
     risk: swimNote(hotel || {}),
     contact: operatorEmail(),
     link: seo.ORIGIN + '/booking/' + encodeURIComponent(row.code),
+    checkinUrl,
+    qr,
     calendarUrl,
     guest: maskName(row.guest_name),
   });
@@ -201,7 +210,7 @@ async function sendBookingConfirmation(db, code) {
     if (marked.changes === 1) console.error('booking confirmation email failed code=' + code + ' invalid address');
     return;
   }
-  const message = bookingMessage(db, code);
+  const message = await bookingMessage(db, code);
   if (!message || message.invalid) return;
   await claimAndSend(
     db,
