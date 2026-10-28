@@ -36,7 +36,7 @@ const INCLUSIONS = [
   { code: 'toiletries', name: 'Toiletries', per: 'guest', cap: 40, blurb: 'Basic toiletries.' },
   { code: 'robe', name: 'Robe and slippers', per: 'guest', cap: 30, blurb: 'A robe and slippers.' },
   { code: 'welcome', name: 'Welcome drink', per: 'guest', cap: 40, blurb: 'Optional drink from the bar. Not included in the pass.' },
-  { code: 'food', name: 'Food and drink credit', per: 'guest', cap: 40, blurb: 'Optional credit to spend at the bar or café. Not included in the pass.' },
+  { code: 'food', name: 'Prepaid food and drink credit (optional)', per: 'guest', cap: 40, blurb: 'Optional credit to spend at the bar or café. Not included in the pass.' },
   { code: 'poolside', name: 'Poolside food and drink', per: 'booking', cap: 30, blurb: 'Optional poolside order. Not included in the pass.' },
   { code: 'kids', name: "Kids' pool access", per: 'guest', cap: 30, blurb: 'Access for children, within the hotel age rules.' },
   { code: 'discount', name: 'Spa treatment credit', per: 'booking', cap: 20, blurb: 'A credit toward a spa treatment booked at the hotel.' },
@@ -403,8 +403,8 @@ function policyHtml(hotel, foodLine) {
     ['Cancellation', 'Free cancellation until 24 hours before your access hours start, in this demo.'],
   ];
   const note = Number(hotel.is_demo) === 1
-    ? 'Example information for a fictional hotel. It is not a contract. <a href="/refunds">Draft cancellation terms</a>.'
-    : '<a href="/refunds">Cancellation and refunds</a>.';
+    ? 'Example information for a fictional hotel. It is not a contract. <a href="/refunds">Cancellation and refund policy</a>.'
+    : '<a href="/refunds">Cancellation and refund policy</a>.';
   return `<details class="fold" id="policy"><summary>Guest policy</summary><dl class="policy">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><p class="muted small">${note}</p></details>`;
 }
 function offerSelect(item) {
@@ -430,7 +430,7 @@ ${offerSelect(i)}
 ${i.code === 'parking' ? `<label class="inc-note">Note<input name="note_parking" maxlength="160" value="${esc(i.note || '')}" placeholder="Where to park"></label>` : `<input type="hidden" name="note_${i.code}" value="${esc(i.note || '')}">`}
 </div>`).join('');
   return `<form class="inc-form" method="post" action="/hotel/inclusions"><h2>What's included</h2>
-<p class="muted small">Included items come with the pass. Food and drink is never included: offer it as an optional extra, or leave it as available to purchase on site. Paid add-ons are optional at booking and use the daily number as a cap. Leave the price blank when there is no charge. Parking uses that cap as spaces per day. Not offered stays off the listing.</p>
+<p class="muted small">Included items come with the pass. Food and drink are never included: offer it as an optional extra, or leave it as available to purchase on site. Paid add-ons are optional at booking and use the daily number as a cap. Leave the price blank when there is no charge. Parking uses that cap as spaces per day. Not offered stays off the listing.</p>
 <div class="inc-edit inc-head"><span>Item</span><span>Offer</span><span>Price</span><span>A day</span></div>
 ${rows}
 <div class="offer-save"><button class="btn btn-navy" type="submit">Save what's included</button></div></form>`;

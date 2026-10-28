@@ -6,7 +6,7 @@ const { demoHotelPassword } = require('./passwords');
 const CATALOG = [
   { code: 'gym', name: 'Gym access', blurb: 'Use the gym on the same day.', per: 'guest', price: 25, cap: 20 },
   { code: 'parking', name: 'Parking', blurb: 'One car space for the day.', per: 'booking', price: 20, cap: 25 },
-  { code: 'food', name: 'Food and drink credit', blurb: 'Optional credit to spend at the bar or café. Not included in the pass.', per: 'guest', price: 30, cap: 40 },
+  { code: 'food', name: 'Prepaid food and drink credit (optional)', blurb: 'Optional credit to spend at the bar or café. Not included in the pass.', per: 'guest', price: 30, cap: 40 },
   { code: 'cabana', name: 'Cabana upgrade', blurb: 'A reserved cabana for your group.', per: 'booking', price: 80, cap: 6 },
   { code: 'robe', name: 'Towel & robe pack', blurb: 'An extra towel and a robe.', per: 'guest', price: 15, cap: 30 },
   { code: 'late', name: 'Late access', blurb: 'Stay until the pool closes, after day-pass hours end. It does not run past closing time.', per: 'guest', price: 35, cap: 12 },
