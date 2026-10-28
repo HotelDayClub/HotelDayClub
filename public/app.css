@@ -61,6 +61,8 @@
 .co-sum img{aspect-ratio:16/9;object-fit:cover;width:100%}.pad{padding:18px 20px}
 dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:14px 0}dt{color:var(--muted)}dd{font-weight:600;text-align:right}
 .alert{background:#FFF1EF;color:#B42318;border:1px solid #FECDCA;border-radius:12px;padding:14px 16px;margin-bottom:16px;font-weight:600}
+.field-error{margin:6px 0 0;color:#B42318;font-size:.85rem;font-weight:650;text-transform:none;letter-spacing:0}
+.fl input[aria-invalid="true"],.tick input[aria-invalid="true"]{outline:2px solid #B42318}
 .flash{background:#E6F8F8;color:#0B6E76;border:1px solid #A6E9EB;border-radius:12px;padding:12px 16px;margin-bottom:18px;font-weight:600}
 /* confirmation */
 .confirm{margin:0 auto;padding-top:56px;padding-bottom:24px}.ok-badge{width:52px;height:52px;border-radius:50%;background:transparent;border:1.5px solid var(--navy);color:var(--navy);display:grid;place-items:center;margin:0 auto 16px}.ok-badge .ico{width:26px;height:26px;stroke-width:2.2}

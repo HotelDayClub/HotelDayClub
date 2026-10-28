@@ -370,7 +370,31 @@ function start(port) {
     assert.ok(formPart.includes('<h3>Risk warning</h3>'));
     assert.ok(!/booking agent/i.test(checkout.body));
     assert.ok(!/commission/i.test(checkout.body));
+    assert.ok(checkout.body.includes('name="book_token"'));
+    assert.ok(checkout.body.includes('Confirming'));
     assert.ok(checkout.body.includes("What's included"));
+    const token = (checkout.body.match(/name="book_token" value="([a-f0-9]+)"/) || [])[1];
+    assert.ok(token);
+    const kept = await post(port, '/book', {
+      hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '1', book_token: token,
+      name: 'Alex Citizen', email: 'not-an-email', phone: '0412', rules: '1',
+    });
+    assert.strictEqual(kept.status, 409);
+    assert.ok(kept.body.includes('value="Alex Citizen"'));
+    assert.ok(kept.body.includes('Enter a valid email.'));
+    assert.ok(kept.body.includes('Enter a mobile number.'));
+    assert.ok(kept.body.includes('Tick the customer terms to continue.'));
+    const again = (kept.body.match(/name="book_token" value="([a-f0-9]+)"/) || [])[1];
+    assert.strictEqual(again, token);
+    const onceBody = {
+      hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '1', book_token: again,
+      name: 'Alex Citizen', email: 'once@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1',
+    };
+    const once = await post(port, '/book', onceBody);
+    const twice = await post(port, '/book', onceBody);
+    assert.strictEqual(once.status, 303, once.body.slice(0, 300));
+    assert.strictEqual(twice.status, 303, twice.body.slice(0, 300));
+    assert.strictEqual(twice.headers.location, once.headers.location);
     assert.ok(checkout.body.includes('1 × Towels'));
     assert.ok(checkout.body.includes('Pool access'));
     assert.ok(checkout.body.includes('Complimentary Wi-Fi'));
