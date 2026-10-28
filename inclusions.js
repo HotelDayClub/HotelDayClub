@@ -237,10 +237,14 @@ function includedQty(item, people) {
   const guests = Math.max(1, Number(people) || 1);
   return item.per === 'booking' ? 1 : guests;
 }
+function includedLineText(item, qty) {
+  if (item.code === 'towels') return `${qty} × ${item.name}`;
+  return item.name;
+}
 function includedLines(items, people) {
   return includedRows(items).map(item => {
     const qty = includedQty(item, people);
-    return { qty, name: item.name, text: `${qty} × ${item.name}` };
+    return { qty, name: item.name, text: includedLineText(item, qty) };
   });
 }
 function includedText(items, people) {

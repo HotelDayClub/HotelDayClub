@@ -114,7 +114,17 @@ function start(port) {
     assert.ok(salt.body.includes('2 × Towels'));
     assert.ok(salt.body.includes('4 × Towels'));
     assert.ok(!salt.body.includes('Pool access'));
-    assert.ok(salt.body.includes('Complimentary Wi-Fi'));
+    const amenityLists = [...salt.body.matchAll(/<ul class="pass-inc-list">([\s\S]*?)<\/ul>/g)].map(m => m[1]);
+    assert.ok(amenityLists.length >= 3);
+    for (const list of amenityLists) {
+      assert.ok(list.includes('× Towels'));
+      assert.ok(list.includes('Complimentary Wi-Fi'));
+      assert.ok(list.includes('Showers and change rooms'));
+      assert.ok(list.includes('Lockers'));
+      assert.ok(list.includes('Toiletries'));
+      assert.ok(list.includes('Luggage storage'));
+      assert.ok(!/\d+ × (?!Towels)/.test(list));
+    }
     assert.ok(salt.body.includes('id="pass-detail-lounger" data-code="lounger" role="region" aria-labelledby="pass-title-lounger" hidden'));
     assert.ok(salt.body.includes('<summary>Opening hours</summary>'));
     assert.ok(salt.body.includes('<summary>Guest policy</summary>'));
@@ -341,8 +351,10 @@ function start(port) {
     assert.ok(checkout.body.includes('>Guests</dt>'));
     assert.ok(checkout.body.includes("What's included"));
     assert.ok(checkout.body.includes('1 × Towels'));
-    assert.ok(checkout.body.includes('1 × Pool access'));
-    assert.ok(checkout.body.includes('1 × Complimentary Wi-Fi'));
+    assert.ok(checkout.body.includes('Pool access'));
+    assert.ok(checkout.body.includes('Complimentary Wi-Fi'));
+    assert.ok(!checkout.body.includes('× Pool access'));
+    assert.ok(!checkout.body.includes('× Complimentary Wi-Fi'));
     assert.ok(checkout.body.includes('Food and drink are not included'));
     assert.ok(!checkout.body.includes('Poolside food and drink'));
     assert.ok(checkout.body.includes('Parking'));
@@ -372,8 +384,14 @@ function start(port) {
     const confirm = await get(port, priced.headers.location);
     assert.ok(confirm.body.includes("What's included"));
     assert.ok(confirm.body.includes('2 × Towels'));
-    assert.ok(confirm.body.includes('2 × Pool access'));
-    assert.ok(confirm.body.includes('1 × Complimentary Wi-Fi'));
+    assert.ok(confirm.body.includes('Pool access'));
+    assert.ok(confirm.body.includes('Complimentary Wi-Fi'));
+    assert.ok(!confirm.body.includes('× Pool access'));
+    assert.ok(!confirm.body.includes('× Complimentary Wi-Fi'));
+    assert.ok(!confirm.body.includes('× Showers'));
+    assert.ok(!confirm.body.includes('× Lockers'));
+    assert.ok(!confirm.body.includes('× Toiletries'));
+    assert.ok(!confirm.body.includes('× Luggage'));
     assert.ok(confirm.body.includes('Food and drink are not included in your pass.'));
     assert.ok(confirm.body.includes('On site to buy (not included)'));
     assert.ok(!confirm.body.includes('Poolside food and drink'));
