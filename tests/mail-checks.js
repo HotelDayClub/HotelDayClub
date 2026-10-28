@@ -41,6 +41,8 @@ db.prepare('INSERT INTO hotel_hours (hotel_id, weekday, open, opens, closes) VAL
 const passId = db.prepare(`INSERT INTO pass_types (hotel_id, code, name, price, holds) VALUES (?, 'chair', 'Pool chair', 40, 1)`).run(hotelId).lastInsertRowid;
 const addonId = db.prepare(`INSERT INTO addons (hotel_id, code, name, price, per, enabled) VALUES (?, 'gym', 'Gym', 10, 'person', 1)`).run(hotelId).lastInsertRowid;
 db.prepare(`INSERT INTO inclusions (hotel_id, code, mode, price, daily_cap, note) VALUES (?, 'towels', 'included', 0, 0, '')`).run(hotelId);
+db.prepare(`INSERT INTO inclusions (hotel_id, code, mode, price, daily_cap, note) VALUES (?, 'wifi', 'included', 0, 0, '')`).run(hotelId);
+db.prepare(`INSERT INTO inclusions (hotel_id, code, mode, price, daily_cap, note) VALUES (?, 'lockers', 'included', 0, 0, '')`).run(hotelId);
 
 function insertBooking(code, email) {
   const id = db.prepare(`INSERT INTO bookings (code, hotel_id, pass_type_id, date, qty, unit_price, total, guest_name, email, phone, party, cancel_note)
@@ -236,7 +238,15 @@ function recorder(decide) {
   assert.ok(booked.html.includes('Pool chair × 2'));
   assert.ok(booked.html.includes('Gym × 2'));
   assert.ok(booked.html.includes('2 × Towels'));
-  assert.ok(booked.text.includes('Included: 2 × Towels'));
+  assert.ok(booked.text.includes('2 × Towels'));
+  assert.ok(booked.text.includes('Included: Complimentary Wi-Fi'));
+  assert.ok(booked.html.includes('Complimentary Wi-Fi'));
+  assert.ok(booked.html.includes('Lockers'));
+  assert.ok(booked.text.includes('Complimentary Wi-Fi'));
+  assert.ok(!booked.html.includes('× Complimentary'));
+  assert.ok(!booked.text.includes('× Complimentary'));
+  assert.ok(!booked.html.includes('× Lockers'));
+  assert.ok(!booked.text.includes('× Lockers'));
   assert.ok(booked.html.includes('On site to buy (not included)'));
   assert.ok(booked.html.includes('Food and drink are not included in your pass.'));
   assert.ok(booked.html.includes('Pool bar &lt;script&gt;'));
