@@ -53,13 +53,33 @@ function numOrNull(raw) {
 }
 
 function ensureArrival(db) {
+  const have = new Set(db.prepare('PRAGMA table_info(hotels)').all().map(c => c.name));
+  if (!['address', 'lat', 'lng', 'transit_note', 'parking_entrance', 'day_entrance'].every(name => have.has(name))) return;
   const upd = db.prepare(`UPDATE hotels SET address=?, lat=?, lng=?, transit_note=?, parking_entrance=?, day_entrance=?
     WHERE slug=? AND (address IS NULL OR address='')`);
+  const notes = db.prepare(`UPDATE hotels SET
+    transit_note=CASE WHEN transit_note IS NULL OR transit_note='' THEN ? ELSE transit_note END,
+    parking_entrance=CASE WHEN parking_entrance IS NULL OR parking_entrance='' THEN ? ELSE parking_entrance END,
+    day_entrance=CASE WHEN day_entrance IS NULL OR day_entrance='' THEN ? ELSE day_entrance END
+    WHERE slug=?`);
   db.transaction(() => {
     for (const [slug, row] of Object.entries(PRESETS)) {
       upd.run(row.address, row.lat, row.lng, row.transit, row.parking, row.entrance, slug);
+      notes.run(row.transit, row.parking, row.entrance, slug);
     }
   })();
+}
+
+function directionsHref(hotel) {
+  if (!hotel) return '';
+  const lat = Number(hotel.lat);
+  const lng = Number(hotel.lng);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && (lat || lng)) {
+    return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lng)}#map=17/${lat}/${lng}`;
+  }
+  const address = String(hotel.address || '').trim();
+  if (!address) return '';
+  return 'https://www.openstreetmap.org/search?query=' + encodeURIComponent(address);
 }
 
 function saveArrival(db, hotelId, body) {
@@ -149,4 +169,4 @@ function arrivalForm(hotel) {
 <div class="offer-save"><button class="btn btn-navy" type="submit">Save getting there</button></div></form>`;
 }
 
-module.exports = { ensureArrival, saveArrival, arrivalHtml, arrivalInner, arrivalForm };
+module.exports = { ensureArrival, saveArrival, arrivalHtml, arrivalInner, arrivalForm, directionsHref };

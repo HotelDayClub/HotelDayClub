@@ -9,6 +9,35 @@ const mailer = require('./mailer');
 const { eventWindow, passCalendarLink } = require('./calendar');
 const { loadInclusions, includedText } = require('./inclusions');
 const { forPass, accessText } = require('./access');
+const { directionsHref } = require('./arrival');
+
+const PARKING_LINE = 'Show your booking code at the entrance';
+
+function bookingHasParking(db, bookingId, hotelId) {
+  const bought = db.prepare(`SELECT 1 AS n FROM booking_addons ba JOIN addons a ON a.id=ba.addon_id
+    WHERE ba.booking_id=? AND a.code='parking'`).get(bookingId);
+  if (bought) return true;
+  if (!hotelId) return false;
+  const mode = db.prepare(`SELECT mode FROM inclusions WHERE hotel_id=? AND code='parking'`).get(hotelId);
+  return !!(mode && mode.mode === 'included');
+}
+
+function parkingCopy(info) {
+  if (!info.parking) return { text: '', html: '' };
+  const entrance = String(info.parkingEntrance || '').trim();
+  const url = String(info.directionsUrl || '').trim();
+  const text = [
+    entrance ? `Parking entrance: ${entrance}` : '',
+    url ? `Directions: ${url}` : '',
+    PARKING_LINE,
+  ].filter(Boolean).join('\n');
+  const html = `<div class="park-details">
+${entrance ? `<p style="margin:20px 0 8px;color:#0A1428;">Parking entrance: ${htmlValue(entrance)}</p>` : ''}
+${url ? `<p style="margin:0 0 8px;"><a href="${esc(url)}" style="color:#0E1E3A;font-weight:700;">Directions</a></p>` : ''}
+<p style="margin:0 0 20px;color:#0A1428;">${esc(PARKING_LINE)}</p>
+</div>`;
+  return { text, html };
+}
 
 function htmlValue(value) {
   return esc(value).replace(/\n/g, '<br>');
@@ -44,6 +73,7 @@ function bookingNotice(info) {
   const calendarLine = info.calendarUrl ? `Add to Google Calendar:\n${info.calendarUrl}` : '';
   const contactLine = `Questions: ${info.contact}`;
   const guestLine = info.guest ? `Guest: ${info.guest}` : '';
+  const park = parkingCopy(info);
   const text = [
     'Hotel Day Club',
     '',
@@ -53,6 +83,8 @@ function bookingNotice(info) {
     '',
     guestLine,
     ...facts.map(([label, value]) => `${label}: ${value}`),
+    '',
+    park.text,
     '',
     info.risk,
     '',
@@ -78,6 +110,7 @@ function bookingNotice(info) {
 ${demoBox}
 ${guestLine ? `<p style="margin:0 0 12px;color:#0A1428;">${esc(guestLine)}</p>` : ''}
 <table role="presentation" style="width:100%;border-collapse:collapse;font-size:18px;line-height:1.4;">${rows}</table>
+${park.html}
 <p style="margin:20px 0;color:#0A1428;">${esc(info.risk)}</p>
 ${info.qr ? `<p style="margin:20px 0 8px;color:#0A1428;">Show this QR code at reception.</p><p style="margin:0 0 20px;"><img src="${esc(info.qr)}" alt="QR code for ${esc(info.code)}" width="180" height="180"></p>` : ''}
 <p style="margin:0 0 12px;color:#0A1428;">Your QR code is on the confirmation page:</p>
@@ -166,6 +199,8 @@ async function bookingMessage(db, code) {
   const bookedAt = row.created_at ? new Date(String(row.created_at).replace(' ', 'T')) : new Date();
   const note = row.cancel_note || cancelNote(db, hotel, row.date, bookedAt);
   const window = eventWindow(db, hotel, row.date);
+  const parking = bookingHasParking(db, row.id, row.hotel_id);
+  const directionsUrl = parking && hotel ? directionsHref(hotel) : '';
   if (hotel) delete hotel.address;
   const calendarUrl = passCalendarLink({ code: row.code, cancel_note: note }, hotel, window);
   const checkinUrl = seo.ORIGIN + '/hotel/checkin?code=' + encodeURIComponent(row.code);
@@ -198,6 +233,9 @@ async function bookingMessage(db, code) {
     qr,
     calendarUrl,
     guest: maskName(row.guest_name),
+    parking,
+    parkingEntrance: parking && hotel ? hotel.parking_entrance : '',
+    directionsUrl,
   });
 }
 
@@ -292,4 +330,4 @@ async function sendCancellation(db, code) {
   }
 }
 
-module.exports = { bookingNotice, bookingMessage, contactAlert, cancelNotice, sendBookingConfirmation, sendContactAlert, sendCancellation };
+module.exports = { bookingNotice, bookingMessage, bookingHasParking, contactAlert, cancelNotice, sendBookingConfirmation, sendContactAlert, sendCancellation };

@@ -10,7 +10,7 @@ const {
   seatPhoto, SEAT_PHOTO, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
   includedBlock, includedLines, includedNote, addonsHtml, inclusionsForm, beatsHtml, hoursInner, policyInner, guestFoodLine, PASS_FOOD_LINE,
 } = require('./inclusions');
-const { ensureArrival, saveArrival, arrivalForm } = require('./arrival');
+const { ensureArrival, saveArrival, arrivalForm, directionsHref } = require('./arrival');
 const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hotelAreas, linkedIds } = require('./access');
 const { listingHtml, reassureStrip } = require('./listingView');
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
@@ -21,7 +21,7 @@ const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
 const { HOTEL_SHARE, hotelPct, feePct } = require('./commission');
 const { eventWindow, bookingIcs, passCalendarLink, hotelToday } = require('./calendar');
 const { parseBookingCode } = require('./public/checkin-parse');
-const { sendBookingConfirmation, sendContactAlert, sendCancellation } = require('./notices');
+const { sendBookingConfirmation, sendContactAlert, sendCancellation, bookingHasParking } = require('./notices');
 const { BookingCancel } = require('./cancelBooking');
 const { DESTINATIONS, destIcon, destinationBySlug } = require('./destinations');
 const seo = require('./seo');
@@ -853,15 +853,11 @@ function rejectBookingLookup(res) {
   res.set('Retry-After', '900');
   return res.status(429).type('text/plain; charset=utf-8').send('Too many booking lookups. Try again in 15 minutes.');
 }
-function directionsHref(hotel) {
-  const lat = Number(hotel.lat);
-  const lng = Number(hotel.lng);
-  if (Number.isFinite(lat) && Number.isFinite(lng) && (lat || lng)) {
-    return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lng)}#map=17/${lat}/${lng}`;
-  }
-  const address = String(hotel.address || '').trim();
-  if (!address) return '';
-  return 'https://www.openstreetmap.org/search?query=' + encodeURIComponent(address);
+function parkingBlock(hotel, on) {
+  if (!on || !hotel) return '';
+  const entrance = String(hotel.parking_entrance || '').trim();
+  const href = directionsHref(hotel);
+  return `<div class="park-details">${entrance ? `<p>${esc(entrance)}</p>` : ''}${href ? `<p><a href="${esc(href)}">Directions</a></p>` : ''}<p>Show your booking code at the entrance</p></div>`;
 }
 app.get('/booking/:code/calendar.ics', (req, res) => {
   if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);
@@ -906,7 +902,8 @@ app.get('/booking/:code', async (req, res) => {
 ${includedBlock(loadInclusions(db, hotel.id), party)}
 ${accessBlock(forPass(db, b.pass_type_id), { demo: /\(Demo\)/.test(b.hotel) })}
 <p>${esc(PASS_FOOD_LINE)}</p>
-${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}</div>
+${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}
+${parkingBlock(hotel, bookingHasParking(db, b.id, hotel.id))}</div>
 <p class="center cal-links" style="margin-top:16px"><a class="btn btn-line" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">Add to calendar</a>${googleCal ? ` <a class="btn btn-line" href="${esc(googleCal)}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>` : ''}${mapHref ? ` <a class="btn btn-line" href="${esc(mapHref)}">Directions</a>` : ''}</p>
 <div class="center" style="margin-top:12px"><a class="btn btn-line" href="/">Book another day</a></div>${cancelForm}</div>`, { analytics: true, analyticsPath: '/booking', index: false, canonical: false }));
 });
@@ -1055,6 +1052,9 @@ function seatCell(b) {
   const adds = b.addons ? `<div class="muted small">${esc(b.addons)}</div>` : '';
   return `<td>${esc(label)} × ${b.qty}<div class="muted small">${party} ${party === 1 ? 'person' : 'people'}</div>${rules}${adds}</td>`;
 }
+function parkingTag(b) {
+  return Number(b.parking_addon) === 1 || b.parking_mode === 'included' ? '<span class="pill park-tag">Parking</span>' : '';
+}
 const hhmm = s => String(s || '').slice(11, 16);
 function partyOf(b) {
   return b.party || b.qty * (b.holds || 1);
@@ -1116,10 +1116,10 @@ function logForm(b, redirect, log) {
 const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false } = {}) => {
   rows = withNotes(rows);
   return rows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th>${hotelCol ? '<th>Hotel</th>' : ''}<th>Date</th><th>Guest</th><th>Seating</th><th>Spots</th><th>Total</th><th>Status</th></tr></thead><tbody>
-${rows.map(b => `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(b.hotel)}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(b.guest_name)}</b><div class="muted small">${esc(b.email)} · ${esc(b.phone)}</div></td>${seatCell(b)}<td>${b.qty}</td><td>${money(b.total)}</td>
+${rows.map(b => `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(b.hotel)}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(b.guest_name)}</b> ${parkingTag(b)}<div class="muted small">${esc(b.email)} · ${esc(b.phone)}</div></td>${seatCell(b)}<td>${b.qty}</td><td>${money(b.total)}</td>
 <td>${statusCell(b, { checkin, redirect, day, compact: true, adminCancel })}${noteBits(b)}${logForm(b, redirect, log)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No guests.</p>';
 };
-const BQ = `SELECT b.*, p.name pass, p.holds, h.name hotel, (SELECT group_concat(ba.name || ' × ' || ba.qty, ', ') FROM booking_addons ba WHERE ba.booking_id=b.id) addons FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id JOIN hotels h ON h.id=b.hotel_id`;
+const BQ = `SELECT b.*, p.name pass, p.holds, h.name hotel, (SELECT group_concat(ba.name || ' × ' || ba.qty, ', ') FROM booking_addons ba WHERE ba.booking_id=b.id) addons, (SELECT 1 FROM booking_addons ba JOIN addons a ON a.id=ba.addon_id WHERE ba.booking_id=b.id AND a.code='parking') parking_addon, (SELECT mode FROM inclusions i WHERE i.hotel_id=b.hotel_id AND i.code='parking') parking_mode FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id JOIN hotels h ON h.id=b.hotel_id`;
 function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false } = {}) {
   rows = withNotes(rows);
   if (!rows.length) return '<p class="muted">No guests.</p>';
@@ -1129,7 +1129,7 @@ function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel
     const rules = b.rules_ack_at ? '<div class="muted small">Rules accepted</div>' : '';
     const adds = b.addons ? `<div class="muted small">${esc(b.addons)}</div>` : '';
     const action = statusCell(b, { checkin, redirect, day, compact: false, adminCancel });
-    return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(b.guest_name)}</b><div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(b.hotel) : ''} · ${esc(nice(b.date))}</div></div><b>${money(b.total)}</b></div>
+    return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(b.guest_name)}</b> ${parkingTag(b)}<div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(b.hotel) : ''} · ${esc(nice(b.date))}</div></div><b>${money(b.total)}</b></div>
 <p>${esc(label)} × ${b.qty} · ${party} ${party === 1 ? 'person' : 'people'}</p>${rules}${adds}${noteBits(b)}${action}${logForm(b, redirect, log)}</article>`;
   }).join('')}</div>`;
 }
@@ -1219,7 +1219,7 @@ function checkinCard(info) {
     ? `<form method="post" action="/hotel/checkin"><input type="hidden" name="code" value="${esc(info.code)}"><input type="hidden" name="confirm" value="1"><input type="hidden" name="r" value="/hotel/checkin">${arrivedField(b)}<button class="btn btn-navy btn-checkin">Check in</button></form>`
     : '';
   const statusLabel = info.st === 'ready' ? 'Confirmed' : info.st === 'used' ? checkedInLabel(b) : info.st === 'cancel' ? 'Cancelled' : 'Confirmed';
-  return `<article class="checkin-card scan-status ${tone}"><p class="eyebrow-s">Booking ${esc(info.code)}</p><h2>${esc(b.guest_name)}</h2><dl><dt>Pass</dt><dd>${esc(pass)}</dd><dt>Qty</dt><dd>${b.qty}</dd><dt>Date</dt><dd>${esc(nice(b.date))}</dd><dt>Status</dt><dd>${esc(statusLabel)}</dd></dl><p>${esc(note)}</p>${button}</article>`;
+  return `<article class="checkin-card scan-status ${tone}"><p class="eyebrow-s">Booking ${esc(info.code)}</p><h2>${esc(b.guest_name)} ${parkingTag(b)}</h2><dl><dt>Pass</dt><dd>${esc(pass)}</dd><dt>Qty</dt><dd>${b.qty}</dd><dt>Date</dt><dd>${esc(nice(b.date))}</dd><dt>Status</dt><dd>${esc(statusLabel)}</dd></dl><p>${esc(note)}</p>${button}</article>`;
 }
 function checkinResultCard(b, hotel) {
   const info = { st: bookingDayState(b, hotel), b, code: b.code, at: b.checked_in_at ? hhmm(b.checked_in_at) : '' };
@@ -1291,6 +1291,25 @@ app.get('/hotel/analytics', hotelAuth, (req, res) => {
   res.send(dashShell(req.hotel, renderAnalytics(report), { here: '/hotel/analytics' }));
 });
 
+function soldWarnHtml(hotelId, passes, days, grid) {
+  if (!days.length) return '';
+  const caps = new Map(db.prepare('SELECT date, cap FROM day_caps WHERE hotel_id=? AND date>=? AND date<=?').all(hotelId, days[0], days[days.length - 1]).map(row => [row.date, row.cap]));
+  const base = passes.reduce((sum, pass) => sum + (Number(pass.daily_cap) || 0), 0);
+  const lines = [];
+  for (const date of days) {
+    const rows = grid[date] || [];
+    if (!rows.length || rows[0].blocked) continue;
+    const booked = rows.reduce((sum, row) => sum + row.sold, 0);
+    const dayCap = caps.has(date) ? Number(caps.get(date)) : base;
+    if (dayCap > 0 && booked * 100 >= dayCap * 80) lines.push(`${nice(date)} is ${Math.round(booked * 100 / dayCap)}% sold.`);
+    for (const row of rows) {
+      const cap = Number(row.cap) || 0;
+      if (cap > 0 && row.sold * 100 >= cap * 80) lines.push(`${spotLabel(row)} is ${Math.round(row.sold * 100 / cap)}% sold on ${nice(date)}.`);
+    }
+  }
+  if (!lines.length) return '';
+  return `<div class="alert" id="sold-warn" role="status">${lines.map(line => `<p>${esc(line)}</p>`).join('')}</div>`;
+}
 app.get('/hotel', hotelAuth, (req, res) => {
   const h = req.hotel, t = today(), q = String(req.query.q || '').trim();
   const todayRows = db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? ORDER BY b.checked_in_at IS NOT NULL, b.guest_name`).all(h.id, t);
@@ -1312,6 +1331,7 @@ app.get('/hotel', hotelAuth, (req, res) => {
 ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <div class="dash-head"><div><p class="eyebrow-s">Hotel dashboard</p><h1 class="l-title">G'day, ${esc(h.name.replace(' (Demo)', ''))}</h1><p class="muted">${esc(nice(t))} · ${inToday} of ${dueToday} spots checked in today · ${tally.arrived} arrived of ${tally.booked} booked</p></div>
 <div class="dash-actions"><a class="btn btn-line" href="/hotel/analytics">Analytics</a><a class="btn btn-navy" href="/hotel/checkin">Check in a guest</a></div></div>
+${soldWarnHtml(h.id, passes, days, grid)}
 ${opsBar(h, passes)}
 <div class="stats">${stat('Spots booked', s.spots, `${s.n} bookings · ${s.people} people`)}${stat('Gross sales', money(s.gross), `Includes ${money(addonGross)} add-ons · last 30 days ${money(s30.gross)}`)}${stat(`Hotel share (${hotelPct()}%)`, money(s.gross * HOTEL_SHARE), 'Paid out to you')}${stat(`Platform commission (${feePct()}%)`, money(s.gross * (1 - HOTEL_SHARE)), 'Hotel Day Club fee')}</div>
 <div class="seat-stats">${bySeat.map(r => `<span><b>${esc(spotLabel(r))}</b> ${r.spots} booked · ${r.people} people</span>`).join('')}</div>
