@@ -384,10 +384,13 @@ function dayBeats(items) {
 function beatsHtml(items) {
   return `<ol class="day-beats">${dayBeats(items).map(s => `<li><b>${esc(s.h)}</b><span>${esc(s.p)}</span></li>`).join('')}</ol>`;
 }
-function hoursHtml(lines) {
-  return `<details class="fold" id="hours"><summary>Opening hours</summary><ul class="hours-list">${lines.map(r => `<li><span>${esc(r.day)}</span><b>${esc(r.time)}</b></li>`).join('')}</ul><p class="muted small">These are the day-pass hours for this demo listing.</p></details>`;
+function hoursInner(lines) {
+  return `<ul class="hours-list">${lines.map(r => `<li><span>${esc(r.day)}</span><b>${esc(r.time)}</b></li>`).join('')}</ul><p class="muted small">These are the day-pass hours for this demo listing.</p>`;
 }
-function policyHtml(hotel, foodLine) {
+function hoursHtml(lines) {
+  return `<details class="fold" id="hours"><summary>Opening hours</summary>${hoursInner(lines)}</details>`;
+}
+function policyParts(hotel, foodLine) {
   const offering = require('./offering');
   const facts = offering.policyFacts(hotel);
   const watch = offering.supervisionNote(hotel);
@@ -405,7 +408,18 @@ function policyHtml(hotel, foodLine) {
   const note = Number(hotel.is_demo) === 1
     ? 'Example information for a fictional hotel. It is not a contract. <a href="/refunds">Cancellation and refund policy</a>.'
     : '<a href="/refunds">Cancellation and refund policy</a>.';
-  return `<details class="fold" id="policy"><summary>Guest policy</summary><dl class="policy">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><p class="muted small">${note}</p></details>`;
+  return { rows, note };
+}
+function policyDl(rows) {
+  return `<dl class="policy">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
+}
+function policyHtml(hotel, foodLine) {
+  const { rows, note } = policyParts(hotel, foodLine);
+  return `<details class="fold" id="policy"><summary>Guest policy</summary>${policyDl(rows)}<p class="muted small">${note}</p></details>`;
+}
+function policyInner(hotel, foodLine) {
+  const { rows, note } = policyParts(hotel, foodLine);
+  return { body: policyDl(rows.filter(([k]) => k !== 'Cancellation')), note };
 }
 function offerSelect(item) {
   if (FOOD_DRINK.has(item.code)) {
@@ -439,5 +453,5 @@ ${rows}
 module.exports = {
   INCLUSIONS, FOOD_NOTE, PASS_FOOD_LINE, SEAT_PHOTO, seatPhoto, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
   includedHtml, includedLines, includedText, includedNote, includedBlock, amenityLines, foodSentence, guestFoodLine,
-  addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml,
+  addonsHtml, inclusionsForm, beatsHtml, hoursHtml, hoursInner, policyHtml, policyInner,
 };

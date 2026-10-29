@@ -84,12 +84,12 @@ function saveArrival(db, hotelId, body) {
   return {};
 }
 
-function arrivalHtml(hotel) {
+function arrivalParts(hotel) {
   const address = String(hotel.address || '').trim();
   const lat = Number(hotel.lat);
   const lng = Number(hotel.lng);
   const mapped = Number.isFinite(lat) && Number.isFinite(lng);
-  if (!address && !mapped) return '';
+  if (!address && !mapped) return null;
   const demo = Number(hotel.is_demo) === 1;
   const q = encodeURIComponent(address || `${lat},${lng}`);
   const google = `https://www.google.com/maps/dir/?api=1&destination=${q}`;
@@ -105,7 +105,21 @@ function arrivalHtml(hotel) {
     ? `<div class="arrive-acts"><a class="btn btn-navy" href="${esc(google)}" target="_blank" rel="noopener noreferrer">Get directions</a><a class="btn btn-line" href="${esc(apple)}" target="_blank" rel="noopener noreferrer">Apple Maps</a></div>`
     : '';
   const fiction = demo ? `<p class="muted small">This is a fictional demo address. <a href="${esc(osm)}" rel="noopener noreferrer">Open the map</a>.</p>` : '';
-  return `<section class="arrive" id="getting-there"><h3>Getting there</h3><div class="arrive-row"><div class="arrive-copy">${address ? `<p class="arrive-addr">${esc(address)}</p>` : ''}${directions}${fiction}</div>${preview}</div>${sheet}</section>`;
+  const addressHtml = address ? `<p class="arrive-addr">${esc(address)}</p>` : '';
+  return { addressHtml, directions, fiction, preview, sheet };
+}
+function arrivalHtml(hotel) {
+  const parts = arrivalParts(hotel);
+  if (!parts) return '';
+  return `<section class="arrive" id="getting-there"><h3>Getting there</h3><div class="arrive-row"><div class="arrive-copy">${parts.addressHtml}${parts.directions}${parts.fiction}</div>${parts.preview}</div>${parts.sheet}</section>`;
+}
+function arrivalInner(hotel) {
+  const parts = arrivalParts(hotel);
+  if (!parts) return { address: '', there: '' };
+  return {
+    address: parts.addressHtml,
+    there: `<div class="arrive-row"><div class="arrive-copy">${parts.directions}${parts.fiction}</div>${parts.preview}</div>${parts.sheet}`,
+  };
 }
 
 function arrivalForm(hotel) {
@@ -135,4 +149,4 @@ function arrivalForm(hotel) {
 <div class="offer-save"><button class="btn btn-navy" type="submit">Save getting there</button></div></form>`;
 }
 
-module.exports = { ensureArrival, saveArrival, arrivalHtml, arrivalForm };
+module.exports = { ensureArrival, saveArrival, arrivalHtml, arrivalInner, arrivalForm };

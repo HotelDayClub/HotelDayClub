@@ -8,9 +8,9 @@ const db = require('./db');
 const { seed, ensureAddons, ensureSchedules, seedPerformance } = require('./seed');
 const {
   seatPhoto, SEAT_PHOTO, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
-  includedBlock, includedLines, includedNote, addonsHtml, inclusionsForm, beatsHtml, hoursHtml, policyHtml, guestFoodLine, PASS_FOOD_LINE,
+  includedBlock, includedLines, includedNote, addonsHtml, inclusionsForm, beatsHtml, hoursInner, policyInner, guestFoodLine, PASS_FOOD_LINE,
 } = require('./inclusions');
-const { ensureArrival, saveArrival, arrivalHtml, arrivalForm } = require('./arrival');
+const { ensureArrival, saveArrival, arrivalForm } = require('./arrival');
 const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hotelAreas, linkedIds } = require('./access');
 const { listingHtml, reassureStrip } = require('./listingView');
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
@@ -574,17 +574,15 @@ app.get('/h/:slug', (req, res) => {
   const photo = h.photos[0] ? seo.absolute('/assets/photos/' + h.photos[0]) : seo.DEFAULT_IMAGE;
   res.send(page(h.name, listingHtml({
     h, date, minDate: today(), maxDate, closed: closed.join(','), passes, av, from,
-    hoursLine: hoursView(db, h, date).hoursLine,
     cancel: date ? cancelNote(db, h, date) : PICK_DATE_CANCEL,
     know: date ? cancelNote(db, h, date) : 'Free cancellation until 24 hours before access hours start.',
     beats: beatsHtml(items),
     included: items,
     accessByPass: byPass(db, h.id),
     addonList: addonsHtml(items, getAddons(h.id, true)),
-    hours: hoursHtml(hoursLines(db, h)),
+    hours: hoursInner(hoursLines(db, h)),
     foodLine,
-    policy: policyHtml(h, foodLine),
-    arrival: arrivalHtml(h),
+    policy: policyInner(h, foodLine),
   }), {
     analytics: true,
     index: demo ? 'follow' : true,
