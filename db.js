@@ -168,9 +168,11 @@ function alignStoredCopy(database) {
     }
     if (tables.has('addons')) {
       database.prepare("UPDATE addons SET name='Spa treatment credit', blurb='A credit toward a spa treatment booked at the hotel.' WHERE code='discount' AND (name LIKE '%discount%' OR blurb LIKE '%discount%')").run();
+      database.prepare("UPDATE addons SET name='Prepaid food and drink credit (optional)' WHERE code='food' AND name='Food and drink credit'").run();
     }
     if (tables.has('booking_addons')) {
       database.prepare("UPDATE booking_addons SET name='Spa treatment credit' WHERE name LIKE '%Spa treatment discount%'").run();
+      database.prepare("UPDATE booking_addons SET name='Prepaid food and drink credit (optional)' WHERE name='Food and drink credit'").run();
     }
   })();
 }

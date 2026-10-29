@@ -139,7 +139,7 @@ function start(port) {
     assert.ok(salt.body.includes('value="parking"'));
     assert.ok(salt.body.includes('type="checkbox"'));
     assert.ok(salt.body.includes('Fitness centre access'));
-    assert.ok(salt.body.includes('Food and drink credit'));
+    assert.ok(salt.body.includes('Prepaid food and drink credit (optional)'));
     assert.ok(!salt.body.includes('extra-static'));
     assert.ok(salt.body.includes('Parking'));
     assert.ok(salt.body.includes('$18'));
@@ -270,7 +270,7 @@ function start(port) {
     assert.ok(cafe, 'café access');
     assert.ok(cafe[0].includes('Food and drink available to purchase'));
     assert.ok(!/included/i.test(cafe[0]));
-    assert.ok(palm.body.includes('Food and drink credit'));
+    assert.ok(palm.body.includes('Prepaid food and drink credit (optional)'));
     assert.ok(palm.body.includes('$22'));
     assert.ok(!palm.body.includes('part of the visit'));
     assert.ok(!palm.body.includes('Poolside food and drink'));
@@ -331,7 +331,7 @@ function start(port) {
     assert.ok(authed.body.includes('name="timezone"'));
     assert.ok(authed.body.includes('Most popular label'));
     assert.ok(authed.body.includes('name="cap_parking"'));
-    assert.ok(authed.body.includes('Food and drink is never included'));
+    assert.ok(authed.body.includes('Food and drink are never included'));
     for (const name of ['inc_food', 'inc_welcome', 'inc_poolside']) {
       const block = authed.body.match(new RegExp(`<select name="${name}"[\\s\\S]*?</select>`));
       assert.ok(block, name);

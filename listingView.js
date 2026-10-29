@@ -275,16 +275,17 @@ ${passSection(passes, av, h, items, accessByPass)}
 <input type="date" class="hdc-date" data-inline="1" data-closed="${esc(closed)}" name="date" id="date" min="${minDate}" max="${maxDate}" value="${esc(date)}" required>
 <div id="status" class="status"></div>
 <label class="fl" for="qty">Guests<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === 1 ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+<p class="muted small">Party size is capped at 6.</p>
 <div class="bb-total" id="total"></div>
 <p class="cancel-note" id="cancel-note">${esc(cancel)}</p>
-<button class="btn btn-coral full" id="go" type="submit">Book your day</button>
+<button class="btn btn-coral full" id="go" type="submit">Book your day (demo)</button>
 <p class="muted small center">You won't be charged. Demo payment only.</p>
 </aside>
 <div class="l-more">
 ${addonList}
 <div class="page-folds">
 ${parkFold}
-<details class="fold" id="cancel-fold"><summary>Cancellation</summary><p>${esc(know || cancel)} <a href="/refunds">Draft cancellation terms</a>.</p></details>
+<details class="fold" id="cancel-fold"><summary>Cancellation</summary><p>${esc(know || cancel)} <a href="/refunds">Cancellation and refund policy</a>.</p></details>
 ${hours}
 ${policy}
 </div>
@@ -295,7 +296,7 @@ ${reassureStrip(true)}
 </section>
 </div>
 </form>
-<div class="book-bar"><div class="bar-price"><span>Total</span><b id="bar-total">${money(pick ? pick.price : from)}</b></div><a class="btn btn-coral" href="#book">Book your day</a></div>
+<div class="book-bar"><div class="bar-price"><span>Total</span><b id="bar-total">${money(pick ? pick.price : from)}</b></div><a class="btn btn-coral" href="#book">Book your day (demo)</a></div>
 </div>
 ${listingScript(h.slug)}`;
 }

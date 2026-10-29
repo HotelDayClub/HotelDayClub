@@ -328,7 +328,8 @@ function start(port, extra = {}) {
     assert.ok(home.body.includes('All of Australia'));
     assert.ok(!home.body.includes('All of Sydney') && !home.body.includes('around Sydney') && !home.body.includes('across Sydney'));
     assert.ok(home.body.includes('href="/faq"'));
-    assert.ok(home.body.includes('Hotel Day Club · ABN 98 227 458 028'));
+    assert.ok(home.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'));
+    assert.ok(!home.body.includes('98 227 458 028'));
     assert.ok(home.body.includes('Demo site — listings are examples, no real bookings or payments.'));
     assert.ok(!home.body.includes('ABN: to be added'));
     assert.ok(!home.body.includes('Jason Baranov') && !home.body.includes('registration pending'));
@@ -358,7 +359,8 @@ function start(port, extra = {}) {
       const doc = await get(port, pathName);
       assert.strictEqual(doc.status, 200, pathName);
       assert.ok(doc.body.includes(draft), pathName);
-      assert.ok(doc.body.includes('Hotel Day Club · ABN 98 227 458 028'), pathName);
+      assert.ok(doc.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'), pathName);
+      assert.ok(!doc.body.includes('98 227 458 028'), pathName);
       assert.ok(doc.body.includes('content="noindex, follow"'), pathName);
       assert.ok(!doc.body.includes('noindex, nofollow'), pathName);
       assert.ok(doc.body.includes('rel="canonical" href="https://www.hoteldayclub.com.au' + pathName + '"'), pathName);
@@ -374,7 +376,9 @@ function start(port, extra = {}) {
     const terms = await get(port, '/terms');
     assert.ok(terms.body.includes('Customer terms (draft)'));
     assert.ok(terms.body.includes('We are a booking agent.'));
-    assert.ok(terms.body.includes('Hotel Day Club is a registered business name (ABN 98 227 458 028). In these terms, &#39;we&#39; means the owner of that business name.'));
+    assert.ok(terms.body.includes('Hotel Day Club is a registered business name (ABN (sample) 00 000 000 000). In these terms, &#39;we&#39; means the owner of that business name.'));
+    assert.ok(terms.body.includes('Hotel ABN (sample) 00 000 000 000'));
+    assert.ok(!terms.body.includes('Stripe') && !/card refund/i.test(terms.body));
     assert.ok(terms.body.includes('ticking the boxes'));
     assert.ok(terms.body.includes('A free date change may be available once, subject to availability.'));
     assert.ok(terms.body.includes('href="https://www.legislation.gov.au/C2004A00109/latest/text"'));
@@ -426,7 +430,16 @@ function start(port, extra = {}) {
     onlyThisMail(forHotels.body, 'for-hotels');
     assert.ok(forHotels.body.includes('mailto:hello@hoteldayclub.com.au?subject=Hotel%20Day%20Club%20-%20partnership%20enquiry'));
     assert.ok(!/75%|25%/.test(forHotels.body));
-    assert.ok(forHotels.body.includes('We earn a commission on bookings and pay you the rest monthly, with a statement.'));
+    assert.ok(forHotels.body.includes('Free to list, no monthly fee. You set the seating, prices, numbers and hours. You are paid monthly with a statement. The terms are set out in your hotel agreement.'));
+    assert.ok(!forHotels.body.includes('You stay in control. You stay in control.'));
+    const publicPaths = ['/', '/for-hotels', '/how-it-works', '/faq', '/contact', '/privacy', '/terms', '/refunds', '/risk', '/guides', '/h/saltwater-terrace', '/destinations/sydney', '/destinations/melbourne', '/hotel/login', '/checkout?hotel=skyline-rooftop&date=' + encodeURIComponent(freeSky.date) + '&pass=chair&qty=1'];
+    for (const pathName of publicPaths) {
+      const doc = await get(port, pathName);
+      assert.strictEqual(doc.status, 200, pathName);
+      assert.ok(!/\bcommission\b/i.test(doc.body), pathName + ' mentions commission');
+      assert.ok(!/stripe/i.test(doc.body), pathName + ' mentions Stripe');
+      assert.ok(!doc.body.includes('98 227 458 028'), pathName);
+    }
     const how = await get(port, '/how-it-works');
     assert.strictEqual(how.status, 200);
     assert.ok(how.body.includes('Seating and add-on sales are paid out once a month. Your share is set out in your hotel agreement.'));
@@ -528,7 +541,8 @@ function start(port, extra = {}) {
     assert.ok(page.body.includes('This is a demo booking. No payment was taken and no real booking exists.'));
     assert.ok(!page.body.includes('No email is sent'));
     assert.ok(page.body.includes('Terms') && page.body.includes('Accepted'));
-    assert.ok(page.body.includes('Hotel Day Club · ABN 98 227 458 028'));
+    assert.ok(page.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'));
+    assert.ok(!page.body.includes('98 227 458 028'));
     assert.ok(!page.body.includes('Jason Baranov') && !page.body.includes('registration pending'));
     assert.ok(!page.body.includes('googletagmanager.com'));
   } finally {
@@ -539,14 +553,16 @@ function start(port, extra = {}) {
   const abn = await start(abnPort, { ABN: '11222333444', CONTACT_EMAIL: 'desk@example.com' });
   try {
     const home = await get(abnPort, '/');
-    assert.ok(home.body.includes('Hotel Day Club · ABN 11 222 333 444'));
+    assert.ok(home.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'));
+    assert.ok(!home.body.includes('11 222 333 444'));
     assert.ok(!home.body.includes('98 227 458 028'));
     assert.ok(home.body.includes('mailto:desk@example.com'));
     assert.ok(!home.body.includes('hello@hoteldayclub.com.au'));
     const terms = await get(abnPort, '/terms');
     const found = [...terms.body.matchAll(/mailto:([^"'?\s]+)/g)].map(m => m[1]);
     assert.ok(found.length >= 2 && found.every(m => m === 'desk@example.com'), found.join(','));
-    assert.ok(terms.body.includes('ABN 11 222 333 444'));
+    assert.ok(terms.body.includes('ABN (sample) 00 000 000 000'));
+    assert.ok(!terms.body.includes('11 222 333 444'));
     assert.ok(!terms.body.includes('{{CONTACT_EMAIL}}') && !terms.body.includes('{{ABN}}'));
     assert.ok(!terms.body.includes('Jason Baranov'));
   } finally {
@@ -556,7 +572,8 @@ function start(port, extra = {}) {
   const bad = await start(badPort, { ABN: 'not-an-abn' });
   try {
     const home = await get(badPort, '/');
-    assert.ok(home.body.includes('Hotel Day Club · ABN 98 227 458 028'));
+    assert.ok(home.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'));
+    assert.ok(!home.body.includes('98 227 458 028'));
   } finally {
     bad.kill('SIGTERM');
   }

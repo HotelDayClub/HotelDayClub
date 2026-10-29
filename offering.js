@@ -742,7 +742,7 @@ ${DAY_ORDER.map(wd => {
 <div class="two"><label class="fl">Lifeguard<select name="lifeguard"><option value="" ${guardChoice(h.lifeguard) === '' ? 'selected' : ''}>Choose</option><option value="1" ${guardChoice(h.lifeguard) === '1' ? 'selected' : ''}>On duty</option><option value="0" ${guardChoice(h.lifeguard) === '0' ? 'selected' : ''}>Not on duty</option><option value="2" ${guardChoice(h.lifeguard) === '2' ? 'selected' : ''}>On duty for set hours</option></select></label>
 <label class="fl">Lifeguard hours<input name="lifeguard_hours" maxlength="120" value="${esc(h.lifeguard_hours || '')}" placeholder="10am to 4pm"></label></div>
 <label class="fl">Food and drink<input name="food_rule" maxlength="160" value="${esc(h.food_rule || '')}" placeholder="Not included. Name where guests can buy them."></label>
-<p class="muted small">Food and drink is never included in the pass. Say where guests can buy it.</p>
+<p class="muted small">Food and drink are never included in the pass. Say where guests can buy it.</p>
 <label class="fl">Dress code<input name="dress_code" maxlength="160" value="${esc(h.dress_code || '')}" placeholder="Swimwear at the pool. A cover-up in the lobby."></label>
 ${account ? `<label class="tick"><input type="checkbox" name="marketing" value="1" ${h.marketing ? 'checked' : ''}> Email me about listing a hotel. Optional, and separate from this application.</label>
 <p class="privacy-note">We use your name, email and login to review this application and reply to you. <a href="/privacy">Privacy policy</a></p>` : ''}

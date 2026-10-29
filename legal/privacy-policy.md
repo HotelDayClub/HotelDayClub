@@ -6,10 +6,11 @@ Last updated: 23 October 2026.
 
 ## 1. What we collect
 - **Booking details:** your name, email, mobile number, booking date, hotel, pass, add-ons, party size, and whether you checked in.
-- **Payment details:** handled by our payment provider Stripe. We see only limited details (for example, card type, last 4 digits, and payment status). We don't store full card numbers.
-- **Acceptance records:** when you accepted our Terms, the hotel's rules and the risk warning, which version you saw, and the IP address used.
-- **Communications:** emails, messages and complaints you send us.
-- **Incident notes:** if the hotel reports an incident or refused entry linked to your booking, a short note of what happened. This may occasionally include health information (for example, an injury), which we handle only as needed to respond to the incident or as the law requires.
+- **Payment details:** we do not take payment on this site yet. No card number is collected or stored. When payments start, a payment provider will handle the card, and we will describe here what limited details we see.
+- **Acceptance records:** we store the time you accepted the terms, the hotel's rules and the risk warning, and the text you were shown.
+- **Communications:** if you send us a message through the contact form, we store your name, email, topic, message and any booking code, and we email a copy to our contact address so we can reply. If you email us directly, we keep that email in our mail, not in the booking database.
+- **Incident notes:** the hotel can record a no-show or an incident against your booking, with a short note. That note can include what happened, which may be health information. We keep it with the booking. There is no separate refused-entry flag, and the product has no way to delete a note.
+- **Confirmation page:** your confirmation page shows the hotel, date, pass and booking code. Your name is shortened and your email is masked. Anyone with the link can see that page. The mobile number is not on it.
 - **Marketing preferences:** whether you opted in to hot-day alerts and offers.
 - **Waitlist:** your email address, and any first name, suburb or postcode, guest or hotel choice, hotel name and destination you choose to provide.
 - **Website data:** pages viewed, device, browser and approximate location, collected with Google Analytics as described below. You can block cookies in your browser.
@@ -35,11 +36,11 @@ The list is stored in the site database. If a waitlist connection is turned on, 
 You can unsubscribe, or ask us to delete your waitlist details, by emailing {{CONTACT_EMAIL}}.
 
 ## 4. Why we collect it
-To take and confirm bookings, take payment, send booking messages (confirmations, reminders, changes, closures), let the hotel check you in, process cancellations and refunds, deal with incidents and complaints, prevent fraud and misuse, improve our service, meet legal, tax and accounting obligations, and, **only if you opt in**, send marketing.
+To take and confirm demo bookings, send booking messages (confirmations, reminders, changes, closures), let the hotel check you in, record a demo cancellation, deal with incidents and complaints, prevent fraud and misuse, improve our service, and meet legal obligations. This demo does not take a payment. We do not send marketing email or SMS yet.
 
 ## 5. Who we share it with
-- **The hotel you booked:** your name, booking code, pass and party size (and any notes you add) so it can check you in and run the day safely. With your booking, you consent to this disclosure. The hotel handles information under its own privacy policy. We do not sell your information or give it to hotels for their marketing.
-- **Service providers** who help us run the business, including payments (Stripe) and hosting. They may only use the information to provide services to us.
+- **The hotel you booked:** your name, email, mobile number, booking code, pass, party size and any note it records about your visit, so it can check you in. It does not see other hotels' guests. With your booking, you consent to this disclosure. The hotel handles information under its own privacy policy. We do not sell your information or give it to hotels for their marketing.
+- **Service providers** who help us run the business, including email delivery and hosting. They may only use the information to provide services to us. No payment provider is used yet.
 - **Professional advisers** when needed, for example for a claim.
 - **Authorities** where the law requires or allows it (for example, police after a serious incident).
 
@@ -47,10 +48,12 @@ To take and confirm bookings, take payment, send booking messages (confirmations
 Some of our service providers store data overseas, including in the United States. We choose providers with reasonable security and privacy commitments.
 
 ## 7. Marketing
-We send marketing emails or SMS (for example, hot-day alerts, new hotels and offers) only if you've opted in. Every marketing message identifies us and has an unsubscribe option, and we act on unsubscribes within 5 working days. Booking messages (confirmations, changes, refunds) aren't marketing and you'll still receive them.
+After you book, we email you a confirmation of that booking. If you use the contact form, we email that message to ourselves so we can reply. These are not marketing messages, so they do not include an unsubscribe link. You can tick a box to say we may email you about day passes. We do not send marketing email or SMS yet. To withdraw that choice, or to leave the waitlist, email us at the address in this policy. We do not have an unsubscribe link in the product yet.
 
 ## 8. Security and retention
-We use reasonable steps to protect personal information: access controls, strong passwords and two-factor authentication on admin accounts, encrypted connections, and giving hotels only the minimum details. We keep booking and payment records for as long as needed for tax and legal purposes. We delete or de-identify guest lists and marketing data when no longer needed. Hotels are asked to delete guest lists after the visit.
+We use reasonable steps to protect personal information: access controls, strong passwords, and encrypted connections. There is no two-factor step on admin accounts. We keep booking details, guest notes and the marketing choice until we delete them. There is no automatic deletion period. You can ask us to delete what we do not need to keep by emailing the address in this policy. A backup file may still hold a copy until that file is replaced. We do not yet ask hotels to delete their copy of a guest list after the visit.
+
+We keep server logs that can include a waitlist signup if saving or forwarding it fails, or if the spreadsheet connection is off. We keep backup copies of the database for the operator. Those copies include booking and waitlist details. They are not public.
 
 ## 9. Data breaches
 If we become aware of a data breach that's likely to cause you serious harm, we'll tell you and recommend steps you can take, and we'll notify the Office of the Australian Information Commissioner where the law requires.
