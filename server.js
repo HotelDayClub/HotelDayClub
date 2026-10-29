@@ -14,7 +14,7 @@ const { ensureArrival, saveArrival, arrivalHtml, arrivalForm } = require('./arri
 const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hotelAreas, linkedIds } = require('./access');
 const { listingHtml, reassureStrip } = require('./listingView');
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
-const { adminPassword, verifyPassword, safeEqual, migrateHotelPasswords, maskName, maskEmail } = require('./passwords');
+const { adminPassword, verifyPassword, safeEqual, hashPassword, migrateHotelPasswords, maskName, maskEmail } = require('./passwords');
 const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
 const { ymd, addDays, esc, money, nice } = require('./util');
 const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
@@ -974,6 +974,7 @@ app.get('/for-hotels', (req, res) => {
 <p class="fh-kicker">For hotels</p>
 <h1>A quiet pool, <em>put to use.</em></h1>
 <p class="fh-lead">Hotel Day Club is for hotels in Australia. Local guests come for the pool, the gym or the spa for the day. They do not need a room.</p>
+<p>Hotels are invited. There is no sign-up form. Email ${contactMail()} and we will set up the login.</p>
 </div>
 ${hotelLoginPanel(req.query.e === 'lock' ? 'lock' : req.query.e ? '1' : '')}
 </div>
@@ -992,7 +993,10 @@ ${hotelLoginPanel(req.query.e === 'lock' ? 'lock' : req.query.e ? '1' : '')}
 </div></section>`, { analytics: true, index: true, ...seo.pageCopy('hotels'), jsonld: seo.graph(seo.crumbs([{ name: 'For hotels', path: '/for-hotels' }])) }));
 });
 app.get('/hotel/join', (req, res) => res.redirect(302, '/for-hotels'));
-app.post('/hotel/join', (req, res) => res.redirect(303, '/for-hotels'));
+app.post('/hotel/join', (req, res) => {
+  if (!ownForm(req, res)) return;
+  res.redirect(303, '/for-hotels');
+});
 const LEGAL_LINKS = '<p class="legal-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a></p>';
 app.get('/hotel/login', (req, res) => {
   const code = req.query.e === 'lock' ? 'lock' : req.query.e ? '1' : '';
@@ -1002,7 +1006,13 @@ ${hotelLoginPanel(code, 'h1', next)}
 <p class="center partner-back"><a href="/for-hotels">For hotels</a></p>
 ${LEGAL_LINKS}</div>`, { bare: true, index: false, canonical: false }));
 });
+function ownForm(req, res) {
+  if (sameSitePost(req)) return true;
+  res.status(403).type('text/plain; charset=utf-8').send('Use the form on this site.');
+  return false;
+}
 app.post('/hotel/login', (req, res) => {
+  if (!ownForm(req, res)) return;
   const ip = req.ip || 'unknown';
   if (hotelLocked(ip)) return res.redirect(hotelFailTarget(req.body, 'lock'));
   const login = String(req.body.user || '').trim();
@@ -1245,6 +1255,7 @@ ${accessForm(hotelAreas(db, row.id), getPasses(row.id), linkedIds(db, row.id))}
 ${arrivalForm(row)}`, { here: '/hotel/settings' }));
 });
 app.post('/hotel/settings', hotelAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   const result = db.transaction(() => saveOffering(db, req.hotel.id, req.body))();
   if (result.err) return res.redirect('/hotel/settings?e=' + encodeURIComponent(result.err));
   const extra = result.kept && result.kept.length ? ' Kept seating that already has bookings: ' + result.kept.join(', ') + '.' : '';
@@ -1355,6 +1366,7 @@ app.post('/hotel/checkin', hotelAuth, (req, res) => {
   res.redirect(303, p + (p.includes('?') ? '&' : '?') + 'msg=' + encodeURIComponent(msg) + (hash ? '#' + hash : ''));
 });
 app.post('/hotel/note', hotelAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   const kind = req.body.kind === 'incident' ? 'incident' : req.body.kind === 'no_show' ? 'no_show' : '';
   const code = String(req.body.code || '').toUpperCase().trim();
   const b = kind && db.prepare('SELECT id FROM bookings WHERE code=? AND hotel_id=?').get(code, req.hotel.id);
@@ -1398,16 +1410,18 @@ ${cap ? `<form method="post" action="/hotel/cap"><input type="hidden" name="cap"
 <span class="ops-links"><a href="/hotel/email-preview">Tonight's email</a><a href="/hotel/print">Print list</a></span></div>`;
 }
 app.post('/hotel/pause', hotelAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   const when = req.body.when === 'tomorrow' ? ymd(addDays(new Date(), 1)) : today();
   const result = pauseDate(req.hotel.id, when, 'toggle');
   res.redirect(303, '/hotel?msg=' + encodeURIComponent(result.msg));
 });
 app.post('/hotel/cap', hotelAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   const when = req.body.when === 'tomorrow' ? ymd(addDays(new Date(), 1)) : today();
   res.redirect(303, '/hotel?msg=' + encodeURIComponent(capDate(req.hotel.id, when, req.body.cap)));
 });
 function opsToken(payload) {
-  const body = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 14 * 864e5 })).toString('base64url');
+  const body = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 36 * 60 * 60 * 1000 })).toString('base64url');
   const sig = crypto.createHmac('sha256', SECRET).update(body).digest('hex');
   return `${body}.${sig}`;
 }
@@ -1432,7 +1446,7 @@ app.get('/hotel/email-preview', hotelAuth, (req, res) => {
   const pause = opsToken({ h: h.id, a: 'pause', d: tmr });
   const capLinks = (caps.length ? caps : [Math.max(1, sum)]).map(n => `<a class="btn btn-line" href="/hotel/go/${opsToken({ h: h.id, a: 'cap', d: tmr, n })}">Cap at ${n}</a>`).join('');
   res.send(dashShell(h, `<p class="eyebrow-s">Tonight's email</p><h1 class="l-title">Guest list for ${esc(nice(tmr))}</h1>
-<p class="muted">This is the note we would send the night before. The links work, and they stay valid for 14 days.</p>
+<p class="muted">This is the note we would send the night before. The links work for 36 hours. They do not sign you in.</p>
 <article class="email-card"><p class="muted small">To ${esc(h.contact_email || h.login)} · ${esc(h.name)}</p>
 <h2>Tomorrow at the pool</h2>
 <p>${rows.length} booking${rows.length === 1 ? '' : 's'} · ${spots} spots</p>
@@ -1447,8 +1461,7 @@ app.get('/hotel/go/:token', (req, res) => {
   const hotel = data && db.prepare('SELECT * FROM hotels WHERE id=?').get(data.h);
   if (!hotel || !/^\d{4}-\d{2}-\d{2}$/.test(data.d || '')) return res.status(400).send(page('Link expired', `<div class="wrap sec narrow"><h1 class="l-title">This link has expired</h1><p class="muted">Open tonight's email again from the dashboard, or <a href="/hotel/login">log in</a>.</p></div>`, { bare: true, index: false, canonical: false }));
   const msg = data.a === 'cap' ? capDate(hotel.id, data.d, data.n) : pauseDate(hotel.id, data.d, 'pause').msg;
-  staffCookie(res, 'hotel', String(hotel.id));
-  res.send(page('Saved', `<div class="wrap sec narrow"><h1 class="l-title">${esc(msg)}</h1><p class="muted">${esc(hotel.name)} · ${esc(nice(data.d))}</p><p style="margin-top:18px"><a class="btn btn-navy" href="/hotel">Back to dashboard</a></p></div>`, { bare: true, index: false, canonical: false }));
+  res.send(page('Saved', `<div class="wrap sec narrow"><h1 class="l-title">${esc(msg)}</h1><p class="muted">${esc(hotel.name)} · ${esc(nice(data.d))}</p><p style="margin-top:18px"><a class="btn btn-navy" href="/hotel/login">Log in to the dashboard</a></p></div>`, { bare: true, index: false, canonical: false }));
 });
 app.get('/hotel/print', hotelAuth, (req, res) => {
   const h = req.hotel;
@@ -1462,6 +1475,7 @@ ${rows.map(b => `<tr><td><span class="print-tick"></span></td><td><b>${esc(b.gue
 </tbody></table></div></div>`, { nav: 'hotel', bare: true }));
 });
 app.post('/hotel/addons', hotelAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   const on = new Set((Array.isArray(req.body.on) ? req.body.on : req.body.on ? [req.body.on] : []).map(n => parseInt(n, 10)));
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(req.hotel.id);
   const allowLate = hotelLatePossible(db, hotel);
@@ -1482,30 +1496,36 @@ app.post('/hotel/addons', hotelAuth, (req, res) => {
   res.redirect(303, '/hotel?msg=' + encodeURIComponent(msg) + '#addons');
 });
 app.post('/hotel/access', hotelAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   const result = saveAccess(db, req.hotel.id, req.body);
   if (result.err) return res.redirect('/hotel/settings?e=' + encodeURIComponent(result.err) + '#included-access');
   res.redirect(303, '/hotel/settings?msg=' + encodeURIComponent('Saved included access.') + '#included-access');
 });
 app.post('/hotel/inclusions', hotelAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(req.hotel.id);
   const result = saveInclusions(db, req.hotel.id, req.body, { allowLate: hotelLatePossible(db, hotel) });
   const msg = result.lateBlocked ? "Late stay stays off. It can't overlap room guests only or run past the pool's closing time." : "Saved what's included.";
   res.redirect(303, '/hotel/settings?msg=' + encodeURIComponent(msg) + '#included');
 });
 app.post('/hotel/arrival', hotelAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   const result = saveArrival(db, req.hotel.id, req.body);
   if (result.err) return res.redirect('/hotel/settings?e=' + encodeURIComponent(result.err) + '#arrive-edit');
   res.redirect(303, '/hotel/settings?msg=' + encodeURIComponent('Saved getting there.') + '#arrive-edit');
 });
 app.post('/hotel/block', hotelAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   if (/^\d{4}-\d{2}-\d{2}$/.test(req.body.date)) db.prepare('INSERT OR REPLACE INTO blocked_dates(hotel_id,date,reason) VALUES (?,?,?)').run(req.hotel.id, req.body.date, String(req.body.reason || 'Closed').slice(0, 80) || 'Closed');
   res.redirect(303, '/hotel?msg=' + encodeURIComponent('Blocked ' + nice(req.body.date) + '. Guests can no longer book it.') + '#blocked');
 });
 app.post('/hotel/unblock', hotelAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   db.prepare('DELETE FROM blocked_dates WHERE hotel_id=? AND date=?').run(req.hotel.id, req.body.date);
   res.redirect(303, '/hotel?msg=' + encodeURIComponent('Unblocked ' + nice(req.body.date) + '.') + '#blocked');
 });
 app.post('/hotel/blocked', hotelAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   const reason = String(req.body.reason || '').trim().slice(0, 80);
   const start = new Date();
   const horizon = ymd(new Date(start.getFullYear(), start.getMonth() + 19, 0));
@@ -1558,6 +1578,7 @@ app.get('/admin/login', (req, res) => {
 ${LEGAL_LINKS}</div></div>`, { bare: true, index: false, canonical: false }));
 });
 app.post('/admin/login', (req, res) => {
+  if (!ownForm(req, res)) return;
   const ip = req.ip || 'unknown';
   if (adminLocked(ip)) return res.redirect('/admin/login?e=lock');
   const userOk = safeEqual(String(req.body.user || ''), ADMIN_USER);
@@ -1571,7 +1592,23 @@ app.post('/admin/login', (req, res) => {
   res.redirect('/admin');
 });
 app.get('/admin/logout', (req, res) => { clearStaffCookie(res, 'admin'); res.redirect('/'); });
+function hotelPasswordForm(hotel) {
+  if (String(hotel.login || '').startsWith('demo-')) return '<div class="muted small">Demo password is set on the server.</div>';
+  return `<form method="post" action="/admin/hotel-password"><input type="hidden" name="id" value="${hotel.id}"><label class="muted small">New password<input name="password" type="password" minlength="4" maxlength="200" required autocomplete="new-password" aria-label="New password for ${esc(hotel.name)}"></label><button class="btn btn-line btn-sm">Set password</button></form>`;
+}
+app.post('/admin/hotel-password', adminAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
+  const id = parseInt(req.body.id, 10);
+  const password = String(req.body.password || '');
+  const hotel = id && db.prepare('SELECT id, name, login FROM hotels WHERE id=?').get(id);
+  if (!hotel) return res.redirect('/admin?msg=' + encodeURIComponent('Hotel not found.'));
+  if (String(hotel.login || '').startsWith('demo-')) return res.redirect('/admin?msg=' + encodeURIComponent('The demo hotel password is set on the server.'));
+  if (password.length < 4 || password.length > 200) return res.redirect('/admin?msg=' + encodeURIComponent('Use a password of 4 to 200 characters.'));
+  db.prepare('UPDATE hotels SET password=? WHERE id=?').run(hashPassword(password), hotel.id);
+  res.redirect('/admin?msg=' + encodeURIComponent(`Password set for ${hotel.name}.`));
+});
 app.post('/admin/approve', adminAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   const id = parseInt(req.body.id, 10);
   const h = id && db.prepare('SELECT * FROM hotels WHERE id=? AND status=?').get(id, 'pending');
   if (!h) return res.redirect('/admin?msg=' + encodeURIComponent('Nothing to approve.'));
@@ -1583,7 +1620,7 @@ app.post('/admin/approve', adminAuth, (req, res) => {
 app.get('/admin', adminAuth, (req, res) => {
   const hid = parseInt(req.query.hotel) || 0, q = String(req.query.q || '').trim();
   const pending = db.prepare("SELECT * FROM hotels WHERE status='pending' ORDER BY id DESC").all();
-  const per = db.prepare(`SELECT h.id, h.name, h.area, COUNT(b.id) n, COALESCE(SUM(b.qty),0) passes, COALESCE(SUM(b.total),0) gross,
+  const per = db.prepare(`SELECT h.id, h.name, h.area, h.login, COUNT(b.id) n, COALESCE(SUM(b.qty),0) passes, COALESCE(SUM(b.total),0) gross,
     COALESCE(SUM(CASE WHEN b.date=? THEN b.qty END),0) today, COALESCE(SUM(CASE WHEN b.checked_in_at IS NOT NULL THEN b.qty END),0) checked
     FROM hotels h LEFT JOIN bookings b ON b.hotel_id=h.id AND b.status!='cancelled' WHERE COALESCE(h.status,'active')='active' GROUP BY h.id ORDER BY gross DESC`).all(today());
   const tot = per.reduce((a, r) => ({ n: a.n + r.n, passes: a.passes + r.passes, gross: a.gross + r.gross, today: a.today + r.today }), { n: 0, passes: 0, gross: 0, today: 0 });
@@ -1607,7 +1644,7 @@ ${contactMessagesHtml()}
 <div class="stats">${stat('Bookings', tot.n, tot.passes + ' spots')}${stat('Gross sales', money(tot.gross), `Includes ${money(addonAll)} add-ons`)}${stat(`Paid to hotels (${hotelPct()}%)`, money(tot.gross * HOTEL_SHARE))}${stat(`Platform commission (${feePct()}%)`, money(tot.gross * (1 - HOTEL_SHARE)), 'Hotel Day Club revenue')}</div>
 <p class="muted small" style="margin:-8px 0 16px">Gross includes add-ons. Commission stays at ${feePct()}% of that gross.</p>
 <section class="panel"><h2 class="ph2">By hotel</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Hotel</th><th>Bookings</th><th>Spots</th><th>Today</th><th>Gross</th><th>Hotel ${hotelPct()}%</th><th>Commission ${feePct()}%</th></tr></thead><tbody>
-${per.map(r => `<tr><td><a class="link" href="/admin?hotel=${r.id}#all"><b>${esc(r.name)}</b></a><div class="muted small">${esc(r.area)}</div></td><td>${r.n}</td><td>${r.passes}</td><td>${r.today}</td><td>${money(r.gross)}</td><td>${money(r.gross * HOTEL_SHARE)}</td><td><b>${money(r.gross * (1 - HOTEL_SHARE))}</b></td></tr>`).join('')}
+${per.map(r => `<tr><td><a class="link" href="/admin?hotel=${r.id}#all"><b>${esc(r.name)}</b></a><div class="muted small">${esc(r.area)}</div>${hotelPasswordForm(r)}</td><td>${r.n}</td><td>${r.passes}</td><td>${r.today}</td><td>${money(r.gross)}</td><td>${money(r.gross * HOTEL_SHARE)}</td><td><b>${money(r.gross * (1 - HOTEL_SHARE))}</b></td></tr>`).join('')}
 <tr class="tot"><td>Total</td><td>${tot.n}</td><td>${tot.passes}</td><td>${tot.today}</td><td>${money(tot.gross)}</td><td>${money(tot.gross * HOTEL_SHARE)}</td><td>${money(tot.gross * (1 - HOTEL_SHARE))}</td></tr></tbody></table></div></section>
 <section class="panel" id="all"><h2 class="ph2">Latest bookings</h2><form class="lookup" method="get" action="/admin#all"><select name="hotel"><option value="">All hotels</option>${per.map(r => `<option value="${r.id}" ${r.id === hid ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select><input name="q" value="${esc(q)}" placeholder="Code, name or email"><button class="btn btn-navy">Filter</button></form>
 ${guestList(rows, { checkin: false, hotelCol: true, log: false })}<p class="muted small">Showing the latest ${rows.length} (max 100).</p></section>
@@ -1627,6 +1664,7 @@ app.get('/admin/waitlist.csv', adminAuth, (req, res) => {
   sendCsv(res, 'waitlist.csv', waitlistCsv(rows));
 });
 app.post('/admin/waitlist/delete', adminAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   const id = parseInt(req.body.id, 10);
   if (id) db.prepare('DELETE FROM waitlist WHERE id=?').run(id);
   res.redirect('/admin?msg=' + encodeURIComponent(id ? 'Removed that waitlist signup.' : 'Nothing to remove.') + '#waitlist');
@@ -1648,6 +1686,7 @@ ${r.handled ? '' : `<form method="post" action="/admin/messages/handled"><input 
 ${body}</section>`;
 }
 app.post('/admin/messages/handled', adminAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
   const id = parseInt(req.body.id, 10);
   const row = id && db.prepare('SELECT id FROM contact_messages WHERE id=?').get(id);
   if (row) db.prepare("UPDATE contact_messages SET handled=1, handled_at=datetime('now') WHERE id=?").run(id);
@@ -1691,6 +1730,7 @@ ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 </section></div>`, { nav: 'admin' }));
 });
 app.post('/admin/backups', adminAuth, async (req, res) => {
+  if (!ownForm(req, res)) return;
   try {
     const made = await backups.requestBackup(db, 'manual');
     res.redirect('/admin/backups?msg=' + encodeURIComponent(`Backup saved (${made.name}, ${backups.formatBytes(made.bytes)}).`));
