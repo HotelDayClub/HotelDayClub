@@ -15,7 +15,8 @@
     "test:mail": "node tests/mail-checks.js",
     "test:backups": "node tests/backup-checks.js",
     "test:security": "node tests/security-checks.js",
-    "test:static": "node tests/static-checks.js"
+    "test:static": "node tests/static-checks.js",
+    "check": "node scripts/check.js"
   },
   "keywords": [],
   "author": "",

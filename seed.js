@@ -278,19 +278,21 @@ db.transaction(() => {
   });
   const st = db.prepare("SELECT id,daily_cap,price,holds FROM pass_types WHERE hotel_id=1 AND code='daybed'").get();
   const sample = db.prepare('SELECT rules_text FROM bookings WHERE hotel_id=1 LIMIT 1').get();
-  const rules = sample ? sample.rules_text : rulesText(db.prepare('SELECT * FROM hotels WHERE id=1').get());
+  const rules = sample ? sample.rules_text : (db.prepare('SELECT * FROM hotels WHERE id=1').get() ? rulesText(db.prepare('SELECT * FROM hotels WHERE id=1').get()) : '');
   let date = null;
-  for (let i = 1; i <= 10 && !date; i++) {
+  for (let i = 1; i <= 10 && st && !date; i++) {
     const cand = ymd(addDays(today, i));
     const wd = weekdayOf(cand);
     if (wd < 1 || wd > 5) continue;
     if (db.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=1 AND date=?').get(cand)) continue;
     date = cand;
   }
-  const used = db.prepare("SELECT COALESCE(SUM(qty),0) n FROM bookings WHERE pass_type_id=? AND date=? AND status!='cancelled'").get(st.id, date).n;
-  for (let k = used; k < st.daily_cap; k++) {
-    const created = ymd(today) + ' 08:00';
-    insBk.run('HDC-' + (seq++), 1, st.id, date, 1, st.price, st.price, names[k % 15], 'guest' + k + '@example.com', '0400000' + (100 + k), 'confirmed', null, created, st.holds || 2, created, rules);
+  if (st && date) {
+    const used = db.prepare("SELECT COALESCE(SUM(qty),0) n FROM bookings WHERE pass_type_id=? AND date=? AND status!='cancelled'").get(st.id, date).n;
+    for (let k = used; k < st.daily_cap; k++) {
+      const created = ymd(today) + ' 08:00';
+      insBk.run('HDC-' + (seq++), 1, st.id, date, 1, st.price, st.price, names[k % 15], 'guest' + k + '@example.com', '0400000' + (100 + k), 'confirmed', null, created, st.holds || 2, created, rules);
+    }
   }
 })();
 seedPerformance(db);
