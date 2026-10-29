@@ -126,9 +126,9 @@ function start(port) {
       assert.ok(!/\d+ × (?!Towels)/.test(list));
     }
     assert.ok(salt.body.includes('id="pass-detail-lounger" data-code="lounger" role="region" aria-labelledby="pass-title-lounger" hidden'));
-    assert.ok(salt.body.includes('<summary>Opening hours</summary>'));
-    assert.ok(salt.body.includes('<summary>Guest policy</summary>'));
-    assert.ok(salt.body.includes('<summary>Cancellation</summary>'));
+    assert.ok(salt.body.includes('>Opening hours</dt>'));
+    assert.ok(salt.body.includes('>Guest policy</dt>'));
+    assert.ok(salt.body.includes('>Cancellation</dt>'));
     assert.ok(!salt.body.includes('<summary>Parking</summary>'));
     assert.ok(!salt.body.includes('Train and bus'));
     assert.ok(salt.body.includes('id="addons-list"'));
@@ -149,7 +149,12 @@ function start(port) {
     assert.ok(!salt.body.includes('30 a day'));
     assert.ok(!/\b\d+ a day\b/.test(salt.body));
     assert.ok(salt.body.includes('id="hours"'));
-    assert.ok(salt.body.includes('Daily · 10am–4pm'));
+    const saltHoursBlock = salt.body.slice(salt.body.indexOf('id="hours"'), salt.body.indexOf('id="getting-there"'));
+    assert.ok(saltHoursBlock.includes('<span>Monday</span><b>10am–4pm</b>'));
+    assert.ok(saltHoursBlock.includes('<span>Sunday</span><b>10am–4pm</b>'));
+    const saltMeta = salt.body.slice(salt.body.indexOf('class="muted l-meta"'), salt.body.indexOf('day-lead'));
+    assert.ok(saltMeta.includes('New · Eastern Beaches'));
+    assert.ok(!saltMeta.includes('10am'));
     assert.ok(salt.body.includes('id="policy"'));
     assert.ok(salt.body.includes('Guest policy'));
     assert.ok(salt.body.includes('id="getting-there"'));
@@ -159,8 +164,12 @@ function start(port) {
     const saltExtras = salt.body.indexOf('id="addons-list"');
     const saltHours = salt.body.indexOf('id="hours"');
     const saltThere = salt.body.indexOf('id="getting-there"');
+    const saltPolicy = salt.body.indexOf('id="policy"');
+    const saltCancel = salt.body.indexOf('id="cancel-fold"');
     const saltKnow = salt.body.indexOf('id="before"');
-    assert.ok(saltPass < saltExtras && saltExtras < saltHours && saltHours < saltThere && saltThere < saltKnow);
+    const saltBook = salt.body.indexOf('aria-label="Before you book"');
+    assert.ok(saltPass < saltExtras && saltExtras < saltHours && saltHours < saltThere && saltThere < saltPolicy && saltPolicy < saltCancel);
+    assert.ok(saltKnow < saltHours && saltCancel < saltBook);
     const saltHead = salt.body.slice(salt.body.indexOf('listing-head'), salt.body.indexOf('day-kicker'));
     assert.ok(!saltHead.includes('18 Demo Terrace'));
     assert.ok(!saltHead.includes('View map'));
@@ -285,7 +294,13 @@ function start(port) {
 
     const sky = await get(port, '/h/skyline-rooftop');
     leadAndMeta(sky.body, 'skyline-rooftop', 'Skyline Rooftop Hotel', 'North Sydney');
-    assert.ok(sky.body.includes('Mon–Thu · 11am–4pm'));
+    const skyHours = sky.body.slice(sky.body.indexOf('id="hours"'), sky.body.indexOf('id="getting-there"'));
+    assert.ok(skyHours.includes('<span>Monday</span><b>11am–4pm</b>'));
+    assert.ok(skyHours.includes('<span>Thursday</span><b>11am–4pm</b>'));
+    assert.ok(skyHours.includes('<span>Friday</span><b>Closed</b>'));
+    const skyMeta = sky.body.slice(sky.body.indexOf('class="muted l-meta"'), sky.body.indexOf('day-lead'));
+    assert.ok(skyMeta.includes('New · North Sydney'));
+    assert.ok(!skyMeta.includes('Mon–Thu'));
     assert.ok(sky.body.includes('<b>Heated rooftop pool</b>'));
     assert.ok(!sky.body.includes('quietest'));
     assert.ok(!sky.body.includes('<b>Gym</b>'));

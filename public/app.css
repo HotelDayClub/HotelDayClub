@@ -588,13 +588,13 @@ form.check-code input,form.check-code .btn{width:100%}
   .listing .gallery.swipe img{flex:none;height:100%;aspect-ratio:auto}
   .gal-nav{display:none}
 }
-.day-lead{font-size:1.08rem;line-height:1.5;max-width:40rem;margin:12px 0 0}
+.day-lead{font-size:1.08rem;line-height:1.5;max-width:none;margin:12px 0 0}
 .day-kicker{font-family:var(--font-display);font-weight:560;font-size:1.45rem;margin:28px 0 10px}
 .day-beats{list-style:none;display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0;padding:0 0 4px;min-width:0}
 .day-beats li{flex:1 0 160px;scroll-snap-align:start;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 14px}
 .day-beats b{display:block;font-family:var(--font-display);font-size:1.15rem;margin-bottom:4px}
 .day-beats span{color:#3b4458;font-size:.92rem}
-.listing-head{max-width:40rem}
+.listing-head{max-width:none}
 .l-more{display:flex;flex-direction:column;gap:28px;margin-top:8px}
 .l-more .page-folds{margin-top:8px}
 .arrive{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px 22px 16px}
@@ -747,4 +747,16 @@ form.check-code input,form.check-code .btn{width:100%}
 .inc-head{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#3b4458}
 .inc-note{grid-column:1/-1}
 @media(max-width:720px){.inc-edit{grid-template-columns:1fr 1fr}}
-#book,#getting-there,#included,#hours,#policy{scroll-margin-top:88px}
+#book,#getting-there,#included,#hours,#policy,#cancel-fold,#before{scroll-margin-top:88px}
+.good-to-know{background:#fff;border:1px solid var(--line);border-radius:20px;padding:24px;color:var(--ink)}
+.good-to-know h3{color:var(--navy);margin:0 0 16px}
+.gtk{display:grid;grid-template-columns:1fr;gap:4px 0;margin:0}
+.gtk > dt{font-weight:700;color:var(--ink);margin-top:14px}
+.gtk > dd{margin:0;color:var(--muted);text-align:left;font-weight:500}
+.good-to-know a,.gtk a{color:var(--navy);text-decoration:underline;text-underline-offset:2px}
+.gtk .map-peek{max-width:280px;width:100%;height:140px;flex:none}
+@media(min-width:760px){
+  .gtk{grid-template-columns:180px minmax(0,1fr);gap:16px 24px}
+  .gtk > dt{margin:0;padding-top:16px;border-top:1px solid var(--line)}
+  .gtk > dd{padding-top:16px;border-top:1px solid var(--line)}
+}

@@ -2,6 +2,7 @@ const { esc, money } = require('./util');
 const { instantConfirmationText } = require('./siteMode');
 const { KINDS } = require('./offering');
 const { seatPhoto, includedNote, amenityLines } = require('./inclusions');
+const { arrivalInner } = require('./arrival');
 const { supervisionNote } = require('./offering');
 const { accessDetail } = require('./access');
 
@@ -238,8 +239,24 @@ load();setInterval(load,15000);
 </script>`;
 }
 
+function goodToKnow({ hours, policy, place, know, cancel }) {
+  const address = place.address ? `<dt>Address</dt><dd>${place.address}</dd>` : '';
+  const there = place.there ? `<dt id="getting-there">Getting there</dt><dd>${place.there}</dd>` : '';
+  return `<section class="l-sec good-to-know" id="before"><h3>Good to know</h3>
+<dl class="gtk">
+<dt id="hours">Opening hours</dt><dd>${hours}</dd>
+${address}
+${there}
+<dt id="policy">Guest policy</dt><dd>${policy.body}</dd>
+<dt id="cancel-fold">Cancellation</dt><dd><p>${esc(know || cancel)} <a href="/refunds">Cancellation and refund policy</a>.</p></dd>
+</dl>
+<ul class="reassure"><li><b>Instant confirmation</b><span>${esc(instantConfirmationText())}</span></li></ul>
+<p class="muted small">${policy.note}</p>
+</section>`;
+}
+
 function listingHtml(opts) {
-  const { h, date, minDate, maxDate, closed, passes, av, from, hoursLine, cancel, know, included, addonList, hours, policy, arrival, accessByPass, foodLine } = opts;
+  const { h, date, minDate, maxDate, closed, passes, av, from, cancel, know, included, addonList, hours, policy, accessByPass, foodLine } = opts;
   const items = Array.isArray(included) ? included : [];
   const parkNote = includedNote(items);
   const short = shortName(h);
@@ -261,7 +278,7 @@ ${demo ? '<span class="photo-credit">Stock photos · not this hotel</span>' : ''
 <div class="listing-head">
 <p class="eyebrow-s">${demo ? 'Fictional demo listing' : esc(h.area)}</p>
 <h1 class="l-title">Your day at ${esc(heading)}</h1>
-<div class="muted l-meta">New · ${esc(h.area)} · ${esc(hoursLine)}</div>
+<div class="muted l-meta">New · ${esc(h.area)}</div>
 <p class="day-lead"><b>${esc(h.tagline)}.</b> ${esc(h.blurb)}</p>
 ${watch ? `<p class="guard-note">${esc(watch)}</p>` : ''}
 </div>
@@ -281,21 +298,10 @@ ${passSection(passes, av, h, items, accessByPass)}
 <button class="btn btn-coral full" id="go" type="submit">Book your day (demo)</button>
 <p class="muted small center">You won't be charged. Demo payment only.</p>
 </aside>
-<div class="l-more">
-${addonList}
-<div class="page-folds">
-${parkFold}
-<details class="fold" id="cancel-fold"><summary>Cancellation</summary><p>${esc(know || cancel)} <a href="/refunds">Cancellation and refund policy</a>.</p></details>
-${hours}
-${policy}
-</div>
-${arrival}
-${reassureStrip(true)}
-<section class="l-sec" id="before"><h3>Good to know</h3>
-<ul class="reassure"><li><b>Instant confirmation</b><span>${esc(instantConfirmationText())}</span></li></ul>
-</section>
-</div>
+${addonList || parkFold ? `<div class="l-more">${addonList}${parkFold}</div>` : ''}
 </form>
+${goodToKnow({ hours, policy, place: arrivalInner(h), know, cancel })}
+${reassureStrip(true)}
 <div class="book-bar"><div class="bar-price"><span>Total</span><b id="bar-total">${money(pick ? pick.price : from)}</b></div><a class="btn btn-coral" href="#book">Book your day (demo)</a></div>
 </div>
 ${listingScript(h.slug)}`;

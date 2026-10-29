@@ -451,10 +451,17 @@ function start(port, extra = {}) {
     assert.ok(!risk.body.includes('{{CONTACT_EMAIL}}'));
 
     const listing = await get(port, `/h/skyline-rooftop?date=${freeSky.date}`);
-    assert.ok(listing.body.includes('Mon–Thu · 11am–4pm'), listing.body.slice(listing.body.indexOf('l-meta'), listing.body.indexOf('l-meta') + 180));
+    const skyMeta = listing.body.slice(listing.body.indexOf('class="muted l-meta"'), listing.body.indexOf('day-lead'));
+    assert.ok(skyMeta.includes('New · North Sydney'), skyMeta);
+    assert.ok(!skyMeta.includes('Mon–Thu') && !skyMeta.includes('11am'), skyMeta);
+    const skyHours = listing.body.slice(listing.body.indexOf('id="hours"'), listing.body.indexOf('id="getting-there"'));
+    assert.ok(skyHours.includes('<span>Monday</span><b>11am–4pm</b>') && skyHours.includes('<span>Friday</span><b>Closed</b>'), skyHours);
     assert.ok(!listing.body.includes('Wed ·'));
     const saltListing = await get(port, `/h/saltwater-terrace?date=${salt.date}`);
-    assert.ok(saltListing.body.includes('Daily · 10am–4pm'));
+    const saltMeta = saltListing.body.slice(saltListing.body.indexOf('class="muted l-meta"'), saltListing.body.indexOf('day-lead'));
+    assert.ok(saltMeta.includes('New · Eastern Beaches') && !saltMeta.includes('10am'), saltMeta);
+    const saltHours = saltListing.body.slice(saltListing.body.indexOf('id="hours"'), saltListing.body.indexOf('id="getting-there"'));
+    assert.ok(saltHours.includes('<span>Monday</span><b>10am–4pm</b>') && saltHours.includes('<span>Sunday</span><b>10am–4pm</b>'), saltHours);
 
     const avail = await get(port, `/api/availability?hotel=skyline-rooftop&date=${freeSky.date}`);
     const data = JSON.parse(avail.body);
