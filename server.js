@@ -21,7 +21,8 @@ const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
 const { HOTEL_SHARE, hotelPct, feePct } = require('./commission');
 const { eventWindow, bookingIcs, passCalendarLink, hotelToday } = require('./calendar');
 const { parseBookingCode } = require('./public/checkin-parse');
-const { sendBookingConfirmation, sendContactAlert } = require('./notices');
+const { sendBookingConfirmation, sendContactAlert, sendCancellation } = require('./notices');
+const { BookingCancel } = require('./cancelBooking');
 const { DESTINATIONS, destIcon, destinationBySlug } = require('./destinations');
 const seo = require('./seo');
 const compress = require('./compress');
@@ -891,9 +892,14 @@ app.get('/booking/:code', async (req, res) => {
   const mapHref = directionsHref(hotel);
   const googleCal = passCalendarLink(b, hotel, eventWindow(db, hotel, b.date));
   const status = b.status === 'cancelled' ? 'Cancelled' : b.checked_in_at ? 'Checked in ' + b.checked_in_at : 'Confirmed';
+  const mayCancel = BookingCancel.guestMay(db, hotel, b);
+  const heading = b.status === 'cancelled' ? 'This demo booking is cancelled.' : "You're booked in.";
+  const cancelForm = mayCancel
+    ? `<form method="post" action="/booking/${encodeURIComponent(b.code)}/cancel" class="center" style="margin-top:16px"><button class="btn btn-line" type="submit">Cancel this demo booking</button></form><p class="center muted small">No payment was taken. Cancelling marks this demo booking refunded. Nothing is returned to a card.</p>`
+    : '';
   bookingPrivate(res);
   res.send(page('Booking confirmed', `<div class="wrap sec narrow confirm">
-<div class="ok-badge">${ICON.check}</div><h1 class="l-title center">You're booked in.</h1>
+<div class="ok-badge">${ICON.check}</div><h1 class="l-title center">${heading}</h1>
 <p class="center muted">${esc(confirmationBlurb())}</p>
 <div class="ticket"><div class="t-top"><img src="/assets/photos/${JSON.parse(b.photos)[0]}" alt="${esc(/\(Demo\)/.test(b.hotel) ? 'Stock photo, not this hotel' : 'Photo of ' + seo.shortName(b.hotel))}" width="1200" height="900"><div><h3>${esc(b.hotel)}</h3><p class="muted small">${esc(b.area)}, Australia</p></div></div>
 <div class="t-mid"><img class="qr" src="${qr}" alt="QR code for ${esc(b.code)}"><div class="code">${esc(b.code)}</div><p class="muted small">Show this at reception</p></div>
@@ -904,7 +910,22 @@ ${accessBlock(forPass(db, b.pass_type_id), { demo: /\(Demo\)/.test(b.hotel) })}
 <p>${esc(PASS_FOOD_LINE)}</p>
 ${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}</div>
 <p class="center cal-links" style="margin-top:16px"><a class="btn btn-line" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">Add to calendar</a>${googleCal ? ` <a class="btn btn-line" href="${esc(googleCal)}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>` : ''}${mapHref ? ` <a class="btn btn-line" href="${esc(mapHref)}">Directions</a>` : ''}</p>
-<div class="center" style="margin-top:12px"><a class="btn btn-line" href="/">Book another day</a></div></div>`, { analytics: true, analyticsPath: '/booking', index: false, canonical: false }));
+<div class="center" style="margin-top:12px"><a class="btn btn-line" href="/">Book another day</a></div>${cancelForm}</div>`, { analytics: true, analyticsPath: '/booking', index: false, canonical: false }));
+});
+app.post('/booking/:code/cancel', async (req, res) => {
+  if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);
+  bookingPrivate(res);
+  if (!sameSitePost(req)) return res.status(403).type('text/plain; charset=utf-8').send('Use the booking page on this site.');
+  const code = String(req.params.code || '').toUpperCase();
+  const b = bookingFull(code);
+  if (!b) return sendNotFound(res, { analyticsPath: '/booking' });
+  const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(b.hotel_id);
+  if (!BookingCancel.guestMay(db, hotel, b)) return res.redirect(303, '/booking/' + encodeURIComponent(b.code));
+  const changed = BookingCancel.mark(db, b.id);
+  if (changed) {
+    try { await sendCancellation(db, b.code); } catch (err) { console.error('cancel email failed code=' + b.code); }
+  }
+  res.redirect(303, '/booking/' + encodeURIComponent(b.code));
 });
 
 const hotelAuth = (req, res, next) => { const id = req.signedCookies.hotel; const h = id && db.prepare('SELECT * FROM hotels WHERE id=?').get(id); if (!h) return res.redirect('/hotel/login'); req.hotel = hotelRow(h); next(); };
@@ -1066,14 +1087,17 @@ function arrivedField(b) {
   const booked = partyOf(b);
   return `<label class="arrived-field">People arrived<input name="arrived" type="number" min="0" max="${arrivedMax(booked)}" step="1" inputmode="numeric" value="${booked}" required></label>`;
 }
-function statusCell(b, { checkin, redirect, day, compact }) {
+function statusCell(b, { checkin, redirect, day, compact, adminCancel }) {
+  const cancel = adminCancel && b.status !== 'cancelled'
+    ? `<form method="post" action="/admin/booking/cancel"><input type="hidden" name="code" value="${esc(b.code)}"><button class="btn btn-line btn-sm">Cancel (demo)</button></form>`
+    : '';
   if (b.status === 'cancelled') return '<span class="pill out">Cancelled</span>';
-  if (b.checked_in_at) return `<span class="pill ok checkin-state">${esc(checkedInLabel(b))}</span>`;
+  if (b.checked_in_at) return `<span class="pill ok checkin-state">${esc(checkedInLabel(b))}</span>${cancel}`;
   if (checkin && b.date === (day || today())) {
     const btn = compact ? 'btn btn-sm btn-navy' : 'btn btn-navy btn-check';
-    return `<form method="post" action="/hotel/checkin"><input type="hidden" name="code" value="${esc(b.code)}"><input type="hidden" name="confirm" value="1"><input type="hidden" name="r" value="${esc(redirect)}">${arrivedField(b)}<button class="${btn}">Check in</button></form>`;
+    return `<form method="post" action="/hotel/checkin"><input type="hidden" name="code" value="${esc(b.code)}"><input type="hidden" name="confirm" value="1"><input type="hidden" name="r" value="${esc(redirect)}">${arrivedField(b)}<button class="${btn}">Check in</button></form>${cancel}`;
   }
-  return '<span class="pill">Confirmed</span>';
+  return `<span class="pill">Confirmed</span>${cancel}`;
 }
 function withNotes(rows) {
   if (!rows.length || rows[0].notes) return rows;
@@ -1091,14 +1115,14 @@ function logForm(b, redirect, log) {
   if (!log) return '';
   return `<details class="log-note"><summary>No-show or incident</summary><form method="post" action="/hotel/note"><input type="hidden" name="code" value="${esc(b.code)}"><input type="hidden" name="r" value="${esc(redirect)}"><input name="note" maxlength="200" placeholder="Optional note" autocomplete="off"><div class="log-actions"><button class="btn btn-line btn-sm" name="kind" value="no_show">No-show</button><button class="btn btn-line btn-sm" name="kind" value="incident">Incident</button></div></form></details>`;
 }
-const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '' } = {}) => {
+const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false } = {}) => {
   rows = withNotes(rows);
   return rows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th>${hotelCol ? '<th>Hotel</th>' : ''}<th>Date</th><th>Guest</th><th>Seating</th><th>Spots</th><th>Total</th><th>Status</th></tr></thead><tbody>
 ${rows.map(b => `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(b.hotel)}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(b.guest_name)}</b><div class="muted small">${esc(b.email)} · ${esc(b.phone)}</div></td>${seatCell(b)}<td>${b.qty}</td><td>${money(b.total)}</td>
-<td>${statusCell(b, { checkin, redirect, day, compact: true })}${noteBits(b)}${logForm(b, redirect, log)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No guests.</p>';
+<td>${statusCell(b, { checkin, redirect, day, compact: true, adminCancel })}${noteBits(b)}${logForm(b, redirect, log)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No guests.</p>';
 };
 const BQ = `SELECT b.*, p.name pass, p.holds, h.name hotel, (SELECT group_concat(ba.name || ' × ' || ba.qty, ', ') FROM booking_addons ba WHERE ba.booking_id=b.id) addons FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id JOIN hotels h ON h.id=b.hotel_id`;
-function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '' } = {}) {
+function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false } = {}) {
   rows = withNotes(rows);
   if (!rows.length) return '<p class="muted">No guests.</p>';
   return `<div class="guest-cards">${rows.map(b => {
@@ -1106,7 +1130,7 @@ function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel
     const party = b.party || b.qty * (b.holds || 1);
     const rules = b.rules_ack_at ? '<div class="muted small">Rules accepted</div>' : '';
     const adds = b.addons ? `<div class="muted small">${esc(b.addons)}</div>` : '';
-    const action = statusCell(b, { checkin, redirect, day, compact: false });
+    const action = statusCell(b, { checkin, redirect, day, compact: false, adminCancel });
     return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(b.guest_name)}</b><div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(b.hotel) : ''} · ${esc(nice(b.date))}</div></div><b>${money(b.total)}</b></div>
 <p>${esc(label)} × ${b.qty} · ${party} ${party === 1 ? 'person' : 'people'}</p>${rules}${adds}${noteBits(b)}${action}${logForm(b, redirect, log)}</article>`;
   }).join('')}</div>`;
@@ -1607,6 +1631,18 @@ app.post('/admin/hotel-password', adminAuth, (req, res) => {
   db.prepare('UPDATE hotels SET password=? WHERE id=?').run(hashPassword(password), hotel.id);
   res.redirect('/admin?msg=' + encodeURIComponent(`Password set for ${hotel.name}.`));
 });
+app.post('/admin/booking/cancel', adminAuth, async (req, res) => {
+  if (!ownForm(req, res)) return;
+  const code = String(req.body.code || '').trim().toUpperCase();
+  const b = db.prepare('SELECT id, code FROM bookings WHERE code=?').get(code);
+  if (!b) return res.redirect('/admin?msg=' + encodeURIComponent('Booking not found.'));
+  const changed = BookingCancel.mark(db, b.id);
+  if (changed) {
+    try { await sendCancellation(db, b.code); } catch (err) { console.error('cancel email failed code=' + b.code); }
+  }
+  const msg = changed ? `${b.code} is cancelled in this demo. No payment was taken.` : `${b.code} was already cancelled.`;
+  res.redirect('/admin?msg=' + encodeURIComponent(msg));
+});
 app.post('/admin/approve', adminAuth, (req, res) => {
   if (!ownForm(req, res)) return;
   const id = parseInt(req.body.id, 10);
@@ -1647,7 +1683,7 @@ ${contactMessagesHtml()}
 ${per.map(r => `<tr><td><a class="link" href="/admin?hotel=${r.id}#all"><b>${esc(r.name)}</b></a><div class="muted small">${esc(r.area)}</div>${hotelPasswordForm(r)}</td><td>${r.n}</td><td>${r.passes}</td><td>${r.today}</td><td>${money(r.gross)}</td><td>${money(r.gross * HOTEL_SHARE)}</td><td><b>${money(r.gross * (1 - HOTEL_SHARE))}</b></td></tr>`).join('')}
 <tr class="tot"><td>Total</td><td>${tot.n}</td><td>${tot.passes}</td><td>${tot.today}</td><td>${money(tot.gross)}</td><td>${money(tot.gross * HOTEL_SHARE)}</td><td>${money(tot.gross * (1 - HOTEL_SHARE))}</td></tr></tbody></table></div></section>
 <section class="panel" id="all"><h2 class="ph2">Latest bookings</h2><form class="lookup" method="get" action="/admin#all"><select name="hotel"><option value="">All hotels</option>${per.map(r => `<option value="${r.id}" ${r.id === hid ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select><input name="q" value="${esc(q)}" placeholder="Code, name or email"><button class="btn btn-navy">Filter</button></form>
-${guestList(rows, { checkin: false, hotelCol: true, log: false })}<p class="muted small">Showing the latest ${rows.length} (max 100).</p></section>
+${guestList(rows, { checkin: false, hotelCol: true, log: false, adminCancel: true })}<p class="muted small">Showing the latest ${rows.length} (max 100).</p></section>
 <section class="panel"><h2 class="ph2">Guest notes</h2>${notes.length ? notes.map(n => `<div class="pending-row"><div><b>${n.kind === 'incident' ? 'Incident' : 'No-show'}</b> · ${esc(n.guest_name)} · ${esc(n.code)}<div class="muted small">${esc(n.hotel)} · ${esc(nice(n.date))} · ${esc(hhmm(n.created_at))}${n.note ? ' · ' + esc(n.note) : ''}</div></div></div>`).join('') : '<p class="muted">No notes yet. Hotels log a no-show or an incident from the guest list.</p>'}</section>
 <section class="panel" id="waitlist"><h2 class="ph2">Waitlist</h2>
 <p class="muted small">${paths.dataDir()
