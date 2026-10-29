@@ -252,4 +252,44 @@ async function sendContactAlert(db, id) {
   );
 }
 
-module.exports = { bookingNotice, bookingMessage, contactAlert, sendBookingConfirmation, sendContactAlert };
+function cancelNotice(info) {
+  const line = 'This demo booking is cancelled. No payment was taken, so there is nothing to return to a card.';
+  const text = ['Hotel Day Club', '', line, '', `Booking ${info.code}`, info.hotelName || '', info.link || ''].filter(Boolean).join('\n');
+  const html = `<!DOCTYPE html><html lang="en-AU"><head><meta charset="utf-8"><title>Demo booking cancelled</title></head>
+<body style="margin:0;background:#ffffff;color:#0A1428;">
+<div style="max-width:560px;margin:0 auto;padding:28px 18px;font-family:Georgia,'Iowan Old Style','Times New Roman',serif;font-size:18px;line-height:1.45;color:#0A1428;">
+<p style="margin:0 0 8px;font-family:system-ui,Segoe UI,Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:#0E1E3A;">Hotel Day Club</p>
+<h1 style="margin:0 0 16px;font-size:32px;line-height:1.15;color:#0E1E3A;font-weight:700;">Demo booking cancelled</h1>
+<p style="margin:0 0 16px;">${esc(line)}</p>
+<p style="margin:0 0 8px;">Booking ${esc(info.code)}</p>
+${info.link ? `<p style="margin:0;"><a href="${esc(info.link)}" style="color:#0E1E3A;font-weight:700;">${esc(info.link)}</a></p>` : ''}
+</div></body></html>`;
+  return {
+    to: info.to,
+    subject: `Your Hotel Day Club demo booking ${info.code} is cancelled`,
+    html,
+    text,
+  };
+}
+
+async function sendCancellation(db, code) {
+  const row = db.prepare('SELECT code, email, hotel_id FROM bookings WHERE code=?').get(code);
+  if (!row) return { skipped: true };
+  const email = String(row.email || '').trim();
+  if (!/^\S+@\S+\.\S+$/.test(email)) return { skipped: true };
+  const hotel = db.prepare('SELECT name FROM hotels WHERE id=?').get(row.hotel_id);
+  const message = cancelNotice({
+    to: email,
+    code: row.code,
+    hotelName: hotel ? hotel.name : '',
+    link: seo.ORIGIN + '/booking/' + encodeURIComponent(row.code),
+  });
+  try {
+    return await mailer.sendMail({ ...message, idempotencyKey: 'cancel:' + row.code });
+  } catch (err) {
+    console.error('cancel email failed code=' + code);
+    return { ok: false };
+  }
+}
+
+module.exports = { bookingNotice, bookingMessage, contactAlert, cancelNotice, sendBookingConfirmation, sendContactAlert, sendCancellation };

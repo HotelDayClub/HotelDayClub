@@ -379,13 +379,10 @@ function syncLateAddons(db) {
 function cancelNote(db, hotel, date, now = new Date()) {
   const plan = dayPlan(db, hotel, date);
   if (!plan || !plan.open || !plan.opens) return 'See the cancellation policy for this date.';
-  const [y, m, d] = date.split('-').map(Number);
-  const [hh, mm] = String(plan.opens).split(':').map(Number);
-  const start = new Date(y, m - 1, d, hh || 0, mm || 0, 0, 0);
-  const deadline = new Date(start.getTime() - 24 * 60 * 60 * 1000);
-  const when = `${fmtTime(`${pad(deadline.getHours())}:${pad(deadline.getMinutes())}`)}, ${nice(ymd(deadline))}`;
-  if (now.getTime() > deadline.getTime()) return "This booking is inside 24 hours of the start, so it can't be cancelled for free.";
-  return `Free cancellation until ${when}.`;
+  const { BookingCancel } = require('./cancelBooking');
+  const window = BookingCancel.window(hotel, date, plan.opens, now);
+  if (!window.free) return "This booking is inside 24 hours of the start, so it can't be cancelled for free.";
+  return `Free cancellation until ${window.when}.`;
 }
 function venueFacts(hotel) {
   const g = guardFacts(hotel);

@@ -206,6 +206,6 @@ function passCalendarLink(booking, hotel, window) {
 }
 
 module.exports = {
-  sydneyOffsetMinutes, hotelZone, hotelToday, accessInstants, formatUtc, eventWindow,
+  sydneyOffsetMinutes, hotelZone, hotelToday, zoneToUtc, accessInstants, formatUtc, eventWindow,
   bookingIcs, googleCalendarUrl, passCalendarLink,
 };
