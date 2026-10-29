@@ -58,6 +58,8 @@ function start(port) {
     assert.ok(hotels.body.includes('Hotel partner login'));
     assert.ok(hotels.body.includes('For hotels we have invited'));
     assert.ok(hotels.body.includes('no sign-up'));
+    assert.ok(hotels.body.includes('Hotels are invited.'));
+    assert.ok(hotels.body.includes('There is no sign-up form.'));
     assert.ok(hotels.body.includes('action="/hotel/login"'));
     assert.ok(hotels.body.includes('name="return" value="/for-hotels"'));
     assert.ok(hotels.body.includes('Forgot password?'));
@@ -124,6 +126,52 @@ function start(port) {
     assert.strictEqual(dash.status, 200);
     assert.ok(dash.body.includes('content="noindex, nofollow"'));
     assert.ok(!dash.body.includes(secret));
+
+    const evilLogin = await post(port, '/hotel/login', { user: 'demo-saltwater', pass: secret }, { Origin: 'https://evil.example', 'X-Forwarded-For': '203.0.113.91' });
+    assert.strictEqual(evilLogin.status, 403);
+    assert.ok(!(evilLogin.headers['set-cookie'] || []).join('').includes('hotel='));
+    const evilAdmin = await post(port, '/admin/login', { user: 'jason', pass: 'login-admin' }, { Origin: 'https://evil.example' });
+    assert.strictEqual(evilAdmin.status, 403);
+
+    const admin = await post(port, '/admin/login', { user: 'jason', pass: 'login-admin' });
+    assert.strictEqual(admin.status, 302);
+    const adminJar = (admin.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
+    const Database = require('better-sqlite3');
+    const live = new Database(dbPath);
+    const realId = live.prepare(`INSERT INTO hotels (slug, name, area, login, password, status, is_demo)
+      VALUES ('real-pool', 'Real Pool', 'Perth', 'real-pool', 'old-plain', 'active', 0)`).run().lastInsertRowid;
+    const adminPage = await get(port, '/admin', { Cookie: adminJar });
+    assert.ok(adminPage.body.includes('Demo password is set on the server.'));
+    assert.ok(adminPage.body.includes('New password for Real Pool'));
+    const evilSet = await post(port, '/admin/hotel-password', { id: String(realId), password: 'new-secret' }, { Cookie: adminJar, Origin: 'https://evil.example' });
+    assert.strictEqual(evilSet.status, 403);
+    const set = await post(port, '/admin/hotel-password', { id: String(realId), password: 'new-secret' }, { Cookie: adminJar });
+    assert.strictEqual(set.status, 302);
+    assert.ok(decodeURIComponent(set.headers.location || '').includes('Password set for Real Pool.'));
+    const demoId = live.prepare("SELECT id FROM hotels WHERE login='demo-saltwater'").get().id;
+    const refused = await post(port, '/admin/hotel-password', { id: String(demoId), password: 'nope-nope' }, { Cookie: adminJar });
+    assert.ok(decodeURIComponent(refused.headers.location || '').includes('set on the server'));
+    const stillDemo = await post(port, '/hotel/login', { user: 'demo-saltwater', pass: secret }, { 'X-Forwarded-For': '203.0.113.92' });
+    assert.strictEqual(stillDemo.status, 302);
+    const realIn = await post(port, '/hotel/login', { user: 'real-pool', pass: 'new-secret' }, { 'X-Forwarded-For': '203.0.113.93' });
+    assert.strictEqual(realIn.status, 302);
+    const realJar = (realIn.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
+    const cross = await post(port, '/hotel/pause', { when: 'today' }, { Cookie: realJar, Origin: 'https://evil.example' });
+    assert.strictEqual(cross.status, 403);
+    const preview = await get(port, '/hotel/email-preview', { Cookie: realJar });
+    assert.ok(preview.body.includes('36 hours'));
+    assert.ok(preview.body.includes('They do not sign you in.'));
+    const token = (preview.body.match(/href="\/hotel\/go\/([^"]+)"/) || [])[1];
+    assert.ok(token);
+    await get(port, '/hotel/logout', { Cookie: realJar });
+    const link = await get(port, '/hotel/go/' + token);
+    assert.strictEqual(link.status, 200);
+    assert.ok(!(link.headers['set-cookie'] || []).join('').includes('hotel='));
+    assert.ok(!link.body.includes('staff'));
+    const lockedDash = await get(port, '/hotel');
+    assert.strictEqual(lockedDash.status, 302);
+    assert.ok(String(lockedDash.headers.location).includes('/hotel/login'));
+    live.close();
   } finally {
     child.kill('SIGTERM');
   }
