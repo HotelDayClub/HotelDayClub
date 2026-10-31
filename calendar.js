@@ -1,5 +1,5 @@
 const { ymd, addDays } = require('./util');
-const { dayPlan, fmtTime, cancelNote } = require('./offering');
+const { dayPlan, fmtTime, cancelNote, displayCancelNote } = require('./offering');
 
 // Civil access times use the hotel's stored timezone, or its stored state, or a
 // state abbreviation already in the stored address. Otherwise they use Sydney.
@@ -142,7 +142,7 @@ function eventFacts(booking, hotel, window) {
   const lines = ['Booking ' + (booking && booking.code ? booking.code : '') + '. Show this code at reception.'];
   if (window && window.span) lines.push('Access hours ' + window.span + '.');
   const cancel = String((booking && booking.cancel_note) || (window && window.cancel) || '').trim();
-  if (cancel) lines.push(cancel);
+  if (cancel) lines.push(displayCancelNote(cancel));
   lines.push('Food and drink not included.');
   const guard = lifeguardFact(hotel);
   if (guard) lines.push(guard);

@@ -8,7 +8,7 @@ const db = require('./db');
 const { seed, ensureAddons, ensureSchedules, seedPerformance } = require('./seed');
 const {
   seatPhoto, SEAT_PHOTO, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
-  includedBlock, includedLines, includedNote, addonsHtml, inclusionsForm, beatsHtml, hoursInner, policyInner, guestFoodLine, PASS_FOOD_LINE,
+  includedLines, includedNote, addonsHtml, inclusionsForm, beatsHtml, hoursInner, policyInner, guestFoodLine, PASS_FOOD_LINE,
 } = require('./inclusions');
 const { ensureArrival, saveArrival, arrivalForm, directionsHref } = require('./arrival');
 const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hotelAreas, linkedIds } = require('./access');
@@ -18,6 +18,9 @@ const { adminPassword, verifyPassword, safeEqual, hashPassword, migrateHotelPass
 const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
 const { ymd, addDays, esc, money, nice } = require('./util');
 const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
+const brand = require('./brand');
+const { codeFromQrToken } = require('./qr');
+const { bookingPageBody, bookingMissingBody } = require('./bookingPage');
 const { HOTEL_SHARE, hotelPct, feePct } = require('./commission');
 const { eventWindow, bookingIcs, passCalendarLink, hotelToday } = require('./calendar');
 const { parseBookingCode } = require('./public/checkin-parse');
@@ -860,8 +863,32 @@ function parkingBlock(hotel, on) {
   if (!on || !hotel) return '';
   const entrance = String(hotel.parking_entrance || '').trim();
   const href = directionsHref(hotel);
-  return `<div class="park-details">${entrance ? `<p>${esc(entrance)}</p>` : ''}${href ? `<p><a href="${esc(href)}">Directions</a></p>` : ''}<p>Show your booking code at the entrance</p></div>`;
+  return `<div class="park-details">${entrance ? `<p>Parking entrance: ${esc(entrance)}</p>` : ''}${href ? `<p><a href="${esc(href)}">Directions</a></p>` : ''}<p>Show your booking code at the entrance</p></div>`;
 }
+app.get('/qr/:token.png', async (req, res) => {
+  if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);
+  const token = String(req.params.token || '');
+  const code = codeFromQrToken(token);
+  const row = bookingFull(code || 'HDC-NO-SUCH');
+  const booking = code && row && row.code === code && row.status !== 'cancelled' ? row : null;
+  if (!booking) {
+    res.set('Cache-Control', 'no-store');
+    res.set('X-Robots-Tag', 'noindex, nofollow');
+    return res.status(404).type('text/plain; charset=utf-8').send('');
+  }
+  try {
+    const png = await QRCode.toBuffer(checkinUrl(booking.code), { margin: 1, width: 360, color: { dark: brand['hdc-navy'], light: brand['hdc-bg'] } });
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.set('X-Robots-Tag', 'noindex, nofollow');
+    res.set('Content-Disposition', 'inline');
+    return res.send(png);
+  } catch (err) {
+    res.set('Cache-Control', 'no-store');
+    res.set('X-Robots-Tag', 'noindex, nofollow');
+    return res.status(404).type('text/plain; charset=utf-8').send('');
+  }
+});
 app.get('/booking/:code/calendar.ics', (req, res) => {
   if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);
   const b = bookingFull(String(req.params.code || '').toUpperCase());
@@ -875,40 +902,36 @@ app.get('/booking/:code/calendar.ics', (req, res) => {
 app.get('/booking/:code', async (req, res) => {
   if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);
   const b = bookingFull(String(req.params.code || '').toUpperCase());
-  if (!b) return sendNotFound(res, { analyticsPath: '/booking' });
-  const qr = await QRCode.toDataURL(checkinUrl(b.code), { margin: 1, width: 260, color: { dark: '#0B2545' } });
-  const adds = bookingAddons(b.id);
+  if (!b) return sendNotFound(res, { analyticsPath: '/booking', title: "We can't find that booking", body: bookingMissingBody(operatorEmail()), description: "We can't find that booking." });
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(b.hotel_id);
+  const cancelled = b.status === 'cancelled';
+  const qr = cancelled ? '' : await QRCode.toDataURL(checkinUrl(b.code), { margin: 1, width: 260, color: { dark: brand['hdc-navy'], light: brand['hdc-bg'] } });
+  const adds = bookingAddons(b.id);
   const view = hoursView(db, hotel, b.date);
   const when = view.span || view.hoursLine;
   const party = b.party || b.qty * (b.holds || 1);
   const bookedAt = b.created_at ? new Date(String(b.created_at).replace(' ', 'T')) : new Date();
   const note = b.cancel_note || cancelNote(db, hotel, b.date, bookedAt);
-  const shownName = maskName(b.guest_name);
-  const shownEmail = maskEmail(b.email);
-  const mapHref = directionsHref(hotel);
-  const googleCal = passCalendarLink(b, hotel, eventWindow(db, hotel, b.date));
-  const status = b.status === 'cancelled' ? 'Cancelled' : b.checked_in_at ? 'Checked in ' + b.checked_in_at : 'Confirmed';
-  const mayCancel = BookingCancel.guestMay(db, hotel, b);
-  const heading = b.status === 'cancelled' ? 'This demo booking is cancelled.' : "You're booked in.";
-  const cancelForm = mayCancel
-    ? `<form method="post" action="/booking/${encodeURIComponent(b.code)}/cancel" class="center" style="margin-top:16px"><button class="btn btn-line" type="submit">Cancel this demo booking</button></form><p class="center muted small">No payment was taken. Cancelling marks this demo booking refunded. Nothing is returned to a card.</p>`
-    : '';
+  const hasParking = bookingHasParking(db, b.id, hotel.id);
   bookingPrivate(res);
-  res.send(page('Booking confirmed', `<div class="wrap sec narrow confirm">
-<div class="ok-badge">${ICON.check}</div><h1 class="l-title center">${heading}</h1>
-<p class="center muted">${esc(confirmationBlurb())}</p>
-<div class="ticket"><div class="t-top"><img src="/assets/photos/${JSON.parse(b.photos)[0]}" alt="${esc(/\(Demo\)/.test(b.hotel) ? 'Stock photo, not this hotel' : 'Photo of ' + seo.shortName(b.hotel))}" width="1200" height="900"><div><h3>${esc(b.hotel)}</h3><p class="muted small">${esc(b.area)}, Australia</p></div></div>
-<div class="t-mid"><img class="qr" src="${qr}" alt="QR code for ${esc(b.code)}"><div class="code">${esc(b.code)}</div><p class="muted small">Show this at reception</p></div>
-<dl><dt>Guest</dt><dd>${esc(shownName)}</dd>${shownEmail ? `<dt>Email</dt><dd>${esc(shownEmail)}</dd>` : ''}<dt>Date</dt><dd>${esc(nice(b.date))}${when ? ` · ${esc(when)}` : ''}</dd><dt>Pass</dt><dd>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</dd><dt>Guests</dt><dd>${party}</dd><dt>Paid</dt><dd>${money(b.total)} <span class="muted small">(demo, no charge)</span></dd><dt>Cancellation</dt><dd>${esc(note)}</dd><dt>Rules</dt><dd>${b.rules_ack_at ? 'Accepted' : '—'}</dd><dt>Terms</dt><dd>${b.terms_ack_at ? 'Accepted' : '—'}</dd><dt>Risk warning</dt><dd>${b.risk_ack_at ? 'Accepted' : '—'}</dd><dt>Status</dt><dd>${esc(status)}</dd></dl>
-<p class="swim-note">${esc(swimNote(hotel))}</p>
-${includedBlock(loadInclusions(db, hotel.id), party)}
-${accessBlock(forPass(db, b.pass_type_id), { demo: /\(Demo\)/.test(b.hotel) })}
-<p>${esc(PASS_FOOD_LINE)}</p>
-${adds.length ? `<div class="ticket-adds"><b>Add-ons</b><ul>${adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></div>` : ''}
-${parkingBlock(hotel, bookingHasParking(db, b.id, hotel.id))}</div>
-<p class="center cal-links" style="margin-top:16px"><a class="btn btn-line" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">Add to calendar</a>${googleCal ? ` <a class="btn btn-line" href="${esc(googleCal)}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>` : ''}${mapHref ? ` <a class="btn btn-line" href="${esc(mapHref)}">Directions</a>` : ''}</p>
-<div class="center" style="margin-top:12px"><a class="btn btn-line" href="/">Book another day</a></div>${cancelForm}</div>`, { analytics: true, analyticsPath: '/booking', index: false, canonical: false }));
+  res.send(page(cancelled ? 'Booking cancelled' : 'Booking confirmed', bookingPageBody({
+    b,
+    hotel,
+    qr,
+    adds,
+    when,
+    party,
+    note,
+    lines: includedLines(loadInclusions(db, hotel.id), party),
+    areas: forPass(db, b.pass_type_id),
+    shownName: maskName(b.guest_name),
+    shownEmail: maskEmail(b.email),
+    mapHref: directionsHref(hotel),
+    googleCal: passCalendarLink(b, hotel, eventWindow(db, hotel, b.date)),
+    status: cancelled ? 'Cancelled' : b.checked_in_at ? 'Checked in ' + b.checked_in_at : 'Confirmed',
+    mayCancel: BookingCancel.guestMay(db, hotel, b),
+    parkingHtml: cancelled ? '' : parkingBlock(hotel, hasParking),
+  }), { analytics: true, analyticsPath: '/booking', index: false, canonical: false }));
 });
 app.post('/booking/:code/cancel', async (req, res) => {
   if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);
@@ -916,7 +939,7 @@ app.post('/booking/:code/cancel', async (req, res) => {
   if (!sameSitePost(req)) return res.status(403).type('text/plain; charset=utf-8').send('Use the booking page on this site.');
   const code = String(req.params.code || '').toUpperCase();
   const b = bookingFull(code);
-  if (!b) return sendNotFound(res, { analyticsPath: '/booking' });
+  if (!b) return sendNotFound(res, { analyticsPath: '/booking', title: "We can't find that booking", body: bookingMissingBody(operatorEmail()), description: "We can't find that booking." });
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(b.hotel_id);
   if (!BookingCancel.guestMay(db, hotel, b)) return res.redirect(303, '/booking/' + encodeURIComponent(b.code));
   const changed = BookingCancel.mark(db, b.id);
@@ -2092,16 +2115,17 @@ app.get('/guides/:slug', (req, res) => {
 });
 
 function sendNotFound(res, extra = {}) {
-  const body = `<div class="wrap sec"><h1 class="l-title">Page not found</h1>
+  const title = extra.title || 'Page not found';
+  const body = extra.body || `<div class="wrap sec"><h1 class="l-title">Page not found</h1>
 <p class="lead">That page is not on Hotel Day Club.</p>
 <p><a href="/">Home</a> · <a href="/how-it-works">How it works</a> · <a href="/faq">FAQ</a> · <a href="/destinations/sydney">Sydney</a> · <a href="/destinations/gold-coast">Gold Coast</a></p></div>`;
-  res.status(extra.status || 404).send(page('Page not found', body, {
+  res.status(extra.status || 404).send(page(title, body, {
     analytics: extra.analytics === false ? false : true,
     analyticsPath: extra.analyticsPath || '',
     index: false,
     canonical: false,
-    documentTitle: seo.fullTitle('Page not found'),
-    description: 'That page is not on Hotel Day Club.',
+    documentTitle: seo.fullTitle(extra.documentTitle || title),
+    description: extra.description || 'That page is not on Hotel Day Club.',
   }));
 }
 app.use((req, res) => {
