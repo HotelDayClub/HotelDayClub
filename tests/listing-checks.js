@@ -102,7 +102,8 @@ function start(port) {
     assert.ok(salt.body.includes('aria-pressed="true"'));
     assert.ok(salt.body.includes('aria-label="Select Daybed"') || salt.body.includes('aria-label="Select Cabana"'));
     assert.ok(salt.body.includes('aria-expanded="false"'));
-    assert.ok(salt.body.includes('id="pass-detail-lounger" data-code="lounger" role="region" aria-labelledby="pass-title-lounger" hidden'));
+    assert.ok(salt.body.includes('<details class="pass-detail" id="pass-detail-lounger" data-code="lounger" role="region" aria-labelledby="pass-title-lounger">'));
+    assert.ok(!/id="pass-detail-lounger"[^>]*\shidden/.test(salt.body));
     assert.ok(salt.body.includes('type="button"'));
     assert.ok(salt.body.includes('Included access'));
     assert.ok(salt.body.includes('On site to buy (not included)'));
@@ -129,7 +130,8 @@ function start(port) {
       assert.ok(list.includes('Luggage storage'));
       assert.ok(!/\d+ × (?!Towels)/.test(list));
     }
-    assert.ok(salt.body.includes('id="pass-detail-lounger" data-code="lounger" role="region" aria-labelledby="pass-title-lounger" hidden'));
+    assert.ok(salt.body.includes('<details class="pass-detail" id="pass-detail-lounger" data-code="lounger" role="region" aria-labelledby="pass-title-lounger">'));
+    assert.ok(!/id="pass-detail-lounger"[^>]*\shidden/.test(salt.body));
     assert.ok(salt.body.includes('>Opening hours</summary>'));
     assert.ok(salt.body.includes('>Guest policy</summary>'));
     assert.ok(salt.body.includes('>Cancellation</summary>'));
@@ -237,6 +239,59 @@ function start(port) {
     assert.ok(!/star rating|\b5 star\b|★|aggregateRating|class="stars"|class="rate"/i.test(salt.body));
     assert.ok(!/\bbed\s*#?\s*\d+\b/i.test(salt.body));
     assert.ok(!salt.body.includes('ResortPass'));
+    assert.ok(salt.body.includes('Choose your seating'));
+    assert.ok(salt.body.includes('>View details</summary>'));
+    assert.ok(salt.body.includes('for="qty">Spots<select'));
+    assert.ok(!salt.body.includes('for="qty">Guests'));
+    assert.ok(salt.body.includes('id="spot-eq">= 1 person</p>'));
+    assert.ok(salt.body.includes('class="pass-card is-sel" id="pass-card-lounger"'));
+    assert.ok(/id="pass-lounger"[^>]*\schecked/.test(salt.body));
+    assert.ok(salt.body.includes('class="pass-continue"'));
+    assert.ok(salt.body.includes('href="/checkout?hotel=saltwater-terrace&amp;pass=lounger&amp;qty=1"') || salt.body.includes('href="/checkout?hotel=saltwater-terrace&pass=lounger&qty=1"'));
+    assert.ok(salt.body.includes('>Continue to booking</a>'));
+    assert.ok(salt.body.includes('Food and drink are not included in the pass.'));
+    assert.ok(salt.body.includes('Sold out for this date — pick another date or seat'));
+    assert.ok(!salt.body.includes('Sold out for this date - pick another date'));
+    assert.ok(salt.body.includes('seatFromHash'));
+    assert.ok(salt.body.includes('showModal'));
+    assert.ok(salt.body.includes("location.hash"));
+    assert.ok(salt.body.includes('Checking availability…'));
+    assert.ok(salt.body.includes("We couldn't check availability. Try again."));
+    assert.ok(!salt.body.includes('seat_detail_open'));
+    assert.ok(!salt.body.includes('seat_select'));
+    assert.ok(!salt.body.includes('seat_continue'));
+    assert.ok(salt.body.includes('Book your day (demo)'));
+
+    const pre = await get(port, '/h/saltwater-terrace?pass=daybed');
+    assert.strictEqual(pre.status, 200);
+    assert.ok(pre.body.includes('class="pass-card is-sel" id="pass-card-daybed"'));
+    assert.ok(/id="pass-daybed"[^>]*\schecked/.test(pre.body));
+    assert.ok(pre.body.includes('class="pass-card" id="pass-card-lounger"'));
+    assert.ok(pre.body.includes('id="spot-eq">= 2 people</p>'));
+
+    const Sqlite = require('better-sqlite3');
+    const capDb = new Sqlite(dbPath);
+    const saltHotel = capDb.prepare("SELECT id FROM hotels WHERE slug='saltwater-terrace'").get();
+    const cabRow = capDb.prepare("SELECT id, daily_cap FROM pass_types WHERE hotel_id=? AND code='cabana'").get(saltHotel.id);
+    capDb.prepare('UPDATE pass_types SET daily_cap=0 WHERE id=?').run(cabRow.id);
+    capDb.close();
+    try {
+      const sold = await get(port, '/h/saltwater-terrace');
+      const start = sold.body.indexOf('id="pass-card-cabana"');
+      const from = sold.body.lastIndexOf('<article', start);
+      const next = sold.body.indexOf('<article', start + 1);
+      const end = next === -1 ? sold.body.indexOf('class="seat-note"', start) : next;
+      const cab = sold.body.slice(from, end);
+      assert.ok(cab.includes('class="pass-card is-sold"'));
+      assert.ok(/id="pass-cabana"[^>]*\sdisabled/.test(cab));
+      assert.ok(/class="pass-select"[^>]*\sdisabled/.test(cab));
+      assert.ok(cab.includes('role="status">Sold out for this date — pick another date or seat'));
+      assert.ok(!cab.includes('pass-sold" role="status" hidden'));
+    } finally {
+      const restore = new Sqlite(dbPath);
+      restore.prepare('UPDATE pass_types SET daily_cap=? WHERE id=?').run(cabRow.daily_cap, cabRow.id);
+      restore.close();
+    }
 
     const bay = await get(port, '/h/bayview-spa');
     leadAndMeta(bay.body, 'bayview-spa', 'Bayview Spa Hotel', 'Eastern Suburbs');

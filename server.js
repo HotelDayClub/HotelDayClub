@@ -585,6 +585,7 @@ app.get('/h/:slug', (req, res) => {
     hours: hoursInner(hoursLines(db, h)),
     foodLine,
     policy: policyInner(h, foodLine),
+    passCode: String(req.query.pass || '').slice(0, 40),
   }), {
     analytics: true,
     index: demo ? 'follow' : true,

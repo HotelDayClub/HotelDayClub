@@ -1,10 +1,11 @@
 const { esc, money } = require('./util');
 const { instantConfirmationText } = require('./siteMode');
-const { KINDS } = require('./offering');
-const { seatPhoto, includedNote, amenityLines } = require('./inclusions');
+const { KINDS, supervisionNote, safePhoto } = require('./offering');
+const { includedNote, amenityLines } = require('./inclusions');
 const { arrivalInner } = require('./arrival');
-const { supervisionNote } = require('./offering');
 const { accessDetail } = require('./access');
+
+const SOLD_COPY = 'Sold out for this date — pick another date or seat';
 
 const KIND_NAME = Object.fromEntries(KINDS.map(k => [k.code, k.name]));
 const KIND_ORDER = KINDS.map(k => k.code);
@@ -24,27 +25,67 @@ function kindRank(kind) {
 function demoPrice(n) {
   return `${money(n)} <small>(demo)</small>`;
 }
+function peopleLabel(n) {
+  const count = Math.max(1, Number(n) || 1);
+  return `= ${count} ${count === 1 ? 'person' : 'people'}`;
+}
+function fitsText(holds) {
+  const n = Number(holds) || 1;
+  return n > 1 ? `Fits ${n} · ${n} guests` : `Fits ${n}`;
+}
+function passPhoto(p) {
+  const file = safePhoto(String(p.photo || ''));
+  return file ? `/assets/photos/${file}` : '';
+}
+function pickedPass(av, passCode) {
+  const open = (av || []).filter(p => p.remaining > 0);
+  const wanted = passCode && open.find(p => p.code === passCode);
+  return wanted || open.find(p => p.featured) || open[0] || null;
+}
+function continueHref(h, date, code) {
+  const params = new URLSearchParams({ hotel: h.slug, pass: code, qty: '1' });
+  if (date) params.set('date', date);
+  return `/checkout?${params.toString()}`;
+}
+function photoBlock(p, h) {
+  const src = passPhoto(p);
+  if (!src) return `<div class="pc-photo pc-photo-empty"><span>${esc(p.name)}</span></div>`;
+  const badge = isDemo(h) ? '<span class="pc-badge">Example photo</span>' : '';
+  return `<div class="pc-photo"><img src="${esc(src)}" alt="${esc(passAlt(p, h))}" width="640" height="480" loading="lazy" decoding="async">${badge}</div>`;
+}
+function selectButton(p, on, dis) {
+  const label = on ? `${p.name} selected` : `Select ${p.name}`;
+  return `<button type="button" class="pass-select" data-code="${esc(p.code)}" data-name="${esc(p.name)}" aria-pressed="${on ? 'true' : 'false'}" aria-label="${esc(label)}"${dis ? ' disabled' : ''}><span class="t">${on ? '✓ Selected' : 'Select'}</span></button>`;
+}
+function chosenBlock(pick) {
+  if (!pick) return '<div class="seat-chosen" id="seat-chosen" aria-live="polite"><span class="muted">Your seating</span><b>Pick a seat</b></div>';
+  const holds = Number(pick.holds) || 1;
+  const name = esc(pick.name) + (holds > 1 ? ` for ${holds}` : '');
+  return `<div class="seat-chosen" id="seat-chosen" aria-live="polite"><span class="muted">Your seating</span><b>${name}</b><span>${money(pick.price)} each <small>(demo)</small></span></div>`;
+}
 
-function passCard(p, av, h, pick) {
+function passCard(p, av, h, pick, date, items, accessAreas) {
   const a = av.find(x => x.id === p.id);
   const dis = !a || a.remaining < 1;
-  const on = pick && p.code === pick.code && !dis;
+  const on = !!(pick && p.code === pick.code && !dis);
   const holds = Number(p.holds) || 1;
-  const holdsText = holds > 1 ? `<span class="pc-holds">${holds} guests</span>` : '';
   const id = esc(p.code);
   const desc = String(p.description || '').trim();
-  const label = on ? `${p.name} selected` : `Select ${p.name}`;
-  return `<article class="pass-card${dis ? ' dis' : ''}${on ? ' is-sel' : ''}" data-kind="${esc(p.kind || 'custom')}">
-<input type="radio" id="pass-${id}" name="pass" value="${esc(p.code)}" data-kind="${esc(p.kind || 'custom')}" data-price="${p.price}" data-holds="${holds}" tabindex="-1" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}>
-<div class="pc-main">
-<div class="pc-copy"><b>${esc(p.name)}</b>${desc ? `<span class="pc-desc">${esc(desc)}</span>` : ''}<span class="pc-meta"><span class="pc-price">From ${demoPrice(p.price)}</span>${holdsText}</span></div>
-<img src="${esc(seatPhoto(p.kind))}" alt="${esc(passAlt(p, h))}" width="96" height="96" loading="lazy" decoding="async">
-<button type="button" class="pass-select" data-code="${id}" data-name="${esc(p.name)}" aria-pressed="${on ? 'true' : 'false'}" aria-label="${esc(label)}"><span class="t">${on ? 'Selected' : 'Select'}</span><span class="plus" aria-hidden="true">${on ? '✓' : '+'}</span></button>
+  const chip = on ? '<span class="pc-chip"><span aria-hidden="true">✓</span> Selected</span>' : '';
+  return `<article class="pass-card${dis ? ' is-sold' : ''}${on ? ' is-sel' : ''}" id="pass-card-${id}" data-kind="${esc(p.kind || 'custom')}" data-code="${id}">
+<input type="radio" id="pass-${id}" name="pass" value="${esc(p.code)}" data-kind="${esc(p.kind || 'custom')}" data-price="${p.price}" data-holds="${holds}" tabindex="-1"${dis ? ' disabled' : ''}${on ? ' checked' : ''}>
+${photoBlock(p, h)}
+${chip}
+<div class="pc-copy"><b>${esc(p.name)}</b>${desc ? `<span class="pc-desc">${esc(desc)}</span>` : ''}<span class="pc-meta"><span class="pc-price">From ${demoPrice(p.price)}</span><span class="pc-holds">${esc(fitsText(holds))}</span></span></div>
+<div class="pc-acts">
+${passDetail(p, h, items, accessAreas, date, on, dis)}
+${selectButton(p, on, dis)}
 </div>
+<p class="pass-sold" role="status"${dis ? '' : ' hidden'}>${SOLD_COPY}</p>
 </article>`;
 }
 
-function passDetail(p, h, items, accessAreas) {
+function passDetail(p, h, items, accessAreas, date, on, dis) {
   const holds = Number(p.holds) || 1;
   const id = esc(p.code);
   const desc = String(p.description || '').trim();
@@ -53,16 +94,25 @@ function passDetail(p, h, items, accessAreas) {
   const lines = amenityLines(items, holds, areas);
   const amenities = lines.length ? `<ul class="pass-inc-list">${lines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : '';
   const access = accessDetail(areas, { demo, amenities });
-  return `<article class="pass-detail" id="pass-detail-${id}" data-code="${id}" role="region" aria-labelledby="pass-title-${id}" hidden>
-<h3 id="pass-title-${id}" tabindex="-1">${esc(p.name)}</h3>
+  const cont = `<a class="pass-continue" data-code="${id}" href="${esc(continueHref(h, date, p.code))}"${dis ? ' hidden' : ''}>Continue to booking</a>`;
+  return `<details class="pass-detail" id="pass-detail-${id}" data-code="${id}" role="region" aria-labelledby="pass-title-${id}">
+<summary aria-haspopup="dialog">View details</summary>
+<div class="pass-detail-body">
+<h3 id="pass-title-${id}">${esc(p.name)}</h3>
+${photoBlock(p, h)}
 ${desc ? `<p class="pass-desc">${esc(desc)}</p>` : ''}
+<p class="pass-fit">${esc(fitsText(holds))}</p>
+<p class="pass-price">${demoPrice(p.price)} <span>per spot</span></p>
 ${access}
-</article>`;
+<p class="pass-food">Food and drink are not included in the pass.</p>
+<p class="pass-sold" role="status"${dis ? '' : ' hidden'}>${SOLD_COPY}</p>
+<div class="pass-actions">${selectButton(p, on, dis)}${cont}</div>
+</div>
+</details>`;
 }
 
-function passSection(passes, av, h, items, accessByPass) {
-  const open = av.filter(p => p.remaining > 0);
-  const pick = open.find(p => p.featured) || open[0] || av[0];
+function passSection(passes, av, h, items, accessByPass, date, passCode) {
+  const pick = pickedPass(av, passCode);
   const kinds = [];
   passes.forEach(p => {
     const k = p.kind || 'custom';
@@ -78,9 +128,9 @@ function passSection(passes, av, h, items, accessByPass) {
     const at = ordered.findIndex(p => p.code === pick.code);
     if (at > 0) ordered.unshift(ordered.splice(at, 1)[0]);
   }
-  const cards = `<div class="pass-grid">${ordered.map(p => passCard(p, av, h, pick)).join('')}</div>`;
-  const details = ordered.map(p => passDetail(p, h, items, (accessByPass && accessByPass[p.id]) || [])).join('');
-  return `${filters}${cards}<div id="pass-detail" hidden>${details}</div>`;
+  const cards = `<div class="pass-grid">${ordered.map(p => passCard(p, av, h, pick, date, items, (accessByPass && accessByPass[p.id]) || [])).join('')}</div>`;
+  const dialog = `<dialog class="seat-dialog" id="seat-dialog" aria-labelledby="seat-dialog-title"><div class="sd-grab" aria-hidden="true"></div><div class="sd-top"><h2 id="seat-dialog-title"></h2><button type="button" class="sd-close">Close</button></div><div class="sd-body"></div></dialog>`;
+  return `${filters}${cards}<p class="seat-note">Food and drink are not included in the pass.</p>${dialog}`;
 }
 
 function includedItems(passes, items, accessByPass) {
@@ -102,7 +152,9 @@ function includedItems(passes, items, accessByPass) {
 function listingScript(slug) {
   return `<script>
 const $=s=>document.querySelector(s);
+const hotelSlug=${JSON.stringify(String(slug || ''))};
 let av=[],addons=[];
+let seatOpener=null, seatCode='';
 function fmt(n){return '$'+n.toLocaleString('en-AU')}
 function h(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function need(a,q,holds){return a.per==='booking'?1:q*(holds||1)}
@@ -113,15 +165,22 @@ function guests(){
 }
 function markPass(card){
  const input=card.querySelector('input');
- const btn=card.querySelector('.pass-select');
  const on=!!(input && input.checked && !input.disabled);
  card.classList.toggle('is-sel', on);
- if(!btn) return;
- btn.setAttribute('aria-pressed', on?'true':'false');
- const t=btn.querySelector('.t'); if(t) t.textContent=on?'Selected':'Select';
- const plus=btn.querySelector('.plus'); if(plus) plus.textContent=on?'✓':'+';
- const name=btn.getAttribute('data-name')||'';
- btn.setAttribute('aria-label', on?name+' selected':'Select '+name);
+ let chip=card.querySelector('.pc-chip');
+ if(on && !chip){
+  chip=document.createElement('span');
+  chip.className='pc-chip';
+  chip.innerHTML='<span aria-hidden="true">✓</span> Selected';
+  const photo=card.querySelector('.pc-photo');
+  if(photo) photo.after(chip); else card.appendChild(chip);
+ } else if(!on && chip) chip.remove();
+ card.querySelectorAll('.pass-select').forEach(function(btn){
+  btn.setAttribute('aria-pressed', on?'true':'false');
+  const t=btn.querySelector('.t'); if(t) t.textContent=on?'✓ Selected':'Select';
+  const name=btn.getAttribute('data-name')||'';
+  btn.setAttribute('aria-label', on?name+' selected':'Select '+name);
+ });
 }
 function render(){
  const q=guests();
@@ -130,7 +189,10 @@ function render(){
   const p=av.find(x=>x.code===input.value);
   const dis=!p||p.remaining<q;
   input.disabled=dis;
-  card.classList.toggle('dis',dis);
+  card.classList.toggle('is-sold',dis);
+  card.querySelectorAll('.pass-sold').forEach(function(n){ n.hidden=!dis; });
+  card.querySelectorAll('.pass-select').forEach(function(btn){ btn.disabled=dis; });
+  card.querySelectorAll('.pass-continue').forEach(function(a){ a.hidden=dis; });
   markPass(card);
  });
  if(!document.querySelector('#passes input:checked:not([disabled])')){const f=document.querySelector('#passes input:not([disabled])');if(f)f.checked=true}
@@ -149,9 +211,30 @@ function render(){
  let extra=0;document.querySelectorAll('#addons-pick input:checked').forEach(i=>{const price=+i.dataset.price||0;const qty=i.dataset.per==='booking'?1:q*(holds||1);extra+=price*qty});
  const people=p?q*holds:q;
  const sum=p?p.price*q+extra:0;
- $('#total').innerHTML=p?'<span>'+fmt(p.price)+' × '+q+(people>q?' · '+people+' guests':'')+(extra?' + '+fmt(extra)+' extras':'')+'</span><b>'+fmt(sum)+' <small>(demo)</small></b>':'';
- const bar=$('#bar-total'); if(bar) bar.textContent=p?fmt(p.price):($('#from-price')?$('#from-price').textContent:'');
+ $('#total').innerHTML=p?'<span>'+fmt(p.price)+' × '+q+(people>q?' · '+people+' people':'')+(extra?' + '+fmt(extra)+' extras':'')+'</span><b>'+fmt(sum)+' <small>(demo)</small></b>':'';
+ const bar=$('#bar-total'); if(bar) bar.textContent=p?(p.name+' · '+fmt(sum)):($('#from-price')?$('#from-price').textContent:'');
+ const eq=document.getElementById('spot-eq');
+ if(eq){ const n=p?people:q; eq.textContent='= '+n+(n===1?' person':' people'); }
+ const chosen=document.getElementById('seat-chosen');
+ if(chosen){
+  if(p) chosen.innerHTML='<span class="muted">Your seating</span><b>'+h(p.name)+(holds>1?' for '+holds:'')+'</b><span>'+fmt(p.price)+' each <small>(demo)</small></span>';
+  else chosen.innerHTML='<span class="muted">Your seating</span><b>Pick a seat</b>';
+ }
+ document.querySelectorAll('a.pass-continue').forEach(function(a){
+  const code=a.getAttribute('data-code')||'';
+  const params=new URLSearchParams();
+  params.set('hotel', hotelSlug);
+  const dateEl=$('#date');
+  if(dateEl&&dateEl.value) params.set('date', dateEl.value);
+  params.set('pass', code);
+  params.set('qty', String(q));
+  a.href='/checkout?'+params.toString();
+ });
  $('#go').disabled=!p;
+ if(seatCode){
+  const dlg=document.getElementById('seat-dialog');
+  if(dlg&&dlg.open) openSeat(seatCode, seatOpener, false);
+ }
  const blocked=av[0]&&av[0].blocked;
  const any=av.some(x=>x.remaining>0);
  const st=$('#status'); st.className='status'+(blocked||!any?' out':'');
@@ -167,18 +250,78 @@ function focusBook(){
   book.scrollIntoView({behavior:reduce?'auto':'smooth', block:'start'});
  }
 }
+function openSeat(code, from, refocus){
+ const src=document.getElementById('pass-detail-'+code);
+ const dlg=document.getElementById('seat-dialog');
+ if(!src||!dlg||!dlg.showModal) return;
+ const title=src.querySelector('h3');
+ const heading=document.getElementById('seat-dialog-title');
+ if(heading) heading.textContent=title?title.textContent:'';
+ const body=dlg.querySelector('.sd-body');
+ body.replaceChildren();
+ const inner=src.querySelector('.pass-detail-body');
+ if(inner) Array.prototype.forEach.call(inner.children, function(node){
+  if(node.tagName==='H3') return;
+  const clone=node.cloneNode(true);
+  clone.querySelectorAll('[id]').forEach(function(el){ el.removeAttribute('id'); });
+  body.appendChild(clone);
+ });
+ seatCode=code;
+ if(refocus!==false) seatOpener=from||document.activeElement;
+ if(!dlg.open) dlg.showModal();
+ if(refocus!==false){
+  const closeBtn=dlg.querySelector('.sd-close');
+  if(closeBtn) closeBtn.focus();
+ }
+ const next='#pass-detail-'+code;
+ if(location.hash!==next && history.replaceState) history.replaceState(null,'',location.pathname+location.search+next);
+}
+function seatFromHash(){
+ const m=/^#pass-detail-([A-Za-z0-9_-]+)$/.exec(location.hash||'');
+ if(!m) return;
+ const det=document.getElementById('pass-detail-'+m[1]);
+ if(!det) return;
+ openSeat(m[1], det.querySelector('summary'), true);
+}
 const passBox=document.getElementById('passes');
+const seatDlg=document.getElementById('seat-dialog');
+if(seatDlg){
+ seatDlg.addEventListener('close', function(){
+  if(seatOpener&&seatOpener.focus) seatOpener.focus();
+  seatOpener=null;
+  seatCode='';
+  if(/^#pass-detail-/.test(location.hash)&&history.replaceState) history.replaceState(null,'',location.pathname+location.search);
+ });
+ seatDlg.addEventListener('click', function(e){ if(e.target===seatDlg) seatDlg.close(); });
+ const seatClose=seatDlg.querySelector('.sd-close');
+ if(seatClose) seatClose.addEventListener('click', function(){ seatDlg.close(); });
+}
 if(passBox){
  passBox.addEventListener('click', function(e){
-  const card=e.target.closest('.pass-card');
-  if(!card) return;
-  const input=card.querySelector('input[name="pass"]');
+  const sum=e.target.closest('.pass-detail summary');
+  if(sum && passBox.contains(sum)){
+   e.preventDefault();
+   const det=sum.closest('.pass-detail');
+   if(det) openSeat(det.getAttribute('data-code'), sum, true);
+   return;
+  }
+  const btn=e.target.closest('.pass-select');
+  if(!btn || btn.disabled) return;
+  const inDialog=!!(seatDlg && seatDlg.contains(btn));
+  const code=btn.getAttribute('data-code');
+  const card=document.getElementById('pass-card-'+code);
+  const input=card&&card.querySelector('input[name="pass"]');
   if(!input || input.disabled) return;
   input.checked=true;
   render();
-  focusBook();
+  if(inDialog && seatDlg.open) seatDlg.close();
+  else focusBook();
  });
 }
+const seatState=document.getElementById('seat-state');
+if(seatState) seatState.addEventListener('click', function(e){
+ if(e.target.closest('.seat-retry')) load(false);
+});
 const filters=document.querySelector('.pass-filters');
 if(filters){
  filters.addEventListener('click', function(e){
@@ -268,8 +411,29 @@ if(tabNav){
  gal.addEventListener('scroll', syncChip, {passive:true});
  syncChip();
 })();
- async function load(){const el=$('#date');if(!el)return;const r=await fetch('/api/availability?hotel=${slug}&date='+encodeURIComponent(el.value));const data=await r.json();av=data.passes||[];addons=data.addons||[];const note=document.getElementById('cancel-note');if(note){note.hidden=!el.value;note.textContent=data.cancel||''}render();if(!el.value){const st=$('#status');if(st){st.className='status';st.textContent='Pick a date'}}}
-document.getElementById('date').addEventListener('change',load);
+ async function load(quiet){
+ const el=$('#date'); if(!el) return;
+ const state=document.getElementById('seat-state');
+ const grid=document.querySelector('#passes .pass-grid');
+ if(!quiet && state) state.innerHTML='<p class="seat-loading">Checking availability…</p>';
+ if(!quiet && grid) grid.classList.add('is-loading');
+ try {
+  const r=await fetch('/api/availability?hotel='+encodeURIComponent(hotelSlug)+'&date='+encodeURIComponent(el.value));
+  if(!r.ok) throw new Error('status');
+  const data=await r.json();
+  av=data.passes||[]; addons=data.addons||[];
+  const note=document.getElementById('cancel-note');
+  if(note){ note.hidden=!el.value; note.textContent=data.cancel||''; }
+  if(state) state.textContent='';
+  if(grid) grid.classList.remove('is-loading');
+  render();
+  if(!el.value){ const st=$('#status'); if(st){ st.className='status'; st.textContent='Pick a date'; } }
+ } catch(err) {
+  if(grid) grid.classList.remove('is-loading');
+  if(state) state.innerHTML="<p class='seat-error' role='alert'>We couldn't check availability. Try again.</p><button type='button' class='seat-retry'>Try again</button>";
+ }
+}
+document.getElementById('date').addEventListener('change', function(){ load(false); });
 document.querySelector('select[name="qty"]').addEventListener('change',render);
 const peek=document.querySelector('.map-peek');
 const sheet=document.querySelector('.map-sheet');
@@ -316,7 +480,8 @@ if(peek&&sheet){
  sheet.querySelector('.map-close').addEventListener('click',function(){sheet.close()});
  sheet.addEventListener('close',function(){peek.setAttribute('aria-expanded','false');peek.focus()});
 }
-load();setInterval(load,15000);
+seatFromHash();
+load(true);setInterval(function(){ load(true); },15000);
 </script>`;
 }
 
@@ -356,6 +521,9 @@ function listingHtml(opts) {
   const watch = supervisionNote(h);
   const names = passes.map(p => p.name).filter(Boolean);
   const meta = [h.area, names.join(', ')].filter(Boolean).join(' · ');
+  const seat = pickedPass(av, opts.passCode);
+  const seatHolds = seat ? (Number(seat.holds) || 1) : 1;
+  const barLabel = seat ? `${esc(seat.name)} · ${money(seat.price)}` : `From ${money(from)}`;
   const place = arrivalInner(h);
   const rows = includedItems(passes, items, accessByPass);
   const incList = rows.length ? `<ul class="inc">${rows.map(text => `<li>${ITEM_ICON}<span>${esc(text)}</span></li>`).join('')}</ul>` : '';
@@ -375,8 +543,9 @@ ${demo ? '<span class="demo-pill">Fictional demo listing</span>' : ''}
 ${watch ? `<p class="guard-note">${esc(watch)}</p>` : ''}
 </section>
 <div class="l-tabs"><nav aria-label="Sections"><a href="#overview" aria-current="true">Overview</a><a href="#passes">Passes</a><a href="#details">Details</a></nav></div>
-<section id="passes"><h2 class="day-kicker">Passes</h2>
-${passSection(passes, av, h, items, accessByPass)}
+<section id="passes" aria-labelledby="seat-h"><div class="seat-head"><h2 class="day-kicker" id="seat-h">Choose your seating</h2><p class="seat-sub">Prices per spot, before add-ons. Pick a date to see what's left.</p></div>
+<div id="seat-state" aria-live="polite"></div>
+${passSection(passes, av, h, items, accessByPass, date, opts.passCode)}
 </section>
 ${addonList || ''}
 <section id="details"><h2>Details</h2>
@@ -397,8 +566,10 @@ ${parkFold}
 <p class="bb-label" id="date-label">Date</p>
 <input type="date" class="hdc-date" data-inline="1" data-closed="${esc(closed)}" name="date" id="date" min="${minDate}" max="${maxDate}" value="${esc(date)}" required>
 <div id="status" class="status"></div>
-<label class="fl" for="qty">Guests<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === 1 ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+<label class="fl" for="qty">Spots<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === 1 ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+<p class="spot-eq" id="spot-eq">${peopleLabel(seatHolds)}</p>
 <p class="muted small">Party size is capped at 6.</p>
+${chosenBlock(seat)}
 <div class="bb-total" id="total"></div>
 <p class="cancel-note" id="cancel-note"${date ? '' : ' hidden'}>${esc(cancel)}</p>
 <button class="book-go" id="go" type="submit">Book your day (demo)</button>
@@ -407,7 +578,7 @@ ${parkFold}
 </form>
 </div>
 ${goodToKnowBand({ policy, foodLine, includedNames: rows })}
-<div class="book-bar"><b>From <span id="bar-total">${money(from)}</span> (demo)</b><a href="#book">Book</a></div>
+<div class="book-bar"><b><span id="bar-total">${barLabel}</span> (demo)</b><a href="#book">Book</a></div>
 ${listingScript(h.slug)}`;
 }
 
