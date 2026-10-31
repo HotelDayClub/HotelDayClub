@@ -1,4 +1,5 @@
 const { esc } = require('./util');
+const brand = require('./brand');
 
 const ORIGIN = 'https://www.hoteldayclub.com.au';
 const BRAND = 'Hotel Day Club';
@@ -279,7 +280,7 @@ function headMeta({ documentTitle, description, robots, canonicalUrl, image, ima
     `<title>${title}</title>`,
     desc ? `<meta name="description" content="${esc(desc)}">` : '',
     `<meta name="robots" content="${esc(robots || 'noindex, nofollow')}">`,
-    '<meta name="theme-color" content="#0E1E3A">',
+    `<meta name="theme-color" content="${brand['hdc-primary']}">`,
     canonicalUrl ? `<link rel="canonical" href="${esc(canonicalUrl)}">` : '',
     '<link rel="icon" href="/favicon.ico" sizes="48x48">',
     '<link rel="icon" href="/assets/hdc-icon.svg" type="image/svg+xml">',

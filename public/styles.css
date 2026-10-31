@@ -1,19 +1,4 @@
-/* ==========================================================
-   Hotel Day Club concept mockup v2 ("marketplace" look).
-   Brand tokens live in :root. To rebrand: edit tokens here and
-   BRAND / DOMAIN / TAGLINE / WORDMARK in build_pages.py, then rebuild (see ../README.md)
-   ========================================================== */
-:root{
-  --navy:#0E1E3A;  --aqua:#19C3C9; --lagoon:#0FA3B1; --coral:#FF6B57; --coral-dk:#E85A48;
-  --sun:#FFD166;   --sand:#F6EFE6; --ink:#0A1428; --muted:#3b4458; --line:#E4DDD4; --soft:#F7F3EE;
-  --white:#fff; --r-lg:24px; --r:16px; --r-sm:12px;
-  --sh-1:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
-  --sh-2:0 6px 20px rgba(16,24,40,.08);
-  --sh-3:0 16px 40px rgba(16,24,40,.14);
-  --font-display:"Fraunces",Georgia,serif;
-  --font-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --max:1280px;
-}
+/* Shared layout. Colour tokens live in tokens.css. */
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font-body);color:var(--ink);background:#fff;line-height:1.5;font-size:16px;-webkit-font-smoothing:antialiased}
 img{max-width:100%;display:block}
@@ -38,13 +23,18 @@ h3{font-weight:700;font-size:1.05rem;letter-spacing:-.01em}
 .concept b{color:var(--sun)}
 
 /* Header */
-.hdr{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
-.hdr-in{display:flex;align-items:center;justify-content:space-between;height:72px;gap:16px}
-.logo{display:inline-flex;align-items:center;line-height:0;text-decoration:none}
+.hdr{background:var(--hdc-bg);border-bottom:3px solid var(--hdc-rose);position:sticky;top:0;z-index:40}
+.hdr .wrap{max-width:1120px;padding-inline:40px}
+.hdr-in{display:flex;align-items:center;justify-content:space-between;height:64px;gap:12px;min-width:0}
+@media(max-width:800px){
+  .hdr-in{flex-wrap:wrap;height:auto;min-height:56px;padding-top:8px;padding-bottom:8px}
+  .hdr-nav{flex:1 0 100%;order:3}
+}
+.logo{display:inline-flex;align-items:center;line-height:0;text-decoration:none;flex:0 0 auto}
 .logo img{height:32px;width:auto;max-width:none}
-.hdr-nav{display:none;gap:6px;align-items:center}
-.hdr-nav a{padding:10px 14px;border-radius:999px;font-weight:500;font-size:.95rem}
-.hdr-nav a:hover{background:var(--soft)}
+.hdr-nav{display:flex;flex:1;min-width:0;gap:6px;align-items:center;overflow-x:auto}
+.hdr-nav a{padding:10px 14px;border-radius:999px;font-weight:500;font-size:.95rem;color:var(--hdc-text);white-space:nowrap}
+.hdr-nav a:hover{background:var(--hdc-tint);color:var(--hdc-text)}
 .hdr-right{display:flex;align-items:center;gap:8px}
 .acct{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 12px;box-shadow:var(--sh-1);background:#fff}
 .acct .av{width:30px;height:30px;border-radius:50%;background:#98A2B3;display:grid;place-items:center;color:#fff}
@@ -108,7 +98,7 @@ h3{font-weight:700;font-size:1.05rem;letter-spacing:-.01em}
 section.blk{padding:64px 0}
 .sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:26px;flex-wrap:wrap}
 .sec-head p{color:var(--muted);max-width:620px;margin-top:8px}
-.eyebrow{font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--lagoon);margin-bottom:8px;display:block}
+.eyebrow{font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--hdc-rose-ink);margin-bottom:8px;display:block}
 
 /* Product tiers */
 .tiers{display:grid;grid-template-columns:1fr;gap:20px}
@@ -236,7 +226,7 @@ footer{background:var(--soft);border-top:1px solid var(--line);margin-top:64px;p
 .tl-card{border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--line);background:#fff;box-shadow:var(--sh-1)}
 .tl-card .ph{aspect-ratio:16/10;border-radius:0}
 .tl-card .b{padding:18px 20px 22px}
-.tl-card .num{font-family:var(--font-display);color:var(--coral);font-size:1.3rem;font-weight:700}
+.tl-card .num{font-family:var(--font-display);color:var(--hdc-rose-ink);font-size:1.3rem;font-weight:700}
 .tl-card p{color:var(--muted);font-size:.94rem;margin-top:6px}
 .faq-cols{display:grid;grid-template-columns:1fr;gap:0 48px}
 
@@ -261,7 +251,7 @@ footer{background:var(--soft);border-top:1px solid var(--line);margin-top:64px;p
   .gal .gs{display:block}
 }
 @media (min-width:1128px){
-  .hdr-nav,.hotel-link{display:flex}
+  .hotel-link{display:flex}
   .grid{grid-template-columns:repeat(4,1fr)}
   .tiers{grid-template-columns:repeat(4,1fr)}
   .partner{grid-template-columns:1.05fr 1fr;padding:44px;gap:56px}
@@ -285,7 +275,7 @@ footer{background:var(--soft);border-top:1px solid var(--line);margin-top:64px;p
 .side a{padding:10px 12px;border-radius:10px;font-weight:500;font-size:.94rem;color:var(--ink);display:flex;gap:10px;align-items:center}
 .side a .ico{width:18px;height:18px;color:var(--muted)}
 .side a.on{background:var(--soft);font-weight:700}
-.side a.on .ico{color:var(--coral)}
+.side a.on .ico{color:var(--hdc-rose-ink)}
 .dmain{padding:24px 20px 60px;display:grid;gap:20px;align-content:start}
 .dtop{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}
 .dtop h1{font-size:1.9rem}

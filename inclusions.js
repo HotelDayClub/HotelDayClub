@@ -349,7 +349,7 @@ function includedHtml(items) {
 }
 
 function priceBit(n) {
-  return Number(n) > 0 ? `<span class="extra-price">${money(n)}</span>` : '';
+  return Number(n) > 0 ? `<span class="extra-price">${money(n)} <small>(demo)</small></span>` : '';
 }
 function addonsHtml(items, offers) {
   const rows = (offers || []).filter(a => a && a.code !== 'late');

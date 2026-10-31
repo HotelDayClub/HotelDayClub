@@ -318,9 +318,11 @@ function page(title, body, opts = {}) {
   const analyticsPath = opts.analyticsPath || '';
   const home = !!opts.home;
   const index = opts.index !== undefined ? opts.index : nav === 'guest';
+  const waitHref = home ? '#waitlist' : '/#waitlist';
   const right = nav === 'hotel' ? '<a class="hotel-link show" href="/hotel/logout">Log out</a>'
-    : nav === 'admin' ? '<a class="hotel-link show" href="/admin/logout">Log out</a>' : '';
-  const guestNav = `<nav class="hdr-nav"><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a><a class="pill" href="${home ? '#waitlist' : '/#waitlist'}">Join the waitlist</a></nav>`;
+    : nav === 'admin' ? '<a class="hotel-link show" href="/admin/logout">Log out</a>'
+    : `<a class="pill" href="${waitHref}">Join the waitlist</a>`;
+  const guestNav = `<nav class="hdr-nav" aria-label="Site"><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a></nav>`;
   const tags = analytics && nav === 'guest' ? gaSnippet(analyticsPath) : '';
   const preconnect = tags ? '<link rel="preconnect" href="https://www.googletagmanager.com">' : '';
   const canonicalUrl = opts.canonical === false || !opts.path ? '' : seo.absolute(opts.path);
@@ -336,11 +338,12 @@ function page(title, body, opts = {}) {
     jsonld: opts.jsonld || null,
   });
   const pickerCss = '<link rel="stylesheet" href="/pickers.css">';
+  const tokensCss = '<link rel="stylesheet" href="/tokens.css">';
   const css = home
-    ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-lunch-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-lunch.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${pickerCss}<link rel="stylesheet" href="/golden/home.css">`
-    : `${FONT_LINKS}${pickerCss}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css">`;
+    ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-lunch-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-lunch.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}<link rel="stylesheet" href="/golden/home.css">`
+    : `${FONT_LINKS}${tokensCss}${pickerCss}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css">`;
   const bodyClass = home ? 'home' : nav === 'guest' ? 'guest' : 'staff';
-  const header = home ? '' : `<header class="hdr"><div class="wrap hdr-in">${logoLink('dark')}${nav === 'guest' ? guestNav : '<nav class="hdr-nav"></nav>'}<div class="hdr-right">${right}</div></div></header>`;
+  const header = `<header class="hdr"><div class="wrap hdr-in">${logoLink('light')}${nav === 'guest' ? guestNav : '<nav class="hdr-nav" aria-label="Site"></nav>'}<div class="hdr-right">${right}</div></div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 ${demoSite() ? '<div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>' : ''}
@@ -452,8 +455,7 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
     return `<a class="ex" href="/h/${h.slug}${date ? '?date=' + encodeURIComponent(date) : ''}">${img}<span class="tag">Example</span><h3>${esc(h.name)}</h3><p class="ex-area">${esc(h.area)}</p>${facts.length ? `<p class="ex-amen">${esc(facts.join(' · '))}</p>` : ''}<p class="ex-price">From ${money(from)}</p>${limit}<p class="ex-note">Demo</p></a>`;
   }).join('');
   const slot = (src, alt, time, title, copy) => `<div class="slot"><picture><source type="image/webp" srcset="/golden/img/${src}.webp"><img src="/golden/img/${src}.jpg" alt="${alt}" width="900" height="600" loading="lazy" decoding="async"></picture><span class="t">${time}</span><div class="b"><h3>${title}</h3><p>${copy}</p></div></div>`;
-  return page('Hotel day passes in Australia', `<nav class="top">${logoLink('dark')}<div class="links"><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a><a class="pill" href="#waitlist">Join the waitlist</a></div></nav>
-<header class="hero" data-slot="1"><div class="ph"><div class="media">
+  return page('Hotel day passes in Australia', `<header class="hero" data-slot="1"><div class="ph"><div class="media">
 <picture class="layer" data-slot="0"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-swim-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-swim-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-swim.webp"><img src="/golden/img/hero-swim.jpg" alt="Ocean pool at sunrise" width="1920" height="1080" decoding="async"></picture>
 <picture class="layer on" data-slot="1"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-lunch-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-lunch-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-lunch.webp"><img fetchpriority="high" src="/golden/img/hero-lunch.jpg" alt="Resort pool with palm trees" width="1920" height="1080" decoding="async"></picture>
 <picture class="layer" data-slot="2"><source type="image/webp" srcset="/golden/img/3-sm.webp"><img src="/golden/img/3-sm.jpg" alt="Spa treatment room" width="900" height="600" loading="lazy" decoding="async"></picture>
