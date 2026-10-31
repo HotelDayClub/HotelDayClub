@@ -121,7 +121,7 @@ function cookie(res) {
     assert.ok(home.body.includes('Help when you need it'));
     assert.ok(home.body.includes('href="/contact"'));
     assert.ok(home.body.includes("we'll reply by email"));
-    assert.ok(homeCss.includes('.assure span{font-size:14px;line-height:1.45;color:#243044'));
+    assert.ok(homeCss.includes('.assure span{font-size:14px;line-height:1.45;color:var(--hdc-deep)'));
     assert.ok(homeCss.includes('repeat(5,minmax(0,1fr))'));
     assert.ok(!home.body.includes('live chat') && !home.body.includes('7-day support'));
     assert.ok(!home.body.includes('Flexible cancellation'));
