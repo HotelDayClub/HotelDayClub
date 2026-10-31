@@ -1,0 +1,21 @@
+/* Same hex values as public/tokens.css, for inline styles and email. */
+module.exports = {
+  'hdc-bg': '#FFFFFF',
+  'hdc-tint': '#F5FAF9',
+  'hdc-border': '#D9E6E4',
+  'hdc-primary': '#0B6E6F',
+  'hdc-hover': '#08585A',
+  'hdc-deep': '#0A4F55',
+  'hdc-soft': '#DDF1EE',
+  'hdc-text': '#17323A',
+  'hdc-secondary': '#3F5359',
+  'hdc-outline': '#6B7C82',
+  'hdc-rose': '#FF7294',
+  'hdc-rose-hover': '#F86A8C',
+  'hdc-rose-ink': '#C63662',
+  'hdc-rose-soft': '#FFF0F3',
+  'hdc-sun': '#FFD166',
+  'hdc-sun-soft': '#FFF6DC',
+  'hdc-navy': '#00344C',
+  'hdc-danger': '#B42318',
+};

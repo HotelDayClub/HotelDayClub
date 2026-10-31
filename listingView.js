@@ -9,6 +9,7 @@ const { accessDetail } = require('./access');
 const KIND_NAME = Object.fromEntries(KINDS.map(k => [k.code, k.name]));
 const KIND_ORDER = KINDS.map(k => k.code);
 const KIND_ALT = { lounger: 'sun lounger', daybed: 'daybed', cabana: 'cabana', chair: 'pool chair', entry: 'spa or pool entry', custom: 'pool pass' };
+const ITEM_ICON = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M8.5 12.3 10.7 14.6 15.6 9.6"/></svg>';
 function kindAlt(kind) { return KIND_ALT[kind] || 'day pass'; }
 function isDemo(h) { return Number(h && h.is_demo) === 1; }
 function shortName(h) { return String(h.name || '').replace(/\s*\(Demo\)\s*$/, ''); }
@@ -20,23 +21,26 @@ function kindRank(kind) {
   const i = KIND_ORDER.indexOf(kind || 'custom');
   return i < 0 ? KIND_ORDER.length : i;
 }
+function demoPrice(n) {
+  return `${money(n)} <small>(demo)</small>`;
+}
 
 function passCard(p, av, h, pick) {
   const a = av.find(x => x.id === p.id);
   const dis = !a || a.remaining < 1;
   const on = pick && p.code === pick.code && !dis;
-  const state = !a || a.blocked || a.past ? 'Unavailable' : a.remaining < 1 ? 'Sold out' : 'Available';
-  const pop = p.featured && !isDemo(h) ? '<span class="pop">Most popular</span>' : '';
   const holds = Number(p.holds) || 1;
   const holdsText = holds > 1 ? `<span class="pc-holds">${holds} guests</span>` : '';
   const id = esc(p.code);
   const desc = String(p.description || '').trim();
-  return `<article class="pass-card${dis ? ' dis' : ''}" data-kind="${esc(p.kind || 'custom')}">
-<input type="radio" id="pass-${id}" name="pass" value="${esc(p.code)}" data-kind="${esc(p.kind || 'custom')}" data-price="${p.price}" data-holds="${holds}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}>
-<button type="button" class="pass-open" id="pass-btn-${id}" data-code="${id}" aria-expanded="false" aria-controls="pass-detail-${id}">
-<span class="pc-copy">${pop}<b>${esc(p.name)}</b>${desc ? `<span class="pc-desc">${esc(desc)}</span>` : ''}<span class="pc-meta"><span class="pc-price">From ${money(p.price)}</span>${holdsText}<span class="avail">${state}</span></span></span>
-<img src="${esc(seatPhoto(p.kind))}" alt="${esc(passAlt(p, h))}" width="480" height="360" loading="lazy" decoding="async">
-</button>
+  const label = on ? `${p.name} selected` : `Select ${p.name}`;
+  return `<article class="pass-card${dis ? ' dis' : ''}${on ? ' is-sel' : ''}" data-kind="${esc(p.kind || 'custom')}">
+<input type="radio" id="pass-${id}" name="pass" value="${esc(p.code)}" data-kind="${esc(p.kind || 'custom')}" data-price="${p.price}" data-holds="${holds}" tabindex="-1" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}>
+<div class="pc-main">
+<div class="pc-copy"><b>${esc(p.name)}</b>${desc ? `<span class="pc-desc">${esc(desc)}</span>` : ''}<span class="pc-meta"><span class="pc-price">From ${demoPrice(p.price)}</span>${holdsText}</span></div>
+<img src="${esc(seatPhoto(p.kind))}" alt="${esc(passAlt(p, h))}" width="96" height="96" loading="lazy" decoding="async">
+<button type="button" class="pass-select" data-code="${id}" data-name="${esc(p.name)}" aria-pressed="${on ? 'true' : 'false'}" aria-label="${esc(label)}"><span class="t">${on ? 'Selected' : 'Select'}</span><span class="plus" aria-hidden="true">${on ? '✓' : '+'}</span></button>
+</div>
 </article>`;
 }
 
@@ -50,7 +54,6 @@ function passDetail(p, h, items, accessAreas) {
   const amenities = lines.length ? `<ul class="pass-inc-list">${lines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : '';
   const access = accessDetail(areas, { demo, amenities });
   return `<article class="pass-detail" id="pass-detail-${id}" data-code="${id}" role="region" aria-labelledby="pass-title-${id}" hidden>
-<figure class="pass-detail-photo"><img src="${esc(seatPhoto(p.kind))}" alt="${esc(passAlt(p, h))}" width="960" height="640" loading="lazy" decoding="async">${demo ? '<figcaption>Example photo, not this hotel.</figcaption>' : ''}</figure>
 <h3 id="pass-title-${id}" tabindex="-1">${esc(p.name)}</h3>
 ${desc ? `<p class="pass-desc">${esc(desc)}</p>` : ''}
 ${access}
@@ -66,16 +69,34 @@ function passSection(passes, av, h, items, accessByPass) {
     if (!kinds.includes(k)) kinds.push(k);
   });
   kinds.sort((a, b) => kindRank(a) - kindRank(b));
-  const filters = kinds.length > 1
+  const filters = kinds.length >= 4
     ? `<div class="pass-filters" role="group" aria-label="Filter passes"><button type="button" class="pass-filter" data-kind="" aria-pressed="true">All</button>${kinds.map(k => `<button type="button" class="pass-filter" data-kind="${esc(k)}" aria-pressed="false">${esc(KIND_NAME[k] || 'Pass')}</button>`).join('')}</div>`
     : '';
-  const groups = kinds.map(k => {
-    const list = passes.filter(p => (p.kind || 'custom') === k);
-    const title = kinds.length > 1 ? `<h3 class="pass-group-title">${esc(KIND_NAME[k] || 'Pass')}</h3>` : '';
-    return `<section class="pass-group" data-kind="${esc(k)}">${title}<div class="pass-grid">${list.map(p => passCard(p, av, h, pick)).join('')}</div></section>`;
-  }).join('');
-  const details = passes.map(p => passDetail(p, h, items, (accessByPass && accessByPass[p.id]) || [])).join('');
-  return `${filters}<div class="pass-groups" id="passes">${groups}</div><div id="pass-detail" hidden>${details}</div>`;
+  const ordered = [];
+  kinds.forEach(k => passes.filter(p => (p.kind || 'custom') === k).forEach(p => ordered.push(p)));
+  if (pick) {
+    const at = ordered.findIndex(p => p.code === pick.code);
+    if (at > 0) ordered.unshift(ordered.splice(at, 1)[0]);
+  }
+  const cards = `<div class="pass-grid">${ordered.map(p => passCard(p, av, h, pick)).join('')}</div>`;
+  const details = ordered.map(p => passDetail(p, h, items, (accessByPass && accessByPass[p.id]) || [])).join('');
+  return `${filters}${cards}<div id="pass-detail" hidden>${details}</div>`;
+}
+
+function includedItems(passes, items, accessByPass) {
+  const rows = [];
+  const seen = new Set();
+  for (const p of passes) {
+    const lines = amenityLines(items, Number(p.holds) || 1, (accessByPass && accessByPass[p.id]) || []);
+    for (const line of lines) {
+      if (/towel/i.test(line.text)) rows.push(`${line.text} (${p.name})`);
+      else if (!seen.has(line.text)) {
+        seen.add(line.text);
+        rows.push(line.text);
+      }
+    }
+  }
+  return rows;
 }
 
 function listingScript(slug) {
@@ -90,6 +111,18 @@ function guests(){
  const n=sel?parseInt(sel.value,10):NaN;
  return n>0?n:1;
 }
+function markPass(card){
+ const input=card.querySelector('input');
+ const btn=card.querySelector('.pass-select');
+ const on=!!(input && input.checked && !input.disabled);
+ card.classList.toggle('is-sel', on);
+ if(!btn) return;
+ btn.setAttribute('aria-pressed', on?'true':'false');
+ const t=btn.querySelector('.t'); if(t) t.textContent=on?'Selected':'Select';
+ const plus=btn.querySelector('.plus'); if(plus) plus.textContent=on?'✓':'+';
+ const name=btn.getAttribute('data-name')||'';
+ btn.setAttribute('aria-label', on?name+' selected':'Select '+name);
+}
 function render(){
  const q=guests();
  document.querySelectorAll('#passes .pass-card').forEach(card=>{
@@ -98,10 +131,10 @@ function render(){
   const dis=!p||p.remaining<q;
   input.disabled=dis;
   card.classList.toggle('dis',dis);
-  const avail=card.querySelector('.avail');
-  if(avail) avail.textContent=!p||p.blocked||p.past?'Unavailable':p.remaining<1?'Sold out':dis?'Unavailable':'Available';
+  markPass(card);
  });
  if(!document.querySelector('#passes input:checked:not([disabled])')){const f=document.querySelector('#passes input:not([disabled])');if(f)f.checked=true}
+ document.querySelectorAll('#passes .pass-card').forEach(markPass);
  const c=document.querySelector('#passes input:checked');
  const p=c&&av.find(x=>x.code===c.value);
  const holds=p?p.holds||1:1;
@@ -110,57 +143,40 @@ function render(){
  const dated=!!($('#date')&&$('#date').value);
  if(dated&&box){
   const prev=[...box.querySelectorAll('input:checked')].map(i=>i.value);
-  box.innerHTML=addons.map(a=>{const dis=a.remaining<need(a,q,holds);const on=!dis&&prev.indexOf(a.code)>=0;const price=!dis&&a.price>0?'<span class="extra-price">'+fmt(a.price)+'</span>':'';const note=dis?'<span class="extra-note">Sold out for this date</span>':'';return '<label class="extra'+(dis?' is-off':'')+'"><input type="checkbox" name="addon" value="'+h(a.code)+'" data-price="'+(+a.price||0)+'" data-per="'+h(a.per||'guest')+'" '+(dis?'disabled':'')+(on?' checked':'')+'><span class="extra-name">'+h(a.name)+'</span>'+price+note+'</label>'}).join('');
+  box.innerHTML=addons.map(a=>{const dis=a.remaining<need(a,q,holds);const on=!dis&&prev.indexOf(a.code)>=0;const price=!dis&&a.price>0?'<span class="extra-price">'+fmt(a.price)+' <small>(demo)</small></span>':'';const note=dis?'<span class="extra-note">Sold out for this date</span>':'';return '<label class="extra'+(dis?' is-off':'')+'"><input type="checkbox" name="addon" value="'+h(a.code)+'" data-price="'+(+a.price||0)+'" data-per="'+h(a.per||'guest')+'" '+(dis?'disabled':'')+(on?' checked':'')+'><span class="extra-name">'+h(a.name)+'</span>'+price+note+'</label>'}).join('');
   if(wrap) wrap.hidden=!addons.length;
  }
  let extra=0;document.querySelectorAll('#addons-pick input:checked').forEach(i=>{const price=+i.dataset.price||0;const qty=i.dataset.per==='booking'?1:q*(holds||1);extra+=price*qty});
  const people=p?q*holds:q;
  const sum=p?p.price*q+extra:0;
- $('#total').innerHTML=p?'<span>'+fmt(p.price)+' × '+q+(people>q?' · '+people+' guests':'')+(extra?' + '+fmt(extra)+' extras':'')+'</span><b>'+fmt(sum)+'</b>':'';
- const bar=$('#bar-total'); if(bar) bar.textContent=p?fmt(sum):($('#from-price')?$('#from-price').textContent:'');
+ $('#total').innerHTML=p?'<span>'+fmt(p.price)+' × '+q+(people>q?' · '+people+' guests':'')+(extra?' + '+fmt(extra)+' extras':'')+'</span><b>'+fmt(sum)+' <small>(demo)</small></b>':'';
+ const bar=$('#bar-total'); if(bar) bar.textContent=p?fmt(p.price):($('#from-price')?$('#from-price').textContent:'');
  $('#go').disabled=!p;
  const blocked=av[0]&&av[0].blocked;
  const any=av.some(x=>x.remaining>0);
  const st=$('#status'); st.className='status'+(blocked||!any?' out':'');
  st.textContent=blocked?blocked:!any?'Sold out this day':'Available this day';
  document.querySelectorAll('#passes input, #addons-pick input').forEach(r=>{r.onchange=render});
- const openBtn=document.querySelector('.pass-open[aria-expanded="true"]');
- if(openBtn){
-  const radio=document.getElementById('pass-'+openBtn.dataset.code);
-  if(radio&&radio.disabled) closeDetail();
+}
+function focusBook(){
+ const book=document.getElementById('book');
+ if(!book) return;
+ book.focus();
+ if(window.matchMedia('(max-width:760px)').matches){
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  book.scrollIntoView({behavior:reduce?'auto':'smooth', block:'start'});
  }
-}
-function closeDetail(){
- document.querySelectorAll('.pass-open').forEach(b=>b.setAttribute('aria-expanded','false'));
- document.querySelectorAll('.pass-detail').forEach(p=>{p.hidden=true});
- const box=document.getElementById('pass-detail');
- if(box) box.hidden=true;
-}
-function openDetail(code){
- let shown=null;
- document.querySelectorAll('.pass-open').forEach(b=>b.setAttribute('aria-expanded', b.dataset.code===code?'true':'false'));
- document.querySelectorAll('.pass-detail').forEach(p=>{
-  const on=p.dataset.code===code;
-  p.hidden=!on;
-  if(on) shown=p;
- });
- const box=document.getElementById('pass-detail');
- if(box) box.hidden=!shown;
- if(!shown) return;
- const title=shown.querySelector('h3');
- if(title) title.focus();
- shown.scrollIntoView({block:'nearest'});
 }
 const passBox=document.getElementById('passes');
 if(passBox){
  passBox.addEventListener('click', function(e){
-  const btn=e.target.closest('.pass-open');
-  if(!btn) return;
-  const code=btn.dataset.code;
-  if(btn.getAttribute('aria-expanded')==='true'){ closeDetail(); return; }
-  const radio=document.getElementById('pass-'+code);
-  if(radio && !radio.disabled && !radio.checked){ radio.checked=true; render(); }
-  openDetail(code);
+  const card=e.target.closest('.pass-card');
+  if(!card) return;
+  const input=card.querySelector('input[name="pass"]');
+  if(!input || input.disabled) return;
+  input.checked=true;
+  render();
+  focusBook();
  });
 }
 const filters=document.querySelector('.pass-filters');
@@ -170,26 +186,91 @@ if(filters){
   if(!btn) return;
   const kind=btn.dataset.kind||'';
   filters.querySelectorAll('.pass-filter').forEach(b=>b.setAttribute('aria-pressed', b===btn?'true':'false'));
-  document.querySelectorAll('.pass-group').forEach(g=>{ g.hidden=!!(kind && g.dataset.kind!==kind); });
-  const open=document.querySelector('.pass-open[aria-expanded="true"]');
-  if(open){
-   const group=open.closest('.pass-group');
-   if(group && group.hidden) closeDetail();
-  }
+  document.querySelectorAll('#passes .pass-card').forEach(card=>{ card.hidden=!!(kind && card.dataset.kind!==kind); });
  });
 }
-document.addEventListener('keydown', function(e){
- if(e.key!=='Escape') return;
- if(e.target.closest && e.target.closest('.map-sheet')) return;
- const open=document.querySelector('.pass-open[aria-expanded="true"]');
- if(!open) return;
- closeDetail();
- open.focus();
-});
- async function load(){const el=$('#date');if(!el)return;const r=await fetch('/api/availability?hotel=${slug}&date='+encodeURIComponent(el.value));const data=await r.json();av=data.passes||[];addons=data.addons||[];const note=document.getElementById('cancel-note');if(note)note.textContent=data.cancel||'';render();if(!el.value){const st=$('#status');if(st){st.className='status';st.textContent='Pick a date'}}}
+const more=document.querySelector('.read-more');
+const desc=document.getElementById('overview-desc');
+if(more&&desc){
+ more.addEventListener('click', function(){
+  const open=more.getAttribute('aria-expanded')==='true';
+  more.setAttribute('aria-expanded', open?'false':'true');
+  more.textContent=open?'Read more':'Read less';
+  desc.classList.toggle('is-open', !open);
+ });
+}
+const tabNav=document.querySelector('.l-tabs');
+if(tabNav){
+ tabNav.addEventListener('click', function(e){
+  const a=e.target.closest('a');
+  if(!a) return;
+  const el=document.querySelector(a.getAttribute('href'));
+  if(!el) return;
+  e.preventDefault();
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  el.scrollIntoView({behavior:reduce?'auto':'smooth', block:'start'});
+  if(history.pushState) history.pushState(null,'',a.getAttribute('href'));
+  tabNav.querySelectorAll('a').forEach(link=>{ if(link===a) link.setAttribute('aria-current','true'); else link.removeAttribute('aria-current'); });
+ });
+}
+(function(){
+ const gal=document.querySelector('.gallery');
+ const chip=document.querySelector('.gal-chip');
+ const lb=document.querySelector('.lightbox');
+ if(!gal||!lb) return;
+ const imgs=[...gal.querySelectorAll('img')];
+ let lbIndex=0, opener=null;
+ const shot=lb.querySelector('img');
+ const count=lb.querySelector('.lb-count');
+ function lbShow(i){
+  if(!imgs.length) return;
+  lbIndex=(i+imgs.length)%imgs.length;
+  shot.src=imgs[lbIndex].src;
+  shot.alt=imgs[lbIndex].alt;
+  if(count) count.textContent=(lbIndex+1)+' / '+imgs.length;
+ }
+ function focusables(){
+  return [...lb.querySelectorAll('button')].filter(el=>!el.disabled);
+ }
+ function lbOpen(i, from){
+  opener=from||document.activeElement;
+  lbShow(i);
+  if(!lb.open && lb.showModal) lb.showModal();
+  const close=lb.querySelector('.lb-close');
+  if(close) close.focus();
+ }
+ imgs.forEach((img,i)=>img.addEventListener('click', function(){ lbOpen(i, img); }));
+ const all=document.querySelector('.view-all');
+ if(all) all.addEventListener('click', function(){ lbOpen(0, all); });
+ lb.querySelector('.lb-prev').addEventListener('click', function(){ lbShow(lbIndex-1); });
+ lb.querySelector('.lb-next').addEventListener('click', function(){ lbShow(lbIndex+1); });
+ lb.querySelector('.lb-close').addEventListener('click', function(){ lb.close(); });
+ lb.addEventListener('close', function(){ if(opener&&opener.focus) opener.focus(); });
+ lb.addEventListener('keydown', function(e){
+  if(e.key==='ArrowRight'){ e.preventDefault(); lbShow(lbIndex+1); }
+  else if(e.key==='ArrowLeft'){ e.preventDefault(); lbShow(lbIndex-1); }
+  else if(e.key==='Tab'){
+   const nodes=focusables();
+   if(!nodes.length) return;
+   const first=nodes[0], last=nodes[nodes.length-1];
+   if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+   else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+  }
+ });
+ function syncChip(){
+  if(!chip||!imgs.length) return;
+  const w=gal.clientWidth||1;
+  let i=Math.round(gal.scrollLeft/w);
+  if(i<0) i=0;
+  if(i>=imgs.length) i=imgs.length-1;
+  chip.textContent=(i+1)+' / '+imgs.length;
+ }
+ gal.addEventListener('scroll', syncChip, {passive:true});
+ syncChip();
+})();
+ async function load(){const el=$('#date');if(!el)return;const r=await fetch('/api/availability?hotel=${slug}&date='+encodeURIComponent(el.value));const data=await r.json();av=data.passes||[];addons=data.addons||[];const note=document.getElementById('cancel-note');if(note){note.hidden=!el.value;note.textContent=data.cancel||''}render();if(!el.value){const st=$('#status');if(st){st.className='status';st.textContent='Pick a date'}}}
 document.getElementById('date').addEventListener('change',load);
 document.querySelector('select[name="qty"]').addEventListener('change',render);
-document.querySelectorAll('.gal-nav').forEach(btn=>btn.addEventListener('click',()=>{const gal=document.querySelector('.gallery.swipe');if(!gal)return;const w=gal.clientWidth*0.86;const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;gal.scrollBy({left:btn.dataset.dir==='next'?w:-w,behavior:reduce?'auto':'smooth'})}));
 const peek=document.querySelector('.map-peek');
 const sheet=document.querySelector('.map-sheet');
 if(peek&&sheet){
@@ -239,20 +320,30 @@ load();setInterval(load,15000);
 </script>`;
 }
 
-function goodToKnow({ hours, policy, place, know, cancel }) {
-  const address = place.address ? `<dt>Address</dt><dd>${place.address}</dd>` : '';
-  const there = place.there ? `<dt id="getting-there">Getting there</dt><dd>${place.there}</dd>` : '';
-  return `<section class="l-sec good-to-know" id="before"><h3>Good to know</h3>
-<dl class="gtk">
-<dt id="hours">Opening hours</dt><dd>${hours}</dd>
-${address}
-${there}
-<dt id="policy">Guest policy</dt><dd>${policy.body}</dd>
-<dt id="cancel-fold">Cancellation</dt><dd><p>${esc(know || cancel)} <a href="/refunds">Cancellation and refund policy</a>.</p></dd>
-</dl>
-<ul class="reassure"><li><b>Instant confirmation</b><span>${esc(instantConfirmationText())}</span></li></ul>
-<p class="muted small">${policy.note}</p>
-</section>`;
+function galleryHtml(h, demo, short) {
+  const photos = h.photos || [];
+  const n = photos.length;
+  const galAlt = demo ? 'Stock photo, not this hotel' : `Photo of ${short}`;
+  const imgs = photos.map((p, i) => `<img class="g${i}" src="/assets/photos/${esc(p)}" alt="${esc(galAlt)}" width="1200" height="900" fetchpriority="high" decoding="async">`).join('');
+  const countClass = n <= 1 ? 'g-n1' : n === 2 ? 'g-n2' : n === 3 ? 'g-n3' : n === 4 ? 'g-n4' : 'g-n5';
+  const credit = demo ? '<span class="photo-credit">Stock photos · not this hotel</span>' : '';
+  return `<div class="mob-g"><div class="gallery swipe ${countClass}" aria-label="Photos">${imgs}${credit}<button type="button" class="view-all">View all (${n})</button></div><span class="gal-chip">1 / ${n || 0}</span></div>
+<dialog class="lightbox" aria-label="Photos"><button type="button" class="lb-close" aria-label="Close">Close</button><button type="button" class="lb-prev" aria-label="Previous photo">‹</button><img alt="${esc(galAlt)}" width="1200" height="900"><button type="button" class="lb-next" aria-label="Next photo">›</button><p class="lb-count" aria-live="polite">1 / ${n || 1}</p></dialog>`;
+}
+
+function goodToKnowBand({ policy, foodLine, includedNames }) {
+  const arrive = `Show your QR code at check-in. ${instantConfirmationText()}`;
+  const priced = includedNames.length ? `${includedNames.join(', ')}. ` : '';
+  const price = `${priced}${foodLine || 'Food and drink are not included in the pass.'}`;
+  return `<section class="gtk-band" id="before" aria-label="Before you book"><div class="wrap">
+<h2 id="gtk">Good to know</h2>
+<div class="gtk-cols">
+<div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9V5h4M15 5h4v4M19 15v4h-4M9 19H5v-4"/><path d="M10 10h1.6v1.6H10zM12.6 12.6H14V14h-1.4z"/></svg><h3>What happens when I get there?</h3><p>${esc(arrive)}</p><p><b>Instant confirmation.</b> <a href="/contact">Help when you need it</a>.</p></div>
+<div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg><h3>What's included in the price?</h3><p>${esc(price)}</p></div>
+<div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3.5v3M16 3.5v3M4 10h16"/><path d="M8.8 15.2l2.1 2.1 4.6-4.8"/></svg><h3>Can I cancel if my plans change?</h3><p>You have 24 hours to cancel. Free until 24 hours before your access hours start. <a href="/refunds">Cancellation and refund policy</a>.</p></div>
+</div>
+<p class="gtk-note">${policy.note}</p>
+</div></section>`;
 }
 
 function listingHtml(opts) {
@@ -263,47 +354,60 @@ function listingHtml(opts) {
   const demo = isDemo(h);
   const heading = demo ? `${short} (Demo)` : short;
   const watch = supervisionNote(h);
-  const pick = av.find(p => p.featured && p.remaining > 0) || av.find(p => p.remaining > 0) || av[0];
-  const galAlt = demo ? 'Stock photo, not this hotel' : `Photo of ${short}`;
-  const photos = (h.photos || []).map((p, i) => `<img class="g${i}" src="/assets/photos/${esc(p)}" alt="${esc(galAlt)}" width="1200" height="900" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`).join('');
-  const parkFold = parkNote ? `<details class="fold" id="parking"><summary>Parking</summary><p>${esc(parkNote)}</p></details>` : '';
+  const names = passes.map(p => p.name).filter(Boolean);
+  const meta = [h.area, names.join(', ')].filter(Boolean).join(' · ');
+  const place = arrivalInner(h);
+  const rows = includedItems(passes, items, accessByPass);
+  const incList = rows.length ? `<ul class="inc">${rows.map(text => `<li>${ITEM_ICON}<span>${esc(text)}</span></li>`).join('')}</ul>` : '';
+  const parkFold = parkNote ? `<details class="fold" id="parking"><summary>Parking</summary><div class="acc-body"><p>${esc(parkNote)}</p></div></details>` : '';
+  const cancelCopy = esc(know || cancel);
   return `<div class="wrap listing">
-<div class="gallery swipe" aria-label="Photos">${photos}
-<button type="button" class="gal-nav prev" data-dir="prev" aria-label="Previous photo">‹</button>
-<button type="button" class="gal-nav next" data-dir="next" aria-label="Next photo">›</button>
-${demo ? '<span class="photo-credit">Stock photos · not this hotel</span>' : ''}</div>
-<form action="/checkout" method="get" id="bf" class="l-body">
+${galleryHtml(h, demo, short)}
+<form action="/checkout" method="get" id="bf" class="l-layout">
 <input type="hidden" name="hotel" value="${esc(h.slug)}">
-<div class="l-top">
-<div class="listing-head">
-<p class="eyebrow-s">${demo ? 'Fictional demo listing' : esc(h.area)}</p>
-<h1 class="l-title">Your day at ${esc(heading)}</h1>
-<div class="muted l-meta">New · ${esc(h.area)}</div>
-<p class="day-lead"><b>${esc(h.tagline)}.</b> ${esc(h.blurb)}</p>
+<div class="l-main">
+<section class="listing-head" id="overview">
+<h1 class="l-title">${esc(heading)}</h1>
+<p class="muted l-meta">${esc(meta)}</p>
+${demo ? '<span class="demo-pill">Fictional demo listing</span>' : ''}
+<p class="day-lead" id="overview-desc"><b>${esc(h.tagline)}.</b> ${esc(h.blurb)}</p>
+<button type="button" class="read-more" aria-expanded="false" aria-controls="overview-desc">Read more</button>
 ${watch ? `<p class="guard-note">${esc(watch)}</p>` : ''}
-</div>
-<h2 class="day-kicker">Passes</h2>
+</section>
+<div class="l-tabs"><nav aria-label="Sections"><a href="#overview" aria-current="true">Overview</a><a href="#passes">Passes</a><a href="#details">Details</a></nav></div>
+<section id="passes"><h2 class="day-kicker">Passes</h2>
 ${passSection(passes, av, h, items, accessByPass)}
-<p class="pass-food">${esc(foodLine || 'Food and drink are not included in the pass.')}</p>
+</section>
+${addonList || ''}
+<section id="details"><h2>Details</h2>
+<h3 class="sub">What's included</h3>
+${incList}
+<p class="food-note">${esc(foodLine || 'Food and drink are not included in the pass.')}</p>
+<div class="l-acc">
+<details id="hours" open><summary>Opening hours</summary><div class="acc-body">${hours}</div></details>
+<details id="getting-there"><summary>Getting there</summary><div class="acc-body">${place.address || ''}${place.there || ''}</div></details>
+${parkFold}
+<details id="policy"><summary>Guest policy</summary><div class="acc-body">${policy.body}</div></details>
+<details id="cancel-fold"><summary>Cancellation</summary><div class="acc-body"><p>You have 24 hours to cancel. Free until 24 hours before your access hours start. ${cancelCopy} <a href="/refunds">Cancellation and refund policy</a>.</p></div></details>
 </div>
-<aside class="book-box" id="book">
-<div class="bb-price">From <b id="from-price">${money(from)}</b></div>
+</section>
+</div>
+<aside class="book-box" id="book" tabindex="-1">
+<div class="bb-price">From <b id="from-price">${money(from)}</b> <small>(demo)</small></div>
 <p class="bb-label" id="date-label">Date</p>
 <input type="date" class="hdc-date" data-inline="1" data-closed="${esc(closed)}" name="date" id="date" min="${minDate}" max="${maxDate}" value="${esc(date)}" required>
 <div id="status" class="status"></div>
 <label class="fl" for="qty">Guests<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === 1 ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
 <p class="muted small">Party size is capped at 6.</p>
 <div class="bb-total" id="total"></div>
-<p class="cancel-note" id="cancel-note">${esc(cancel)}</p>
-<button class="btn btn-coral full" id="go" type="submit">Book your day (demo)</button>
-<p class="muted small center">You won't be charged. Demo payment only.</p>
+<p class="cancel-note" id="cancel-note"${date ? '' : ' hidden'}>${esc(cancel)}</p>
+<button class="book-go" id="go" type="submit">Book your day (demo)</button>
+<p class="prompt">You won't be charged. Demo payment only.</p>
 </aside>
-${addonList || parkFold ? `<div class="l-more">${addonList}${parkFold}</div>` : ''}
 </form>
-${goodToKnow({ hours, policy, place: arrivalInner(h), know, cancel })}
-${reassureStrip(true)}
-<div class="book-bar"><div class="bar-price"><span>Total</span><b id="bar-total">${money(pick ? pick.price : from)}</b></div><a class="btn btn-coral" href="#book">Book your day (demo)</a></div>
 </div>
+${goodToKnowBand({ policy, foodLine, includedNames: rows })}
+<div class="book-bar"><b>From <span id="bar-total">${money(from)}</span> (demo)</b><a href="#book">Book</a></div>
 ${listingScript(h.slug)}`;
 }
 

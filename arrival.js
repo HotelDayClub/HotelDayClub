@@ -1,4 +1,5 @@
 const { esc } = require('./util');
+const brand = require('./brand');
 
 const PRESETS = {
   'saltwater-terrace': {
@@ -118,7 +119,7 @@ function arrivalParts(hotel) {
     ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`
     : `https://www.openstreetmap.org/search?query=${q}`;
   const label = address || 'Hotel';
-  const preview = mapped ? `<button type="button" class="map-peek" data-lat="${lat}" data-lng="${lng}" data-label="${esc(label)}" aria-haspopup="dialog" aria-controls="map-sheet" aria-expanded="false"><svg class="map-peek-art" viewBox="0 0 160 72" aria-hidden="true"><rect width="160" height="72" fill="#E7EEF5"/><path d="M0 24h160M0 48h160M36 0v72M92 0v72" stroke="#C5D4E4" stroke-width="4"/><path d="M0 12h160M68 0v72" stroke="#D7E3EF" stroke-width="2"/><circle cx="80" cy="34" r="6" fill="#FF6B57" stroke="#0A1428" stroke-width="1.6"/></svg><span class="map-peek-label">View map</span></button>` : '';
+  const preview = mapped ? `<button type="button" class="map-peek" data-lat="${lat}" data-lng="${lng}" data-label="${esc(label)}" aria-haspopup="dialog" aria-controls="map-sheet" aria-expanded="false"><svg class="map-peek-art" viewBox="0 0 160 72" aria-hidden="true"><rect width="160" height="72" fill="${brand['hdc-soft']}"/><path d="M0 24h160M0 48h160M36 0v72M92 0v72" stroke="${brand['hdc-border']}" stroke-width="4"/><path d="M0 12h160M68 0v72" stroke="${brand['hdc-tint']}" stroke-width="2"/><circle cx="80" cy="34" r="6" fill="${brand['hdc-rose']}" stroke="${brand['hdc-text']}" stroke-width="1.6"/></svg><span class="map-peek-label">View map</span></button>` : '';
   const credit = demo ? ' Fictional demo address.' : '';
   const sheet = mapped ? `<dialog class="map-sheet" id="map-sheet" aria-labelledby="map-sheet-title"><div class="map-sheet-bar"><h4 id="map-sheet-title">${esc(label)}</h4><button type="button" class="map-close">Close</button></div><div class="map-canvas" aria-label="Map. You can pan and zoom."></div><p class="map-credit">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.${credit}</p></dialog>` : '';
   const directions = address && !demo

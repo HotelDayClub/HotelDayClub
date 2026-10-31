@@ -115,14 +115,14 @@ function alts(html, where) {
     assert.ok(footer.includes('href="/guides"'));
     for (const g of seo.GUIDES) assert.ok(footer.includes(`href="/guides/${g.slug}"`), g.slug);
     assert.ok(home.includes('og:locale" content="en_AU"'));
-    assert.ok(home.includes('name="theme-color" content="#0E1E3A"'));
+    assert.ok(home.includes('name="theme-color" content="#0B6E6F"'));
     assert.ok(home.includes('href="/site.webmanifest"'));
     assert.ok(home.includes('apple-touch-icon'));
     assert.ok(home.includes('content="googleverify123"'));
     assert.ok(home.includes('name="msvalidate.01" content="BING123456"'));
     assert.ok(home.includes('https://www.hoteldayclub.com.au/assets/og-image-1200x630.png'));
-    assert.ok(home.includes('src="/assets/hdc-lockup-dark.svg"'));
     assert.ok(home.includes('src="/assets/hdc-lockup-light.svg"'));
+    assert.ok(!home.includes('hdc-lockup-dark.svg'));
     assert.ok(home.includes('alt="Hotel Day Club"'));
     assert.ok(!home.includes('logo-mark'));
     assert.ok(home.includes('href="/assets/hdc-icon.svg"'));
@@ -201,12 +201,12 @@ function alts(html, where) {
     }
     await assertLocalAssets(home, 'home');
     const hotelsPage = text(await get(port, '/for-hotels'));
+    assert.ok(hotelsPage.includes('src="/assets/hdc-lockup-light.svg"'));
     assert.ok(hotelsPage.includes('src="/assets/hdc-lockup-dark.svg"'));
-    assert.ok(!hotelsPage.includes('hdc-lockup-light.svg'));
     await assertLocalAssets(hotelsPage, 'for-hotels');
     const listingPage = text(await get(port, '/h/saltwater-terrace'));
+    assert.ok(listingPage.includes('src="/assets/hdc-lockup-light.svg"'));
     assert.ok(listingPage.includes('src="/assets/hdc-lockup-dark.svg"'));
-    assert.ok(!listingPage.includes('hdc-lockup-light.svg'));
     await assertLocalAssets(listingPage, 'listing');
 
     const map = text(await get(port, '/sitemap.xml'));
