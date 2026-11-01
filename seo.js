@@ -319,6 +319,7 @@ function robotsTxt() {
     'Disallow: /checkout',
     'Disallow: /api',
     'Disallow: /booking/',
+    'Disallow: /qr/',
     'Disallow: /healthz',
     'Sitemap: ' + ORIGIN + '/sitemap.xml',
     '',

@@ -204,7 +204,7 @@ const salt = nextOpen('saltwater-terrace');
 const freeSky = nextOpen('skyline-rooftop', 3);
 const insideDay = nextOpen('skyline-rooftop', 0);
 const insideWindow = /can't be cancelled for free/.test(offering.cancelNote(db, insideDay.h, insideDay.date));
-assert.ok(/^Free cancellation until 11am, /.test(offering.cancelNote(db, freeSky.h, freeSky.date)), offering.cancelNote(db, freeSky.h, freeSky.date));
+assert.ok(/^Free cancellation until 11 am, .+\(hotel time\)\.$/.test(offering.cancelNote(db, freeSky.h, freeSky.date)), offering.cancelNote(db, freeSky.h, freeSky.date));
 assert.strictEqual(offering.lateWindow(db, salt.h, salt.date), null);
 assert.strictEqual(offering.hotelLatePossible(db, salt.h), false);
 assert.strictEqual(offering.hotelLatePossible(db, sky.h), false);
@@ -236,7 +236,7 @@ db.prepare("UPDATE addons SET enabled=0 WHERE code='late' AND hotel_id=?").run(s
 const freeAt = new Date(y, m - 1, d, 10, 0, 0);
 freeAt.setDate(freeAt.getDate() - 2);
 const future = offering.cancelNote(db, sky.h, sky.date, freeAt);
-assert.ok(/^Free cancellation until 11am, /.test(future), future);
+assert.ok(/^Free cancellation until 11 am, .+\(hotel time\)\.$/.test(future), future);
 const inside = offering.cancelNote(db, sky.h, sky.date, new Date(y, m - 1, d, 10, 0, 0));
 assert.ok(/can't be cancelled for free/.test(inside), inside);
 assert.ok(!/hotel terms apply/.test(offering.rulesText(sky.h)));
@@ -466,7 +466,7 @@ function start(port, extra = {}) {
     const avail = await get(port, `/api/availability?hotel=skyline-rooftop&date=${freeSky.date}`);
     const data = JSON.parse(avail.body);
     assert.ok(!data.addons.some(a => a.code === 'late'), JSON.stringify(data.addons));
-    assert.ok(/Free cancellation until 11am, /.test(data.cancel), data.cancel);
+    assert.ok(/Free cancellation until 11 am, .+\(hotel time\)\.$/.test(data.cancel), data.cancel);
     if (insideWindow) {
       const soon = JSON.parse((await get(port, `/api/availability?hotel=skyline-rooftop&date=${insideDay.date}`)).body);
       assert.ok(/can't be cancelled for free/.test(soon.cancel), soon.cancel);

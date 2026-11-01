@@ -51,7 +51,7 @@ for (let weekday = 0; weekday < 7; weekday++) {
 }
 const passId = db.prepare(`INSERT INTO pass_types (hotel_id, code, name, price, daily_cap, holds, kind) VALUES (?, 'lounger', 'Sun lounger', 40, 10, 1, 'lounger')`).run(hotelId).lastInsertRowid;
 const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(hotelId);
-assert.ok(/^Free cancellation until 10am, /.test(cancelNote(db, hotel, later, beforeFallback)), cancelNote(db, hotel, later, beforeFallback));
+assert.ok(/^Free cancellation until 10 am, .+\(hotel time\)\.$/.test(cancelNote(db, hotel, later, beforeFallback)), cancelNote(db, hotel, later, beforeFallback));
 assert.ok(/can't be cancelled for free/.test(cancelNote(db, hotel, '2026-04-05', afterFallback)));
 
 function insertBooking(code, date, extra = {}) {
@@ -117,7 +117,7 @@ function cookieFrom(res) {
     const openPage = await get(port, '/booking/HDC-CANCELFREE');
     assert.strictEqual(openPage.status, 200);
     assert.ok(openPage.body.includes('Cancel this demo booking'));
-    assert.ok(openPage.body.includes("You're booked in."));
+    assert.ok(openPage.body.includes('Your demo booking'));
     assert.ok(!/stripe/i.test(openPage.body));
 
     const evil = await post(port, '/booking/HDC-CANCELFREE/cancel', {}, { Origin: 'https://evil.example' });

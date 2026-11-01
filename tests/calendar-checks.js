@@ -61,7 +61,7 @@ assert.deepStrictEqual(at('2026-01-20', '11:00', '16:00', { address: 'Bondi Beac
 
 const summer = accessInstants('2026-01-20', '11:00', '16:00');
 const ics = bookingIcs(
-  { code: 'HDC-TEST', date: '2026-01-20', cancel_note: 'Free cancellation until 11am, Mon 19 Jan.' },
+  { code: 'HDC-TEST', date: '2026-01-20', cancel_note: 'Free cancellation until 11 am, Mon 19 Jan (hotel time).' },
   { name: 'Skyline Rooftop', address: '4 Demo Street', area: 'North Sydney', lifeguard: 0 },
   { ...summer, span: '11am–4pm' },
 );
@@ -70,7 +70,7 @@ assert.ok(ics.includes('DTEND:20260120T050000Z'));
 assert.ok(!ics.includes('VALUE=DATE'));
 assert.ok(ics.includes('Booking HDC-TEST. Show this code at reception.'));
 assert.ok(ics.includes('Access hours 11am–4pm.'));
-assert.ok(ics.includes('Free cancellation until 11am\\, Mon 19 Jan.'));
+assert.ok(ics.includes('Free cancellation until 11 am\\, Mon 19 Jan (hotel time).'));
 assert.ok(ics.includes('Food and drink not included.'));
 assert.ok(ics.includes('No lifeguard is on duty.'));
 assert.ok(ics.includes('LOCATION:4 Demo Street'));

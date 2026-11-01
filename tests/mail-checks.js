@@ -1,11 +1,16 @@
 const assert = require('assert');
-const { PNG } = require('pngjs');
-const jsQR = require('jsqr');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
+
+function pixelWidths(html) {
+  const found = [];
+  for (const match of html.matchAll(/(?:max-width|width)\s*:\s*(\d+)px/gi)) found.push(Number(match[1]));
+  for (const match of html.matchAll(/\bwidth="(\d+)"/gi)) found.push(Number(match[1]));
+  return found;
+}
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-mail-'));
 const unitPath = path.join(dir, 'unit.db');
@@ -129,7 +134,19 @@ function recorder(decide) {
   assert.ok(direct.html.includes('This is a demo booking. No payment was taken and no real booking exists. This is not a reservation at a real hotel.'));
   assert.ok(direct.text.includes('No payment was taken'));
   assert.ok(direct.html.includes('https://www.hoteldayclub.com.au/booking/HDC-ABC'));
-  assert.ok(direct.html.includes('#0A1428') && direct.html.includes('#0E1E3A'));
+  const brand = require('../brand');
+  assert.ok(direct.html.includes(brand['hdc-text']) && direct.html.includes(brand['hdc-navy']));
+  assert.ok(!direct.html.includes('#0A1428') && !direct.html.includes('#0E1E3A') && !direct.html.includes('#0B2545'));
+  assert.ok(direct.html.includes('name="color-scheme" content="light only"'));
+  assert.ok(direct.html.includes('supported-color-schemes'));
+  assert.ok(direct.html.includes('<v:roundrect'));
+  assert.ok(direct.html.includes('Show booking code HDC-ABC at reception.'));
+  assert.ok(!/<link[^>]+rel=["']?stylesheet/i.test(direct.html));
+  assert.ok(!/@import/i.test(direct.html));
+  assert.ok(!direct.html.includes('data:image'));
+  const directImgs = direct.html.match(/<img\b[^>]*>/gi) || [];
+  assert.ok(directImgs.every(tag => /\balt="[^"]+"/.test(tag)));
+  assert.ok(pixelWidths(direct.html).every(n => n <= 600) && pixelWidths(direct.html).includes(600));
   assert.ok(!/unsubscribe/i.test(direct.html + direct.text));
   assert.strictEqual(direct.subject, 'Your Hotel Day Club demo booking HDC-ABC');
   const liveNote = notices.bookingNotice({
@@ -263,12 +280,31 @@ function recorder(decide) {
   assert.ok(booked.html.includes('No lifeguard on duty.'));
   assert.ok(booked.html.includes('https://www.hoteldayclub.com.au/booking/HDC-ONCE'));
   assert.ok(booked.text.includes('https://www.hoteldayclub.com.au/hotel/checkin?code=HDC-ONCE'));
-  const emailQr = (booked.html.match(/src="(data:image\/png;base64,[^"]+)"/) || [])[1];
-  assert.ok(emailQr, 'confirmation email QR missing');
-  const emailPng = PNG.sync.read(Buffer.from(emailQr.split(',')[1], 'base64'));
-  const emailHit = jsQR(Uint8ClampedArray.from(emailPng.data), emailPng.width, emailPng.height);
-  assert.ok(emailHit);
-  assert.strictEqual(emailHit.data, 'https://www.hoteldayclub.com.au/hotel/checkin?code=HDC-ONCE');
+  assert.ok(booked.html.includes('src="https://www.hoteldayclub.com.au/qr/'));
+  assert.ok(!booked.html.includes('data:image'));
+  assert.ok(booked.html.includes('alt="Booking code: HDC-ONCE"'));
+  assert.ok(booked.text.includes('Booking code: HDC-ONCE'));
+  assert.ok(booked.html.includes('<v:roundrect'));
+  assert.ok(booked.html.includes('name="color-scheme" content="light only"'));
+  const bookedImgs = booked.html.match(/<img\b[^>]*>/gi) || [];
+  assert.ok(bookedImgs.length > 0 && bookedImgs.every(tag => /\balt="[^"]+"/.test(tag)));
+  assert.ok(!/<link[^>]+rel=["']?stylesheet/i.test(booked.html) && !/@import/i.test(booked.html));
+  assert.ok(pixelWidths(booked.html).every(n => n <= 600));
+  const cancelReq = recorder(() => 200);
+  mailer.setRequest(cancelReq.request);
+  await notices.sendCancellation(db, 'HDC-ONCE');
+  assert.strictEqual(cancelReq.calls.length, 1);
+  const cancelMail = JSON.parse(cancelReq.calls[0].body);
+  assert.ok(cancelMail.html.includes('Demo booking cancelled'));
+  assert.ok(cancelMail.text.includes('Date: Wed, 4 Nov'));
+  assert.ok(cancelMail.text.includes('Pass: Pool chair × 2'));
+  assert.ok(cancelMail.html.includes('>Date<') || cancelMail.html.includes('>Date</'));
+  assert.ok(cancelMail.html.includes('Pool chair × 2'));
+  assert.ok(cancelMail.html.includes(brand['hdc-text']) && cancelMail.html.includes(brand['hdc-navy']));
+  assert.ok(!cancelMail.html.includes('#0A1428') && !cancelMail.html.includes('#0E1E3A'));
+  assert.ok(cancelMail.html.includes('<v:roundrect'));
+  assert.ok(cancelMail.html.includes('name="color-scheme" content="light only"'));
+  mailer.setRequest(once.request);
   assert.ok(booked.html.includes('https://calendar.google.com/calendar/render?'));
   assert.ok(booked.html.includes('action=TEMPLATE'));
   assert.ok(booked.html.includes('20261103T230000Z'));

@@ -376,13 +376,19 @@ function syncLateAddons(db) {
     else off.run('Late access', 'Not offered. It would overlap room guests only or run past the pool closing time.', h.id);
   }
 }
+function displayCancelNote(note) {
+  const text = String(note || '').trim();
+  const matched = text.match(/^Free cancellation until (\d{1,2}(?::\d{2})?)(am|pm), (.+?)(?: \(hotel time\))?\.$/);
+  if (!matched) return text;
+  return `Free cancellation until ${matched[1]} ${matched[2]}, ${matched[3]} (hotel time).`;
+}
 function cancelNote(db, hotel, date, now = new Date()) {
   const plan = dayPlan(db, hotel, date);
   if (!plan || !plan.open || !plan.opens) return 'See the cancellation policy for this date.';
   const { BookingCancel } = require('./cancelBooking');
   const window = BookingCancel.window(hotel, date, plan.opens, now);
   if (!window.free) return "This booking is inside 24 hours of the start, so it can't be cancelled for free.";
-  return `Free cancellation until ${window.when}.`;
+  return displayCancelNote(`Free cancellation until ${window.when}.`);
 }
 function venueFacts(hotel) {
   const g = guardFacts(hotel);
@@ -775,5 +781,5 @@ module.exports = {
   policyFacts, guardFacts, supervisionNote, venueMissing, PICK_DATE_CANCEL,
   writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,
   listingHours, hoursView, hoursLines, syncHoursLabels, inSeason, latePossible, hotelLatePossible, lateWindow, syncLateAddons,
-  cancelNote, riskLines, riskText, riskCard, riskTick, swimNote,
+  cancelNote, displayCancelNote, riskLines, riskText, riskCard, riskTick, swimNote,
 };
