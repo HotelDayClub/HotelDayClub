@@ -1,5 +1,5 @@
 const { esc, money, nice } = require('./util');
-const { spotLabel, hoursView, cancelNote, displayCancelNote, swimNote } = require('./offering');
+const { spotLabel, hoursView, cancelNote, displayCancelNote, swimNote, arrivalText } = require('./offering');
 const { maskName } = require('./passwords');
 const { topicLabel } = require('./contact');
 const seo = require('./seo');
@@ -104,6 +104,7 @@ function bookingNotice(info) {
     ['Place', place],
     ['Date', info.dateLabel],
     ['Access hours', info.hours],
+    ['Expected arrival', info.arrival],
     ['Pass', info.passLabel],
     ['Guests', info.guests],
     ['Included', info.included],
@@ -131,6 +132,9 @@ function bookingNotice(info) {
     park.text,
   ].filter(Boolean).join('\n');
   const bring = towelBring(info.included);
+  const arrivalSentence = info.arrival
+    ? "Your pass is valid any time during the hotel's opening hours — your expected arrival time is an estimate, not a reservation."
+    : '';
   const text = [
     'Hotel Day Club',
     '',
@@ -140,6 +144,7 @@ function bookingNotice(info) {
     '',
     guestLine,
     ...facts.map(([label, value]) => `${label}: ${value}`),
+    arrivalSentence,
     '',
     travel,
     '',
@@ -155,7 +160,7 @@ function bookingNotice(info) {
     privacyLine,
     contactLine,
   ].filter(line => line !== '').join('\n');
-  const passLabels = new Set(['Hotel', 'Place', 'Date', 'Access hours', 'Pass', 'Guests', 'Extras', 'Total', 'Booking code']);
+  const passLabels = new Set(['Hotel', 'Place', 'Date', 'Access hours', 'Expected arrival', 'Pass', 'Guests', 'Extras', 'Total', 'Booking code']);
   const includeLabels = new Set(['Included', 'Included access', 'On site to buy (not included)', 'Food and drink']);
   const passFacts = facts.filter(([label]) => passLabels.has(label));
   if (info.guest) {
@@ -190,7 +195,7 @@ ${qrBlock}
 <p style="margin:0 0 16px;font-family:${FONT};font-size:18px;line-height:1.5;color:${brand['hdc-text']};font-weight:600;">${esc(summary)}</p>
 ${demoBox}
 ${qrCard}
-${mailCard(`${h2('Your pass')}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${factRows(passFacts)}</table>`)}
+${mailCard(`${h2('Your pass')}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${factRows(passFacts)}</table>${arrivalSentence ? `<p style="margin:12px 0 0;font-family:${FONT};font-size:15px;line-height:1.5;color:${brand['hdc-text']};">${esc(arrivalSentence)}</p>` : ''}`)}
 ${includeFacts.length ? mailCard(`${h2("What's included")}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${factRows(includeFacts)}</table>${info.risk ? `<p style="margin:12px 0 0;font-family:${FONT};font-size:14px;line-height:1.5;color:${brand['hdc-text']};border-left:4px solid ${brand['hdc-primary']};padding-left:12px;">${esc(info.risk)}</p>` : ''}`) : ''}
 ${mailCard(`${h2('What to bring')}<p style="margin:0;font-family:${FONT};font-size:16px;line-height:1.5;color:${brand['hdc-text']};">${esc(bring)}</p>`)}
 ${there}
@@ -268,7 +273,7 @@ async function claimAndSend(db, claimSql, claimArgs, triesSql, triesArgs, stateS
 }
 
 async function bookingMessage(db, code) {
-  const row = db.prepare(`SELECT b.id, b.code, b.date, b.qty, b.total, b.email, b.party, b.guest_name, b.cancel_note, b.created_at, b.hotel_id,
+  const row = db.prepare(`SELECT b.id, b.code, b.date, b.qty, b.total, b.email, b.party, b.guest_name, b.cancel_note, b.created_at, b.hotel_id, b.expected_arrival,
     p.name AS pass_name, p.holds, p.id AS pass_id
     FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id WHERE b.code=?`).get(code);
   if (!row) return null;
@@ -302,6 +307,7 @@ async function bookingMessage(db, code) {
     area: hotel ? hotel.area : '',
     dateLabel: nice(row.date),
     hours: view.span || view.hoursLine,
+    arrival: arrivalText(row.expected_arrival, 'estimate'),
     passLabel: `${spotLabel({ name: row.pass_name, holds: row.holds })} × ${row.qty}`,
     guests: String(party),
     included,

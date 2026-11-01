@@ -1,9 +1,14 @@
 const { csvCell } = require('./waitlist');
+const { arrivalText } = require('./offering');
 
 const BOOKING_COLUMNS = [
-  'code', 'hotel', 'hotel_slug', 'date', 'qty', 'party', 'guest_name', 'email', 'phone',
+  'code', 'hotel', 'hotel_slug', 'date', 'qty', 'party', 'expected_arrival', 'guest_name', 'email', 'phone',
   'status', 'unit_price', 'total', 'created_at', 'checked_in_at', 'arrived_count', 'marketing_opt_in',
   'rules_ack_at', 'terms_ack_at', 'risk_ack_at', 'cancel_note', 'seeded',
+];
+
+const HOTEL_BOOKING_COLUMNS = [
+  'date', 'booking_code', 'guest_name', 'pass', 'guests', 'expected_arrival', 'status', 'gross_sales', 'paid_to_you',
 ];
 
 const HOTEL_COLUMNS = [
@@ -24,4 +29,12 @@ function hotelsCsv(rows) {
   return toCsv(HOTEL_COLUMNS, rows);
 }
 
-module.exports = { BOOKING_COLUMNS, HOTEL_COLUMNS, bookingsCsv, hotelsCsv };
+function hotelBookingsCsv(rows) {
+  return toCsv(HOTEL_BOOKING_COLUMNS, rows.map(row => ({
+    ...row,
+    expected_arrival: arrivalText(row.expected_arrival, 'csv'),
+    paid_to_you: row.paid_to_you == null || row.paid_to_you === '' ? '$—' : row.paid_to_you,
+  })));
+}
+
+module.exports = { BOOKING_COLUMNS, HOTEL_COLUMNS, HOTEL_BOOKING_COLUMNS, bookingsCsv, hotelsCsv, hotelBookingsCsv };

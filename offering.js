@@ -775,6 +775,103 @@ async function refreshToday(){
 setInterval(refreshToday,8000);
 </script>`;
 
+// A window stays on a same-day list only when it ends at least this many minutes from now.
+const ARRIVAL_LEAD_MINUTES = 30;
+const ARRIVAL_LIST_ERROR = 'Please choose a time from the list.';
+
+function hourParts(total) {
+  const mins = ((total % (24 * 60)) + (24 * 60)) % (24 * 60);
+  let h = Math.floor(mins / 60);
+  const m = mins % 60;
+  const ap = h >= 12 ? 'pm' : 'am';
+  h = h % 12 || 12;
+  return { text: m ? `${h}:${pad(m)}` : String(h), ap };
+}
+function arrivalHourWords(hhmm) {
+  const min = minutes(parseTime(hhmm) || '');
+  if (min == null) return '';
+  const part = hourParts(min);
+  return `${part.text} ${part.ap}`;
+}
+function arrivalWindowPhrase(start) {
+  const parsed = parseTime(start);
+  const startMin = minutes(parsed || '');
+  if (startMin == null) return '';
+  const a = hourParts(startMin);
+  const b = hourParts(startMin + 60);
+  if (a.ap === b.ap) return `${a.text}–${b.text} ${b.ap}`;
+  return `${a.text} ${a.ap} – ${b.text} ${b.ap}`;
+}
+function hourWindows(opens, closes) {
+  const startMin = minutes(parseTime(opens) || '');
+  const endMin = minutes(parseTime(closes) || '');
+  if (startMin == null || endMin == null || endMin <= startMin) return [];
+  const out = [];
+  for (let t = startMin; t + 60 <= endMin; t += 60) out.push(`${pad(Math.floor(t / 60))}:${pad(t % 60)}`);
+  return out;
+}
+function arrivalBounds(db, hotel, date) {
+  const plan = hotel && hotel.id ? dayPlan(db, hotel, date) : null;
+  if (plan && plan.open && plan.opens) return { opens: plan.opens, closes: plan.effective || plan.closes };
+  if (plan && plan.open === false) return null;
+  const opens = parseTime(hotel && hotel.opens);
+  const closes = parseTime(hotel && hotel.closes);
+  if (opens && closes && minutes(closes) > minutes(opens)) return { opens, closes };
+  const id = (hotel && (hotel.slug || hotel.id)) || 'unknown';
+  console.warn('arrival hours missing; using 9am–5pm hotel=' + id);
+  return { opens: '09:00', closes: '17:00' };
+}
+function zoneClockMinutes(hotel, now) {
+  const { hotelZone } = require('./calendar');
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: hotelZone(hotel),
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now);
+  const hour = Number(parts.find(part => part.type === 'hour').value);
+  const minute = Number(parts.find(part => part.type === 'minute').value);
+  return (hour % 24) * 60 + minute;
+}
+function arrivalOptions(db, hotel, date, now = new Date()) {
+  const unsure = { value: 'unsure', label: 'Not sure' };
+  const bounds = arrivalBounds(db, hotel, date);
+  if (!bounds) return [unsure];
+  let windows = hourWindows(bounds.opens, bounds.closes);
+  const { hotelToday } = require('./calendar');
+  if (date === hotelToday(hotel, now)) {
+    const earliestEnd = zoneClockMinutes(hotel, now) + ARRIVAL_LEAD_MINUTES;
+    windows = windows.filter(start => minutes(start) + 60 >= earliestEnd);
+  }
+  return [unsure, ...windows.map(start => ({ value: start, label: arrivalWindowPhrase(start) }))];
+}
+function normalizeArrival(raw, options) {
+  if (raw != null && typeof raw !== 'string') return { status: 400, error: ARRIVAL_LIST_ERROR };
+  const value = raw == null ? '' : raw.trim();
+  if (!value) return { value: 'unsure' };
+  if (!options.some(option => option.value === value)) return { status: 409, error: ARRIVAL_LIST_ERROR };
+  return { value };
+}
+function arrivalText(value, mode) {
+  const missing = value == null || String(value).trim() === '';
+  if (mode === 'csv') {
+    if (missing) return '';
+    if (value === 'unsure') return 'Not sure';
+    return String(value);
+  }
+  if (mode === 'estimate') {
+    if (missing) return '';
+    if (value === 'unsure') return 'Not sure';
+    const phrase = arrivalWindowPhrase(value);
+    return phrase ? `${phrase} (estimate)` : '';
+  }
+  if (missing) return '—';
+  if (value === 'unsure') return 'Not sure';
+  if (mode === 'short') return arrivalHourWords(value) || '—';
+  const phrase = arrivalWindowPhrase(value);
+  return phrase ? `${phrase} (guest's estimate)` : '—';
+}
+
 module.exports = {
   KINDS, PHOTOS, fmtTime, parseTime, minutes, spotLabel, hoursSummary, dayPlan, dayClosure, closureReason,
   rulesLines, rulesText, rulesCard, amenitiesFrom, slugify, hoursFor, blankJoin, readForm,
@@ -782,4 +879,5 @@ module.exports = {
   writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,
   listingHours, hoursView, hoursLines, syncHoursLabels, inSeason, latePossible, hotelLatePossible, lateWindow, syncLateAddons,
   cancelNote, displayCancelNote, riskLines, riskText, riskCard, riskTick, swimNote,
+  ARRIVAL_LEAD_MINUTES, ARRIVAL_LIST_ERROR, arrivalOptions, normalizeArrival, arrivalText,
 };
