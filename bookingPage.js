@@ -1,5 +1,5 @@
 const { esc, money, nice } = require('./util');
-const { spotLabel, swimNote, displayCancelNote } = require('./offering');
+const { spotLabel, swimNote, displayCancelNote, arrivalText } = require('./offering');
 const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
 const { PASS_FOOD_LINE } = require('./inclusions');
 const { accessLine } = require('./access');
@@ -75,6 +75,8 @@ function bookingPageBody(v) {
   const chip = cancelled ? 'Cancelled' : 'Confirmed';
   const dateLine = `${nice(b.date)}${v.when ? ` · ${v.when}` : ''}`;
   const emailRow = v.shownEmail ? `<dt>Email</dt><dd>${esc(v.shownEmail)}</dd>` : '';
+  const arrival = arrivalText(b.expected_arrival, 'estimate');
+  const arrivalRow = arrival ? `<dt>Expected arrival</dt><dd>${esc(arrival)}</dd>` : '';
   const addons = v.adds && v.adds.length
     ? `<section class="bk-card" aria-labelledby="bk-add"><h2 id="bk-add">Add-ons</h2><ul class="bk-adds">${v.adds.map(a => `<li><span>${esc(a.name)} × ${a.qty}</span><b>${money(a.total)}</b></li>`).join('')}</ul></section>`
     : '';
@@ -118,6 +120,7 @@ ${qrBlock}
 <div class="bk-hotel">${photoHtml(b)}<div><b>${esc(b.hotel)}</b><span>${esc(b.area)}, Australia</span></div></div>
 <dl class="bk-facts">
 <dt>Date</dt><dd>${esc(dateLine)}</dd>
+${arrivalRow}
 <dt>Pass</dt><dd>${esc(pass)}</dd>
 <dt>Guests</dt><dd>${v.party}</dd>
 <dt>Guest</dt><dd>${esc(v.shownName)}</dd>

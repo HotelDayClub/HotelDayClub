@@ -33,12 +33,12 @@ const { parseSignup, saveSignup, notifyWebhook, rateLimited, waitlistCsv } = req
 const { TOPICS, parseMessage, contactLimited, saveMessage, topicLabel, sameSitePost } = require('./contact');
 const paths = require('./paths');
 const backups = require('./backups');
-const { bookingsCsv, hotelsCsv } = require('./dataExport');
+const { bookingsCsv, hotelsCsv, hotelBookingsCsv } = require('./dataExport');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
   hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST,
   fmtTime, cancelNote, riskCard, riskText, riskTick, swimNote, hotelLatePossible, lateWindow, amenitiesFrom,
-  venueMissing, PICK_DATE_CANCEL,
+  venueMissing, PICK_DATE_CANCEL, arrivalOptions, normalizeArrival, arrivalText,
 } = require('./offering');
 const app = express();
 app.set('trust proxy', 1);
@@ -657,6 +657,10 @@ function bookFieldErrors(body) {
 function fieldError(errors, key) {
   return errors && errors[key] ? `<p class="field-error" id="err-${key}">${esc(errors[key])}</p>` : '';
 }
+function checkedArrival(hotel, date, raw, now = new Date()) {
+  if (!hotel) return { value: 'unsure' };
+  return normalizeArrival(raw, arrivalOptions(db, hotel, date, now));
+}
 
 function renderCheckout(query, res, extra = {}) {
   const v = validate(query); if (v.err) return errPage(v, res);
@@ -678,7 +682,7 @@ function renderCheckout(query, res, extra = {}) {
   const rulesOpts = { ...hoursView(db, h, date), foodSentence: foodLine };
   const picked = new Set(v.addons.map(x => x.code));
   const offer = addonAvailability(h.id, date);
-  const addonFields = offer.length ? `<section class="co-card" id="addon-block"><h2><span class="co-step">2</span> Add extras <span class="extra-opt">(optional)</span></h2><div class="extra-list" id="co-addons">${offer.map(ad => {
+  const addonFields = offer.length ? `<section class="co-card" id="addon-block"><h2><span class="co-step">3</span> Add extras <span class="extra-opt">(optional)</span></h2><div class="extra-list" id="co-addons">${offer.map(ad => {
     const need = ad.per === 'booking' ? 1 : people;
     const dis = ad.remaining < need;
     const on = !dis && picked.has(ad.code);
@@ -686,7 +690,17 @@ function renderCheckout(query, res, extra = {}) {
     const note = dis ? '<span class="extra-note">Sold out for this date</span>' : '';
     return `<label class="extra${dis ? ' is-off' : ''}"><input type="checkbox" name="addon" value="${esc(ad.code)}" data-price="${Number(ad.price) || 0}" data-per="${esc(ad.per)}" ${dis ? 'disabled' : ''} ${on ? 'checked' : ''}><span class="extra-name">${esc(ad.name)}</span>${price}${note}</label>`;
   }).join('')}</div></section>` : '';
-  const payStep = offer.length ? '3' : '2';
+  const arrivalChoices = arrivalOptions(db, h, date);
+  const pickedArrival = arrivalChoices.some(option => option.value === draft.arrival) ? draft.arrival : 'unsure';
+  const arrivalInvalid = errors.arrival ? ' aria-invalid="true" aria-describedby="err-arrival arrival-help"' : ' aria-describedby="arrival-help"';
+  const arrivalOptionsHtml = arrivalChoices.map(option => `<option value="${esc(option.value)}"${option.value === pickedArrival ? ' selected' : ''}>${esc(option.label)}</option>`).join('');
+  const arrivalCard = `<section class="co-card" id="arrival-card"><h2><span class="co-step">2</span> Arrival</h2>
+<label class="fl" for="arrival">Expected arrival time
+<select id="arrival" name="arrival"${arrivalInvalid}>${arrivalOptionsHtml}</select>
+${fieldError(errors, 'arrival')}</label>
+<p class="muted small" id="arrival-help">An estimate only. It lets the hotel plan for you; it is not a reserved time slot.</p>
+</section>`;
+  const payStep = offer.length ? '4' : '3';
   const confirmLabel = `Confirm booking · ${money(grand)} (demo)`;
   res.status(extra.status || 200).send(page('Checkout', `<div class="wrap sec checkout">
 <a class="link small" href="/h/${h.slug}?date=${date}">← Back to listing</a><h1 class="l-title">Confirm and pay</h1>
@@ -715,6 +729,7 @@ ${extra.formError ? `<div class="alert" role="alert">${esc(extra.formError)}</di
 <div class="two"><label class="fl">Email<input name="email" type="email" required autocomplete="email" placeholder="alex@example.com" value="${esc(draft.email || '')}" ${errors.email ? 'aria-invalid="true" aria-describedby="err-email"' : ''}>${fieldError(errors, 'email')}</label>
 <label class="fl">Mobile<input name="phone" type="tel" required pattern="[0-9+ \\-\\(\\)]{8,}" autocomplete="tel" placeholder="0412 345 678" value="${esc(draft.phone || '')}" ${errors.phone ? 'aria-invalid="true" aria-describedby="err-phone"' : ''}>${fieldError(errors, 'phone')}</label></div>
 </section>
+${arrivalCard}
 ${addonFields}
 <section class="co-card"><h2><span class="co-step">${payStep}</span> Payment</h2>
 <div class="demo-pay"><div class="dp-head">${ICON.lock} <b>Demo payment, no charge</b></div>
@@ -754,7 +769,7 @@ const form=document.getElementById('co-form');
 const storeKey='hdc-checkout:'+form.hotel.value+':'+form.date.value+':'+form.pass.value+':'+form.qty.value;
 function remembered(){try{return JSON.parse(sessionStorage.getItem(storeKey)||'{}')}catch(e){return {}}}
 function remember(){
-  const data={name:form.name.value,email:form.email.value,phone:form.phone.value,rules:form.rules.checked,terms:form.terms.checked,risk:form.risk.checked,marketing:form.marketing.checked,addon:[...form.querySelectorAll('input[name=addon]:checked')].map(i=>i.value)};
+  const data={name:form.name.value,email:form.email.value,phone:form.phone.value,arrival:form.arrival.value,rules:form.rules.checked,terms:form.terms.checked,risk:form.risk.checked,marketing:form.marketing.checked,addon:[...form.querySelectorAll('input[name=addon]:checked')].map(i=>i.value)};
   try{sessionStorage.setItem(storeKey, JSON.stringify(data))}catch(e){}
 }
 const saved=remembered();
@@ -762,16 +777,27 @@ if(saved && !form.name.value && !form.email.value && !form.phone.value){
   if(saved.name) form.name.value=saved.name;
   if(saved.email) form.email.value=saved.email;
   if(saved.phone) form.phone.value=saved.phone;
+  if(saved.arrival){const opt=form.arrival.querySelector('option[value="'+String(saved.arrival).replace(/"/g,'')+'"]'); if(opt) form.arrival.value=saved.arrival;}
   form.rules.checked=!!saved.rules; form.terms.checked=!!saved.terms; form.risk.checked=!!saved.risk; form.marketing.checked=!!saved.marketing;
   (saved.addon||[]).forEach(code=>{const box=form.querySelector('input[name=addon][value="'+code.replace(/"/g,'')+'"]'); if(box && !box.disabled) box.checked=true});
   paint();
 }
 form.addEventListener('input', remember);
 form.addEventListener('change', remember);
+function clearInvalid(el){
+  el.removeAttribute('aria-invalid');
+  const ids=(el.getAttribute('aria-describedby')||'').split(/\\s+/).filter(Boolean);
+  const keep=[];
+  ids.forEach(function(id){const msg=document.getElementById(id); if(msg&&msg.classList.contains('field-error')) msg.remove(); else keep.push(id);});
+  if(keep.length) el.setAttribute('aria-describedby', keep.join(' '));
+  else el.removeAttribute('aria-describedby');
+}
 form.querySelectorAll('[aria-invalid="true"]').forEach(el=>{
-  el.addEventListener('input', function(){el.removeAttribute('aria-invalid'); const id=el.getAttribute('aria-describedby'); const msg=id&&document.getElementById(id); if(msg) msg.remove();});
-  el.addEventListener('change', function(){el.removeAttribute('aria-invalid'); const id=el.getAttribute('aria-describedby'); const msg=id&&document.getElementById(id); if(msg) msg.remove();});
+  el.addEventListener('input', function(){clearInvalid(el);});
+  el.addEventListener('change', function(){clearInvalid(el);});
 });
+const firstInvalid=form.querySelector('[aria-invalid="true"]');
+if(firstInvalid) firstInvalid.focus();
 form.addEventListener('submit', function(ev){
   if(sending){ev.preventDefault(); return;}
   sending=true;
@@ -795,8 +821,17 @@ app.post('/book', async (req, res) => {
     hold.pending = true;
   }
   const errors = bookFieldErrors(b);
-  let code, v;
+  let code, v, arrivalValue = 'unsure', arrivalBlocked = false;
   v = validate(b);
+  if (!v.err && v.h) {
+    const checked = checkedArrival(v.h, v.date, b.arrival);
+    if (checked.malformed || checked.status === 400) {
+      if (hold) hold.pending = false;
+      return res.status(400).type('text/plain; charset=utf-8').send('Please choose a time from the list.');
+    }
+    if (checked.error) errors.arrival = checked.error;
+    else arrivalValue = checked.value;
+  }
   if (v.err || Object.keys(errors).length) {
     if (hold) hold.pending = false;
     if (v.err && !v.h) return errPage(v, res);
@@ -808,15 +843,34 @@ app.post('/book', async (req, res) => {
   const phone = String(b.phone || '').trim();
   db.transaction(() => {
     v = validate(b); if (v.err) return;
+    const again = checkedArrival(v.h, v.date, b.arrival);
+    if (again.malformed || again.status === 400) {
+      v = { malformed: true };
+      return;
+    }
+    if (again.error) {
+      errors.arrival = again.error;
+      arrivalBlocked = true;
+      return;
+    }
+    arrivalValue = again.value;
     code = newCode();
     const seen = { ...hoursView(db, v.h, v.date), foodSentence: guestFoodLine(db, v.h) };
     const note = cancelNote(db, v.h, v.date);
-    const info = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,party,rules_ack_at,rules_text,marketing_opt_in,terms_ack_at,risk_ack_at,risk_text,cancel_note)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),?,?,datetime('now','localtime'),datetime('now','localtime'),?,?)`)
-      .run(code, v.h.id, v.p.id, v.date, v.qty, v.p.price, v.p.price * v.qty + v.addonTotal, name, email, phone, v.people, rulesText(v.h, seen), b.marketing === '1' ? 1 : 0, riskText(v.h), note);
+    const info = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,party,rules_ack_at,rules_text,marketing_opt_in,terms_ack_at,risk_ack_at,risk_text,cancel_note,expected_arrival)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),?,?,datetime('now','localtime'),datetime('now','localtime'),?,?,?)`)
+      .run(code, v.h.id, v.p.id, v.date, v.qty, v.p.price, v.p.price * v.qty + v.addonTotal, name, email, phone, v.people, rulesText(v.h, seen), b.marketing === '1' ? 1 : 0, riskText(v.h), note, arrivalValue);
     const insAdd = db.prepare('INSERT INTO booking_addons(booking_id,addon_id,name,qty,unit_price,total) VALUES (?,?,?,?,?,?)');
     for (const ad of v.addons) insAdd.run(info.lastInsertRowid, ad.id, ad.name, ad.qty, ad.price, ad.line);
   }).immediate();
+  if (v && v.malformed) {
+    if (hold) hold.pending = false;
+    return res.status(400).type('text/plain; charset=utf-8').send('Please choose a time from the list.');
+  }
+  if (arrivalBlocked) {
+    if (hold) hold.pending = false;
+    return renderCheckout(b, res, { draft: b, errors, token, status: 409 });
+  }
   if (v.err) {
     if (hold) hold.pending = false;
     return renderCheckout(b, res, { draft: b, errors, token, status: 409, formError: v.err });
@@ -874,7 +928,7 @@ app.get('/qr/:token.png', async (req, res) => {
   if (!booking) {
     res.set('Cache-Control', 'no-store');
     res.set('X-Robots-Tag', 'noindex, nofollow');
-    return res.status(404).type('text/plain; charset=utf-8').send('');
+    return res.status(404).type('text/plain; charset=utf-8').send('Not found');
   }
   try {
     const png = await QRCode.toBuffer(checkinUrl(booking.code), { margin: 1, width: 360, color: { dark: brand['hdc-navy'], light: brand['hdc-bg'] } });
@@ -886,7 +940,7 @@ app.get('/qr/:token.png', async (req, res) => {
   } catch (err) {
     res.set('Cache-Control', 'no-store');
     res.set('X-Robots-Tag', 'noindex, nofollow');
-    return res.status(404).type('text/plain; charset=utf-8').send('');
+    return res.status(404).type('text/plain; charset=utf-8').send('Not found');
   }
 });
 app.get('/booking/:code/calendar.ics', (req, res) => {
@@ -1139,14 +1193,19 @@ function logForm(b, redirect, log) {
   if (!log) return '';
   return `<details class="log-note"><summary>No-show or incident</summary><form method="post" action="/hotel/note"><input type="hidden" name="code" value="${esc(b.code)}"><input type="hidden" name="r" value="${esc(redirect)}"><input name="note" maxlength="200" placeholder="Optional note" autocomplete="off"><div class="log-actions"><button class="btn btn-line btn-sm" name="kind" value="no_show">No-show</button><button class="btn btn-line btn-sm" name="kind" value="incident">Incident</button></div></form></details>`;
 }
-const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false } = {}) => {
+function arrivalCell(value, mode) {
+  return esc(arrivalText(value, mode === 'detail' ? 'detail' : 'short'));
+}
+const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '' } = {}) => {
   rows = withNotes(rows);
-  return rows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th>${hotelCol ? '<th>Hotel</th>' : ''}<th>Date</th><th>Guest</th><th>Seating</th><th>Spots</th><th>Total</th><th>Status</th></tr></thead><tbody>
-${rows.map(b => `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(b.hotel)}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(b.guest_name)}</b> ${parkingTag(b)}<div class="muted small">${esc(b.email)} · ${esc(b.phone)}</div></td>${seatCell(b)}<td>${b.qty}</td><td>${money(b.total)}</td>
+  const head = arrival ? '<th>Arrival</th>' : '';
+  const cell = b => arrival ? `<td>${arrival === 'detail' ? `Expected arrival: ${arrivalCell(b.expected_arrival, 'detail')}` : arrivalCell(b.expected_arrival, 'short')}</td>` : '';
+  return rows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th>${hotelCol ? '<th>Hotel</th>' : ''}<th>Date</th><th>Guest</th>${head}<th>Seating</th><th>Spots</th><th>Total</th><th>Status</th></tr></thead><tbody>
+${rows.map(b => `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(b.hotel)}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(b.guest_name)}</b> ${parkingTag(b)}<div class="muted small">${esc(b.email)} · ${esc(b.phone)}</div></td>${cell(b)}${seatCell(b)}<td>${b.qty}</td><td>${money(b.total)}</td>
 <td>${statusCell(b, { checkin, redirect, day, compact: true, adminCancel })}${noteBits(b)}${logForm(b, redirect, log)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No guests.</p>';
 };
 const BQ = `SELECT b.*, p.name pass, p.holds, h.name hotel, (SELECT group_concat(ba.name || ' × ' || ba.qty, ', ') FROM booking_addons ba WHERE ba.booking_id=b.id) addons, (SELECT 1 FROM booking_addons ba JOIN addons a ON a.id=ba.addon_id WHERE ba.booking_id=b.id AND a.code='parking') parking_addon, (SELECT mode FROM inclusions i WHERE i.hotel_id=b.hotel_id AND i.code='parking') parking_mode FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id JOIN hotels h ON h.id=b.hotel_id`;
-function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false } = {}) {
+function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '' } = {}) {
   rows = withNotes(rows);
   if (!rows.length) return '<p class="muted">No guests.</p>';
   return `<div class="guest-cards">${rows.map(b => {
@@ -1155,8 +1214,11 @@ function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel
     const rules = b.rules_ack_at ? '<div class="muted small">Rules accepted</div>' : '';
     const adds = b.addons ? `<div class="muted small">${esc(b.addons)}</div>` : '';
     const action = statusCell(b, { checkin, redirect, day, compact: false, adminCancel });
+    const arrivalLine = !arrival ? '' : arrival === 'detail'
+      ? `<p>Expected arrival: ${arrivalCell(b.expected_arrival, 'detail')}</p>`
+      : `<p class="muted small">Arrival: ${arrivalCell(b.expected_arrival, 'short')}</p>`;
     return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(b.guest_name)}</b> ${parkingTag(b)}<div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(b.hotel) : ''} · ${esc(nice(b.date))}</div></div><b>${money(b.total)}</b></div>
-<p>${esc(label)} × ${b.qty} · ${party} ${party === 1 ? 'person' : 'people'}</p>${rules}${adds}${noteBits(b)}${action}${logForm(b, redirect, log)}</article>`;
+<p>${esc(label)} × ${b.qty} · ${party} ${party === 1 ? 'person' : 'people'}</p>${arrivalLine}${rules}${adds}${noteBits(b)}${action}${logForm(b, redirect, log)}</article>`;
   }).join('')}</div>`;
 }
 function guestList(rows, opts = {}) {
@@ -1170,7 +1232,7 @@ function todaySection(h, { big = false, live = '/hotel/today-list', day = '' } =
   const people = rows.reduce((a, b) => a + (b.party || b.qty * (b.holds || 1)), 0);
   const tally = arrivedOfBooked(rows);
   const redirect = big ? '/hotel/checkin' : '/hotel';
-  const body = big ? guestCards(rows, { redirect, day: on }) : guestList(rows, { redirect, day: on });
+  const body = big ? guestCards(rows, { redirect, day: on, arrival: 'short' }) : guestList(rows, { redirect, day: on, arrival: 'short' });
   return `<section id="today" class="panel" data-live="${esc(live)}"><h2 class="ph2">Today's guests <span class="muted small">${rows.length} booking${rows.length === 1 ? '' : 's'} · ${spots} spots · ${people} people · ${tally.arrived} arrived of ${tally.booked} booked</span> <a class="link small no-print" href="/hotel/print">Print list</a></h2>${body}</section>`;
 }
 function dashShell(h, inner, { here = '', live = false } = {}) {
@@ -1184,6 +1246,13 @@ app.get('/hotel/today-list', hotelAuth, (req, res) => {
   res.set('Cache-Control', 'no-store');
   const big = req.query.view === 'checkin';
   res.send(todaySection(req.hotel, { big, live: big ? '/hotel/today-list?view=checkin' : '/hotel/today-list' }));
+});
+app.get('/hotel/bookings.csv', hotelAuth, (req, res) => {
+  const rows = db.prepare(`SELECT b.date AS date, b.code AS booking_code, b.guest_name, p.name AS pass,
+    COALESCE(b.party, b.qty * COALESCE(p.holds, 1)) AS guests, b.expected_arrival, b.status, b.total AS gross_sales
+    FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id
+    WHERE b.hotel_id=? ORDER BY b.date, b.id`).all(req.hotel.id);
+  sendCsv(res, 'bookings.csv', hotelBookingsCsv(rows));
 });
 function bookingDayState(b, hotel) {
   const day = hotelToday(hotel);
@@ -1245,7 +1314,7 @@ function checkinCard(info) {
     ? `<form method="post" action="/hotel/checkin"><input type="hidden" name="code" value="${esc(info.code)}"><input type="hidden" name="confirm" value="1"><input type="hidden" name="r" value="/hotel/checkin">${arrivedField(b)}<button class="btn btn-navy btn-checkin">Check in</button></form>`
     : '';
   const statusLabel = info.st === 'ready' ? 'Confirmed' : info.st === 'used' ? checkedInLabel(b) : info.st === 'cancel' ? 'Cancelled' : 'Confirmed';
-  return `<article class="checkin-card scan-status ${tone}"><p class="eyebrow-s">Booking ${esc(info.code)}</p><h2>${esc(b.guest_name)} ${parkingTag(b)}</h2><dl><dt>Pass</dt><dd>${esc(pass)}</dd><dt>Qty</dt><dd>${b.qty}</dd><dt>Date</dt><dd>${esc(nice(b.date))}</dd><dt>Status</dt><dd>${esc(statusLabel)}</dd></dl><p>${esc(note)}</p>${button}</article>`;
+  return `<article class="checkin-card scan-status ${tone}"><p class="eyebrow-s">Booking ${esc(info.code)}</p><h2>${esc(b.guest_name)} ${parkingTag(b)}</h2><dl><dt>Pass</dt><dd>${esc(pass)}</dd><dt>Qty</dt><dd>${b.qty}</dd><dt>Date</dt><dd>${esc(nice(b.date))}</dd><dt>Arrival</dt><dd>${arrivalCell(b.expected_arrival, 'short')}</dd><dt>Status</dt><dd>${esc(statusLabel)}</dd></dl><p>${esc(note)}</p>${button}</article>`;
 }
 function checkinResultCard(b, hotel) {
   const info = { st: bookingDayState(b, hotel), b, code: b.code, at: b.checked_in_at ? hhmm(b.checked_in_at) : '' };
@@ -1356,14 +1425,14 @@ app.get('/hotel', hotelAuth, (req, res) => {
   res.send(dashShell(h, `
 ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <div class="dash-head"><div><p class="eyebrow-s">Hotel dashboard</p><h1 class="l-title">G'day, ${esc(h.name.replace(' (Demo)', ''))}</h1><p class="muted">${esc(nice(t))} · ${inToday} of ${dueToday} spots checked in today · ${tally.arrived} arrived of ${tally.booked} booked</p></div>
-<div class="dash-actions"><a class="btn btn-line" href="/hotel/analytics">Analytics</a><a class="btn btn-navy" href="/hotel/checkin">Check in a guest</a></div></div>
+<div class="dash-actions"><a class="btn btn-line" href="/hotel/analytics">Analytics</a><a class="btn btn-line" href="/hotel/bookings.csv">Download bookings</a><a class="btn btn-navy" href="/hotel/checkin">Check in a guest</a></div></div>
 ${soldWarnHtml(h.id, passes, days, grid)}
 ${opsBar(h, passes)}
 <div class="stats">${stat('Spots booked', s.spots, `${s.n} bookings · ${s.people} people`)}${stat('Gross sales', money(s.gross), `Includes ${money(addonGross)} add-ons · last 30 days ${money(s30.gross)}`)}${stat(`Hotel share (${hotelPct()}%)`, money(s.gross * HOTEL_SHARE), 'Paid out to you')}${stat(`Platform commission (${feePct()}%)`, money(s.gross * (1 - HOTEL_SHARE)), 'Hotel Day Club fee')}</div>
 <div class="seat-stats">${bySeat.map(r => `<span><b>${esc(spotLabel(r))}</b> ${r.spots} booked · ${r.people} people</span>`).join('')}</div>
 ${todaySection(h)}
 <section id="lookup" class="panel"><h2 class="ph2">Booking lookup</h2><form class="lookup" method="get" action="/hotel#lookup"><input name="q" value="${esc(q)}" placeholder="Booking code (HDC-12345), name, email or phone"><button class="btn btn-navy">${ICON.search} Find</button>${q ? '<a class="link" href="/hotel">Clear</a>' : ''}</form>
-${found ? `<p class="muted small">${found.length} result${found.length === 1 ? '' : 's'} for “${esc(q)}”</p>${guestList(found, { redirect: '/hotel?q=' + encodeURIComponent(q) + '#lookup' })}` : ''}</section>
+${found ? `<p class="muted small">${found.length} result${found.length === 1 ? '' : 's'} for “${esc(q)}”</p>${guestList(found, { redirect: '/hotel?q=' + encodeURIComponent(q) + '#lookup', arrival: 'detail' })}` : ''}</section>
 <section id="upcoming" class="panel"><h2 class="ph2">Upcoming guests</h2>${guestList(upcoming, { checkin: false })}</section>
 <section id="avail" class="panel"><h2 class="ph2">Next 14 days</h2><div class="tbl-wrap"><table class="tbl avail"><thead><tr><th>Seating</th>${days.map(d => `<th>${nice(d).replace(' ', '<br>')}</th>`).join('')}</tr></thead><tbody>
 ${passes.map(p => `<tr><td><b>${esc(spotLabel(p))}</b><div class="muted small">cap ${p.daily_cap}</div></td>${days.map(d => { const a = grid[d].find(x => x.id === p.id); if (a.blocked) return `<td class="bl">${/same-day|closed for today/i.test(a.blocked) ? 'Cutoff' : 'Closed'}</td>`; return `<td class="${a.sold >= p.daily_cap ? 'full' : ''}">${a.sold}/${p.daily_cap}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div><p class="muted small">Booked out of the daily limit. Swipe sideways for later days.</p></section>
@@ -1727,7 +1796,7 @@ ${contactMessagesHtml()}
 ${per.map(r => `<tr><td><a class="link" href="/admin?hotel=${r.id}#all"><b>${esc(r.name)}</b></a><div class="muted small">${esc(r.area)}</div>${hotelPasswordForm(r)}</td><td>${r.n}</td><td>${r.passes}</td><td>${r.today}</td><td>${money(r.gross)}</td><td>${money(r.gross * HOTEL_SHARE)}</td><td><b>${money(r.gross * (1 - HOTEL_SHARE))}</b></td></tr>`).join('')}
 <tr class="tot"><td>Total</td><td>${tot.n}</td><td>${tot.passes}</td><td>${tot.today}</td><td>${money(tot.gross)}</td><td>${money(tot.gross * HOTEL_SHARE)}</td><td>${money(tot.gross * (1 - HOTEL_SHARE))}</td></tr></tbody></table></div></section>
 <section class="panel" id="all"><h2 class="ph2">Latest bookings</h2><form class="lookup" method="get" action="/admin#all"><select name="hotel"><option value="">All hotels</option>${per.map(r => `<option value="${r.id}" ${r.id === hid ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select><input name="q" value="${esc(q)}" placeholder="Code, name or email"><button class="btn btn-navy">Filter</button></form>
-${guestList(rows, { checkin: false, hotelCol: true, log: false, adminCancel: true })}<p class="muted small">Showing the latest ${rows.length} (max 100).</p></section>
+${guestList(rows, { checkin: false, hotelCol: true, log: false, adminCancel: true, arrival: 'short' })}<p class="muted small">Showing the latest ${rows.length} (max 100).</p></section>
 <section class="panel"><h2 class="ph2">Guest notes</h2>${notes.length ? notes.map(n => `<div class="pending-row"><div><b>${n.kind === 'incident' ? 'Incident' : 'No-show'}</b> · ${esc(n.guest_name)} · ${esc(n.code)}<div class="muted small">${esc(n.hotel)} · ${esc(nice(n.date))} · ${esc(hhmm(n.created_at))}${n.note ? ' · ' + esc(n.note) : ''}</div></div></div>`).join('') : '<p class="muted">No notes yet. Hotels log a no-show or an incident from the guest list.</p>'}</section>
 <section class="panel" id="waitlist"><h2 class="ph2">Waitlist</h2>
 <p class="muted small">${paths.dataDir()
@@ -1825,7 +1894,7 @@ app.get('/admin/backups/latest', adminAuth, (req, res) => {
   res.download(latest.file, latest.name);
 });
 app.get('/admin/export/bookings.csv', adminAuth, (req, res) => {
-  const rows = db.prepare(`SELECT b.code, h.name AS hotel, h.slug AS hotel_slug, b.date, b.qty, b.party, b.guest_name, b.email, b.phone,
+  const rows = db.prepare(`SELECT b.code, h.name AS hotel, h.slug AS hotel_slug, b.date, b.qty, b.party, b.expected_arrival, b.guest_name, b.email, b.phone,
     b.status, b.unit_price, b.total, b.created_at, b.checked_in_at, b.arrived_count, b.marketing_opt_in,
     b.rules_ack_at, b.terms_ack_at, b.risk_ack_at, b.cancel_note, b.seeded
     FROM bookings b JOIN hotels h ON h.id=b.hotel_id ORDER BY b.id`).all();

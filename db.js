@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS blocked_dates(hotel_id INTEGER REFERENCES hotels(id),
 CREATE TABLE IF NOT EXISTS bookings(id INTEGER PRIMARY KEY, code TEXT UNIQUE, hotel_id INTEGER REFERENCES hotels(id),
   pass_type_id INTEGER REFERENCES pass_types(id), date TEXT, qty INTEGER, unit_price INTEGER, total INTEGER,
   guest_name TEXT, email TEXT, phone TEXT, status TEXT DEFAULT 'confirmed', checked_in_at TEXT, created_at TEXT DEFAULT (datetime('now','localtime')),
-  rules_ack_at TEXT, rules_text TEXT, party INTEGER);
+  rules_ack_at TEXT, rules_text TEXT, party INTEGER, expected_arrival TEXT);
 CREATE TABLE IF NOT EXISTS addons(id INTEGER PRIMARY KEY, hotel_id INTEGER REFERENCES hotels(id), code TEXT, name TEXT,
   blurb TEXT, price INTEGER, daily_cap INTEGER, per TEXT, enabled INTEGER DEFAULT 0, sort INTEGER, UNIQUE(hotel_id, code));
 CREATE TABLE IF NOT EXISTS booking_addons(booking_id INTEGER REFERENCES bookings(id), addon_id INTEGER REFERENCES addons(id),
@@ -105,7 +105,7 @@ ensureCols('hotels', [
   ['is_demo', 'INTEGER NOT NULL DEFAULT 0'],
 ]);
 ensureCols('pass_types', [['holds', 'INTEGER DEFAULT 1'], ['photo', 'TEXT'], ['kind', 'TEXT'], ['featured', 'INTEGER DEFAULT 0']]);
-ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0'], ['terms_ack_at', 'TEXT'], ['risk_ack_at', 'TEXT'], ['risk_text', 'TEXT'], ['cancel_note', 'TEXT'], ['seeded', 'INTEGER NOT NULL DEFAULT 0'], ['refunded', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_tries', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_state', 'TEXT'], ['arrived_count', 'INTEGER']]);
+ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0'], ['terms_ack_at', 'TEXT'], ['risk_ack_at', 'TEXT'], ['risk_text', 'TEXT'], ['cancel_note', 'TEXT'], ['seeded', 'INTEGER NOT NULL DEFAULT 0'], ['refunded', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_tries', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_state', 'TEXT'], ['arrived_count', 'INTEGER'], ['expected_arrival', 'TEXT']]);
 ensureCols('contact_messages', [['alert_tries', 'INTEGER NOT NULL DEFAULT 0'], ['alert_state', 'TEXT']]);
 ensureCols('guest_notes', [['seeded', 'INTEGER NOT NULL DEFAULT 0']]);
 

@@ -96,12 +96,16 @@ function get(port, urlPath) {
 
     const bad = await get(port, '/qr/' + tampered + '.png');
     assert.strictEqual(bad.status, 404);
-    assert.strictEqual(bad.body.length, 0);
+    assert.strictEqual(bad.body.toString(), 'Not found');
+    assert.ok(String(bad.headers['cache-control']).includes('no-store'));
+    assert.ok(String(bad.headers['x-robots-tag']).includes('noindex'));
 
     const cancelledToken = qrToken('HDC-QRCANCEL');
     const cancelled = await get(port, '/qr/' + cancelledToken + '.png');
     assert.strictEqual(cancelled.status, 404);
-    assert.strictEqual(cancelled.body.length, 0);
+    assert.strictEqual(cancelled.body.toString(), 'Not found');
+    assert.ok(String(cancelled.headers['cache-control']).includes('no-store'));
+    assert.ok(String(cancelled.headers['x-robots-tag']).includes('noindex'));
 
     const robots = await get(port, '/robots.txt');
     assert.ok(robots.body.toString().includes('Disallow: /qr/'));
