@@ -218,6 +218,8 @@ async function main() {
     rules: '1',
     terms: '1',
     risk: '1',
+    group: '1',
+    share: '1',
   });
   assert.strictEqual(booked.status, 303, booked.body);
   assert.ok(booked.headers.location.includes('/booking/'));

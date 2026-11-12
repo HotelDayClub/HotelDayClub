@@ -16,6 +16,7 @@ function parseSignup(body, destinations) {
     role: clean(body.role, 20),
     hotel_name: clean(body.hotel_name, 120),
     destination: clean(body.destination, 40),
+    marketing: body.marketing === '1' || body.marketing === 'on' ? '1' : '',
   };
   if (clean(body.company_website, 200)) return { honeypot: true, values };
   if (!values.email) return { error: 'Enter an email address.', values };
@@ -32,6 +33,7 @@ function parseSignup(body, destinations) {
       role: values.role,
       hotel_name: values.role === 'hotel' ? values.hotel_name : '',
       destination: dest ? dest.name : '',
+      marketing_opt_in: values.marketing === '1' ? 1 : 0,
     },
   };
 }
@@ -53,14 +55,15 @@ function rateLimited(ip) {
 }
 
 function saveSignup(db, row) {
-  db.prepare(`INSERT INTO waitlist (email, first_name, place, role, hotel_name, destination)
-    VALUES (@email, @first_name, @place, @role, @hotel_name, @destination)
+  db.prepare(`INSERT INTO waitlist (email, first_name, place, role, hotel_name, destination, marketing_opt_in)
+    VALUES (@email, @first_name, @place, @role, @hotel_name, @destination, @marketing_opt_in)
     ON CONFLICT(email) DO UPDATE SET
       first_name = excluded.first_name,
       place = excluded.place,
       role = excluded.role,
       hotel_name = excluded.hotel_name,
       destination = excluded.destination,
+      marketing_opt_in = excluded.marketing_opt_in,
       updated_at = datetime('now')`).run(row);
 }
 
@@ -72,6 +75,7 @@ function loggedRow(row) {
     role: row.role,
     hotel_name: row.hotel_name,
     destination: row.destination,
+    marketing_opt_in: row.marketing_opt_in ? 1 : 0,
   };
 }
 
@@ -135,7 +139,7 @@ function csvCell(value) {
 }
 
 function waitlistCsv(rows) {
-  const headers = ['email', 'first_name', 'place', 'role', 'hotel_name', 'destination', 'created_at', 'updated_at'];
+  const headers = ['email', 'first_name', 'place', 'role', 'hotel_name', 'destination', 'marketing_opt_in', 'created_at', 'updated_at'];
   const lines = [headers.join(',')];
   for (const row of rows) lines.push(headers.map(key => csvCell(row[key])).join(','));
   return lines.join('\r\n') + '\r\n';

@@ -196,7 +196,7 @@ async function main() {
     const date = sharedOpenDate(dbFile);
     const book = (hotel, name, email, phone) => post(port, '/book', {
       hotel, date, qty: '1', pass: hotel === 'skyline-rooftop' ? 'chair' : 'lounger',
-      name, email, phone, rules: '1', terms: '1', risk: '1',
+      name, email, phone, rules: '1', terms: '1', risk: '1', group: '1', share: '1',
     }, { 'X-Forwarded-For': '203.0.113.10' });
     const salt = await book('saltwater-terrace', 'Persis Guest', 'persist-guest@example.com', '0412000111');
     assert.strictEqual(salt.status, 303, salt.body);
