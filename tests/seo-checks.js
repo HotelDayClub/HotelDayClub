@@ -8,6 +8,8 @@ const { spawn } = require('child_process');
 const Database = require('better-sqlite3');
 const seo = require('../seo');
 const { DESTINATIONS } = require('../destinations');
+const { GuestCheckIn, FOOD_RULE } = require('../offering');
+const { esc } = require('../util');
 
 for (const page of Object.values(seo.PAGES)) {
   const title = seo.fullTitle(page.title);
@@ -360,7 +362,31 @@ function alts(html, where) {
 
     const hiw = text(await get(port, '/how-it-works'));
     assert.ok(hiw.includes('href="/hotel"'));
-    assert.ok(hiw.includes('At the check-in point on your listing.'));
+    const guests = hiw.slice(hiw.indexOf('id="guests"'), hiw.indexOf('id="partners"'));
+    const partners = hiw.slice(hiw.indexOf('id="partners"'), hiw.indexOf('id="faq"'));
+    const footerAt = hiw.indexOf('<footer');
+    const hiwFaq = hiw.slice(hiw.indexOf('id="faq"'), footerAt === -1 ? hiw.length : footerAt);
+    const a12 = esc(GuestCheckIn.line());
+    const food = esc(FOOD_RULE);
+    const times = (hay, needle) => hay.split(needle).length - 1;
+    assert.strictEqual(times(guests, a12), 1, 'A12 once in the guest steps');
+    assert.strictEqual(times(hiwFaq, a12), 1, 'A12 once in the questions');
+    assert.strictEqual(times(partners, a12), 0);
+    assert.strictEqual(times(hiw, a12), 2);
+    assert.ok(guests.includes(`${a12} The hours are on your confirmation.`));
+    assert.ok(!hiw.includes('At the check-in point on your listing.'));
+    assert.ok(!hiw.includes('At the front desk, when the hotel opens for day passes'));
+    assert.ok(guests.includes("Before you confirm, you'll tick the risk warning, hotel rules, group and children, terms and sharing consent."));
+    assert.ok(guests.includes('Hot-day alerts are optional.'));
+    assert.ok(!guests.includes('the group and children acknowledgement, the terms, and the sharing consent'));
+    assert.strictEqual(times(guests, food), 1);
+    assert.strictEqual(times(hiwFaq, food), 1);
+    assert.strictEqual(times(partners, food), 0);
+    assert.ok(partners.includes('Guests buy food and drink from you at the venue. It is never sold through Hotel Day Club.'));
+    assert.ok(!partners.includes('You buy and pay for them at the venue.'));
+    assert.strictEqual(times(hiw, "doesn't charge a card"), 1);
+    assert.ok(hiwFaq.includes('No. Checkout is a mock payment. No card is needed and nothing is charged.'));
+    assert.ok(!hiwFaq.includes("This demo doesn't charge a card."));
     const choose = text(await get(port, '/guides/how-to-choose-a-hotel-pool-day-pass'));
     assert.ok(choose.includes('kids\u2019 hours'));
     assert.ok(choose.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
