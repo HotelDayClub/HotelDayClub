@@ -321,7 +321,9 @@ function alts(html, where) {
     const plain = await get(port, '/faq');
     assert.ok(!plain.headers['content-encoding']);
     const faq = text(plain);
-    assert.ok(faq.includes('at least 3 years'));
+    assert.ok(!faq.includes('at least 3 years'));
+    assert.ok(!faq.includes('gift card'));
+    assert.ok(!faq.includes('A free date change may be available once, subject to availability.'));
     assert.ok(faq.includes('<h1 class="l-title">Hotel day pass questions</h1>'));
     const faqPage = ld(faq).find(n => n['@type'] === 'FAQPage');
     assert.ok(faqPage);

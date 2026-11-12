@@ -80,6 +80,8 @@ h1,h2,.l-title{font-family:Fraunces,Georgia,serif;font-weight:500}
 .contact-card .btn-navy{min-height:48px;margin-top:4px}
 .contact-note,.contact-alt{color:#243044;line-height:1.5}
 .contact-note{font-size:14px;margin:14px 0 0}
+.contact-note.hotel-notice{display:none}
+form:has(select[name="topic"] option[value="partnership"]:checked) .contact-note.hotel-notice{display:block}
 .contact-alt{margin:18px 0 0;font-size:15px}
 .contact-note a,.contact-alt a,.contact-ok a{color:var(--navy);font-weight:700;text-decoration:underline;text-underline-offset:3px}
 .contact-ok p{margin:0 0 12px;color:#243044;line-height:1.5}

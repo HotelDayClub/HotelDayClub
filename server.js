@@ -17,7 +17,7 @@ const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = requ
 const { adminPassword, verifyPassword, safeEqual, hashPassword, migrateHotelPasswords, maskName, maskEmail } = require('./passwords');
 const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
 const { ymd, addDays, esc, money, nice } = require('./util');
-const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
+const { demoSite, operatorEmail, confirmationBlurb, PUBLISHED_ABN } = require('./siteMode');
 const { LegalVersions, ConsentLog, CheckoutConsent } = require('./consent');
 const brand = require('./brand');
 const { codeFromQrToken } = require('./qr');
@@ -38,7 +38,7 @@ const { bookingsCsv, hotelsCsv, hotelBookingsCsv } = require('./dataExport');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
   hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST,
-  fmtTime, cancelNote, riskCard, riskText, swimNote, hotelLatePossible, lateWindow, amenitiesFrom,
+  fmtTime, cancelNote, riskCard, riskText, swimNote, GuestCheckIn, hotelLatePossible, lateWindow, amenitiesFrom,
   venueMissing, PICK_DATE_CANCEL, arrivalOptions, normalizeArrival, arrivalText,
 } = require('./offering');
 const app = express();
@@ -351,7 +351,7 @@ function page(title, body, opts = {}) {
   const header = `<header class="hdr"><div class="wrap hdr-in">${logoLink('light')}${nav === 'guest' ? guestNav : '<nav class="hdr-nav" aria-label="Site"></nav>'}<div class="hdr-right">${right}</div></div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
-${demoSite() ? '<div class="demo-banner">Demo site — listings are examples, no real bookings or payments.</div>' : ''}
+${demoSite() ? '<div class="demo-banner">Demo site: listings are examples, no real bookings or payments.</div>' : ''}
 ${header}<main>${body}</main>
 ${bare ? '' : siteFooter(home ? 'light' : 'dark')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}
 </body></html>`;
@@ -469,7 +469,7 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
 <div class="clock"><span id="ct">12:00</span><small id="cl">Long lunch (food and drink sold separately)</small></div><span class="credit">Stock media · example only</span></div>
 <div class="copy"><h1 class="kicker">Hotel day passes in Australia</h1>
 <h2 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h2>
-<p class="lead">A hotel pool, gym, daybed or spa for the day — minutes from home, no room needed.</p>
+<p class="lead">A hotel pool, gym, daybed or spa for the day, minutes from home, no room needed.</p>
 <div class="times"><button type="button" data-i="0" aria-pressed="false">Swim &amp; gym</button><button type="button" data-i="1" class="on" aria-pressed="true">Long lunch</button><button type="button" data-i="2" aria-pressed="false">Spa afternoon</button><button type="button" data-i="3" aria-pressed="false">Golden hour</button></div>
 <form class="search" action="/#explore" method="get">
 <div class="seg"><label for="w">Where</label><select id="w" class="hdc-pick" name="where"><option value="" data-icon="pin">All of Australia</option>${areas.map(a => `<option value="${esc(a)}" data-icon="pin"${a === where ? ' selected' : ''}>${esc(a)}</option>`).join('')}</select></div>
@@ -487,7 +487,7 @@ ${slot('3-sm', 'Spa treatment table', '3 pm', 'Spa afternoon', 'Steam, sauna, a 
 ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
 </div></section>
 <section class="steps" data-rv><div><span class="kicker">How it works</span><h2>How a hotel day pass works</h2></div>
-<ol><li><span>01</span><div><b>Find a hotel</b><p>Pools, gyms and spas — each listing shows hours, the pass and exactly what's included.</p></div></li>
+<ol><li><span>01</span><div><b>Find a hotel</b><p>Pools, gyms and spas: each listing shows hours, the pass and exactly what's included.</p></div></li>
 <li><span>02</span><div><b>Pick a pass and a day</b><p>See the price before you confirm.</p></div></li>
 <li><span>03</span><div><b>Show up, switch off</b><p>Check in at the desk and the day is yours.</p></div></li></ol></section>
 <section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings · not real hotels</span><h2>${exploreTitle}</h2></div>${filtered || sort ? `<form class="sort-form" action="/#explore" method="get">${where ? `<input type="hidden" name="where" value="${esc(where)}">` : ''}${date ? `<input type="hidden" name="date" value="${esc(date)}">` : ''}${want ? `<input type="hidden" name="want" value="${esc(want)}">` : ''}${dest ? `<input type="hidden" name="dest" value="${esc(dest)}">` : ''}<label class="sort-label${sort ? ' is-on' : ''}">Sort<select name="sort" aria-label="Sort listings" onchange="this.form.submit()"><option value=""${sort ? '' : ' selected'}>Listed order</option><option value="name"${sort === 'name' ? ' selected' : ''}>Name</option><option value="price"${sort === 'price' ? ' selected' : ''}>From price</option></select></label>${filtered ? '<a class="clear" href="/#explore">Clear filters</a>' : ''}</form>` : ''}</div>
@@ -498,9 +498,9 @@ ${filtered ? `<p class="active-filters" role="status">${where ? `<span class="fi
 <p class="home-note">The number on a card counts fictional example listings in this demo for that area. It does not mean a hotel has signed up. Coming soon means there is nothing listed there yet.</p>
 <ul class="dests">${destCards}</ul></section>
 <section class="faq" data-rv><div><span class="kicker sand">Good to know</span><h2>Questions about hotel day passes</h2></div>
-<div class="faq-list"><details open><summary>Do I need to stay at the hotel?</summary><p>No. A day pass gives you the pool, gym or spa for set hours — no room booking needed.</p></details>
+<div class="faq-list"><details open><summary>Do I need to stay at the hotel?</summary><p>No. A day pass gives you the pool, gym or spa for set hours, no room booking needed.</p></details>
 <details><summary>Is Hotel Day Club taking bookings?</summary><p>Not yet. Join the waitlist and we'll email you when passes open near you.</p></details>
-<details><summary>What's included?</summary><p>Each hotel sets its own inclusions — pool, gym, spa and towels — and every listing spells out what your pass covers. Food and drink are never included.</p></details>
+<details><summary>What's included?</summary><p>Each hotel sets its own inclusions (pool, gym, spa and towels), and every listing spells out what your pass covers. Food and drink are never included.</p></details>
 <p class="faq-more"><a href="/faq">All questions</a></p></div></section>
 <div class="hotels" id="hotels"><div><span class="kicker">For hotels</span><h2>List a hotel pool</h2><p>List spare pool, gym and spa capacity for local day guests, on your terms. You choose the hours, the prices and how many guests you take.</p></div><a class="btn" href="/for-hotels">Talk to us</a></div>
 <noscript><style>#waitlist{display:block;position:static;margin:24px auto 40px}</style></noscript>
@@ -1619,6 +1619,7 @@ app.get('/hotel/print', hotelAuth, (req, res) => {
   const rows = withNotes(db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? AND b.status!='cancelled' ORDER BY b.guest_name`).all(h.id, date));
   res.send(page('Guest list', `<div class="wrap sec print-sheet"><div class="no-print"><a class="link" href="/hotel">← Dashboard</a></div>
 <h1 class="l-title">${esc(h.name)}</h1><p class="muted">${esc(nice(date))} · ${rows.length} booking${rows.length === 1 ? '' : 's'}</p>
+<p>${esc(GuestCheckIn.line())}</p>
 <p class="no-print" style="margin:14px 0"><button class="btn btn-navy" type="button" onclick="print()">Print</button></p>
 <div class="tbl-wrap"><table class="tbl print-list"><thead><tr><th></th><th>Guest</th><th>Code</th><th>Seating</th><th>People</th><th>Notes</th></tr></thead><tbody>
 ${rows.map(b => `<tr><td><span class="print-tick"></span></td><td><b>${esc(b.guest_name)}</b></td><td>${esc(b.code)}</td><td>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</td><td>${b.party || b.qty * (b.holds || 1)}</td><td>${esc((b.notes || []).map(noteLabel).join('; '))}${b.addons ? ' ' + esc(b.addons) : ''}</td></tr>`).join('') || '<tr><td colspan="6">No guests.</td></tr>'}
@@ -1930,7 +1931,7 @@ app.get('/how-it-works', (req, res) => {
 <div class="how-grid">
 <div><span class="n">1</span><h3>Browse</h3><p class="muted">Search by neighbourhood, date and what you want: pool, gym or spa. Each listing shows what's included and the pool rules.</p></div>
 <div><span class="n">2</span><h3>Book</h3><p class="muted">Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking or gym access if you want. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue. Tick the risk warning, the hotel rules, the group and children acknowledgement, the terms, and the sharing consent. Hot-day alerts are optional. The total updates before you confirm. This demo doesn't charge a card.</p></div>
-<div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">At the check-in point on your listing. The hours are on your confirmation. Reception checks you in and hands you a wristband.</p></div>
+<div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">At the check-in point on your listing. The hours are on your confirmation. ${esc(GuestCheckIn.line())}</p></div>
 <div><span class="n">4</span><h3>Enjoy</h3><p class="muted">Your spot, for the hours that hotel has set. Add-ons stay optional.</p></div>
 </div>
 <p style="margin-top:18px"><a class="btn btn-coral" href="/#explore">Browse pools</a></p>
@@ -1951,12 +1952,12 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <div class="wrap hiw-block" id="faq">
 <h2>Questions</h2>
 <div class="faq">
-<details open><summary>Cancellations</summary><p>Free cancellation until 24 hours before your access hours start. Checkout and your confirmation show that time for the date you chose. A booking made inside that window can't be cancelled for free. A free date change may be available once, subject to availability. <a href="/refunds">Cancellation and refunds</a>.</p></details>
+<details open><summary>Cancellations</summary><p>Free cancellation until 24 hours before your access hours start. Checkout and your confirmation show that time for the date you chose. A booking made inside that window can't be cancelled for free. <a href="/refunds">Cancellation and refunds</a>.</p></details>
 <details><summary>What to bring</summary><p>Photo ID when the hotel asks for it, swimwear and sunscreen. The listing says whether a towel is included.</p></details>
 <details><summary>Age limits</summary><p>You need to be 18 or over to book. Each hotel sets its own age policy and kids' hours. They're on the listing, and in the risk warning, before you confirm.</p></details>
 <details><summary>Weather</summary><p>Rain on its own is not a closure. If the hotel closes the pool, you choose a full refund or a free rebooking. <a href="/faq">All questions</a>.</p></details>
 <details><summary>Do I need to book a room?</summary><p>No. A day pass is the pool, gym or spa for the hours that hotel has set. There is no room and no overnight stay.</p></details>
-<details><summary>How do I check in?</summary><p>At the front desk, when the hotel opens for day passes, show the booking code or the QR code on your confirmation. The hours are on that page. Reception checks you in and hands you a wristband. In this demo the confirmation stays on the page, and a confirmation email is sent to the address you give. Bring photo ID when the hotel asks for it.</p></details>
+<details><summary>How do I check in?</summary><p>At the front desk, when the hotel opens for day passes, show the booking code or the QR code on your confirmation. The hours are on that page. ${esc(GuestCheckIn.line())} In this demo the confirmation stays on the page, and a confirmation email is sent to the address you give. Bring photo ID when the hotel asks for it.</p></details>
 <details><summary>What does the pass include?</summary><p>Each hotel sets its own inclusions. The listing says what the pass covers for that date and those hours. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue. Treatments are not included unless the listing says so.</p></details>
 <details><summary>Can children come?</summary><p>You need to be 18 or over to book. Each hotel sets its own age rules and kids' hours. They are on the listing and in the risk warning before you confirm. Children must be on the booking, and an adult on that booking supervises each child.</p></details>
 <details><summary>What if a pass is sold out?</summary><p>The page says when a pass is sold out for that date, or when there are not enough left. The terms say that if a pass sells out at the same moment and we can't confirm the booking, the booking is not made. This demo doesn't take a real payment.</p></details>
@@ -2005,7 +2006,7 @@ ${error ? `<div class="alert" role="alert">${esc(error)}</div>` : ''}
 <label class="tick"><input type="checkbox" name="marketing" value="1"${v.marketing === '1' ? ' checked' : ''}> <span>${CheckoutConsent.marketingHtml()}</span></label>
 <button class="btn btn-navy full" type="submit">Send message</button>
 <p class="contact-note">We use your name, email and this message only to reply to you. <a href="/privacy">Privacy Policy</a>.</p>
-<p class="contact-note">${CheckoutConsent.hotelNoticeHtml(mail)}</p>
+<p class="contact-note hotel-notice">${CheckoutConsent.hotelNoticeHtml(mail)}</p>
 </form>
 <p class="contact-alt">Or email ${mail}.</p>
 </div></div>`, opts);
@@ -2128,19 +2129,19 @@ const LEGAL_PAGES = {
 };
 function legalDoc(heading, file) {
   const raw = fs.readFileSync(path.join(__dirname, 'legal', file), 'utf8');
-  const article = mdToHtml(raw).split('{{CONTACT_EMAIL}}').join(contactMail()).split('{{ABN}}').join(esc(businessAbn()));
+  const article = mdToHtml(raw).split('{{CONTACT_EMAIL}}').join(contactMail()).split('{{ABN}}').join(esc(PUBLISHED_ABN));
   const copy = seo.pageCopy(LEGAL_PAGES[file]);
-  return page(heading, `<div class="wrap sec"><h1 class="l-title">${esc(heading)}</h1><p class="draft-notice">Draft terms for demo purposes, pending legal review.</p><article class="legal-doc">${article}</article></div>`, {
+  return page(heading, `<div class="wrap sec"><h1 class="l-title">${esc(heading)}</h1><article class="legal-doc">${article}</article></div>`, {
     analytics: true,
     index: seo.legalPagesIndexable() ? true : 'follow',
     ...copy,
     jsonld: seo.graph(seo.crumbs([{ name: copy.crumb, path: copy.path }])),
   });
 }
-app.get('/privacy', (req, res) => res.send(legalDoc('Privacy policy (draft)', 'privacy-policy.md')));
-app.get('/terms', (req, res) => res.send(legalDoc('Customer terms (draft)', 'customer-terms.md')));
-app.get('/refunds', (req, res) => res.send(legalDoc('Cancellation and refunds (draft)', 'cancellation-refund-policy.md')));
-app.get('/risk', (req, res) => res.send(legalDoc('Risk warning (draft)', 'guest-risk-acknowledgement.md')));
+app.get('/privacy', (req, res) => res.send(legalDoc('Privacy policy', 'privacy-policy.md')));
+app.get('/terms', (req, res) => res.send(legalDoc('Customer terms', 'customer-terms.md')));
+app.get('/refunds', (req, res) => res.send(legalDoc('Cancellation and refunds', 'cancellation-refund-policy.md')));
+app.get('/risk', (req, res) => res.send(legalDoc('Risk warning', 'guest-risk-acknowledgement.md')));
 app.get('/faq', (req, res) => {
   const copy = seo.pageCopy('faq');
   res.send(page('Hotel day pass questions', seo.faqHtml(contactMail()), {

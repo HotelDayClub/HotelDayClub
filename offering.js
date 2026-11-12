@@ -420,16 +420,21 @@ function riskLines(hotel) {
 function riskText(hotel) { return riskLines(hotel).join(' '); }
 function riskCard(hotel) {
   const lines = riskLines(hotel);
-  return `<div class="co-risk"><h3>Risk warning</h3><p>${esc(lines[0])}</p><ul class="co-facts">${lines.slice(1, 7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p><b>At this venue</b></p><ul class="co-facts">${lines.slice(7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p class="muted small">Shown in full before you confirm. <a href="/risk">Risk warning (draft)</a></p></div>`;
+  return `<div class="co-risk"><h3>Risk warning</h3><p>${esc(lines[0])}</p><ul class="co-facts">${lines.slice(1, 7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p><b>At this venue</b></p><ul class="co-facts">${lines.slice(7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p class="muted small">Shown in full before you confirm. <a href="/risk">Risk warning</a></p></div>`;
 }
 function riskTick(hotel) {
   const g = guardFacts(hotel);
   const base = `I have read the risk warning. I understand that swimming and using spa facilities involve risks of injury and death, and that ${g.tick}. I'll decide for myself whether I, and anyone in my care, am fit to take part, and I won't swim or use a spa or sauna after drinking.`;
   return g.on ? `${base} ${g.watch}` : base;
 }
+class GuestCheckIn {
+  static line() {
+    return "Show the QR code or booking code at reception. Reception checks your booking and ID and gives you the hotel's pool access pass or wristband, which you return when you leave. A day pass includes no hotel room, and you can't charge anything to a room.";
+  }
+}
 function swimNote(hotel) {
   const g = guardFacts(hotel);
-  return `Before you swim: ${g.swim}${g.on ? ' ' + g.watch : ''} Pools, spas and saunas carry risks of serious injury and drowning. No diving. No swimming after alcohol. Supervise children at all times. Follow staff directions and the hotel's rules. In an emergency, alert staff and call 000.`;
+  return `Before you swim: ${g.swim}${g.on ? ' ' + g.watch : ''} Pools, spas and saunas carry risks of serious injury and drowning. No diving. No swimming after alcohol. Supervise children at all times. Follow staff directions and the hotel's rules. Look after your own belongings. In an emergency, alert staff and call 000.`;
 }
 function rulesText(hotel, opts) { return rulesLines(hotel, opts).join('. ') + '.'; }
 function rulesCard(hotel, opts) {
@@ -879,6 +884,6 @@ module.exports = {
   policyFacts, guardFacts, supervisionNote, venueMissing, PICK_DATE_CANCEL,
   writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,
   listingHours, hoursView, hoursLines, syncHoursLabels, inSeason, latePossible, hotelLatePossible, lateWindow, syncLateAddons,
-  cancelNote, displayCancelNote, riskLines, riskText, riskCard, riskTick, swimNote,
+  cancelNote, displayCancelNote, riskLines, riskText, riskCard, riskTick, swimNote, GuestCheckIn,
   ARRIVAL_LEAD_MINUTES, ARRIVAL_LIST_ERROR, arrivalOptions, normalizeArrival, arrivalText,
 };

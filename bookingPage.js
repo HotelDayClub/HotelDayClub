@@ -1,5 +1,5 @@
 const { esc, money, nice } = require('./util');
-const { spotLabel, swimNote, displayCancelNote, arrivalText } = require('./offering');
+const { spotLabel, swimNote, displayCancelNote, arrivalText, GuestCheckIn } = require('./offering');
 const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
 const { PASS_FOOD_LINE } = require('./inclusions');
 const { accessLine } = require('./access');
@@ -84,7 +84,7 @@ function bookingPageBody(v) {
 <ol class="bk-steps">
 <li><span><b>Bring</b> photo ID when the hotel asks for it, swimwear and sunscreen.</span></li>
 <li><span><b>Arrive</b> any time in the access hours${v.when ? ` (${esc(v.when)})` : ''}.</span></li>
-<li><span><b>Show</b> the QR code or booking code at reception. Reception checks you in.</span></li>
+<li><span><b>Show</b> ${esc(GuestCheckIn.line().replace(/^Show /, ''))}</span></li>
 </ol>
 <div class="bk-acts"><a class="btn btn-pri" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">Add to calendar</a>${v.googleCal ? `<a class="btn btn-line" href="${esc(v.googleCal)}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>` : ''}</div>
 </section>
@@ -139,12 +139,12 @@ ${gettingThere(v.hotel, cancelled, v.parkingHtml, v.mapHref)}
 <section class="bk-card bk-cancel" aria-labelledby="bk-cx"><h2 id="bk-cx">Cancellation</h2>
 <p><b>${esc(displayCancelNote(v.note))}</b></p>
 ${cancelForm}
-<p><a href="/refunds">Cancellation and refunds (draft)</a></p>
+<p><a href="/refunds">Cancellation and refunds</a></p>
 </section>
 <section class="bk-card bk-legal" aria-labelledby="bk-lg"><h2 id="bk-lg">Your details and the hotel</h2>
 <p>We share your name, email, mobile and booking details with ${esc(b.hotel)} so it can check you in and contact you about this booking.</p>
 ${ackHtml(b)}
-<p><a href="/privacy">Privacy policy (draft)</a> · <a href="/terms">Customer terms (draft)</a> · <a href="/risk">Risk warning (draft)</a></p>
+<p><a href="/privacy">Privacy policy</a> · <a href="/terms">Customer terms</a> · <a href="/risk">Risk warning</a></p>
 <p>Questions: <a href="mailto:${contact}">${contact}</a></p>
 </section>
 <div class="bk-foot"><button class="btn btn-line js-only" type="button" data-print>Print or save as PDF</button><a class="btn btn-line" href="/">Book another day</a></div>

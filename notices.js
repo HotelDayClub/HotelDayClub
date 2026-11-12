@@ -1,5 +1,5 @@
 const { esc, money, nice } = require('./util');
-const { spotLabel, hoursView, cancelNote, displayCancelNote, swimNote, arrivalText, FOOD_RULE } = require('./offering');
+const { spotLabel, hoursView, cancelNote, displayCancelNote, swimNote, arrivalText, FOOD_RULE, GuestCheckIn } = require('./offering');
 const { maskName } = require('./passwords');
 const { topicLabel } = require('./contact');
 const seo = require('./seo');
@@ -97,7 +97,7 @@ function bookingNotice(info) {
   const demo = !!info.demo;
   const place = info.area ? `${info.area}, Australia` : 'Australia';
   const extras = Array.isArray(info.addons) && info.addons.length
-    ? info.addons.map(a => `${a.name} × ${a.qty} — ${a.totalLabel}`).join('\n')
+    ? info.addons.map(a => `${a.name} × ${a.qty}: ${a.totalLabel}`).join('\n')
     : 'None';
   const facts = [
     ['Hotel', info.hotelName],
@@ -120,7 +120,7 @@ function bookingNotice(info) {
   const heading = demo ? 'Your demo booking' : "You're booked in.";
   const intro = demo ? warning : 'This email confirms the booking you just made.';
   const linkLine = `Your QR code is on the confirmation page:\n${info.link}`;
-  const checkinLine = info.checkinUrl ? `Show this QR code at reception. It opens:\n${info.checkinUrl}` : '';
+  const checkinLine = [GuestCheckIn.line(), info.checkinUrl ? `It opens:\n${info.checkinUrl}` : ''].filter(Boolean).join('\n');
   const calendarLine = info.calendarUrl ? `Add to Google Calendar:\n${info.calendarUrl}` : '';
   const privacyLine = `Privacy policy: ${seo.ORIGIN}/privacy`;
   const contactLine = `Questions: ${info.contact}`;
@@ -133,7 +133,7 @@ function bookingNotice(info) {
   ].filter(Boolean).join('\n');
   const bring = towelBring(info.included);
   const arrivalSentence = info.arrival
-    ? "Your pass is valid any time during the hotel's opening hours — your expected arrival time is an estimate, not a reservation."
+    ? "Your pass is valid any time during the hotel's opening hours. Your expected arrival time is an estimate, not a reservation."
     : '';
   const text = [
     'Hotel Day Club',
@@ -177,7 +177,7 @@ function bookingNotice(info) {
   const qrBlock = info.qrUrl
     ? `<p style="margin:0 0 10px;text-align:center;"><img src="${esc(info.qrUrl)}" width="180" height="180" alt="Booking code: ${esc(info.code)}" style="display:block;margin:0 auto;width:180px;height:180px;border:0;"></p>`
     : '';
-  const qrCard = mailCard(`<h2 style="margin:0 0 4px;font-family:${FONT};font-size:19px;color:${brand['hdc-navy']};font-weight:700;text-align:center;">Show this QR code at reception.</h2>
+  const qrCard = mailCard(`<p style="margin:0 0 12px;font-family:${FONT};font-size:16px;line-height:1.5;color:${brand['hdc-navy']};font-weight:700;text-align:center;">${esc(GuestCheckIn.line())}</p>
 <p style="margin:0 0 12px;font-family:${FONT};font-size:15px;line-height:1.5;color:${brand['hdc-secondary']};text-align:center;">Reception scans it or types the booking code.</p>
 ${qrBlock}
 <p style="margin:0;font-family:${FONT};font-size:13px;line-height:1.5;color:${brand['hdc-secondary']};font-weight:700;text-align:center;letter-spacing:.08em;">BOOKING CODE</p>
@@ -199,10 +199,10 @@ ${mailCard(`${h2('Your pass')}<table role="presentation" width="100%" cellpaddin
 ${includeFacts.length ? mailCard(`${h2("What's included")}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${factRows(includeFacts)}</table>${info.risk ? `<p style="margin:12px 0 0;font-family:${FONT};font-size:14px;line-height:1.5;color:${brand['hdc-text']};border-left:4px solid ${brand['hdc-primary']};padding-left:12px;">${esc(info.risk)}</p>` : ''}`) : ''}
 ${mailCard(`${h2('What to bring')}<p style="margin:0;font-family:${FONT};font-size:16px;line-height:1.5;color:${brand['hdc-text']};">${esc(bring)}</p>`)}
 ${there}
-${mailCard(`${h2('Cancellation')}<p style="margin:0 0 8px;font-family:${FONT};font-size:16px;line-height:1.5;color:${brand['hdc-text']};"><b>${esc(cancelFact ? cancelFact[1] : '')}</b></p><p style="margin:0;font-family:${FONT};font-size:15px;line-height:1.5;color:${brand['hdc-text']};">To cancel, open <a href="${esc(info.link)}" style="color:${brand['hdc-primary']};font-weight:700;">your booking</a>. <a href="${esc(seo.ORIGIN + '/refunds')}" style="color:${brand['hdc-primary']};font-weight:700;">Cancellation and refunds (draft)</a></p>`)}
+${mailCard(`${h2('Cancellation')}<p style="margin:0 0 8px;font-family:${FONT};font-size:16px;line-height:1.5;color:${brand['hdc-text']};"><b>${esc(cancelFact ? cancelFact[1] : '')}</b></p><p style="margin:0;font-family:${FONT};font-size:15px;line-height:1.5;color:${brand['hdc-text']};">To cancel, open <a href="${esc(info.link)}" style="color:${brand['hdc-primary']};font-weight:700;">your booking</a>. <a href="${esc(seo.ORIGIN + '/refunds')}" style="color:${brand['hdc-primary']};font-weight:700;">Cancellation and refunds</a></p>`)}
 ${info.calendarUrl ? `<p style="margin:0 0 16px;font-family:${FONT};font-size:16px;line-height:1.5;"><a href="${esc(info.calendarUrl)}" style="color:${brand['hdc-primary']};font-weight:700;">Add to Google Calendar</a></p>` : ''}
 <p style="margin:0 0 8px;font-family:${FONT};font-size:14px;line-height:1.5;color:${brand['hdc-secondary']};">${esc(share)}</p>
-<p style="margin:0;font-family:${FONT};font-size:14px;line-height:1.5;color:${brand['hdc-secondary']};"><a href="${esc(seo.ORIGIN + '/privacy')}" style="color:${brand['hdc-primary']};font-weight:700;">Privacy policy (draft)</a> · ${esc(contactLine)}</p>`;
+<p style="margin:0;font-family:${FONT};font-size:14px;line-height:1.5;color:${brand['hdc-secondary']};"><a href="${esc(seo.ORIGIN + '/privacy')}" style="color:${brand['hdc-primary']};font-weight:700;">Privacy policy</a> · ${esc(contactLine)}</p>`;
   const html = mailDocument({ title: heading, preheader, body });
   const subject = demo
     ? `Your Hotel Day Club demo booking ${info.code}`
@@ -408,7 +408,7 @@ function cancelNotice(info) {
 ${mailCard(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${factRows(rows)}</table>`)}
 <p style="margin:0 0 16px;font-family:${FONT};font-size:15px;line-height:1.5;color:${brand['hdc-secondary']};">This booking code and its QR code no longer check you in.</p>
 <div style="margin:0 0 16px;">${info.link ? mailButton(info.link, 'View booking') : ''}</div>
-<p style="margin:0;font-family:${FONT};font-size:14px;line-height:1.5;color:${brand['hdc-secondary']};"><a href="${esc(seo.ORIGIN + '/refunds')}" style="color:${brand['hdc-primary']};font-weight:700;">Cancellation and refunds (draft)</a> · Questions: ${esc(operatorEmail())}</p>`;
+<p style="margin:0;font-family:${FONT};font-size:14px;line-height:1.5;color:${brand['hdc-secondary']};"><a href="${esc(seo.ORIGIN + '/refunds')}" style="color:${brand['hdc-primary']};font-weight:700;">Cancellation and refunds</a> · Questions: ${esc(operatorEmail())}</p>`;
   return {
     to: info.to,
     subject: `Your Hotel Day Club demo booking ${info.code} is cancelled`,

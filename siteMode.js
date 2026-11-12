@@ -6,6 +6,10 @@ function demoSite() {
 
 const DEFAULT_CONTACT_EMAIL = 'hello@hoteldayclub.com.au';
 
+// The one published ABN. Legal pages print this through {{ABN}}. Swap it here
+// when the business becomes a Pty Ltd. The demo footer does not use it.
+const PUBLISHED_ABN = '98 227 458 028';
+
 function operatorEmail() {
   const raw = String(process.env.CONTACT_EMAIL || DEFAULT_CONTACT_EMAIL).trim();
   return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(raw) ? raw : DEFAULT_CONTACT_EMAIL;
@@ -27,6 +31,7 @@ module.exports = {
   demoSite,
   operatorEmail,
   DEFAULT_CONTACT_EMAIL,
+  PUBLISHED_ABN,
   confirmationBlurb,
   instantConfirmationText,
 };

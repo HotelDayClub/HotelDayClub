@@ -132,7 +132,11 @@ const valid = {
     assert.ok(page.body.includes('mailto:hello@hoteldayclub.com.au'));
     assert.ok(page.body.includes('only to reply to you'));
     assert.ok(page.body.includes('href="/privacy"'));
+    assert.ok(page.body.includes('class="contact-note hotel-notice"'));
     assert.ok(page.body.includes('By sending an enquiry you consent to Hotel Day Club contacting you about a possible partnership.'));
+    const contactCss = await get(port, '/golden/site.css');
+    assert.ok(contactCss.body.includes('.contact-note.hotel-notice{display:none}'));
+    assert.ok(contactCss.body.includes('option[value="partnership"]:checked'));
     assert.ok(page.body.includes('Send me hot-day alerts and offers by email/SMS. I can unsubscribe at any time.'));
     assert.ok(!/name="marketing"[^>]*checked/.test(page.body));
     assert.ok(page.body.includes('in Australia'));
@@ -147,7 +151,9 @@ const valid = {
     assert.ok(hiw.body.includes('Cancellations'));
     assert.ok(hiw.body.includes('href="/contact"'));
     const faq = await get(port, '/faq');
-    assert.ok(faq.body.includes('href="/contact"'));
+    assert.ok(faq.body.includes('Cancel in your booking link or email'));
+    assert.ok(faq.body.includes('hello@hoteldayclub.com.au'));
+    assert.ok(!faq.body.includes('contact form'));
     assert.ok(faq.body.includes('How do I contact you?'));
     const map = await get(port, '/sitemap.xml');
     assert.ok(map.body.includes('https://www.hoteldayclub.com.au/contact'));

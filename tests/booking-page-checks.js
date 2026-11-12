@@ -78,7 +78,10 @@ function mainText(html) {
     assert.ok(body.includes('Harbour Hotel (Demo)'));
     assert.ok(body.includes('We share your name, email, mobile and booking details with Harbour Hotel (Demo) so it can check you in and contact you about this booking.'));
     assert.ok(!body.includes('booking code, party size and add-ons'));
-    assert.ok(body.includes('Privacy policy (draft)'));
+    assert.ok(body.includes('>Privacy policy</a>'));
+    assert.ok(body.includes('A day pass includes no hotel room, and you can&#39;t charge anything to a room.'));
+    assert.ok(!body.includes('(draft)'));
+    assert.ok(!body.includes('Reception checks you in.'));
     assert.ok(body.includes('href="/privacy"'));
     const copy = body.replace(/\s(?:href|src)="[^"]*"/gi, '');
     assert.ok(!/commission|%/i.test(copy));
