@@ -181,6 +181,13 @@ function cookie(res) {
     assert.ok(!hotels.body.includes('demo-logins'));
     assert.ok(!hotels.body.includes('wait-hotel-test'));
     assert.ok(home.body.includes('href="/hotel/login">Hotel login</a>'));
+    assert.ok(home.body.includes('By joining the waitlist you consent to Hotel Day Club emailing you when day passes are available near you.'));
+    assert.ok(home.body.includes('This is not consent to hot-day alerts or other offers unless you separately opt in.'));
+    assert.ok(home.body.includes('By sending an enquiry you consent to Hotel Day Club contacting you about a possible partnership.'));
+    assert.ok(home.body.includes('Send me hot-day alerts and offers by email/SMS. I can unsubscribe at any time.'));
+    const waitForm = home.body.split('id="waitlist"')[1] || '';
+    assert.ok(waitForm.includes('href="/privacy"'));
+    assert.ok(!/name="marketing"[^>]*checked/.test(waitForm));
     const join = await get(port, '/hotel/join');
     assert.strictEqual(join.status, 302);
     assert.strictEqual(join.headers.location, '/for-hotels');

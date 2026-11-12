@@ -216,7 +216,7 @@ async function openDates(port, n) {
 }
 async function bookGuest(port, fields) {
   const res = await post(port, '/book', {
-    qty: '1', name: 'Alex Citizen', email: 'park-guest@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1',
+    qty: '1', name: 'Alex Citizen', email: 'park-guest@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1',
     ...fields,
   }, { 'X-Forwarded-For': '203.0.113.41' });
   assert.strictEqual(res.status, 303, res.body.slice(0, 300));

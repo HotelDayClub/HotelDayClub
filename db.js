@@ -85,6 +85,15 @@ CREATE TABLE IF NOT EXISTS contact_messages(
   handled INTEGER NOT NULL DEFAULT 0,
   handled_at TEXT
 );
+CREATE TABLE IF NOT EXISTS consent_log(
+  id INTEGER PRIMARY KEY,
+  booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  policy_version TEXT NOT NULL,
+  consented_at TEXT NOT NULL,
+  ip TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_consent_log_booking ON consent_log(booking_id);
 `);
 // Adds a column only when it is missing, so this is safe to run on every boot.
 function ensureCols(table, cols) {
@@ -105,8 +114,9 @@ ensureCols('hotels', [
   ['is_demo', 'INTEGER NOT NULL DEFAULT 0'],
 ]);
 ensureCols('pass_types', [['holds', 'INTEGER DEFAULT 1'], ['photo', 'TEXT'], ['kind', 'TEXT'], ['featured', 'INTEGER DEFAULT 0']]);
-ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0'], ['terms_ack_at', 'TEXT'], ['risk_ack_at', 'TEXT'], ['risk_text', 'TEXT'], ['cancel_note', 'TEXT'], ['seeded', 'INTEGER NOT NULL DEFAULT 0'], ['refunded', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_tries', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_state', 'TEXT'], ['arrived_count', 'INTEGER'], ['expected_arrival', 'TEXT']]);
-ensureCols('contact_messages', [['alert_tries', 'INTEGER NOT NULL DEFAULT 0'], ['alert_state', 'TEXT']]);
+ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0'], ['terms_ack_at', 'TEXT'], ['risk_ack_at', 'TEXT'], ['risk_text', 'TEXT'], ['cancel_note', 'TEXT'], ['seeded', 'INTEGER NOT NULL DEFAULT 0'], ['refunded', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_tries', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_state', 'TEXT'], ['arrived_count', 'INTEGER'], ['expected_arrival', 'TEXT'], ['terms_version', 'TEXT'], ['refunds_version', 'TEXT'], ['privacy_version', 'TEXT'], ['risk_version', 'TEXT'], ['consent_at', 'TEXT'], ['consent_ip', 'TEXT']]);
+ensureCols('contact_messages', [['alert_tries', 'INTEGER NOT NULL DEFAULT 0'], ['alert_state', 'TEXT'], ['marketing_opt_in', 'INTEGER DEFAULT 0']]);
+ensureCols('waitlist', [['marketing_opt_in', 'INTEGER DEFAULT 0']]);
 ensureCols('guest_notes', [['seeded', 'INTEGER NOT NULL DEFAULT 0']]);
 
 // Removes one stock photo of an identifiable child from stored galleries.

@@ -484,14 +484,22 @@ function start(port, extra = {}) {
     assert.strictEqual(checkout.status, 200);
     assert.ok(checkout.body.includes('name="terms"') && checkout.body.includes('href="/terms"'));
     assert.ok(checkout.body.includes('href="/refunds"') && checkout.body.includes('href="/privacy"'));
-    assert.ok(checkout.body.includes('cancellation and refund policy'));
+    assert.ok(checkout.body.includes('Cancellation and Refund Policy'));
     assert.ok(checkout.body.includes('name="risk"') && checkout.body.includes('Risk warning'));
     assert.ok(checkout.body.includes('name="rules"'));
+    assert.ok(checkout.body.includes('name="group"') && checkout.body.includes('Group and children'));
+    assert.ok(checkout.body.includes('name="share"'));
+    assert.ok(checkout.body.includes('I agree to Hotel Day Club sharing my name, email, mobile and booking details with Skyline Rooftop Hotel (Demo) for this booking.'));
+    assert.ok(checkout.body.includes('Send me hot-day alerts and offers by email/SMS. I can unsubscribe at any time.'));
+    assert.ok(!/name="marketing"[^>]*checked/.test(checkout.body));
+    assert.ok(!checkout.body.includes('Card number') && !checkout.body.includes('4242'));
+    assert.ok(!/stripe/i.test(checkout.body));
+    assert.ok(!/fbq\(|facebook\.net|googleadservices|doubleclick|hotjar/i.test(checkout.body));
     assert.ok(checkout.body.includes('No lifeguard is on duty'));
     assert.ok(!checkout.body.includes('hotel terms apply'));
     assert.ok(checkout.body.includes(data.cancel));
-    assert.ok(checkout.body.includes("Demo site, please don't enter real personal or payment details"));
-    assert.ok(checkout.body.includes('Some providers store data overseas.'));
+    assert.ok(checkout.body.includes('Demo site. No card is collected and nothing is charged.'));
+    assert.ok(checkout.body.includes('Some providers may store data overseas.'));
     assert.ok(checkout.body.includes('noindex'));
 
     const missing = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1' });
@@ -501,11 +509,11 @@ function start(port, extra = {}) {
     const live = new Database(dbPath);
     live.prepare("UPDATE addons SET enabled=1 WHERE code='late' AND hotel_id IN (SELECT id FROM hotels WHERE slug IN ('saltwater-terrace','skyline-rooftop'))").run();
     live.close();
-    const lateBook = await post(port, '/book', { hotel: 'saltwater-terrace', date: salt.date, pass: 'lounger', qty: '1', addon: 'late', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1' });
+    const lateBook = await post(port, '/book', { hotel: 'saltwater-terrace', date: salt.date, pass: 'lounger', qty: '1', addon: 'late', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1' });
     assert.strictEqual(lateBook.status, 409);
     assert.ok(/closing time/.test(lateBook.body), lateBook.body.slice(0, 400));
 
-    const skyLate = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', addon: 'late', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1' });
+    const skyLate = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', addon: 'late', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1' });
     assert.strictEqual(skyLate.status, 409, skyLate.body.slice(0, 300));
     assert.ok(/room guests|closing time/.test(skyLate.body), skyLate.body.slice(0, 400));
 
@@ -541,7 +549,7 @@ function start(port, extra = {}) {
     assert.strictEqual(stillOff.prepare("SELECT enabled FROM addons WHERE id=?").get(lateAddon.id).enabled, 0);
     stillOff.close();
 
-    const booked = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1' });
+    const booked = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1' });
     assert.strictEqual(booked.status, 303, booked.body.slice(0, 300));
     const loc = booked.headers.location;
     const page = await get(port, loc);
@@ -557,6 +565,46 @@ function start(port, extra = {}) {
     assert.ok(page.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'));
     assert.ok(!page.body.includes('98 227 458 028'));
     assert.ok(!page.body.includes('Jason Baranov') && !page.body.includes('registration pending'));
+    assert.ok(!page.body.includes('googletagmanager.com') && !/stripe/i.test(page.body));
+    const { LegalVersions, ConsentLog } = require('../consent');
+    const versions = LegalVersions.current();
+    const code = String(loc || '').split('/').pop();
+    const savedBook = new Database(dbPath, { readonly: true });
+    const stored = savedBook.prepare('SELECT id, terms_version, refunds_version, privacy_version, risk_version, consent_at, consent_ip, marketing_opt_in, rules_text FROM bookings WHERE code=?').get(code);
+    assert.deepStrictEqual({
+      terms: stored.terms_version,
+      refunds: stored.refunds_version,
+      privacy: stored.privacy_version,
+      risk: stored.risk_version,
+    }, versions);
+    assert.ok(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(stored.consent_at), stored.consent_at);
+    assert.ok(stored.consent_ip);
+    assert.strictEqual(stored.marketing_opt_in, 0);
+    const logs = savedBook.prepare('SELECT kind, policy_version, consented_at, ip FROM consent_log WHERE booking_id=? ORDER BY kind').all(stored.id);
+    const byKind = Object.fromEntries(logs.map(row => [row.kind, row]));
+    for (const kind of ['group', 'privacy', 'refunds', 'risk', 'rules', 'share', 'terms']) assert.ok(byKind[kind], kind);
+    assert.ok(!byKind.marketing);
+    assert.strictEqual(byKind.terms.policy_version, versions.terms);
+    assert.strictEqual(byKind.refunds.policy_version, versions.refunds);
+    assert.strictEqual(byKind.privacy.policy_version, versions.privacy);
+    assert.strictEqual(byKind.risk.policy_version, versions.risk);
+    assert.strictEqual(byKind.group.policy_version, versions.risk);
+    assert.strictEqual(byKind.share.policy_version, versions.privacy);
+    assert.strictEqual(byKind.rules.policy_version, ConsentLog.rulesVersion(stored.rules_text));
+    for (const row of logs) {
+      assert.strictEqual(row.consented_at, stored.consent_at);
+      assert.strictEqual(row.ip, stored.consent_ip);
+      assert.ok(!row.consented_at.includes('localtime'));
+    }
+    savedBook.close();
+    const adminCookie = 'admin=' + encodeURIComponent('s:' + sign('jason', 'hdc-demo-secret'));
+    const adminPage = await get(port, '/admin?q=' + encodeURIComponent('alex@example.com'), { Cookie: adminCookie });
+    assert.strictEqual(adminPage.status, 200);
+    assert.ok(adminPage.body.includes(`Agreed: terms ${versions.terms}, refunds ${versions.refunds}, privacy ${versions.privacy}, risk ${versions.risk}.`));
+    const csv = await get(port, '/admin/export/bookings.csv', { Cookie: adminCookie });
+    assert.ok(csv.body.split('\r\n')[0].includes('terms_version,refunds_version,privacy_version,risk_version,consent_at,consent_ip'));
+    assert.ok(csv.body.includes(versions.terms));
+    assert.ok(csv.body.includes(stored.consent_at));
     assert.ok(!page.body.includes('googletagmanager.com'));
   } finally {
     child.kill('SIGTERM');
@@ -597,16 +645,27 @@ function start(port, extra = {}) {
     const home = await get(gaPort, '/');
     assert.ok(home.body.includes(gaSnippet), 'homepage should include the standard gtag snippet');
     assert.ok(home.body.indexOf(gaSnippet) < home.body.indexOf('</head>'));
-    const guestPages = ['/for-hotels', '/how-it-works', '/faq', '/contact', '/privacy', '/terms', '/refunds', '/risk', '/h/saltwater-terrace', '/checkout?hotel=skyline-rooftop&date=' + encodeURIComponent(freeSky.date) + '&pass=chair&qty=1'];
+    const guestPages = ['/for-hotels', '/how-it-works', '/faq', '/contact', '/privacy', '/terms', '/refunds', '/risk', '/h/saltwater-terrace'];
     for (const pathName of guestPages) {
       const doc = await get(gaPort, pathName);
       assert.strictEqual(doc.status, 200, pathName);
       assert.ok(doc.body.includes(gaSnippet), pathName);
     }
+    const quietCheckout = '/checkout?hotel=skyline-rooftop&date=' + encodeURIComponent(freeSky.date) + '&pass=chair&qty=1';
+    const checkoutDoc = await get(gaPort, quietCheckout);
+    assert.strictEqual(checkoutDoc.status, 200);
+    assert.ok(!checkoutDoc.body.includes('googletagmanager.com'), 'checkout');
+    assert.ok(!checkoutDoc.body.includes('G-9F5ZH1T4YN'), 'checkout');
     const missing = await get(gaPort, '/booking/HDC-99999');
-    const head = missing.body.slice(0, missing.body.indexOf('</head>'));
-    assert.ok(head.includes("gtag('config','G-9F5ZH1T4YN',{page_path:'/booking',page_location:location.origin+'/booking',page_title:'Booking'});"));
-    assert.ok(!head.includes('HDC-99999'));
+    assert.ok(!missing.body.includes('googletagmanager.com'));
+    assert.ok(!missing.body.includes('G-9F5ZH1T4YN'));
+    const gaBooked = await post(gaPort, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', name: 'Alex Citizen', email: 'ga-guest@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1' });
+    assert.strictEqual(gaBooked.status, 303, gaBooked.body.slice(0, 200));
+    const gaConfirm = await get(gaPort, gaBooked.headers.location);
+    assert.strictEqual(gaConfirm.status, 200);
+    assert.ok(!gaConfirm.body.includes('googletagmanager.com'));
+    assert.ok(!gaConfirm.body.includes('G-9F5ZH1T4YN'));
+    assert.ok(gaConfirm.body.includes('Your demo booking'));
     for (const pathName of ['/hotel/login', '/admin/login']) {
       const doc = await get(gaPort, pathName);
       assert.strictEqual(doc.status, 200, pathName);

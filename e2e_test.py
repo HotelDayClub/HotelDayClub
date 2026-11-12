@@ -31,6 +31,8 @@ with sync_playwright() as pw:
         pg.check("input[name=rules]")
         pg.check("input[name=terms]")
         pg.check("input[name=risk]")
+        pg.check("input[name=group]")
+        pg.check("input[name=share]")
         assert pg.locator("input[name=marketing]").is_checked() is False
         assert "hotel terms apply" not in pg.content()
         assert "Free cancellation" in pg.content() or "can't be cancelled for free" in pg.content()

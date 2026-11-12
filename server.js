@@ -18,6 +18,7 @@ const { adminPassword, verifyPassword, safeEqual, hashPassword, migrateHotelPass
 const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
 const { ymd, addDays, esc, money, nice } = require('./util');
 const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
+const { LegalVersions, ConsentLog, CheckoutConsent } = require('./consent');
 const brand = require('./brand');
 const { codeFromQrToken } = require('./qr');
 const { bookingPageBody, bookingMissingBody } = require('./bookingPage');
@@ -37,7 +38,7 @@ const { bookingsCsv, hotelsCsv, hotelBookingsCsv } = require('./dataExport');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
   hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST,
-  fmtTime, cancelNote, riskCard, riskText, riskTick, swimNote, hotelLatePossible, lateWindow, amenitiesFrom,
+  fmtTime, cancelNote, riskCard, riskText, swimNote, hotelLatePossible, lateWindow, amenitiesFrom,
   venueMissing, PICK_DATE_CANCEL, arrivalOptions, normalizeArrival, arrivalText,
 } = require('./offering');
 const app = express();
@@ -520,8 +521,12 @@ ${joined ? `<div class="wl-ok" role="status"><h3>You're on the list</h3><p>Thank
 <label class="wl-choice"><input type="radio" name="role" value="hotel"${form.role === 'hotel' ? ' checked' : ''}> I'm a hotel</label>
 </fieldset>
 <label class="fl">Hotel name <span class="opt">(optional, hotels only)</span><input name="hotel_name" maxlength="120" value="${esc(form.hotel_name || '')}"></label>
+<label class="tick"><input type="checkbox" name="marketing" value="1"${form.marketing === '1' ? ' checked' : ''}> <span>${CheckoutConsent.marketingHtml()}</span></label>
+<div class="wl-note">
+<p>${CheckoutConsent.guestNoticeHtml(contactMail())}</p>
+<p>${CheckoutConsent.hotelNoticeHtml(contactMail())}</p>
+</div>
 <button class="btn" type="submit">Join the waitlist</button>
-<p class="wl-note">We use this to contact you about day passes near you. To unsubscribe or ask us to delete it, email ${contactMail()}. <a href="/privacy">Privacy policy</a>.</p>
 </form></div></dialog>`, { analytics: true, home: true, index: true, ...seo.pageCopy('home'), jsonld: seo.homeJsonLd(contactEmail()) });
 }
 app.get('/', (req, res) => {
@@ -630,7 +635,7 @@ function validate(q) {
   if (add.err) return { err: add.err, h };
   return { h, p, date, qty, people, a, addons: add.addons, addonTotal: add.addonTotal };
 }
-const errPage = (v, res) => res.status(409).send(page('Not available', `<div class="wrap sec narrow"><div class="alert">${esc(v.err)}</div>${v.h ? `<a class="btn btn-navy" href="/h/${v.h.slug}">Back to ${esc(v.h.name)}</a>` : ''}</div>`, { analytics: true, index: false, canonical: false }));
+const errPage = (v, res) => res.status(409).send(page('Not available', `<div class="wrap sec narrow"><div class="alert">${esc(v.err)}</div>${v.h ? `<a class="btn btn-navy" href="/h/${v.h.slug}">Back to ${esc(v.h.name)}</a>` : ''}</div>`, { analytics: false, index: false, canonical: false }));
 
 const bookHolds = new Map();
 function issueBookToken(existing) {
@@ -650,9 +655,11 @@ function bookFieldErrors(body) {
   if (!/^\S+@\S+\.\S+$/.test(String(body.email || '').trim())) errors.email = 'Enter a valid email.';
   if (String(body.phone || '').replace(/\D/g, '').length < 8) errors.phone = 'Enter a mobile number.';
   const ticked = key => body[key] === '1' || body[key] === 'on';
-  if (!ticked('rules')) errors.rules = 'Tick the pool rules to continue.';
-  if (!ticked('terms')) errors.terms = 'Tick the customer terms to continue.';
   if (!ticked('risk')) errors.risk = 'Tick the risk warning to continue.';
+  if (!ticked('rules')) errors.rules = 'Tick the hotel rules to continue.';
+  if (!ticked('group')) errors.group = 'Tick the group and children acknowledgement to continue.';
+  if (!ticked('terms')) errors.terms = 'Tick the customer terms to continue.';
+  if (!ticked('share')) errors.share = 'Tick the sharing consent to continue.';
   return errors;
 }
 function fieldError(errors, key) {
@@ -701,10 +708,11 @@ function renderCheckout(query, res, extra = {}) {
 ${fieldError(errors, 'arrival')}</label>
 <p class="muted small" id="arrival-help">An estimate only. It lets the hotel plan for you; it is not a reserved time slot.</p>
 </section>`;
-  const payStep = offer.length ? '4' : '3';
   const confirmLabel = `Confirm booking · ${money(grand)} (demo)`;
+  const on = key => draft[key] === '1' || draft[key] === 'on';
+  const tick = (name, html, required) => CheckoutConsent.box({ name, html, required, checked: on(name), invalid: !!errors[name] });
   res.status(extra.status || 200).send(page('Checkout', `<div class="wrap sec checkout">
-<a class="link small" href="/h/${h.slug}?date=${date}">← Back to listing</a><h1 class="l-title">Confirm and pay</h1>
+<a class="link small" href="/h/${h.slug}?date=${date}">← Back to listing</a><h1 class="l-title">Book your day (demo)</h1>
 <div class="co-layout">
 <aside class="co-sum" id="co-sum">
 <button type="button" class="co-sum-bar" id="co-sum-bar" aria-expanded="false" aria-controls="co-sum-body"><span>${esc(passLabel)}</span><b class="co-total">${money(grand)}</b></button>
@@ -723,7 +731,7 @@ ${included}
 </div></div></aside>
 <form class="co-form" id="co-form" method="post" action="/book">
 ${['hotel', 'date', 'qty'].map(k => `<input type="hidden" name="${k}" value="${esc(query[k])}">`).join('')}<input type="hidden" name="pass" value="${p.code}"><input type="hidden" name="book_token" value="${esc(bookToken)}">
-<p class="demo-caution">Demo site, please don't enter real personal or payment details</p>
+<p class="demo-caution">Demo site. No card is collected and nothing is charged.</p>
 ${extra.formError ? `<div class="alert" role="alert">${esc(extra.formError)}</div>` : ''}
 <section class="co-card"><h2><span class="co-step">1</span> Your details</h2>
 <label class="fl">Full name<input name="name" required autocomplete="name" placeholder="Alex Citizen" value="${esc(draft.name || '')}" ${errors.name ? 'aria-invalid="true" aria-describedby="err-name"' : ''}>${fieldError(errors, 'name')}</label>
@@ -732,21 +740,17 @@ ${extra.formError ? `<div class="alert" role="alert">${esc(extra.formError)}</di
 </section>
 ${arrivalCard}
 ${addonFields}
-<section class="co-card"><h2><span class="co-step">${payStep}</span> Payment</h2>
-<div class="demo-pay"><div class="dp-head">${ICON.lock} <b>Demo payment, no charge</b></div>
-<p class="small">This is a mock checkout. No card is needed and nothing is charged. This demo does not take a payment.</p>
-<label class="fl">Card number<input value="4242 4242 4242 4242" disabled></label>
-<div class="two"><label class="fl">Expiry<input value="12 / 30" disabled></label><label class="fl">CVC<input value="123" disabled></label></div></div>
-</section>
-<section class="co-card co-before"><h2>Before you book</h2>
+<section class="co-card co-before" id="co-consent"><h2>Before you book</h2>
 ${rulesCard(h, rulesOpts)}
 ${riskCard(h)}
 <p class="cancel-note">${esc(cancel)} <a href="/refunds">Cancellation and refunds</a></p>
-<label class="tick"><input type="checkbox" name="rules" value="1" required ${draft.rules === '1' || draft.rules === 'on' ? 'checked' : ''} ${errors.rules ? 'aria-invalid="true" aria-describedby="err-rules"' : ''}> <span>I've read and accept these pool rules.</span></label>${fieldError(errors, 'rules')}
-<label class="tick"><input type="checkbox" name="terms" value="1" required ${draft.terms === '1' || draft.terms === 'on' ? 'checked' : ''} ${errors.terms ? 'aria-invalid="true" aria-describedby="err-terms"' : ''}> <span>I accept the <a href="/terms">customer terms</a>, the <a href="/refunds">cancellation and refund policy</a>, and the <a href="/privacy">privacy notice</a>.</span></label>${fieldError(errors, 'terms')}
-<label class="tick"><input type="checkbox" name="risk" value="1" required ${draft.risk === '1' || draft.risk === 'on' ? 'checked' : ''} ${errors.risk ? 'aria-invalid="true" aria-describedby="err-risk"' : ''}> <span>${esc(riskTick(h))}</span></label>${fieldError(errors, 'risk')}
-<label class="tick"><input type="checkbox" name="marketing" value="1" ${draft.marketing === '1' || draft.marketing === 'on' ? 'checked' : ''}> <span>Email me about day passes. Optional, and separate from this booking.</span></label>
-<p class="privacy-note">We use your name, email and mobile to hold this booking and show it to the hotel. Some providers store data overseas. <a href="/privacy">Privacy policy</a></p>
+${tick('risk', CheckoutConsent.riskHtml(), true)}${fieldError(errors, 'risk')}
+${tick('rules', CheckoutConsent.rulesHtml(), true)}${fieldError(errors, 'rules')}
+${tick('group', CheckoutConsent.groupHtml(), true)}${fieldError(errors, 'group')}
+${tick('terms', CheckoutConsent.termsHtml(), true)}${fieldError(errors, 'terms')}
+${tick('share', CheckoutConsent.shareHtml(hotelLabel), true)}${fieldError(errors, 'share')}
+${tick('marketing', CheckoutConsent.marketingHtml(), false)}
+<p class="privacy-note">${CheckoutConsent.noticeHtml(hotelLabel)}</p>
 </section>
 </form>
 <div class="co-dock"><div class="co-dock-total"><span>Total</span><b class="co-total">${money(grand)}</b></div><button class="btn btn-coral co-btn" type="submit" form="co-form">${confirmLabel}</button></div>
@@ -770,7 +774,7 @@ const form=document.getElementById('co-form');
 const storeKey='hdc-checkout:'+form.hotel.value+':'+form.date.value+':'+form.pass.value+':'+form.qty.value;
 function remembered(){try{return JSON.parse(sessionStorage.getItem(storeKey)||'{}')}catch(e){return {}}}
 function remember(){
-  const data={name:form.name.value,email:form.email.value,phone:form.phone.value,arrival:form.arrival.value,rules:form.rules.checked,terms:form.terms.checked,risk:form.risk.checked,marketing:form.marketing.checked,addon:[...form.querySelectorAll('input[name=addon]:checked')].map(i=>i.value)};
+  const data={name:form.name.value,email:form.email.value,phone:form.phone.value,arrival:form.arrival.value,rules:form.rules.checked,terms:form.terms.checked,risk:form.risk.checked,group:form.group.checked,share:form.share.checked,marketing:form.marketing.checked,addon:[...form.querySelectorAll('input[name=addon]:checked')].map(i=>i.value)};
   try{sessionStorage.setItem(storeKey, JSON.stringify(data))}catch(e){}
 }
 const saved=remembered();
@@ -779,7 +783,7 @@ if(saved && !form.name.value && !form.email.value && !form.phone.value){
   if(saved.email) form.email.value=saved.email;
   if(saved.phone) form.phone.value=saved.phone;
   if(saved.arrival){const opt=form.arrival.querySelector('option[value="'+String(saved.arrival).replace(/"/g,'')+'"]'); if(opt) form.arrival.value=saved.arrival;}
-  form.rules.checked=!!saved.rules; form.terms.checked=!!saved.terms; form.risk.checked=!!saved.risk; form.marketing.checked=!!saved.marketing;
+  form.rules.checked=!!saved.rules; form.terms.checked=!!saved.terms; form.risk.checked=!!saved.risk; form.group.checked=!!saved.group; form.share.checked=!!saved.share; form.marketing.checked=!!saved.marketing;
   (saved.addon||[]).forEach(code=>{const box=form.querySelector('input[name=addon][value="'+code.replace(/"/g,'')+'"]'); if(box && !box.disabled) box.checked=true});
   paint();
 }
@@ -805,7 +809,7 @@ form.addEventListener('submit', function(ev){
   document.querySelectorAll('.co-btn').forEach(btn=>{btn.disabled=true; btn.setAttribute('aria-busy','true'); btn.textContent='Confirming…';});
 });
 window.addEventListener('pageshow', function(ev){if(!ev.persisted) return; sending=false; document.querySelectorAll('.co-btn').forEach(btn=>{btn.disabled=false; btn.removeAttribute('aria-busy')}); paint();});
-</script>`, { analytics: true, index: false, canonical: false }));
+</script>`, { analytics: false, index: false, canonical: false }));
 }
 app.get('/checkout', (req, res) => renderCheckout(req.query, res));
 
@@ -858,9 +862,15 @@ app.post('/book', async (req, res) => {
     code = newCode();
     const seen = { ...hoursView(db, v.h, v.date), foodSentence: guestFoodLine(db, v.h) };
     const note = cancelNote(db, v.h, v.date);
-    const info = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,party,rules_ack_at,rules_text,marketing_opt_in,terms_ack_at,risk_ack_at,risk_text,cancel_note,expected_arrival)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),?,?,datetime('now','localtime'),datetime('now','localtime'),?,?,?)`)
-      .run(code, v.h.id, v.p.id, v.date, v.qty, v.p.price, v.p.price * v.qty + v.addonTotal, name, email, phone, v.people, rulesText(v.h, seen), b.marketing === '1' ? 1 : 0, riskText(v.h), note, arrivalValue);
+    const rulesSnapshot = rulesText(v.h, seen);
+    const versions = LegalVersions.current();
+    const consentAt = ConsentLog.utcNow();
+    const consentIp = ConsentLog.clientIp(req);
+    const marketingOn = ConsentLog.ticked(b, 'marketing') ? 1 : 0;
+    const info = db.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,party,rules_ack_at,rules_text,marketing_opt_in,terms_ack_at,risk_ack_at,risk_text,cancel_note,expected_arrival,terms_version,refunds_version,privacy_version,risk_version,consent_at,consent_ip)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),?,?,datetime('now','localtime'),datetime('now','localtime'),?,?,?,?,?,?,?,?,?)`)
+      .run(code, v.h.id, v.p.id, v.date, v.qty, v.p.price, v.p.price * v.qty + v.addonTotal, name, email, phone, v.people, rulesSnapshot, marketingOn, riskText(v.h), note, arrivalValue, versions.terms, versions.refunds, versions.privacy, versions.risk, consentAt, consentIp);
+    ConsentLog.write(db, info.lastInsertRowid, { at: consentAt, ip: consentIp, marketing: marketingOn === 1, rulesText: rulesSnapshot });
     const insAdd = db.prepare('INSERT INTO booking_addons(booking_id,addon_id,name,qty,unit_price,total) VALUES (?,?,?,?,?,?)');
     for (const ad of v.addons) insAdd.run(info.lastInsertRowid, ad.id, ad.name, ad.qty, ad.price, ad.line);
   }).immediate();
@@ -957,7 +967,7 @@ app.get('/booking/:code/calendar.ics', (req, res) => {
 app.get('/booking/:code', async (req, res) => {
   if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);
   const b = bookingFull(String(req.params.code || '').toUpperCase());
-  if (!b) return sendNotFound(res, { analyticsPath: '/booking', title: "We can't find that booking", body: bookingMissingBody(operatorEmail()), description: "We can't find that booking." });
+  if (!b) return sendNotFound(res, { analytics: false, title: "We can't find that booking", body: bookingMissingBody(operatorEmail()), description: "We can't find that booking." });
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(b.hotel_id);
   const cancelled = b.status === 'cancelled';
   const qr = cancelled ? '' : await QRCode.toDataURL(checkinUrl(b.code), { margin: 1, width: 260, color: { dark: brand['hdc-navy'], light: brand['hdc-bg'] } });
@@ -986,7 +996,7 @@ app.get('/booking/:code', async (req, res) => {
     status: cancelled ? 'Cancelled' : b.checked_in_at ? 'Checked in ' + b.checked_in_at : 'Confirmed',
     mayCancel: BookingCancel.guestMay(db, hotel, b),
     parkingHtml: cancelled ? '' : parkingBlock(hotel, hasParking),
-  }), { analytics: true, analyticsPath: '/booking', index: false, canonical: false }));
+  }), { analytics: false, index: false, canonical: false }));
 });
 app.post('/booking/:code/cancel', async (req, res) => {
   if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);
@@ -994,7 +1004,7 @@ app.post('/booking/:code/cancel', async (req, res) => {
   if (!sameSitePost(req)) return res.status(403).type('text/plain; charset=utf-8').send('Use the booking page on this site.');
   const code = String(req.params.code || '').toUpperCase();
   const b = bookingFull(code);
-  if (!b) return sendNotFound(res, { analyticsPath: '/booking', title: "We can't find that booking", body: bookingMissingBody(operatorEmail()), description: "We can't find that booking." });
+  if (!b) return sendNotFound(res, { analytics: false, title: "We can't find that booking", body: bookingMissingBody(operatorEmail()), description: "We can't find that booking." });
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(b.hotel_id);
   if (!BookingCancel.guestMay(db, hotel, b)) return res.redirect(303, '/booking/' + encodeURIComponent(b.code));
   const changed = BookingCancel.mark(db, b.id);
@@ -1197,16 +1207,17 @@ function logForm(b, redirect, log) {
 function arrivalCell(value, mode) {
   return esc(arrivalText(value, mode === 'detail' ? 'detail' : 'short'));
 }
-const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '' } = {}) => {
+const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false } = {}) => {
   rows = withNotes(rows);
   const head = arrival ? '<th>Arrival</th>' : '';
   const cell = b => arrival ? `<td>${arrival === 'detail' ? `Expected arrival: ${arrivalCell(b.expected_arrival, 'detail')}` : arrivalCell(b.expected_arrival, 'short')}</td>` : '';
+  const versionLine = b => versions ? ConsentLog.adminLine(b) : '';
   return rows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th>${hotelCol ? '<th>Hotel</th>' : ''}<th>Date</th><th>Guest</th>${head}<th>Seating</th><th>Spots</th><th>Total</th><th>Status</th></tr></thead><tbody>
-${rows.map(b => `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(b.hotel)}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(b.guest_name)}</b> ${parkingTag(b)}<div class="muted small">${esc(b.email)} · ${esc(b.phone)}</div></td>${cell(b)}${seatCell(b)}<td>${b.qty}</td><td>${money(b.total)}</td>
+${rows.map(b => `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(b.hotel)}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(b.guest_name)}</b> ${parkingTag(b)}<div class="muted small">${esc(b.email)} · ${esc(b.phone)}</div>${versionLine(b)}</td>${cell(b)}${seatCell(b)}<td>${b.qty}</td><td>${money(b.total)}</td>
 <td>${statusCell(b, { checkin, redirect, day, compact: true, adminCancel })}${noteBits(b)}${logForm(b, redirect, log)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No guests.</p>';
 };
 const BQ = `SELECT b.*, p.name pass, p.holds, h.name hotel, (SELECT group_concat(ba.name || ' × ' || ba.qty, ', ') FROM booking_addons ba WHERE ba.booking_id=b.id) addons, (SELECT 1 FROM booking_addons ba JOIN addons a ON a.id=ba.addon_id WHERE ba.booking_id=b.id AND a.code='parking') parking_addon, (SELECT mode FROM inclusions i WHERE i.hotel_id=b.hotel_id AND i.code='parking') parking_mode FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id JOIN hotels h ON h.id=b.hotel_id`;
-function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '' } = {}) {
+function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false } = {}) {
   rows = withNotes(rows);
   if (!rows.length) return '<p class="muted">No guests.</p>';
   return `<div class="guest-cards">${rows.map(b => {
@@ -1218,7 +1229,8 @@ function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel
     const arrivalLine = !arrival ? '' : arrival === 'detail'
       ? `<p>Expected arrival: ${arrivalCell(b.expected_arrival, 'detail')}</p>`
       : `<p class="muted small">Arrival: ${arrivalCell(b.expected_arrival, 'short')}</p>`;
-    return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(b.guest_name)}</b> ${parkingTag(b)}<div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(b.hotel) : ''} · ${esc(nice(b.date))}</div></div><b>${money(b.total)}</b></div>
+    const versionLine = versions ? ConsentLog.adminLine(b) : '';
+    return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(b.guest_name)}</b> ${parkingTag(b)}<div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(b.hotel) : ''} · ${esc(nice(b.date))}</div>${versionLine}</div><b>${money(b.total)}</b></div>
 <p>${esc(label)} × ${b.qty} · ${party} ${party === 1 ? 'person' : 'people'}</p>${arrivalLine}${rules}${adds}${noteBits(b)}${action}${logForm(b, redirect, log)}</article>`;
   }).join('')}</div>`;
 }
@@ -1797,20 +1809,20 @@ ${contactMessagesHtml()}
 ${per.map(r => `<tr><td><a class="link" href="/admin?hotel=${r.id}#all"><b>${esc(r.name)}</b></a><div class="muted small">${esc(r.area)}</div>${hotelPasswordForm(r)}</td><td>${r.n}</td><td>${r.passes}</td><td>${r.today}</td><td>${money(r.gross)}</td><td>${money(r.gross * HOTEL_SHARE)}</td><td><b>${money(r.gross * (1 - HOTEL_SHARE))}</b></td></tr>`).join('')}
 <tr class="tot"><td>Total</td><td>${tot.n}</td><td>${tot.passes}</td><td>${tot.today}</td><td>${money(tot.gross)}</td><td>${money(tot.gross * HOTEL_SHARE)}</td><td>${money(tot.gross * (1 - HOTEL_SHARE))}</td></tr></tbody></table></div></section>
 <section class="panel" id="all"><h2 class="ph2">Latest bookings</h2><form class="lookup" method="get" action="/admin#all"><select name="hotel"><option value="">All hotels</option>${per.map(r => `<option value="${r.id}" ${r.id === hid ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select><input name="q" value="${esc(q)}" placeholder="Code, name or email"><button class="btn btn-navy">Filter</button></form>
-${guestList(rows, { checkin: false, hotelCol: true, log: false, adminCancel: true, arrival: 'short' })}<p class="muted small">Showing the latest ${rows.length} (max 100).</p></section>
+${guestList(rows, { checkin: false, hotelCol: true, log: false, adminCancel: true, arrival: 'short', versions: true })}<p class="muted small">Showing the latest ${rows.length} (max 100).</p></section>
 <section class="panel"><h2 class="ph2">Guest notes</h2>${notes.length ? notes.map(n => `<div class="pending-row"><div><b>${n.kind === 'incident' ? 'Incident' : 'No-show'}</b> · ${esc(n.guest_name)} · ${esc(n.code)}<div class="muted small">${esc(n.hotel)} · ${esc(nice(n.date))} · ${esc(hhmm(n.created_at))}${n.note ? ' · ' + esc(n.note) : ''}</div></div></div>`).join('') : '<p class="muted">No notes yet. Hotels log a no-show or an incident from the guest list.</p>'}</section>
 <section class="panel" id="waitlist"><h2 class="ph2">Waitlist</h2>
 <p class="muted small">${paths.dataDir()
   ? 'These rows are stored in the database on the persistent disk. They are not shown on the public site. Download a CSV or a database backup if you want a copy off this server.'
   : 'These rows are stored on this server only. They are not shown on the public site. Download the CSV before a redeploy if the spreadsheet connection is not set up. This disk is cleared when the app is redeployed.'}</p>
 <p><a class="btn btn-navy" href="/admin/waitlist.csv">Download CSV</a></p>
-${waitRows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Email</th><th>Name</th><th>Place</th><th>Role</th><th>Hotel</th><th>Destination</th><th>Added</th><th></th></tr></thead><tbody>
-${waitRows.map(w => `<tr><td>${esc(w.email)}</td><td>${esc(w.first_name)}</td><td>${esc(w.place)}</td><td>${esc(w.role)}</td><td>${esc(w.hotel_name)}</td><td>${esc(w.destination)}</td><td>${esc(w.created_at)}</td><td><form method="post" action="/admin/waitlist/delete"><input type="hidden" name="id" value="${w.id}"><button class="btn btn-line">Delete</button></form></td></tr>`).join('')}
+${waitRows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Email</th><th>Name</th><th>Place</th><th>Role</th><th>Hotel</th><th>Destination</th><th>Alerts</th><th>Added</th><th></th></tr></thead><tbody>
+${waitRows.map(w => `<tr><td>${esc(w.email)}</td><td>${esc(w.first_name)}</td><td>${esc(w.place)}</td><td>${esc(w.role)}</td><td>${esc(w.hotel_name)}</td><td>${esc(w.destination)}</td><td>${Number(w.marketing_opt_in) === 1 ? 'Yes' : 'No'}</td><td>${esc(w.created_at)}</td><td><form method="post" action="/admin/waitlist/delete"><input type="hidden" name="id" value="${w.id}"><button class="btn btn-line">Delete</button></form></td></tr>`).join('')}
 </tbody></table></div>` : '<p class="muted">No waitlist signups stored on this server.</p>'}
 </section></div>`, { nav: 'admin' }));
 });
 app.get('/admin/waitlist.csv', adminAuth, (req, res) => {
-  const rows = db.prepare('SELECT email, first_name, place, role, hotel_name, destination, created_at, updated_at FROM waitlist ORDER BY id').all();
+  const rows = db.prepare('SELECT email, first_name, place, role, hotel_name, destination, marketing_opt_in, created_at, updated_at FROM waitlist ORDER BY id').all();
   sendCsv(res, 'waitlist.csv', waitlistCsv(rows));
 });
 app.post('/admin/waitlist/delete', adminAuth, (req, res) => {
@@ -1897,7 +1909,7 @@ app.get('/admin/backups/latest', adminAuth, (req, res) => {
 app.get('/admin/export/bookings.csv', adminAuth, (req, res) => {
   const rows = db.prepare(`SELECT b.code, h.name AS hotel, h.slug AS hotel_slug, b.date, b.qty, b.party, b.expected_arrival, b.guest_name, b.email, b.phone,
     b.status, b.unit_price, b.total, b.created_at, b.checked_in_at, b.arrived_count, b.marketing_opt_in,
-    b.rules_ack_at, b.terms_ack_at, b.risk_ack_at, b.cancel_note, b.seeded
+    b.rules_ack_at, b.terms_ack_at, b.risk_ack_at, b.terms_version, b.refunds_version, b.privacy_version, b.risk_version, b.consent_at, b.consent_ip, b.cancel_note, b.seeded
     FROM bookings b JOIN hotels h ON h.id=b.hotel_id ORDER BY b.id`).all();
   sendCsv(res, 'bookings.csv', bookingsCsv(rows));
 });
@@ -1917,7 +1929,7 @@ app.get('/how-it-works', (req, res) => {
 <h2>For guests</h2>
 <div class="how-grid">
 <div><span class="n">1</span><h3>Browse</h3><p class="muted">Search by neighbourhood, date and what you want: pool, gym or spa. Each listing shows what's included and the pool rules.</p></div>
-<div><span class="n">2</span><h3>Book</h3><p class="muted">Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking or gym access if you want. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue. Tick the pool rules, the terms and the risk warning. The total updates before you confirm. This demo doesn't charge a card.</p></div>
+<div><span class="n">2</span><h3>Book</h3><p class="muted">Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking or gym access if you want. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue. Tick the risk warning, the hotel rules, the group and children acknowledgement, the terms, and the sharing consent. Hot-day alerts are optional. The total updates before you confirm. This demo doesn't charge a card.</p></div>
 <div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">At the check-in point on your listing. The hours are on your confirmation. Reception checks you in and hands you a wristband.</p></div>
 <div><span class="n">4</span><h3>Enjoy</h3><p class="muted">Your spot, for the hours that hotel has set. Add-ons stay optional.</p></div>
 </div>
@@ -1990,8 +2002,10 @@ ${error ? `<div class="alert" role="alert">${esc(error)}</div>` : ''}
 <label class="fl">Booking code <span class="opt">(optional)</span><input name="booking_code" maxlength="40" autocomplete="off" value="${esc(v.booking_code || '')}"></label>
 <label class="fl">Topic<select name="topic" required><option value="">Choose a topic</option>${topics}</select></label>
 <label class="fl">Message<textarea name="message" required maxlength="2000">${esc(v.message || '')}</textarea></label>
+<label class="tick"><input type="checkbox" name="marketing" value="1"${v.marketing === '1' ? ' checked' : ''}> <span>${CheckoutConsent.marketingHtml()}</span></label>
 <button class="btn btn-navy full" type="submit">Send message</button>
-<p class="contact-note">We use your name, email and this message only to reply to you. <a href="/privacy">Privacy policy</a>.</p>
+<p class="contact-note">We use your name, email and this message only to reply to you. <a href="/privacy">Privacy Policy</a>.</p>
+<p class="contact-note">${CheckoutConsent.hotelNoticeHtml(mail)}</p>
 </form>
 <p class="contact-alt">Or email ${mail}.</p>
 </div></div>`, opts);
@@ -2200,7 +2214,8 @@ function sendNotFound(res, extra = {}) {
 }
 app.use((req, res) => {
   if (req.path.startsWith('/api')) return res.status(404).json({ error: 'not found' });
-  sendNotFound(res, { analyticsPath: req.path.startsWith('/booking/') ? '/booking' : '' });
+  const bookingPath = req.path.startsWith('/booking/');
+  sendNotFound(res, { analytics: bookingPath ? false : true, analyticsPath: '' });
 });
 
 app.listen(PORT, () => {

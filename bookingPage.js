@@ -125,7 +125,7 @@ ${arrivalRow}
 <dt>Guests</dt><dd>${v.party}</dd>
 <dt>Guest</dt><dd>${esc(v.shownName)}</dd>
 ${emailRow}
-<dt>Paid</dt><dd>${money(b.total)} <span class="bk-muted">(demo, no charge)</span></dd>
+<dt>Total</dt><dd>${money(b.total)} <span class="bk-muted">(demo, no charge)</span></dd>
 <dt>Status</dt><dd>${esc(v.status)}</dd>
 </dl>
 </section>

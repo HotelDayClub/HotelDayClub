@@ -21,6 +21,7 @@ function parseMessage(body) {
     booking_code: stripped(raw.booking_code).slice(0, 40),
     topic: stripped(raw.topic).slice(0, 40),
     message: stripped(raw.message).slice(0, 2000),
+    marketing: raw.marketing === '1' || raw.marketing === 'on' ? '1' : '',
   };
   if (stripped(raw.company_website)) return { honeypot: true, values };
   if (stripped(raw.name).length > 80) return { error: 'Name is too long.', values };
@@ -43,6 +44,7 @@ function parseMessage(body) {
       booking_code: values.booking_code,
       topic: values.topic,
       message: values.message,
+      marketing_opt_in: values.marketing === '1' ? 1 : 0,
     },
   };
 }
@@ -52,8 +54,8 @@ function contactLimited(ip) {
 }
 
 function saveMessage(db, row) {
-  return db.prepare(`INSERT INTO contact_messages (name, email, booking_code, topic, message)
-    VALUES (@name, @email, @booking_code, @topic, @message)`).run(row).lastInsertRowid;
+  return db.prepare(`INSERT INTO contact_messages (name, email, booking_code, topic, message, marketing_opt_in)
+    VALUES (@name, @email, @booking_code, @topic, @message, @marketing_opt_in)`).run(row).lastInsertRowid;
 }
 
 function topicLabel(value) {

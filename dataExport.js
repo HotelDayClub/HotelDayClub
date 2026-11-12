@@ -4,7 +4,7 @@ const { arrivalText } = require('./offering');
 const BOOKING_COLUMNS = [
   'code', 'hotel', 'hotel_slug', 'date', 'qty', 'party', 'expected_arrival', 'guest_name', 'email', 'phone',
   'status', 'unit_price', 'total', 'created_at', 'checked_in_at', 'arrived_count', 'marketing_opt_in',
-  'rules_ack_at', 'terms_ack_at', 'risk_ack_at', 'cancel_note', 'seeded',
+  'rules_ack_at', 'terms_ack_at', 'risk_ack_at', 'terms_version', 'refunds_version', 'privacy_version', 'risk_version', 'consent_at', 'consent_ip', 'cancel_note', 'seeded',
 ];
 
 const HOTEL_BOOKING_COLUMNS = [
