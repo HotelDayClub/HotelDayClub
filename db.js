@@ -94,6 +94,15 @@ CREATE TABLE IF NOT EXISTS consent_log(
   ip TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_consent_log_booking ON consent_log(booking_id);
+CREATE TABLE IF NOT EXISTS closure_alerts(
+  id INTEGER PRIMARY KEY,
+  hotel_id INTEGER,
+  date TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
+  guest_count INTEGER NOT NULL DEFAULT 0,
+  summary TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `);
 // Adds a column only when it is missing, so this is safe to run on every boot.
 function ensureCols(table, cols) {
