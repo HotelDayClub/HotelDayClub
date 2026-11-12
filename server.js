@@ -8,7 +8,7 @@ const db = require('./db');
 const { seed, ensureAddons, ensureSchedules, seedPerformance } = require('./seed');
 const {
   seatPhoto, SEAT_PHOTO, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
-  includedLines, includedNote, addonsHtml, inclusionsForm, beatsHtml, hoursInner, policyInner, guestFoodLine, PASS_FOOD_LINE,
+  includedLines, includedNote, addonsHtml, inclusionsForm, beatsHtml, hoursInner, policyInner, guestFoodLine, PASS_FOOD_LINE, FOOD_DRINK,
 } = require('./inclusions');
 const { ensureArrival, saveArrival, arrivalForm, directionsHref } = require('./arrival');
 const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hotelAreas, linkedIds } = require('./access');
@@ -163,7 +163,7 @@ function availability(hid, date) {
   }
   return rows;
 }
-const getAddons = (hid, enabledOnly = false) => db.prepare(`SELECT * FROM addons WHERE hotel_id=? ${enabledOnly ? 'AND enabled=1' : ''} ORDER BY sort, id`).all(hid);
+const getAddons = (hid, enabledOnly = false) => db.prepare(`SELECT * FROM addons WHERE hotel_id=? ${enabledOnly ? 'AND enabled=1' : ''} ORDER BY sort, id`).all(hid).filter(a => !FOOD_DRINK.has(a.code));
 const addonSold = (aid, date) => db.prepare("SELECT COALESCE(SUM(ba.qty),0) n FROM booking_addons ba JOIN bookings b ON b.id=ba.booking_id WHERE ba.addon_id=? AND b.date=? AND b.status!='cancelled'").get(aid, date).n;
 function presentAddon(hotel, date, a) {
   if (!a || a.code !== 'late') return a;
@@ -196,6 +196,7 @@ function chosenAddons(hid, date, people, q) {
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(hid);
   const rows = [];
   for (const code of addonCodes(q)) {
+    if (FOOD_DRINK.has(code)) return { err: 'That add-on is not available.' };
     const a = db.prepare('SELECT * FROM addons WHERE hotel_id=? AND code=? AND enabled=1').get(hid, code);
     if (!a) return { err: 'That add-on is not available.' };
     const shown = presentAddon(hotel, date, a);
@@ -1916,7 +1917,7 @@ app.get('/how-it-works', (req, res) => {
 <h2>For guests</h2>
 <div class="how-grid">
 <div><span class="n">1</span><h3>Browse</h3><p class="muted">Search by neighbourhood, date and what you want: pool, gym or spa. Each listing shows what's included and the pool rules.</p></div>
-<div><span class="n">2</span><h3>Book</h3><p class="muted">Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking, gym access or a prepaid food and drink credit (optional) if you want. Tick the pool rules, the terms and the risk warning. The total updates before you confirm. This demo doesn't charge a card.</p></div>
+<div><span class="n">2</span><h3>Book</h3><p class="muted">Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking or gym access if you want. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue. Tick the pool rules, the terms and the risk warning. The total updates before you confirm. This demo doesn't charge a card.</p></div>
 <div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">At the check-in point on your listing. The hours are on your confirmation. Reception checks you in and hands you a wristband.</p></div>
 <div><span class="n">4</span><h3>Enjoy</h3><p class="muted">Your spot, for the hours that hotel has set. Add-ons stay optional.</p></div>
 </div>
@@ -1930,7 +1931,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <div class="partner-card"><b>Free to join</b><p>No signup fee and no monthly charge.</p></div>
 <div class="partner-card"><b>You set the offering</b><p>Seating types, how many people each holds, daily numbers, hours and pool rules.</p></div>
 <div class="partner-card"><b>Guest list the night before</b><p>We email the next day's guest list the evening before. The same list is on your dashboard, ready for check-in.</p></div>
-<div class="partner-card"><b>You keep food and drink spend</b><p>Food and drink are never included in the pass. What guests buy at your bar or café stays with you.</p></div>
+<div class="partner-card"><b>You keep food and drink spend</b><p>Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.</p></div>
 <div class="partner-card"><b>Paid monthly</b><p>Seating and add-on sales are paid out once a month. Your share is set out in your hotel agreement.</p></div>
 </div>
 <p class="hiw-cta"><a class="btn btn-coral" href="/for-hotels">Talk to us</a> <a class="btn btn-line" href="/hotel">Hotel login</a></p>
@@ -1944,7 +1945,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <details><summary>Weather</summary><p>Rain on its own is not a closure. If the hotel closes the pool, you choose a full refund or a free rebooking. <a href="/faq">All questions</a>.</p></details>
 <details><summary>Do I need to book a room?</summary><p>No. A day pass is the pool, gym or spa for the hours that hotel has set. There is no room and no overnight stay.</p></details>
 <details><summary>How do I check in?</summary><p>At the front desk, when the hotel opens for day passes, show the booking code or the QR code on your confirmation. The hours are on that page. Reception checks you in and hands you a wristband. In this demo the confirmation stays on the page, and a confirmation email is sent to the address you give. Bring photo ID when the hotel asks for it.</p></details>
-<details><summary>What does the pass include?</summary><p>Each hotel sets its own inclusions. The listing says what the pass covers for that date and those hours. Food and drink are never included. A hotel may sell an optional food and drink credit, or sell food and drink at the bar or café. Treatments are not included unless the listing says so.</p></details>
+<details><summary>What does the pass include?</summary><p>Each hotel sets its own inclusions. The listing says what the pass covers for that date and those hours. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue. Treatments are not included unless the listing says so.</p></details>
 <details><summary>Can children come?</summary><p>You need to be 18 or over to book. Each hotel sets its own age rules and kids' hours. They are on the listing and in the risk warning before you confirm. Children must be on the booking, and an adult on that booking supervises each child.</p></details>
 <details><summary>What if a pass is sold out?</summary><p>The page says when a pass is sold out for that date, or when there are not enough left. The terms say that if a pass sells out at the same moment and we can't confirm the booking, the booking is not made. This demo doesn't take a real payment.</p></details>
 <details><summary>Does this demo charge a card?</summary><p>No. Checkout is a mock payment. No card is needed and nothing is charged. This demo doesn't charge a card.</p></details>

@@ -71,7 +71,7 @@ assert.ok(!ics.includes('VALUE=DATE'));
 assert.ok(ics.includes('Booking HDC-TEST. Show this code at reception.'));
 assert.ok(ics.includes('Access hours 11am–4pm.'));
 assert.ok(ics.includes('Free cancellation until 11 am\\, Mon 19 Jan (hotel time).'));
-assert.ok(ics.includes('Food and drink not included.'));
+assert.ok(ics.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
 assert.ok(ics.includes('No lifeguard is on duty.'));
 assert.ok(ics.includes('LOCATION:4 Demo Street'));
 assert.ok(ics.includes('SUMMARY:Day pass at Skyline Rooftop'));

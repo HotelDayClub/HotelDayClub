@@ -1,6 +1,6 @@
 const { esc, money } = require('./util');
 const { instantConfirmationText } = require('./siteMode');
-const { KINDS, supervisionNote, safePhoto } = require('./offering');
+const { KINDS, supervisionNote, safePhoto, FOOD_RULE } = require('./offering');
 const { includedNote, amenityLines } = require('./inclusions');
 const { arrivalInner } = require('./arrival');
 const { accessDetail } = require('./access');
@@ -104,7 +104,7 @@ ${desc ? `<p class="pass-desc">${esc(desc)}</p>` : ''}
 <p class="pass-fit">${esc(fitsText(holds))}</p>
 <p class="pass-price">${demoPrice(p.price)} <span>per spot</span></p>
 ${access}
-<p class="pass-food">Food and drink are not included in the pass.</p>
+<p class="pass-food">${esc(FOOD_RULE)}</p>
 <p class="pass-sold" role="status"${dis ? '' : ' hidden'}>${SOLD_COPY}</p>
 <div class="pass-actions">${selectButton(p, on, dis)}${cont}</div>
 </div>
@@ -130,7 +130,7 @@ function passSection(passes, av, h, items, accessByPass, date, passCode) {
   }
   const cards = `<div class="pass-grid">${ordered.map(p => passCard(p, av, h, pick, date, items, (accessByPass && accessByPass[p.id]) || [])).join('')}</div>`;
   const dialog = `<dialog class="seat-dialog" id="seat-dialog" aria-labelledby="seat-dialog-title"><div class="sd-grab" aria-hidden="true"></div><div class="sd-top"><h2 id="seat-dialog-title"></h2><button type="button" class="sd-close">Close</button></div><div class="sd-body"></div></dialog>`;
-  return `${filters}${cards}<p class="seat-note">Food and drink are not included in the pass.</p>${dialog}`;
+  return `${filters}${cards}<p class="seat-note">${esc(FOOD_RULE)}</p>${dialog}`;
 }
 
 function includedItems(passes, items, accessByPass) {
@@ -499,7 +499,7 @@ function galleryHtml(h, demo, short) {
 function goodToKnowBand({ policy, foodLine, includedNames }) {
   const arrive = `Show your QR code at check-in. ${instantConfirmationText()}`;
   const priced = includedNames.length ? `${includedNames.join(', ')}. ` : '';
-  const price = `${priced}${foodLine || 'Food and drink are not included in the pass.'}`;
+  const price = `${priced}${foodLine || FOOD_RULE}`;
   return `<section class="gtk-band" id="before" aria-label="Before you book"><div class="wrap">
 <h2 id="gtk">Good to know</h2>
 <div class="gtk-cols">
@@ -551,7 +551,7 @@ ${addonList || ''}
 <section id="details"><h2>Details</h2>
 <h3 class="sub">What's included</h3>
 ${incList}
-<p class="food-note">${esc(foodLine || 'Food and drink are not included in the pass.')}</p>
+<p class="food-note">${esc(foodLine || FOOD_RULE)}</p>
 <div class="l-acc">
 <details id="hours" open><summary>Opening hours</summary><div class="acc-body">${hours}</div></details>
 <details id="getting-there"><summary>Getting there</summary><div class="acc-body">${place.address || ''}${place.there || ''}</div></details>

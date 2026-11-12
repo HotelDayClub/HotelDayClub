@@ -1,4 +1,5 @@
 const { esc, money } = require('./util');
+const { FOOD_RULE } = require('./offering');
 
 const svg = paths => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${paths}</svg>`;
 
@@ -13,9 +14,6 @@ const ICONS = {
   lockers: svg('<rect x="4" y="3" width="7" height="18" rx="1"/><rect x="13" y="3" width="7" height="18" rx="1"/><path d="M9 12h.01M18 12h.01"/>'),
   toiletries: svg('<path d="M9 8h6v12H9z"/><path d="M10 8V5h4v3M12 5V3"/>'),
   robe: svg('<path d="M8 7 6 9v11h12V9l-2-2"/><path d="M9 7a3 3 0 0 1 6 0"/><path d="M12 7v13"/>'),
-  welcome: svg('<path d="M8 8h8v11H8z"/><path d="M8 11h8M10 4h4v4h-4z"/>'),
-  food: svg('<path d="M5 4v7a3 3 0 0 0 3 3v6M8 4v6M16 4c0 4 2 5 2 8h-4c0-3 2-4 2-8z"/><path d="M16 15v5"/>'),
-  poolside: svg('<path d="M4 16c1.4 1 2.8 1 4.2 0S11 15 12.4 16s2.8 1 4.2 0 2.8-1 4.2 0"/><path d="M8 13V8h5l2 2v3"/>'),
   kids: svg('<circle cx="12" cy="7" r="2.2"/><path d="M8 20v-4l2-3h4l2 3v4M9 13l-2 2M15 13l2 2"/>'),
   discount: svg('<path d="M5 8h9l5 4-5 4H5z"/><circle cx="8.5" cy="12" r="1" fill="currentColor" stroke="none"/>'),
   late: svg('<circle cx="12" cy="13" r="7"/><path d="M12 10v4l2 2M9 3h6"/>'),
@@ -35,9 +33,6 @@ const INCLUSIONS = [
   { code: 'lockers', name: 'Lockers', per: 'booking', cap: 40, blurb: 'A locker for the visit.' },
   { code: 'toiletries', name: 'Toiletries', per: 'guest', cap: 40, blurb: 'Basic toiletries.' },
   { code: 'robe', name: 'Robe and slippers', per: 'guest', cap: 30, blurb: 'A robe and slippers.' },
-  { code: 'welcome', name: 'Welcome drink', per: 'guest', cap: 40, blurb: 'Optional drink from the bar. Not included in the pass.' },
-  { code: 'food', name: 'Prepaid food and drink credit (optional)', per: 'guest', cap: 40, blurb: 'Optional credit to spend at the bar or café. Not included in the pass.' },
-  { code: 'poolside', name: 'Poolside food and drink', per: 'booking', cap: 30, blurb: 'Optional poolside order. Not included in the pass.' },
   { code: 'kids', name: "Kids' pool access", per: 'guest', cap: 30, blurb: 'Access for children, within the hotel age rules.' },
   { code: 'discount', name: 'Spa treatment credit', per: 'booking', cap: 20, blurb: 'A credit toward a spa treatment booked at the hotel.' },
   { code: 'late', name: 'Late stay', per: 'guest', cap: 12, blurb: 'Stay until the pool closes, after day-pass hours end.' },
@@ -48,11 +43,8 @@ const INCLUSIONS = [
 
 const BY_CODE = Object.fromEntries(INCLUSIONS.map(item => [item.code, item]));
 const FOOD_DRINK = new Set(['welcome', 'food', 'poolside']);
-const FOOD_NOTE = 'Food and drink are not included in the pass.';
-const PASS_FOOD_LINE = 'Food and drink are not included in your pass.';
-function foodMode(mode) {
-  return mode === 'addon' ? 'addon' : 'off';
-}
+const FOOD_NOTE = FOOD_RULE;
+const PASS_FOOD_LINE = FOOD_RULE;
 
 const row = (mode, price = 0, cap = 0, note = '') => ({ mode, price, cap, note });
 
@@ -60,35 +52,33 @@ const PRESETS = {
   'saltwater-terrace': {
     wifi: row('included'), pool: row('included'), towels: row('included'), showers: row('included'),
     lockers: row('included'), toiletries: row('included'), luggage: row('included'),
-    gym: row('addon', 25, 20), food: row('addon', 30, 40),
+    gym: row('addon', 25, 20),
     parking: row('addon', 18, 30, 'One car space for the day. Spaces run out.'),
   },
   'skyline-rooftop': {
     wifi: row('included'), pool: row('included'), towels: row('included'), showers: row('included'), lockers: row('included'),
-    gym: row('addon', 20, 25), food: row('addon', 28, 30), robe: row('addon', 18, 20),
+    gym: row('addon', 20, 25), robe: row('addon', 18, 20),
     parking: row('addon', 40, 16, 'Hotel car park. A height limit applies in this demo.'),
   },
   'harbourside-lido': {
     wifi: row('included'), pool: row('included'), towels: row('included'), showers: row('included'),
     sauna: row('included'), lockers: row('included'), toiletries: row('included'), robe: row('included'),
-    gym: row('addon', 30, 15), food: row('addon', 35, 25),
+    gym: row('addon', 30, 15),
     parking: row('addon', 45, 12, 'Limited basement spaces.'),
   },
   'palm-court': {
     wifi: row('included'), pool: row('included'), towels: row('included'), showers: row('included'),
     kids: row('included'),
     parking: row('included', 0, 0, 'On-site parking is included with the pass in this demo.'),
-    food: row('addon', 22, 40),
   },
   'manly-sands': {
     wifi: row('included'), pool: row('included'), towels: row('included'), showers: row('included'), luggage: row('included'),
-    food: row('addon', 28, 35),
     parking: row('addon', 15, 20, 'Street-side hotel bays. First come in this demo.'),
   },
   'bayview-spa': {
     wifi: row('included'), pool: row('included'), towels: row('included'), showers: row('included'),
     sauna: row('included'), spa: row('included'), robe: row('included'), lockers: row('included'),
-    gym: row('addon', 25, 12), food: row('addon', 40, 20), discount: row('addon', 30, 10),
+    gym: row('addon', 25, 12), discount: row('addon', 30, 10),
     parking: row('addon', 28, 18, 'One space in the hotel forecourt.'),
   },
 };
@@ -160,18 +150,14 @@ function ensureInclusions(db) {
         else db.prepare('UPDATE addons SET enabled=0 WHERE hotel_id=? AND code=?').run(hotel.id, item.code);
       }
     }
-    db.prepare(`UPDATE inclusions SET mode='off', price=0, daily_cap=0 WHERE code IN ('welcome','food','poolside') AND mode='included'`).run();
-    db.prepare(`UPDATE addons SET enabled=0 WHERE code IN ('welcome','food','poolside') AND EXISTS (SELECT 1 FROM inclusions i WHERE i.hotel_id = addons.hotel_id AND i.code = addons.code AND i.mode != 'addon')`).run();
-    for (const code of FOOD_DRINK) {
-      const item = BY_CODE[code];
-      db.prepare('UPDATE addons SET name=?, blurb=? WHERE code=?').run(item.name, item.blurb, code);
-    }
+    db.prepare(`UPDATE inclusions SET mode='off', price=0, daily_cap=0 WHERE code IN ('welcome','food','poolside')`).run();
+    db.prepare(`UPDATE addons SET enabled=0 WHERE code IN ('welcome','food','poolside')`).run();
     const foodRules = [
       ['Food and drink from the pool bar only', 'Food and drink are not included. Buy them from the pool bar.'],
       ['Food and drink from the hotel only', 'Food and drink are not included. Buy them from the hotel.'],
       ['Bar from noon. No outside food or drink.', 'Food and drink are not included. The bar sells them from noon. No outside food or drink.'],
       ['No outside food. Café on site.', 'Food and drink are not included. Buy them at the café. No outside food.'],
-      ['Café on site. Packed lunches welcome.', 'Food and drink are not included. Buy them at the café, or add the optional food and drink credit. Packed lunches are welcome.'],
+      ['Café on site. Packed lunches welcome.', 'Food and drink are not included. Buy them at the café. Packed lunches are welcome.'],
       ['Kiosk on site. No glass.', 'Food and drink are not included. Buy them at the kiosk. No glass.'],
       ['No outside food or drink.', 'Food and drink are not included. No outside food or drink.'],
     ];
@@ -199,7 +185,6 @@ function saveInclusions(db, hotelId, body, { allowLate }) {
   db.transaction(() => {
     for (const item of INCLUSIONS) {
       let mode = ['included', 'addon', 'off'].includes(body['inc_' + item.code]) ? body['inc_' + item.code] : 'off';
-      if (FOOD_DRINK.has(item.code)) mode = foodMode(mode);
       const price = Math.max(0, parseInt(body['price_' + item.code], 10) || 0);
       let cap = Math.max(0, parseInt(body['cap_' + item.code], 10) || 0);
       const note = String(body['note_' + item.code] || '').trim().slice(0, 160);
@@ -216,12 +201,16 @@ function saveInclusions(db, hotelId, body, { allowLate }) {
 }
 
 function syncAddonEdit(db, hotelId, code, enabled, price, cap) {
+  if (FOOD_DRINK.has(code)) {
+    db.prepare('UPDATE inclusions SET mode=?, price=0, daily_cap=0 WHERE hotel_id=? AND code=?').run('off', hotelId, code);
+    db.prepare('UPDATE addons SET enabled=0 WHERE hotel_id=? AND code=?').run(hotelId, code);
+    return 0;
+  }
   if (!BY_CODE[code]) return enabled;
   const current = db.prepare('SELECT mode FROM inclusions WHERE hotel_id=? AND code=?').get(hotelId, code);
   const was = current ? current.mode : 'off';
   let mode = was;
-  if (FOOD_DRINK.has(code)) mode = enabled ? 'addon' : 'off';
-  else if (was === 'included') mode = 'included';
+  if (was === 'included') mode = 'included';
   else if (enabled) mode = 'addon';
   else mode = 'off';
   const on = mode === 'addon' ? 1 : 0;
@@ -275,59 +264,14 @@ function amenityItems(items, areas) {
 function amenityLines(items, people, areas) {
   return includedLines(amenityItems(items, areas), people);
 }
-function outletPhrase(name) {
-  const text = String(name || '').trim();
-  if (!text) return '';
-  return /^the\s/i.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : 'the ' + text.charAt(0).toLowerCase() + text.slice(1);
-}
-function joinOutlets(names) {
-  const parts = [];
-  const seen = new Set();
-  for (const name of names || []) {
-    const phrase = outletPhrase(name);
-    const key = phrase.toLowerCase();
-    if (!phrase || seen.has(key)) continue;
-    seen.add(key);
-    parts.push(phrase);
-  }
-  if (parts.length < 2) return parts[0] || '';
-  if (parts.length === 2) return `${parts[0]} or ${parts[1]}`;
-  return `${parts.slice(0, -1).join(', ')} or ${parts[parts.length - 1]}`;
-}
-function storedFoodNotes(rule) {
-  const text = String(rule || '');
-  const notes = [];
-  if (/no outside food or drink/i.test(text)) notes.push('No outside food or drink.');
-  else if (/no outside food/i.test(text)) notes.push('No outside food.');
-  if (/no glass/i.test(text)) notes.push('No glass.');
-  if (/packed lunches are welcome/i.test(text)) notes.push('Packed lunches are welcome.');
-  return notes;
-}
-function foodSentence(hotel, areas, items) {
-  const outlets = [];
-  const seen = new Set();
-  for (const area of areas || []) {
-    if (!Number(area.serves_food)) continue;
-    const name = String(area.name || '').trim();
-    const key = name.toLowerCase();
-    if (!name || seen.has(key)) continue;
-    seen.add(key);
-    outlets.push(name);
-  }
-  const where = joinOutlets(outlets);
-  const credit = (items || []).some(item => item.code === 'food' && item.mode === 'addon');
-  let sentence = 'Food and drink are not included in the pass.';
-  if (where && credit) sentence += ` Buy them at ${where}, or add the optional food and drink credit.`;
-  else if (where) sentence += ` Buy them at ${where}.`;
-  else if (credit) sentence += ' Add the optional food and drink credit.';
-  const notes = storedFoodNotes(hotel && hotel.food_rule);
-  if (notes.length) sentence += ' ' + notes.join(' ');
-  return sentence;
+function foodSentence(hotel) {
+  const stored = String((hotel && hotel.food_rule) || '').trim();
+  if (!stored || /food and drink credit|welcome drink|poolside food and drink/i.test(stored)) return FOOD_RULE;
+  return stored;
 }
 function guestFoodLine(db, hotel) {
   if (!hotel) return FOOD_NOTE;
-  const { linkedAreas } = require('./access');
-  return foodSentence(hotel, linkedAreas(db, hotel.id), loadInclusions(db, hotel.id));
+  return foodSentence(hotel);
 }
 function includedNote(items) {
   const park = (items || []).find(i => i.code === 'parking' && i.mode === 'included' && String(i.note || '').trim());
@@ -352,7 +296,7 @@ function priceBit(n) {
   return Number(n) > 0 ? `<span class="extra-price">${money(n)} <small>(demo)</small></span>` : '';
 }
 function addonsHtml(items, offers) {
-  const rows = (offers || []).filter(a => a && a.code !== 'late');
+  const rows = (offers || []).filter(a => a && a.code !== 'late' && !FOOD_DRINK.has(a.code));
   const parkingOff = items.find(i => i.code === 'parking' && i.mode === 'off');
   const list = rows.map(i => `<label class="extra"><input type="checkbox" name="addon" value="${esc(i.code)}" data-price="${Number(i.price) || 0}" data-per="${esc(i.per || 'guest')}"><span class="extra-name">${esc(i.name)}</span>${priceBit(i.price)}</label>`).join('');
   const off = parkingOff ? '<p class="muted small">Parking is not offered with this pass.</p>' : '';
@@ -369,10 +313,6 @@ function dayBeats(items) {
   const inc = code => mode(code) === 'included';
   const mid = [];
   if (on('pool')) mid.push({ h: 'Swim', p: 'The pool is yours for the day-pass hours.' });
-  if (on('food') || on('poolside') || on('welcome')) {
-    const credit = mode('food') === 'addon';
-    mid.push({ h: 'Eat and drink', p: credit ? 'Food and drink are not included. Add the optional food and drink credit if you want one.' : 'Food and drink are not included.' });
-  }
   if (on('spa') || on('sauna')) mid.push({ h: 'Warm up', p: inc('spa') || inc('sauna') ? 'Heat, steam or the hot tub is included.' : 'Add the spa if you want it.' });
   if (on('gym')) mid.push({ h: 'Move', p: inc('gym') ? 'The fitness centre is included.' : 'Add the fitness centre if you want it.' });
   return [
@@ -422,13 +362,6 @@ function policyInner(hotel, foodLine) {
   return { body: policyDl(rows.filter(([k]) => k !== 'Cancellation')), note };
 }
 function offerSelect(item) {
-  if (FOOD_DRINK.has(item.code)) {
-    const mode = foodMode(item.mode);
-    return `<select name="inc_${item.code}" aria-label="${esc(item.name)} offer">
-<option value="addon" ${mode === 'addon' ? 'selected' : ''}>Optional extra</option>
-<option value="off" ${mode === 'off' ? 'selected' : ''}>Available to purchase</option>
-</select>`;
-  }
   return `<select name="inc_${item.code}" aria-label="${esc(item.name)} offer">
 <option value="included" ${item.mode === 'included' ? 'selected' : ''}>Included</option>
 <option value="addon" ${item.mode === 'addon' ? 'selected' : ''}>Paid add-on</option>
@@ -444,14 +377,14 @@ ${offerSelect(i)}
 ${i.code === 'parking' ? `<label class="inc-note">Note<input name="note_parking" maxlength="160" value="${esc(i.note || '')}" placeholder="Where to park"></label>` : `<input type="hidden" name="note_${i.code}" value="${esc(i.note || '')}">`}
 </div>`).join('');
   return `<form class="inc-form" method="post" action="/hotel/inclusions"><h2>What's included</h2>
-<p class="muted small">Included items come with the pass. Food and drink are never included: offer it as an optional extra, or leave it as available to purchase on site. Paid add-ons are optional at booking and use the daily number as a cap. Leave the price blank when there is no charge. Parking uses that cap as spaces per day. Not offered stays off the listing.</p>
+<p class="muted small">Included items come with the pass. ${esc(FOOD_RULE)} Paid add-ons are optional at booking and use the daily number as a cap. Leave the price blank when there is no charge. Parking uses that cap as spaces per day. Not offered stays off the listing.</p>
 <div class="inc-edit inc-head"><span>Item</span><span>Offer</span><span>Price</span><span>A day</span></div>
 ${rows}
 <div class="offer-save"><button class="btn btn-navy" type="submit">Save what's included</button></div></form>`;
 }
 
 module.exports = {
-  INCLUSIONS, FOOD_NOTE, PASS_FOOD_LINE, SEAT_PHOTO, seatPhoto, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
+  INCLUSIONS, FOOD_NOTE, PASS_FOOD_LINE, FOOD_DRINK, SEAT_PHOTO, seatPhoto, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
   includedHtml, includedLines, includedText, includedNote, includedBlock, amenityLines, foodSentence, guestFoodLine,
   addonsHtml, inclusionsForm, beatsHtml, hoursHtml, hoursInner, policyHtml, policyInner,
 };

@@ -112,8 +112,8 @@ function recorder(decide) {
     address: STREET,
     phone: PHONE,
   });
-  assert.ok(direct.html.includes('Food and drink are not included in your pass.'));
-  assert.ok(direct.text.includes('Food and drink are not included in your pass.'));
+  assert.ok(direct.html.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
+  assert.ok(direct.text.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
   assert.ok(direct.html.includes('Salt &amp; &lt;Sea&gt;'));
   assert.ok(!direct.html.includes('<Sea>'));
   assert.ok(!direct.html.includes(STREET) && !direct.text.includes(STREET));
@@ -267,7 +267,7 @@ function recorder(decide) {
   assert.ok(!booked.html.includes('× Lockers'));
   assert.ok(!booked.text.includes('× Lockers'));
   assert.ok(booked.html.includes('On site to buy (not included)'));
-  assert.ok(booked.html.includes('Food and drink are not included in your pass.'));
+  assert.ok(booked.html.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
   assert.ok(booked.html.includes('Pool bar &lt;script&gt;'));
   assert.ok(booked.html.includes('Food and drink available to purchase'));
   assert.ok(booked.text.includes('Food and drink available to purchase'));

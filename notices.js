@@ -1,5 +1,5 @@
 const { esc, money, nice } = require('./util');
-const { spotLabel, hoursView, cancelNote, displayCancelNote, swimNote, arrivalText } = require('./offering');
+const { spotLabel, hoursView, cancelNote, displayCancelNote, swimNote, arrivalText, FOOD_RULE } = require('./offering');
 const { maskName } = require('./passwords');
 const { topicLabel } = require('./contact');
 const seo = require('./seo');
@@ -110,7 +110,7 @@ function bookingNotice(info) {
     ['Included', info.included],
     ['Included access', info.includedAccess != null ? info.includedAccess : info.access],
     ['On site to buy (not included)', info.buyAccess],
-    ['Food and drink', 'Food and drink are not included in your pass.'],
+    ['Food and drink', FOOD_RULE],
     ['Extras', extras],
     ['Total', info.totalLabel],
     ['Booking code', info.code],

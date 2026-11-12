@@ -141,11 +141,16 @@ function start(port) {
     assert.ok(salt.body.includes('id="addons-pick"'));
     assert.ok(salt.body.includes('name="addon"'));
     assert.ok(salt.body.includes('value="gym"'));
-    assert.ok(salt.body.includes('value="food"'));
+    assert.ok(!salt.body.includes('value="food"'));
+    assert.ok(!salt.body.includes('value="welcome"'));
+    assert.ok(!salt.body.includes('value="poolside"'));
     assert.ok(salt.body.includes('value="parking"'));
     assert.ok(salt.body.includes('type="checkbox"'));
     assert.ok(salt.body.includes('Fitness centre access'));
-    assert.ok(salt.body.includes('Prepaid food and drink credit (optional)'));
+    assert.ok(!salt.body.includes('Prepaid food and drink credit'));
+    assert.ok(!salt.body.includes('Welcome drink'));
+    assert.ok(!salt.body.includes('Poolside food and drink'));
+    assert.ok(salt.body.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
     assert.ok(!salt.body.includes('extra-static'));
     assert.ok(salt.body.includes('Parking'));
     assert.ok(salt.body.includes('$18'));
@@ -197,7 +202,8 @@ function start(port) {
     assert.ok(salt.body.includes('class="hdc-date"'));
     assert.ok(salt.body.includes('data-inline="1"'));
     assert.ok(!salt.body.includes('Most popular'));
-    assert.ok(salt.body.includes('Buy them at the pool bar, or add the optional food and drink credit.'));
+    assert.ok(salt.body.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
+    assert.ok(!salt.body.includes('optional food and drink credit'));
     assert.ok(salt.body.includes('24 hours before your access hours start'));
     assert.ok(!salt.body.includes('before the day starts'));
     assert.ok(salt.body.includes('<h1 class="l-title">The Saltwater Terrace (Demo)</h1>'));
@@ -249,7 +255,7 @@ function start(port) {
     assert.ok(salt.body.includes('class="pass-continue"'));
     assert.ok(salt.body.includes('href="/checkout?hotel=saltwater-terrace&amp;pass=lounger&amp;qty=1"') || salt.body.includes('href="/checkout?hotel=saltwater-terrace&pass=lounger&qty=1"'));
     assert.ok(salt.body.includes('>Continue to booking</a>'));
-    assert.ok(salt.body.includes('Food and drink are not included in the pass.'));
+    assert.ok(salt.body.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
     assert.ok(salt.body.includes('Sold out for this date — pick another date or seat'));
     assert.ok(!salt.body.includes('Sold out for this date - pick another date'));
     assert.ok(salt.body.includes('seatFromHash'));
@@ -342,8 +348,8 @@ function start(port) {
     assert.ok(palm.body.includes('<summary>Parking</summary>'));
     assert.ok(palm.body.includes('On-site parking is included'));
     assert.ok(!palm.body.includes('Parking is not offered'));
-    assert.ok(palm.body.includes('Food and drink are not included in the pass. Buy them at the café, or add the optional food and drink credit.'));
-    assert.ok(palm.body.includes('Packed lunches are welcome.'));
+    assert.ok(palm.body.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
+    assert.ok(!palm.body.includes('optional food and drink credit'));
     assert.ok(!palm.body.includes('The optional food and drink credit stays an extra.'));
     assert.ok(palm.body.includes('<h3 class="sub">What\'s included</h3>'));
     const palmInc = palm.body.slice(palm.body.indexOf('<ul class="inc">'), palm.body.indexOf('</ul>', palm.body.indexOf('<ul class="inc">')));
@@ -355,8 +361,8 @@ function start(port) {
     assert.ok(cafe, 'café access');
     assert.ok(cafe[0].includes('Food and drink available to purchase'));
     assert.ok(!/included/i.test(cafe[0]));
-    assert.ok(palm.body.includes('Prepaid food and drink credit (optional)'));
-    assert.ok(palm.body.includes('$22'));
+    assert.ok(!palm.body.includes('Prepaid food and drink credit'));
+    assert.ok(!palm.body.includes('Welcome drink'));
     assert.ok(!palm.body.includes('part of the visit'));
     assert.ok(!palm.body.includes('Poolside food and drink'));
     assert.ok(palm.body.includes('id="getting-there"'));
@@ -423,14 +429,14 @@ function start(port) {
     assert.ok(authed.body.includes('name="timezone"'));
     assert.ok(authed.body.includes('Most popular label'));
     assert.ok(authed.body.includes('name="cap_parking"'));
-    assert.ok(authed.body.includes('Food and drink are never included'));
-    for (const name of ['inc_food', 'inc_welcome', 'inc_poolside']) {
-      const block = authed.body.match(new RegExp(`<select name="${name}"[\\s\\S]*?</select>`));
-      assert.ok(block, name);
-      assert.ok(!block[0].includes('value="included"'), name);
-      assert.ok(block[0].includes('Optional extra'), name);
-      assert.ok(block[0].includes('Available to purchase'), name);
-    }
+    assert.ok(authed.body.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
+    assert.ok(!authed.body.includes('name="inc_food"'));
+    assert.ok(!authed.body.includes('name="inc_welcome"'));
+    assert.ok(!authed.body.includes('name="inc_poolside"'));
+    assert.ok(!authed.body.includes('Welcome drink'));
+    assert.ok(!authed.body.includes('Poolside food and drink'));
+    assert.ok(!authed.body.includes('Prepaid food and drink credit'));
+    assert.ok(!authed.body.includes('offer it as an optional extra'));
 
     const Database = require('better-sqlite3');
     const live = new Database(dbPath);
@@ -492,8 +498,11 @@ function start(port) {
     assert.ok(checkout.body.includes('Complimentary Wi-Fi'));
     assert.ok(!checkout.body.includes('× Pool access'));
     assert.ok(!checkout.body.includes('× Complimentary Wi-Fi'));
-    assert.ok(checkout.body.includes('Food and drink are not included'));
+    assert.ok(checkout.body.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
     assert.ok(!checkout.body.includes('Poolside food and drink'));
+    assert.ok(!checkout.body.includes('Prepaid food and drink credit'));
+    assert.ok(!checkout.body.includes('Welcome drink'));
+    assert.ok(!checkout.body.includes('value="food"'));
     assert.ok(checkout.body.includes('Parking'));
     assert.ok(!checkout.body.includes('30 a day'));
     assert.ok(!/\b\d+ a day\b/.test(checkout.body));
@@ -529,7 +538,7 @@ function start(port) {
     assert.ok(!confirm.body.includes('× Lockers'));
     assert.ok(!confirm.body.includes('× Toiletries'));
     assert.ok(!confirm.body.includes('× Luggage'));
-    assert.ok(confirm.body.includes('Food and drink are not included in your pass.'));
+    assert.ok(confirm.body.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
     assert.ok(confirm.body.includes('On site to buy (not included)'));
     assert.ok(!confirm.body.includes('Poolside food and drink'));
     assert.ok(confirm.body.includes('Cancellation'));

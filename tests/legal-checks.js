@@ -22,6 +22,13 @@ const offering = require('../offering');
 seed(db);
 ensureSchedules(db);
 
+assert.strictEqual(offering.FOOD_RULE, 'Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.');
+assert.strictEqual(offering.blankJoin().hotel.food_rule, offering.FOOD_RULE);
+for (const slug of Object.keys(DEMO_INTROS)) {
+  assert.strictEqual(db.prepare('SELECT food_rule FROM hotels WHERE slug=?').get(slug).food_rule, offering.FOOD_RULE, slug);
+}
+assert.strictEqual(db.prepare("SELECT COUNT(*) n FROM addons WHERE code IN ('food','welcome','poolside')").get().n, 0);
+
 for (const [slug, intro] of Object.entries(DEMO_INTROS)) {
   const row = db.prepare('SELECT tagline, blurb, is_demo FROM hotels WHERE slug=?').get(slug);
   assert.strictEqual(row.is_demo, 1, slug);
@@ -87,8 +94,7 @@ assert.strictEqual(db.prepare("SELECT blurb FROM hotels WHERE slug='saltwater-te
 db.prepare("UPDATE hotels SET blurb=? WHERE slug='saltwater-terrace'").run(DEMO_INTROS['saltwater-terrace'].blurb);
 assert.ok(!/adults only/i.test(offering.rulesText(db.prepare("SELECT * FROM hotels WHERE slug='manly-sands'").get())));
 const palmFixed = db.prepare("SELECT food_rule FROM hotels WHERE slug='palm-court'").get();
-assert.ok(palmFixed.food_rule.includes('available to buy at the café'));
-assert.ok(palmFixed.food_rule.includes('stays an extra'));
+assert.strictEqual(palmFixed.food_rule, offering.FOOD_RULE);
 assert.strictEqual(db.prepare("SELECT kids_hours FROM hotels WHERE slug='saltwater-terrace'").get().kids_hours, 'Children welcome until 4pm');
 const real = db.prepare('SELECT tagline, blurb, kids_hours, food_rule FROM hotels WHERE id=?').get(realId);
 assert.strictEqual(real.tagline, 'Heated rooftop pool with city views');
