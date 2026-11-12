@@ -115,6 +115,9 @@ function makeForm(opts = {}) {
   assert.strictEqual(CheckoutFlow.reason(1), 'Tick the box above to continue.');
   assert.strictEqual(CheckoutFlow.reason(0), '');
   assert.strictEqual(CheckoutFlow.riskSlot(), '<div id="co-risk-slot" hidden></div>');
+  assert.strictEqual(CheckoutFlow.extraValue([]), 'None');
+  assert.strictEqual(CheckoutFlow.extraValue([{ name: 'Parking', qty: 1, line: 18 }]), 'Parking × 1 · $18 (demo)');
+  assert.ok(CheckoutFlow.changeLink('#extras', 'extras').includes('aria-label="Change extras"'));
 
   const memory = memorySandbox();
   const filled = makeForm({ name: 'Alex', addons: [{ value: 'gym', checked: true }] });
@@ -187,13 +190,15 @@ function makeForm(opts = {}) {
     assert.ok(body.includes('class="co-dock"'));
     assert.ok(body.includes('id="co-reason-live" aria-live="polite"'));
     assert.ok(body.split('Tick the 5 boxes above to continue.').length - 1 >= 4);
-    assert.ok(body.includes('<span class="co-pass-line">Sun lounger × 1 · $45 (demo)</span>'));
+    assert.ok(body.includes('<span class="co-fact-val co-pass-line">Sun lounger × 1 · $45 (demo)</span>'));
     assert.ok(body.includes(`href="/h/saltwater-terrace/seat/lounger?date=${when}&amp;qty=1"`));
     assert.ok(body.includes(`href="/h/saltwater-terrace?date=${when}#book"`));
     assert.ok(body.includes('href="#extras"'));
-    assert.ok(body.includes('>Change<span class="sr-only"> date</span>'));
-    assert.ok(body.includes('>Change<span class="sr-only"> pass</span>'));
-    assert.ok(body.includes('>Change<span class="sr-only"> extras</span>'));
+    assert.ok(body.includes('aria-label="Change date"'));
+    assert.ok(body.includes('aria-label="Change pass"'));
+    assert.ok(body.includes('aria-label="Change extras"'));
+    assert.ok(body.includes('id="co-extras-val">None</span>'));
+    assert.ok(body.includes("extras.innerHTML=parts.length?parts.join(', '):'None'"));
     assert.ok(body.includes('>Pass</dt>'));
     assert.ok(body.includes('>Guests</dt>'));
     const pay = body.slice(body.indexOf('id="co-pay"'), body.indexOf('id="co-consent"'));

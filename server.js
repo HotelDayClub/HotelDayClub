@@ -997,7 +997,8 @@ ${fieldError(errors, 'arrival')}</label>
   const dateHref = `/h/${encodeURIComponent(h.slug)}?date=${encodeURIComponent(date)}#book`;
   const dateChange = CheckoutFlow.changeLink(dateHref, 'date');
   const passChange = CheckoutFlow.changeLink(seatHref, 'pass');
-  const extrasRow = hasExtras ? `<dt>Extras</dt><dd>${CheckoutFlow.changeLink('#extras', 'extras')}</dd>` : '';
+  const extraText = CheckoutFlow.extraHtml(v.addons);
+  const extrasRow = hasExtras ? `<dt>Extras</dt><dd class="co-fact"><span class="co-fact-val" id="co-extras-val">${extraText}</span>${CheckoutFlow.changeLink('#extras', 'extras')}</dd>` : '';
   const asideBtn = CheckoutFlow.confirmControl({ id: 'co-btn', reasonId: 'co-reason-aside', label: confirmLabel, remaining, full: true });
   const formBtn = CheckoutFlow.confirmControl({ id: 'co-btn-form', reasonId: 'co-reason-form', label: confirmLabel, remaining, full: true });
   const dockBtn = CheckoutFlow.confirmControl({ id: 'co-btn-dock', reasonId: 'co-reason-dock', label: confirmLabel, remaining, full: false });
@@ -1012,9 +1013,8 @@ ${fieldError(errors, 'arrival')}</label>
 <div class="pad">
 <h2>${esc(hotelLabel)}</h2>
 <p class="muted small">${esc(h.area)}</p>
-<dl><dt>Date</dt><dd>${esc(nice(date))} ${dateChange}</dd><dt>Pass</dt><dd class="co-pass"><span class="co-pass-line">${esc(passLabel)} · ${esc(money(p.price * qty))} (demo)</span> ${passChange}</dd><dt>Guests</dt><dd>${people}</dd>${extrasRow}</dl>
+<dl><dt>Date</dt><dd class="co-fact"><span class="co-fact-val">${esc(nice(date))}</span>${dateChange}</dd><dt>Pass</dt><dd class="co-fact"><span class="co-fact-val co-pass-line">${esc(passLabel)} · ${esc(money(p.price * qty))} (demo)</span>${passChange}</dd><dt>Guests</dt><dd>${people}</dd>${extrasRow}</dl>
 ${included}
-<ul class="addon-lines" id="addon-lines">${v.addons.map(ad => `<li><span>${esc(ad.name)} × ${ad.qty}</span><b>${money(ad.line)}</b> ${CheckoutFlow.changeLink('#extras', 'extras')}</li>`).join('')}</ul>
 <p class="cancel-note">${esc(cancel)}</p>
 <div class="bb-total"><span>Total</span><b class="co-total" id="co-total">${money(grand)}</b></div>
 <p class="muted small">Prices include GST. Demo only.</p>
@@ -1055,7 +1055,6 @@ const required=${JSON.stringify(CheckoutFlow.requiredTicks())};
 const consentNames=${JSON.stringify(CheckoutFlow.consentTicks())};
 const pass=${p.price}, spots=${qty}, people=${people};
 const fmt=n=>'$'+n.toLocaleString('en-AU');
-function escHtml(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 let sending=false;
 const form=document.getElementById('co-form');
 function ticksLeft(){
@@ -1084,10 +1083,11 @@ function syncConsent(){
   var live=document.getElementById('co-reason-live');
   if(live && live.textContent!==text) live.textContent=text;
 }
-function paint(){let extra=0;const lines=[];
- document.querySelectorAll('#co-addons input:checked').forEach(i=>{const price=+i.dataset.price,q=i.dataset.per==='booking'?1:people;extra+=price*q;const name=i.parentElement.querySelector('.extra-name').textContent;const cost=price>0?'<b>'+fmt(price*q)+'</b>':'';lines.push('<li><span>'+escHtml(name)+' × '+q+'</span>'+cost+' <a class="co-change" href="#extras">Change<span class="sr-only"> extras</span></a></li>')});
+function escHtml(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function paint(){let extra=0;const parts=[];
+ document.querySelectorAll('#co-addons input:checked').forEach(i=>{const price=+i.dataset.price,q=i.dataset.per==='booking'?1:people;extra+=price*q;const name=i.parentElement.querySelector('.extra-name').textContent;parts.push(escHtml(name)+' × '+q+' · <span class="co-nowrap">'+fmt(price*q)+' (demo)</span>')});
  const total=pass*spots+extra;
- const box=document.getElementById('addon-lines'); if(box) box.innerHTML=lines.join('');
+ const extras=document.getElementById('co-extras-val'); if(extras) extras.innerHTML=parts.length?parts.join(', '):'None';
  const label='Confirm booking · '+fmt(total)+' (demo)';
  document.querySelectorAll('.co-total').forEach(el=>{el.textContent=fmt(total)});
  if(!sending) document.querySelectorAll('.co-btn').forEach(btn=>{btn.textContent=label});

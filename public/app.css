@@ -372,10 +372,11 @@ code{background:#EEF1F5;padding:1px 6px;border-radius:6px;font-size:.88em}
 .co-btn[aria-disabled="true"],.co-btn[aria-disabled="true"]:hover{background:#FFD0DC;color:#00344C;cursor:not-allowed}
 .co-pay .demo-pay{background:#F5FAF9;border:1px solid #D9E6E4;border-radius:16px;padding:16px 18px;margin:0 0 14px}
 .co-pay .demo-pay p{margin:0;color:#17323A;font-weight:650}
-.checkout dl{grid-template-columns:auto minmax(0,1fr)}
-.checkout dd,.co-pass-line{overflow-wrap:anywhere}
-.checkout dd.co-pass{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:2px 8px}
-.co-change{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:44px;min-width:44px;padding:0 6px;color:#0B6E6F;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.checkout dl{grid-template-columns:auto minmax(0,1fr);align-items:center}
+.checkout dd.co-fact{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;column-gap:8px;row-gap:0;min-width:0;text-align:right}
+.checkout dd.co-fact .co-fact-val{flex:0 1 auto;min-width:0;max-width:100%;overflow-wrap:break-word}
+.co-nowrap{white-space:nowrap}
+.co-change{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;flex:0 0 auto;min-height:44px;min-width:44px;padding:0 6px;color:#0B6E6F;font-weight:700;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
 .co-change:focus-visible,.co-btn:focus-visible,.co-sum-bar:focus-visible{outline:3px solid #00344C;outline-offset:2px}
 .co-extra-link{margin:0}
 .co-layout,.co-form,.co-sum,.co-card,.co-pass-line{min-width:0}

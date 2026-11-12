@@ -1,4 +1,4 @@
-const { esc } = require('./util');
+const { esc, money } = require('./util');
 
 // Checkout decision point: step numbers, the disabled-button reason,
 // and which fields may be remembered. Consent ticks are never stored.
@@ -29,7 +29,20 @@ class CheckoutFlow {
   }
 
   static changeLink(href, what) {
-    return `<a class="co-change" href="${esc(href)}">Change<span class="sr-only"> ${esc(what)}</span></a>`;
+    const label = `Change ${what}`;
+    return `<a class="co-change" href="${esc(href)}" aria-label="${esc(label)}">Change</a>`;
+  }
+
+  static extraValue(addons) {
+    const rows = addons || [];
+    if (!rows.length) return 'None';
+    return rows.map(ad => `${ad.name} × ${ad.qty} · ${money(ad.line)} (demo)`).join(', ');
+  }
+
+  static extraHtml(addons) {
+    const rows = addons || [];
+    if (!rows.length) return 'None';
+    return rows.map(ad => `${esc(ad.name)} × ${ad.qty} · <span class="co-nowrap">${esc(money(ad.line))} (demo)</span>`).join(', ');
   }
 
   // Waiting on Legal. The hook is in the page and must render nothing.
