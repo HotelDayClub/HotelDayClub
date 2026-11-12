@@ -334,11 +334,44 @@ if(filters){
 }
 const more=document.querySelector('.read-more');
 const desc=document.getElementById('overview-desc');
+function leadFullHeight(){
+ desc.classList.add('is-open');
+ var full=desc.offsetHeight;
+ desc.classList.remove('is-open');
+ return full;
+}
+function leadUnderBar(){
+ var bar=document.querySelector('.book-bar');
+ if(!bar) return false;
+ var box=getComputedStyle(bar);
+ if(box.display==='none' || box.visibility==='hidden') return false;
+ var barTop=bar.getBoundingClientRect().top;
+ var intro=desc.getBoundingClientRect();
+ if(barTop<=0 || intro.top>=barTop) return false;
+ var control=more.getBoundingClientRect();
+ return control.bottom>barTop-8 || intro.bottom>barTop-8;
+}
 function syncLead(){
  if(!more||!desc) return;
  var open=more.getAttribute('aria-expanded')==='true';
- if(open){ more.hidden=false; return; }
- more.hidden=desc.scrollHeight<=desc.clientHeight+1;
+ if(open){
+  more.hidden=false;
+  desc.style.removeProperty('--lead-lines');
+  return;
+ }
+ desc.style.setProperty('--lead-lines','5');
+ var full=leadFullHeight();
+ var cut=full>desc.offsetHeight+1;
+ more.hidden=!cut;
+ if(!cut){
+  desc.style.removeProperty('--lead-lines');
+  return;
+ }
+ var lines=5;
+ while(lines>1 && leadUnderBar()){
+  lines-=1;
+  desc.style.setProperty('--lead-lines', String(lines));
+ }
 }
 if(more&&desc){
  more.addEventListener('click', function(){

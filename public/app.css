@@ -871,7 +871,7 @@ form.check-code input,form.check-code .btn{width:100%}
 .listing #book{scroll-margin-top:var(--listing-book,80px)}
 .listing .l-meta{margin:8px 0 10px;color:var(--hdc-secondary);font-size:15px}
 .listing .demo-pill{display:inline-block;background:var(--hdc-sun-soft);color:var(--hdc-navy);border:1px solid var(--hdc-sun);font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px}
-.listing .day-lead{color:var(--hdc-secondary);margin:16px 0 4px;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;max-width:none;font-size:15px;line-height:1.6}
+.listing .day-lead{color:var(--hdc-secondary);margin:16px 0 4px;display:-webkit-box;-webkit-line-clamp:var(--lead-lines,5);-webkit-box-orient:vertical;overflow:hidden;max-width:none;font-size:15px;line-height:1.6}
 .listing .day-lead.is-open{display:block;-webkit-line-clamp:unset;overflow:visible}
 .listing .read-more{background:none;border:0;padding:0;color:var(--hdc-rose-ink);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer}
 .listing .day-kicker{font-family:var(--font-body);font-weight:600;font-size:20px;margin:0 0 16px}
@@ -981,9 +981,11 @@ form.check-code input,form.check-code .btn{width:100%}
   .listing .l-layout{display:flex;flex-direction:column;gap:0;padding-top:0}
   .listing .l-main{display:contents}
   .listing .listing-head{order:1;padding-top:20px}
-  .listing .l-tabs{order:2;top:var(--listing-sticky,93px);margin:24px -16px 0;padding:0 16px}
+  .listing .l-tabs{order:2;top:var(--listing-sticky,93px);align-self:stretch;margin:24px -16px 0;padding:0 16px}
   .listing #passes{order:3;margin-top:32px}
-  .listing .book-box{order:4;position:static;margin-top:40px}
+  .listing #book,
+  .listing .book-box{order:4;position:static;margin-top:40px;scroll-margin-top:var(--listing-scroll,180px)}
+  .listing .read-more{scroll-margin-bottom:96px}
   .listing #addons-list{order:5;margin-top:40px}
   .listing #details{order:6;margin-top:40px}
   .listing h1{font-size:26px}
