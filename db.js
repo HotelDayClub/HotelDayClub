@@ -22,14 +22,14 @@ CREATE TABLE IF NOT EXISTS hotel_hours(hotel_id INTEGER REFERENCES hotels(id), w
 CREATE TABLE IF NOT EXISTS blocked_dates(hotel_id INTEGER REFERENCES hotels(id), date TEXT, reason TEXT, PRIMARY KEY(hotel_id,date));
 CREATE TABLE IF NOT EXISTS bookings(id INTEGER PRIMARY KEY, code TEXT UNIQUE, hotel_id INTEGER REFERENCES hotels(id),
   pass_type_id INTEGER REFERENCES pass_types(id), date TEXT, qty INTEGER, unit_price INTEGER, total INTEGER,
-  guest_name TEXT, email TEXT, phone TEXT, status TEXT DEFAULT 'confirmed', checked_in_at TEXT, created_at TEXT DEFAULT (datetime('now','localtime')),
+  guest_name TEXT, email TEXT, phone TEXT, status TEXT DEFAULT 'confirmed', checked_in_at TEXT, created_at TEXT DEFAULT (datetime('now')),
   rules_ack_at TEXT, rules_text TEXT, party INTEGER, expected_arrival TEXT);
 CREATE TABLE IF NOT EXISTS addons(id INTEGER PRIMARY KEY, hotel_id INTEGER REFERENCES hotels(id), code TEXT, name TEXT,
   blurb TEXT, price INTEGER, daily_cap INTEGER, per TEXT, enabled INTEGER DEFAULT 0, sort INTEGER, UNIQUE(hotel_id, code));
 CREATE TABLE IF NOT EXISTS booking_addons(booking_id INTEGER REFERENCES bookings(id), addon_id INTEGER REFERENCES addons(id),
   name TEXT, qty INTEGER, unit_price INTEGER, total INTEGER, PRIMARY KEY(booking_id, addon_id));
 CREATE TABLE IF NOT EXISTS guest_notes(id INTEGER PRIMARY KEY, booking_id INTEGER REFERENCES bookings(id),
-  hotel_id INTEGER, kind TEXT, note TEXT, created_at TEXT DEFAULT (datetime('now','localtime')));
+  hotel_id INTEGER, kind TEXT, note TEXT, created_at TEXT DEFAULT (datetime('now')));
 CREATE TABLE IF NOT EXISTS day_caps(hotel_id INTEGER, date TEXT, cap INTEGER, PRIMARY KEY(hotel_id, date));
 CREATE TABLE IF NOT EXISTS listing_views(
   hotel_id INTEGER NOT NULL REFERENCES hotels(id),

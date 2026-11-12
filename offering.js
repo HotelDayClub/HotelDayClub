@@ -158,10 +158,11 @@ function dayClosure(db, hotel, date, now = new Date()) {
     const days = String(hotel.hours || '').split('·')[0].trim();
     return days ? `Day passes run ${days}` : 'Closed this day';
   }
-  if (date === ymd(now) && plan.effective) {
+  const { hotelToday } = require('./calendar');
+  if (date === hotelToday(hotel, now) && plan.effective) {
     const closeMin = minutes(plan.effective);
     const cutoff = Number.isFinite(Number(hotel.cutoff_hours)) ? Number(hotel.cutoff_hours) : 2;
-    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const nowMin = zoneClockMinutes(hotel, now);
     if (nowMin >= closeMin) return 'Day passes have closed for today';
     if (nowMin >= closeMin - cutoff * 60) return 'Same-day booking has closed';
   }
@@ -387,7 +388,9 @@ function cancelNote(db, hotel, date, now = new Date()) {
   const plan = dayPlan(db, hotel, date);
   if (!plan || !plan.open || !plan.opens) return 'See the cancellation policy for this date.';
   const { BookingCancel } = require('./cancelBooking');
-  const window = BookingCancel.window(hotel, date, plan.opens, now);
+  const { HotelClock } = require('./calendar');
+  const instant = now instanceof Date ? now : (HotelClock.parse(now) || new Date());
+  const window = BookingCancel.window(hotel, date, plan.opens, instant);
   if (!window.free) return "This booking is inside 24 hours of the start, so it can't be cancelled for free.";
   return displayCancelNote(`Free cancellation until ${window.when}.`);
 }

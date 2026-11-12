@@ -8,7 +8,7 @@ const QRCode = require('qrcode');
 const { PNG } = require('pngjs');
 const jsQR = require('jsqr');
 const { parseBookingCode } = require('../public/checkin-parse');
-const { hotelToday } = require('../calendar');
+const { hotelToday, HotelClock } = require('../calendar');
 
 assert.strictEqual(parseBookingCode('HDC:HDC-OLD99'), 'HDC-OLD99');
 assert.strictEqual(parseBookingCode('https://www.hoteldayclub.com.au/hotel/checkin?code=HDC-URL01'), 'HDC-URL01');
@@ -170,7 +170,7 @@ async function runServer() {
     const used = await get(port, '/hotel/checkin?code=HDC-USED001', { Cookie: jar });
     const usedAt = used.body.indexOf('HDC-USED001');
     const usedCard = used.body.slice(usedAt, used.body.indexOf('</article>', usedAt));
-    assert.ok(usedCard.includes('Checked in 09:15'));
+    assert.ok(usedCard.includes('Checked in ' + HotelClock.clock(salt, day + ' 09:15:00')));
     assert.ok(!usedCard.includes('arrived of'));
     assert.ok(used.body.includes('Used Guest'));
     const other = await get(port, '/hotel/checkin?code=HDC-OTHER01', { Cookie: jar });
