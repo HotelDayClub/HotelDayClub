@@ -17,6 +17,7 @@ const notices = require('../notices');
 const { ensureAddons } = require('../seed');
 const { ensureArrival } = require('../arrival');
 const { ymd, addDays, nice } = require('../util');
+const { HotelClock } = require('../calendar');
 
 const LINE = 'Show your booking code at the entrance';
 const ENTRANCE = 'The demo car park entrance is on Demo Lane, behind the building.';
@@ -296,7 +297,7 @@ async function live() {
     const pass = liveDb.prepare(`SELECT id, daily_cap FROM pass_types WHERE hotel_id=? AND code='lounger'`).get(salt.id);
     const palmPass = liveDb.prepare(`SELECT id FROM pass_types WHERE hotel_id=? AND code='lounger'`).get(palm.id).id;
     const addon = liveDb.prepare(`SELECT id, price FROM addons WHERE hotel_id=? AND code='parking'`).get(salt.id);
-    const tagDay = ymd(new Date());
+    const tagDay = HotelClock.today(salt);
     const ins = liveDb.prepare(`INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,status,party)
       VALUES (?,?,?,?,1,45,45,?,?,?,'confirmed',1)`);
     const parkId = ins.run('HDC-PARK01', salt.id, pass.id, tagDay, 'Park Guest', 'park.guest@example.com', '0412000101').lastInsertRowid;

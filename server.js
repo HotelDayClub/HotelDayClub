@@ -1382,7 +1382,7 @@ app.post('/hotel/settings', hotelAuth, (req, res) => {
 
 app.get('/hotel/analytics', hotelAuth, (req, res) => {
   seedPerformance(db);
-  const report = buildAnalytics(db, req.hotel, { days: normalRange(req.query.range), today: today(req.hotel) });
+  const report = buildAnalytics(db, req.hotel, { days: normalRange(req.query.range) });
   res.set('Cache-Control', 'no-store');
   res.send(dashShell(req.hotel, renderAnalytics(report), { here: '/hotel/analytics' }));
 });

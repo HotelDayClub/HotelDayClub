@@ -1,6 +1,7 @@
 const { ymd, addDays, esc, money, nice } = require('./util');
 const { dayPlan, spotLabel } = require('./offering');
 const { HOTEL_SHARE, share } = require('./commission');
+const { HotelClock } = require('./calendar');
 const RANGES = [7, 30, 90];
 const WEEKDAYS = [
   { weekday: 1, label: 'Monday' },
@@ -58,7 +59,9 @@ function recordListingView(db, hotelId, day, req = {}) {
 
 function buildAnalytics(db, hotel, opts = {}) {
   const range = normalRange(opts.days);
-  const today = /^\d{4}-\d{2}-\d{2}$/.test(opts.today || '') ? opts.today : ymd(new Date());
+  const now = opts.now instanceof Date ? opts.now : new Date();
+  const given = String(opts.today || '');
+  const today = /^\d{4}-\d{2}-\d{2}$/.test(given) ? given : HotelClock.today(hotel, now);
   const end = today;
   const start = ymd(addDays(parseYmd(today), -(range - 1)));
   const dates = eachDate(start, end);
