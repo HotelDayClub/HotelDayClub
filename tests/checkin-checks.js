@@ -221,7 +221,7 @@ async function runServer() {
     assert.ok(!pub.body.includes('People arrived'));
     const admin = await post(port, '/admin/login', { user: 'jason', pass: 'checkin-admin' }, { 'X-Forwarded-For': '203.0.113.86' });
     const adminJar = cookie(admin);
-    const adminPage = await get(port, '/admin?q=' + encodeURIComponent('Count Guest'), { Cookie: adminJar });
+    const adminPage = await get(port, '/admin/bookings?q=' + encodeURIComponent('Count Guest'), { Cookie: adminJar });
     assert.ok(adminPage.body.includes('3 arrived of 4'));
     const csv = await get(port, '/admin/export/bookings.csv', { Cookie: adminJar });
     const csvLines = csv.body.split(/\r?\n/);

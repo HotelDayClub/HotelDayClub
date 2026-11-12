@@ -302,6 +302,10 @@ async function main() {
     const adminPage = await get(port, '/admin', { Cookie: adminJar });
     assert.ok(!adminPage.body.includes('scrypt$'));
     assert.ok(!adminPage.body.includes('security-hotel-test'));
+    const hotelAdmin = await get(port, '/admin/hotels', { Cookie: adminJar });
+    assert.strictEqual(hotelAdmin.status, 200);
+    assert.ok(!hotelAdmin.body.includes('scrypt$'));
+    assert.ok(!hotelAdmin.body.includes('security-hotel-test'));
     const hotels = await get(port, '/admin/export/hotels.csv', { Cookie: adminJar });
     assert.ok(!hotels.body.includes('scrypt$'));
     assert.ok(!hotels.body.includes('security-hotel-test'));

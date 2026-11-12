@@ -140,7 +140,7 @@ function start(port) {
     const live = new Database(dbPath);
     const realId = live.prepare(`INSERT INTO hotels (slug, name, area, login, password, status, is_demo)
       VALUES ('real-pool', 'Real Pool', 'Perth', 'real-pool', 'old-plain', 'active', 0)`).run().lastInsertRowid;
-    const adminPage = await get(port, '/admin', { Cookie: adminJar });
+    const adminPage = await get(port, '/admin/hotels', { Cookie: adminJar });
     assert.ok(adminPage.body.includes('Demo password is set on the server.'));
     assert.ok(adminPage.body.includes('New password for Real Pool'));
     const evilSet = await post(port, '/admin/hotel-password', { id: String(realId), password: 'new-secret' }, { Cookie: adminJar, Origin: 'https://evil.example' });

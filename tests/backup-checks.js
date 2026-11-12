@@ -243,6 +243,10 @@ async function main() {
   assert.ok(!map.includes('/admin'));
 
   const locked = [
+    await get(port, '/admin'),
+    await get(port, '/admin/bookings'),
+    await get(port, '/admin/hotels'),
+    await get(port, '/admin/messages'),
     await get(port, '/admin/backups'),
     await post(port, '/admin/backups', {}),
     await get(port, '/admin/backups/latest'),

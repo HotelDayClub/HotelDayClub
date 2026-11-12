@@ -686,7 +686,7 @@ function start(port, extra = {}) {
     }
     savedBook.close();
     const adminCookie = 'admin=' + encodeURIComponent('s:' + sign('jason', 'hdc-demo-secret'));
-    const adminPage = await get(port, '/admin?q=' + encodeURIComponent('alex@example.com'), { Cookie: adminCookie });
+    const adminPage = await get(port, '/admin/bookings?q=' + encodeURIComponent('alex@example.com'), { Cookie: adminCookie });
     assert.strictEqual(adminPage.status, 200);
     assert.ok(adminPage.body.includes(`Agreed: terms ${versions.terms}, refunds ${versions.refunds}, privacy ${versions.privacy}, risk ${versions.risk}.`));
     const csv = await get(port, '/admin/export/bookings.csv', { Cookie: adminCookie });
