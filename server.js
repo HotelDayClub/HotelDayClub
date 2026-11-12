@@ -227,8 +227,6 @@ function logoLink(tone) {
   const src = light ? '/assets/hdc-lockup-light.svg' : '/assets/hdc-lockup-dark.svg';
   return `<a class="logo" href="/"><img src="${src}" alt="Hotel Day Club" width="187" height="32"></a>`;
 }
-const SAMPLE_ABN = '(sample) 00 000 000 000';
-let abnWarned = false;
 function contactEmail() {
   return operatorEmail();
 }
@@ -238,18 +236,6 @@ function contactMail() {
 }
 function talkHref() {
   return `mailto:${contactEmail()}?subject=${encodeURIComponent('Hotel Day Club - partnership enquiry')}`;
-}
-function businessAbn() {
-  if (demoSite()) return SAMPLE_ABN;
-  const digits = String(process.env.ABN || '').replace(/\D/g, '');
-  if (!/^\d{11}$/.test(digits)) {
-    if (!abnWarned) {
-      abnWarned = true;
-      console.error('ABN is missing or not 11 digits. Showing a labelled sample.');
-    }
-    return SAMPLE_ABN;
-  }
-  return `${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
 }
 const DEFAULT_GA_ID = 'G-9F5ZH1T4YN';
 function gaMeasurementId() {
@@ -270,7 +256,6 @@ function gaSnippet(safePath) {
   return `<script async src="https://www.googletagmanager.com/gtag/js?id=${id}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());${config}</script>`;
 }
 function siteFooter(tone) {
-  const abn = `<p class="muted small abn-line">Hotel Day Club · ABN ${esc(businessAbn())}</p>`;
   const logo = tone === 'light' ? logoLink('light') : logoLink('dark');
   const destLinks = DESTINATIONS.map(d => `<a href="/destinations/${esc(d.slug)}">${esc(d.name)}</a>`).join('');
   const guideLinks = [`<a href="/guides">All guides</a>`, ...seo.GUIDES.map(g => `<a href="/guides/${esc(g.slug)}">${esc(g.h1)}</a>`)].join('');
@@ -280,12 +265,12 @@ function siteFooter(tone) {
 <nav class="ftr-col" aria-label="Guides"><p class="ftr-h">Guides</p>${guideLinks}</nav>
 <nav class="ftr-col" aria-label="Site"><p class="ftr-h">Site</p><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/contact">Contact</a><a href="/for-hotels">For hotels</a><a href="/hotel/login">Hotel login</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a></nav>
 </div>
-<p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p>${abn}</div></footer>`;
+<p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p></div></footer>`;
 }
 const FONT_LINKS = `<link rel="preload" href="/golden/fonts/f3.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/golden/fonts/f5.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/golden/fonts.css">`;
 const HOME_SCRIPT = `<script>
 (function(){
-var S=[["8:00","Swim & gym"],["12:00","Long lunch (food and drink sold separately)"],["15:00","Spa afternoon"],["18:00","Golden hour"]],media=[0,1,2,3],cur=1;
+var S=[["8:00","Swim & gym"],["12:00","Long lunch"],["15:00","Spa afternoon"],["18:00","Golden hour"]],media=[0,1,2,3],cur=1;
 var hero=document.querySelector('.hero'),bs=document.querySelectorAll('.times button');
 function set(i){cur=i;if(!hero)return;hero.dataset.slot=String(i);bs.forEach(function(b,k){b.classList.toggle('on',k===i);b.setAttribute('aria-pressed',k===i?'true':'false')});
 var ct=document.getElementById('ct'),cl=document.getElementById('cl');if(ct)ct.textContent=S[i][0];if(cl)cl.textContent=S[i][1];
@@ -426,7 +411,7 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
     const href = `/destinations/${encodeURIComponent(d.slug)}`;
     const status = d.count
       ? `<span class="dest-count">${exampleCount(d.count)}</span>`
-      : '<span class="dest-soon">Coming soon</span><span class="dest-none">No listings yet</span>';
+      : '<span class="dest-soon">Coming soon</span> <span class="dest-none">No listings yet</span>';
     const go = d.count ? 'View example listings' : 'Join the waitlist';
     return `<li><a class="dest-card" href="${href}"${destObj && destObj.id === d.id ? ' aria-current="true"' : ''}>
 <span class="dest-ico">${destIcon(d.icon)}</span>
@@ -466,7 +451,7 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
 <picture class="layer" data-slot="2"><source type="image/webp" srcset="/golden/img/3-sm.webp"><img src="/golden/img/3-sm.jpg" alt="Spa treatment room" width="900" height="600" loading="lazy" decoding="async"></picture>
 <picture class="layer" data-slot="3"><source type="image/webp" srcset="/golden/img/1-sm.webp"><img src="/golden/img/1-sm.jpg" alt="Hotel pool at dusk" width="900" height="900" loading="lazy" decoding="async"></picture>
 <div class="shimmer" aria-hidden="true"></div><div class="tint"></div></div>
-<div class="clock"><span id="ct">12:00</span><small id="cl">Long lunch (food and drink sold separately)</small></div><span class="credit">Stock media · example only</span></div>
+<div class="clock"><span id="ct">12:00</span><small id="cl">Long lunch</small></div><span class="credit">Stock media · example only</span></div>
 <div class="copy"><h1 class="kicker">Hotel day passes in Australia</h1>
 <h2 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h2>
 <p class="lead">A hotel pool, gym, daybed or spa for the day, minutes from home, no room needed.</p>
@@ -500,7 +485,7 @@ ${filtered ? `<p class="active-filters" role="status">${where ? `<span class="fi
 <section class="faq" data-rv><div><span class="kicker sand">Good to know</span><h2>Questions about hotel day passes</h2></div>
 <div class="faq-list"><details open><summary>Do I need to stay at the hotel?</summary><p>No. A day pass gives you the pool, gym or spa for set hours, no room booking needed.</p></details>
 <details><summary>Is Hotel Day Club taking bookings?</summary><p>Not yet. Join the waitlist and we'll email you when passes open near you.</p></details>
-<details><summary>What's included?</summary><p>Each hotel sets its own inclusions (pool, gym, spa and towels), and every listing spells out what your pass covers. Food and drink are never included.</p></details>
+<details><summary>What's included?</summary><p>Each hotel sets its own inclusions (pool, gym, spa and towels), and every listing spells out what your pass covers. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.</p></details>
 <p class="faq-more"><a href="/faq">All questions</a></p></div></section>
 <div class="hotels" id="hotels"><div><span class="kicker">For hotels</span><h2>List a hotel pool</h2><p>List spare pool, gym and spa capacity for local day guests, on your terms. You choose the hours, the prices and how many guests you take.</p></div><a class="btn" href="/for-hotels">Talk to us</a></div>
 <noscript><style>#waitlist{display:block;position:static;margin:24px auto 40px}</style></noscript>
