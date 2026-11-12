@@ -334,7 +334,9 @@ function start(port, extra = {}) {
     assert.ok(home.body.includes('All of Australia'));
     assert.ok(!home.body.includes('All of Sydney') && !home.body.includes('around Sydney') && !home.body.includes('across Sydney'));
     assert.ok(home.body.includes('href="/faq"'));
-    assert.ok(home.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'));
+    assert.ok(!home.body.includes('00 000 000 000'));
+    assert.ok(!home.body.includes('(sample)'));
+    assert.ok(!home.body.includes('ABN'));
     assert.ok(!home.body.includes('98 227 458 028'));
     assert.ok(home.body.includes('Demo site: listings are examples, no real bookings or payments.'));
     assert.ok(!home.body.includes('\u2014'));
@@ -371,7 +373,11 @@ function start(port, extra = {}) {
       assert.ok(!doc.body.includes('(draft)'), pathName);
       assert.ok(doc.body.includes('Version 1.0'), pathName);
       assert.ok(doc.body.includes('Effective 12 November 2026'), pathName);
-      assert.ok(doc.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'), pathName);
+      const docFooter = doc.body.slice(doc.body.indexOf('<footer'));
+      assert.ok(docFooter.startsWith('<footer'), pathName);
+      assert.ok(!docFooter.includes('ABN'), pathName);
+      assert.ok(!doc.body.includes('00 000 000 000'), pathName);
+      assert.ok(!doc.body.includes('(sample)'), pathName);
       const abnHits = doc.body.split(publishedAbn).length - 1;
       assert.strictEqual(abnHits, pathName === '/terms' || pathName === '/privacy' ? 1 : 0, pathName);
       assert.ok(!/booking agent/i.test(doc.body), pathName);
@@ -471,6 +477,13 @@ function start(port, extra = {}) {
       if (!legalPaths.has(pathName)) {
         assert.ok(!/stripe/i.test(doc.body), pathName + ' mentions Stripe');
         assert.ok(!doc.body.includes('98 227 458 028'), pathName);
+      }
+      const footerAt = doc.body.indexOf('<footer');
+      if (footerAt === -1) {
+        assert.ok(!doc.body.includes('00 000 000 000') && !doc.body.includes('(sample)'), pathName + ' prints a sample ABN');
+      } else {
+        const footer = doc.body.slice(footerAt);
+        assert.ok(!footer.includes('ABN') && !footer.includes('00 000 000 000'), pathName + ' footer prints an ABN');
       }
     }
     const prosePaths = ['/', '/how-it-works', '/faq', '/for-hotels', '/guides', '/guides/what-is-a-hotel-day-pass', '/guides/how-to-choose-a-hotel-pool-day-pass', '/terms', '/privacy', '/refunds', '/risk'];
@@ -612,7 +625,9 @@ function start(port, extra = {}) {
     assert.ok(page.body.includes('This is a demo booking. No payment was taken and no real booking exists.'));
     assert.ok(!page.body.includes('No email is sent'));
     assert.ok(page.body.includes('Terms') && page.body.includes('Accepted'));
-    assert.ok(page.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'));
+    const confirmFooter = page.body.slice(page.body.indexOf('<footer'));
+    assert.ok(confirmFooter.startsWith('<footer'));
+    assert.ok(!confirmFooter.includes('ABN') && !page.body.includes('00 000 000 000') && !page.body.includes('(sample)'));
     assert.ok(!page.body.includes('98 227 458 028'));
     assert.ok(!page.body.includes('Jason Baranov') && !page.body.includes('registration pending'));
     assert.ok(!page.body.includes('googletagmanager.com') && !/stripe/i.test(page.body));
@@ -670,7 +685,9 @@ function start(port, extra = {}) {
   const abn = await start(abnPort, { ABN: '11222333444', CONTACT_EMAIL: 'desk@example.com' });
   try {
     const home = await get(abnPort, '/');
-    assert.ok(home.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'));
+    assert.ok(!home.body.includes('00 000 000 000'));
+    assert.ok(!home.body.includes('(sample)'));
+    assert.ok(!home.body.includes('ABN'));
     assert.ok(!home.body.includes('11 222 333 444'));
     assert.ok(!home.body.includes('98 227 458 028'));
     assert.ok(home.body.includes('mailto:desk@example.com'));
@@ -678,7 +695,9 @@ function start(port, extra = {}) {
     const terms = await get(abnPort, '/terms');
     const found = [...terms.body.matchAll(/mailto:([^"'?\s]+)/g)].map(m => m[1]);
     assert.ok(found.length >= 2 && found.every(m => m === 'desk@example.com'), found.join(','));
-    assert.ok(terms.body.includes('ABN (sample) 00 000 000 000'));
+    assert.ok(!terms.body.includes('00 000 000 000'));
+    assert.ok(!terms.body.includes('(sample)'));
+    assert.ok(!terms.body.slice(terms.body.indexOf('<footer')).includes('ABN'));
     assert.strictEqual(terms.body.split('98 227 458 028').length - 1, 1);
     assert.ok(!terms.body.includes('11 222 333 444'));
     assert.ok(!terms.body.includes('{{CONTACT_EMAIL}}') && !terms.body.includes('{{ABN}}'));
@@ -690,7 +709,9 @@ function start(port, extra = {}) {
   const bad = await start(badPort, { ABN: 'not-an-abn' });
   try {
     const home = await get(badPort, '/');
-    assert.ok(home.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'));
+    assert.ok(!home.body.includes('00 000 000 000'));
+    assert.ok(!home.body.includes('(sample)'));
+    assert.ok(!home.body.includes('ABN'));
     assert.ok(!home.body.includes('98 227 458 028'));
   } finally {
     bad.kill('SIGTERM');
@@ -702,7 +723,9 @@ function start(port, extra = {}) {
       const privacy = await get(flagPort, '/privacy');
       assert.strictEqual(terms.body.split('98 227 458 028').length - 1, 1, 'SHOW_ABN=' + flag);
       assert.strictEqual(privacy.body.split('98 227 458 028').length - 1, 1, 'SHOW_ABN=' + flag);
-      assert.ok(terms.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'));
+      assert.ok(!terms.body.includes('00 000 000 000'), 'SHOW_ABN=' + flag);
+      assert.ok(!terms.body.includes('(sample)'), 'SHOW_ABN=' + flag);
+      assert.ok(!terms.body.slice(terms.body.indexOf('<footer')).includes('ABN'), 'SHOW_ABN=' + flag);
       assert.ok(!terms.body.includes('{{ABN}}'));
     } finally {
       flagged.kill('SIGTERM');

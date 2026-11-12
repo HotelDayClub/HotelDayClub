@@ -6,8 +6,8 @@ function demoSite() {
 
 const DEFAULT_CONTACT_EMAIL = 'hello@hoteldayclub.com.au';
 
-// The one published ABN. Legal pages print this through {{ABN}}. Swap it here
-// when the business becomes a Pty Ltd. The demo footer does not use it.
+// The one published ABN. Terms and privacy print this through {{ABN}} in clause 1.1.
+// Swap it here when the business becomes a Pty Ltd. The footer does not print an ABN.
 const PUBLISHED_ABN = '98 227 458 028';
 
 function operatorEmail() {
