@@ -190,7 +190,7 @@ ${qrBlock}
   const there = (thereRows.length || park.html)
     ? mailCard(`${h2('Getting there')}${thereRows.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${factRows(thereRows)}</table>` : ''}${park.html}`)
     : '';
-  const share = `We share your name, booking code, party size and add-ons with ${info.hotelName || 'the hotel'} so it can prepare for and check you in.`;
+  const share = `We share your name, email, mobile and booking details with ${info.hotelName || 'the hotel'} so it can check you in and contact you about this booking.`;
   const body = `<h1 style="margin:0 0 6px;font-family:${FONT};font-size:30px;line-height:1.2;color:${brand['hdc-navy']};font-weight:700;">${esc(heading)}</h1>
 <p style="margin:0 0 16px;font-family:${FONT};font-size:18px;line-height:1.5;color:${brand['hdc-text']};font-weight:600;">${esc(summary)}</p>
 ${demoBox}

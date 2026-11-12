@@ -115,6 +115,8 @@ function recorder(decide) {
   assert.ok(direct.html.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
   assert.ok(direct.text.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
   assert.ok(direct.html.includes('Salt &amp; &lt;Sea&gt;'));
+  assert.ok(direct.html.includes('We share your name, email, mobile and booking details with Salt &amp; &lt;Sea&gt; so it can check you in and contact you about this booking.'));
+  assert.ok(!direct.html.includes('booking code, party size and add-ons'));
   assert.ok(!direct.html.includes('<Sea>'));
   assert.ok(!direct.html.includes(STREET) && !direct.text.includes(STREET));
   assert.ok(!direct.html.includes('Sydney') && !direct.text.includes('Sydney'));
@@ -168,6 +170,7 @@ function recorder(decide) {
     guest: 'Alex C.',
   });
   assert.strictEqual(liveNote.subject, 'Your Hotel Day Club booking HDC-ABC');
+  assert.ok(liveNote.html.includes('We share your name, email, mobile and booking details with Skyline Rooftop so it can check you in and contact you about this booking.'));
   assert.ok(!liveNote.html.includes('no real booking') && !liveNote.html.includes('demo booking'));
   assert.ok(liveNote.text.includes('Extras: None'));
 

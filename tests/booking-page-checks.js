@@ -76,6 +76,8 @@ function mainText(html) {
     assert.ok(/Free cancellation until \d{1,2} am, .+\(hotel time\)\./.test(body));
     assert.ok(body.includes(PASS_FOOD_LINE));
     assert.ok(body.includes('Harbour Hotel (Demo)'));
+    assert.ok(body.includes('We share your name, email, mobile and booking details with Harbour Hotel (Demo) so it can check you in and contact you about this booking.'));
+    assert.ok(!body.includes('booking code, party size and add-ons'));
     assert.ok(body.includes('Privacy policy (draft)'));
     assert.ok(body.includes('href="/privacy"'));
     const copy = body.replace(/\s(?:href|src)="[^"]*"/gi, '');
