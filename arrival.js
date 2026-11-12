@@ -1,5 +1,6 @@
 const { esc } = require('./util');
 const brand = require('./brand');
+const { MapEmbed } = require('./mapEmbed');
 
 const PRESETS = {
   'saltwater-terrace': {
@@ -119,27 +120,29 @@ function arrivalParts(hotel) {
     ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`
     : `https://www.openstreetmap.org/search?query=${q}`;
   const label = address || 'Hotel';
-  const preview = mapped ? `<button type="button" class="map-peek" data-lat="${lat}" data-lng="${lng}" data-label="${esc(label)}" aria-haspopup="dialog" aria-controls="map-sheet" aria-expanded="false"><svg class="map-peek-art" viewBox="0 0 160 72" aria-hidden="true"><rect width="160" height="72" fill="${brand['hdc-soft']}"/><path d="M0 24h160M0 48h160M36 0v72M92 0v72" stroke="${brand['hdc-border']}" stroke-width="4"/><path d="M0 12h160M68 0v72" stroke="${brand['hdc-tint']}" stroke-width="2"/><circle cx="80" cy="34" r="6" fill="${brand['hdc-rose']}" stroke="${brand['hdc-text']}" stroke-width="1.6"/></svg><span class="map-peek-label">View map</span></button>` : '';
+  const embed = MapEmbed.html(hotel);
+  const preview = embed || (mapped ? `<button type="button" class="map-peek" data-lat="${lat}" data-lng="${lng}" data-label="${esc(label)}" aria-haspopup="dialog" aria-controls="map-sheet" aria-expanded="false"><svg class="map-peek-art" viewBox="0 0 160 72" aria-hidden="true"><rect width="160" height="72" fill="${brand['hdc-soft']}"/><path d="M0 24h160M0 48h160M36 0v72M92 0v72" stroke="${brand['hdc-border']}" stroke-width="4"/><path d="M0 12h160M68 0v72" stroke="${brand['hdc-tint']}" stroke-width="2"/><circle cx="80" cy="34" r="6" fill="${brand['hdc-rose']}" stroke="${brand['hdc-text']}" stroke-width="1.6"/></svg><span class="map-peek-label">View map</span></button>` : '');
   const credit = demo ? ' Fictional demo address.' : '';
-  const sheet = mapped ? `<dialog class="map-sheet" id="map-sheet" aria-labelledby="map-sheet-title"><div class="map-sheet-bar"><h4 id="map-sheet-title">${esc(label)}</h4><button type="button" class="map-close">Close</button></div><div class="map-canvas" aria-label="Map. You can pan and zoom."></div><p class="map-credit">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.${credit}</p></dialog>` : '';
+  const sheet = embed ? '' : (mapped ? `<dialog class="map-sheet" id="map-sheet" aria-labelledby="map-sheet-title"><div class="map-sheet-bar"><h4 id="map-sheet-title">${esc(label)}</h4><button type="button" class="map-close">Close</button></div><div class="map-canvas" aria-label="Map. You can pan and zoom."></div><p class="map-credit">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.${credit}</p></dialog>` : '');
+  const mapsLink = MapEmbed.directionsHtml(hotel);
   const directions = address && !demo
     ? `<div class="arrive-acts"><a class="btn btn-navy" href="${esc(google)}" target="_blank" rel="noopener noreferrer">Get directions</a><a class="btn btn-line" href="${esc(apple)}" target="_blank" rel="noopener noreferrer">Apple Maps</a></div>`
     : '';
   const fiction = demo ? `<p class="muted small">This is a fictional demo address. <a href="${esc(osm)}" rel="noopener noreferrer">Open the map</a>.</p>` : '';
   const addressHtml = address ? `<p class="arrive-addr">${esc(address)}</p>` : '';
-  return { addressHtml, directions, fiction, preview, sheet };
+  return { addressHtml, directions, fiction, preview, sheet, mapsLink };
 }
 function arrivalHtml(hotel) {
   const parts = arrivalParts(hotel);
   if (!parts) return '';
-  return `<section class="arrive" id="getting-there"><h3>Getting there</h3><div class="arrive-row"><div class="arrive-copy">${parts.addressHtml}${parts.directions}${parts.fiction}</div>${parts.preview}</div>${parts.sheet}</section>`;
+  return `<section class="arrive" id="getting-there"><h3>Getting there</h3><div class="arrive-row"><div class="arrive-copy">${parts.addressHtml}${parts.directions}${parts.fiction}${parts.mapsLink}</div>${parts.preview}</div>${parts.sheet}</section>`;
 }
 function arrivalInner(hotel) {
   const parts = arrivalParts(hotel);
   if (!parts) return { address: '', there: '' };
   return {
     address: parts.addressHtml,
-    there: `<div class="arrive-row"><div class="arrive-copy">${parts.directions}${parts.fiction}</div>${parts.preview}</div>${parts.sheet}`,
+    there: `<div class="arrive-row"><div class="arrive-copy">${parts.directions}${parts.fiction}${parts.mapsLink}</div>${parts.preview}</div>${parts.sheet}`,
   };
 }
 

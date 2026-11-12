@@ -960,6 +960,10 @@ form.check-code input,form.check-code .btn{width:100%}
 .listing .hours-list{list-style:none;padding:0;margin:0;max-width:340px}
 .listing .hours-list li{display:flex;justify-content:space-between;padding:3px 0}
 .listing .map-peek{border:1px solid var(--hdc-border);border-radius:10px;overflow:hidden;background:var(--hdc-tint)}
+.listing .arrive-row:has(.map-embed){grid-template-columns:minmax(0,1fr);min-width:0}
+.listing .arrive-row:has(.map-embed)>*{min-width:0;max-width:100%}
+.listing .map-embed{display:block;width:100%;max-width:100%;min-width:0;height:auto;aspect-ratio:16/10;border:1px solid var(--hdc-border);border-radius:10px;background:var(--hdc-tint)}
+.listing .map-open{margin:8px 0 0}
 .listing .policy{margin:0}
 .listing .policy dt{color:var(--hdc-text);font-weight:600}
 .gtk-band{background:var(--hdc-soft);padding:48px 0;margin-top:56px}

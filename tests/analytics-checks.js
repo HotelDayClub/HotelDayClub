@@ -16,6 +16,7 @@ const { seed, ensureSchedules, seedPerformance } = require('../seed');
 const {
   buildAnalytics, renderAnalytics, recordListingView, normalRange, share, HOTEL_SHARE,
 } = require('../analytics');
+const { HotelClock } = require('../calendar');
 const offering = require('../offering');
 
 seed(db);
@@ -26,8 +27,8 @@ const ymdOf = d => {
   const p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
-const today = ymdOf(new Date());
 const salt = db.prepare("SELECT * FROM hotels WHERE slug='saltwater-terrace'").get();
+const today = HotelClock.today(salt);
 assert.ok(salt && salt.login === 'demo-saltwater');
 
 const cols = db.prepare('PRAGMA table_info(listing_views)').all().map(c => c.name).sort();
@@ -190,6 +191,24 @@ seedPerformance(db);
 assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM bookings WHERE hotel_id=?').get(id).n, bookingsBefore);
 
 const saltViews = buildAnalytics(db, salt, { days: 30, today }).views;
+
+const boundary = new Date('2026-11-12T20:30:00.000Z');
+assert.strictEqual(boundary.toISOString().slice(0, 10), '2026-11-12');
+assert.strictEqual(HotelClock.today(salt, boundary), '2026-11-13');
+const pinId = db.prepare(`INSERT INTO hotels (slug, name, timezone, state, status, is_demo, login)
+  VALUES ('clock-pin', 'Clock Pin', 'Australia/Sydney', 'NSW', 'active', 0, 'clock-pin')`).run().lastInsertRowid;
+const pinHotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(pinId);
+db.prepare('INSERT INTO listing_views (hotel_id, day, views, seeded) VALUES (?,?,?,0)').run(pinId, '2026-11-12', 5);
+db.prepare('INSERT INTO listing_views (hotel_id, day, views, seeded) VALUES (?,?,?,0)').run(pinId, '2026-11-13', 17);
+const pinned = buildAnalytics(db, pinHotel, { days: 30, now: boundary });
+assert.strictEqual(pinned.end, '2026-11-13');
+assert.strictEqual(pinned.start, HotelClock.offset(pinHotel, -29, boundary));
+assert.strictEqual(pinned.views, 22);
+const utcDay = buildAnalytics(db, pinHotel, { days: 30, today: '2026-11-12' });
+assert.strictEqual(utcDay.end, '2026-11-12');
+assert.strictEqual(utcDay.views, 5);
+assert.notStrictEqual(pinned.views, utcDay.views);
+
 const css = fs.readFileSync(path.join(__dirname, '../public/app.css'), 'utf8');
 assert.ok(css.includes('font-family:Inter'));
 assert.ok(!css.includes('fonts.googleapis.com'));

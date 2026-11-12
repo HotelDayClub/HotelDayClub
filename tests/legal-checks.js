@@ -18,7 +18,7 @@ delete process.env.CONTACT_EMAIL;
 const db = require('../db');
 const { seed, ensureSchedules, DEMO_INTROS } = require('../seed');
 const offering = require('../offering');
-const { zoneToUtc, hotelZone } = require('../calendar');
+const { zoneToUtc, hotelZone, HotelClock } = require('../calendar');
 
 seed(db);
 ensureSchedules(db);
@@ -168,16 +168,10 @@ assert.ok(!html.includes('Lawn <b>'));
 assert.ok(!html.includes('not-a-file'));
 db.prepare('DELETE FROM access_areas WHERE id=?').run(lawn.id);
 
-const ymd = d => {
-  const p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
 function nextOpen(slug, start = 1) {
   const h = db.prepare('SELECT * FROM hotels WHERE slug=?').get(slug);
   for (let i = start; i < 21; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    const date = ymd(d);
+    const date = HotelClock.offset(h, i);
     const plan = offering.dayPlan(db, h, date);
     if (plan && plan.open && !db.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?').get(h.id, date)) return { h, date, plan };
   }

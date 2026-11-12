@@ -1,5 +1,6 @@
 const fs = require('fs'); const path = require('path');
 const { ymd, addDays } = require('./util');
+const { HotelClock } = require('./calendar');
 const { parseTime, writeOffering, rulesText, syncLateAddons, dayPlan, FOOD_RULE } = require('./offering');
 const { demoHotelPassword } = require('./passwords');
 
@@ -323,12 +324,10 @@ function mulberry32(seed) {
 const SAMPLE_NAMES = ['Mia Thompson', 'Jack Nguyen', 'Olivia Smith', 'Noah Williams', 'Chloe Brown', 'Liam Patel', 'Zoe Martin', 'Ethan Lee', 'Grace Kelly', 'Lucas Rossi', 'Ava Chen', 'Henry Wilson', 'Isla Jones', 'Leo Garcia', 'Ruby Taylor', 'Sophie Clark', 'Oscar Nguyen', 'Harper Singh'];
 let analyticsCovered = '';
 
-function seedPerformance(db) {
-  const today = new Date();
-  const todayStr = ymd(today);
+function seedPerformance(db, now = new Date()) {
   const hotels = db.prepare("SELECT * FROM hotels WHERE login LIKE 'demo-%' ORDER BY id").all();
   if (!hotels.length) return;
-  const stamp = todayStr + ':' + hotels.map(h => h.id).join(',');
+  const stamp = hotels.map(h => h.id + '@' + HotelClock.today(h, now)).join(',');
   if (analyticsCovered === stamp) return;
   const passStmt = db.prepare('SELECT * FROM pass_types WHERE hotel_id=? ORDER BY sort, id');
   const addonStmt = db.prepare('SELECT * FROM addons WHERE hotel_id=? AND enabled=1 ORDER BY sort, id');
@@ -363,6 +362,8 @@ function seedPerformance(db) {
 
   db.transaction(() => {
     hotels.forEach((hotel, index) => {
+      const todayStr = HotelClock.today(hotel, now);
+      const dayOn = offset => HotelClock.offset(hotel, offset, now);
       const passes = passStmt.all(hotel.id);
       if (!passes.length) return;
       const addons = addonStmt.all(hotel.id);
@@ -394,7 +395,7 @@ function seedPerformance(db) {
       // are the busiest, then Friday, and they stay under the cap. Today keeps two
       // spots free on each seating type so a same-day demo booking can still go through.
       for (let offset = -90; offset <= 0; offset++) {
-        const date = ymd(addDays(today, offset));
+        const date = dayOn(offset);
         const plan = dayPlan(db, hotel, date);
         if (!plan || !plan.open || blockedStmt.get(hotel.id, date)) continue;
         const wd = localWeekday(date);
@@ -434,7 +435,7 @@ function seedPerformance(db) {
         const openDays = (from, to) => {
           const out = [];
           for (let offset = from; offset <= to; offset++) {
-            const date = ymd(addDays(today, offset));
+            const date = dayOn(offset);
             const plan = dayPlan(db, hotel, date);
             if (!plan || !plan.open || blockedStmt.get(hotel.id, date)) continue;
             out.push(date);
@@ -457,7 +458,7 @@ function seedPerformance(db) {
           addCancel(recent[Math.max(0, recent.length - 2)], false);
         }
         older.forEach((date, i) => { if (i % 2 === 0) addCancel(date, i % 4 === 0); });
-        const weekAgo = ymd(addDays(today, -7));
+        const weekAgo = dayOn(-7);
         let noted = pastBooking.get(hotel.id, weekAgo, todayStr);
         if (!noted && recent.length) {
           const date = recent[recent.length - 1];
@@ -474,7 +475,7 @@ function seedPerformance(db) {
       }
 
       for (let offset = -90; offset <= 0; offset++) {
-        const date = ymd(addDays(today, offset));
+        const date = dayOn(offset);
         const booked = bookedOn.get(hotel.id, date).n;
         const viewRand = mulberry32(hashString(hotel.slug + '|' + date));
         const a = viewRand();
