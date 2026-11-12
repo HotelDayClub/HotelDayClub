@@ -334,14 +334,69 @@ if(filters){
 }
 const more=document.querySelector('.read-more');
 const desc=document.getElementById('overview-desc');
+function leadFullHeight(){
+ desc.classList.add('is-open');
+ var full=desc.offsetHeight;
+ desc.classList.remove('is-open');
+ return full;
+}
+function leadUnderBar(){
+ var bar=document.querySelector('.book-bar');
+ if(!bar) return false;
+ var box=getComputedStyle(bar);
+ if(box.display==='none' || box.visibility==='hidden') return false;
+ var barTop=bar.getBoundingClientRect().top;
+ var intro=desc.getBoundingClientRect();
+ if(barTop<=0 || intro.top>=barTop) return false;
+ var control=more.getBoundingClientRect();
+ return control.bottom>barTop-8 || intro.bottom>barTop-8;
+}
+function syncLead(){
+ if(!more||!desc) return;
+ var open=more.getAttribute('aria-expanded')==='true';
+ if(open){
+  more.hidden=false;
+  desc.style.removeProperty('--lead-lines');
+  return;
+ }
+ desc.style.setProperty('--lead-lines','5');
+ var full=leadFullHeight();
+ var cut=full>desc.offsetHeight+1;
+ more.hidden=!cut;
+ if(!cut){
+  desc.style.removeProperty('--lead-lines');
+  return;
+ }
+ var lines=5;
+ while(lines>1 && leadUnderBar()){
+  lines-=1;
+  desc.style.setProperty('--lead-lines', String(lines));
+ }
+}
 if(more&&desc){
  more.addEventListener('click', function(){
   const open=more.getAttribute('aria-expanded')==='true';
   more.setAttribute('aria-expanded', open?'false':'true');
   more.textContent=open?'Read more':'Read less';
   desc.classList.toggle('is-open', !open);
+  syncLead();
  });
 }
+function placeListingChrome(){
+ var hdr=document.querySelector('.hdr');
+ var tabs=document.querySelector('.l-tabs');
+ if(!hdr) return;
+ var h=Math.ceil(hdr.getBoundingClientRect().height);
+ var tabsH=tabs?Math.ceil(tabs.getBoundingClientRect().height):0;
+ var root=document.documentElement;
+ root.style.setProperty('--listing-sticky', h+'px');
+ root.style.setProperty('--listing-scroll', (h+tabsH+12)+'px');
+ root.style.setProperty('--listing-book', (h+12)+'px');
+}
+placeListingChrome();
+syncLead();
+window.addEventListener('resize', function(){ placeListingChrome(); syncLead(); });
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(function(){ placeListingChrome(); syncLead(); });
 const tabNav=document.querySelector('.l-tabs');
 if(tabNav){
  tabNav.addEventListener('click', function(e){
