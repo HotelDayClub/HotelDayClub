@@ -4,6 +4,8 @@ const { seatPhoto, amenityLines } = require('./inclusions');
 const { accessDetail } = require('./access');
 const { demoSite } = require('./siteMode');
 
+const BOOKING_INSIDE = "This booking is inside 24 hours of the start, so it can't be cancelled for free.";
+const DATE_INSIDE = "This date starts within 24 hours, so a booking can't be cancelled for free.";
 const WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const SOLD = 'Sold out on this date. Try another date. This seat is still shown so you can compare.';
@@ -15,6 +17,12 @@ class SeatPage {
     const dt = new Date(y, m - 1, d);
     if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return '';
     return `${WEEK[dt.getDay()]} ${d} ${MONTH[m - 1]}`;
+  }
+
+  static cancelCopy(note) {
+    const text = String(note || '');
+    if (text === BOOKING_INSIDE) return DATE_INSIDE;
+    return text;
   }
 
   static qty(raw) {
@@ -170,7 +178,7 @@ ${access}
 <p class="seat-food">${esc(FOOD_RULE)}</p>
 <a class="seat-all seat-all-mob" href="${esc(back)}">View all seating at ${esc(hotel.name)} →</a>
 <h2>Cancellation</h2>
-<p class="seat-cancel" id="seat-cancel"><span id="seat-cancel-text">${esc(cancel || '')}</span> <a href="/refunds">Cancellation and refund policy</a></p>
+<p class="seat-cancel" id="seat-cancel"><span id="seat-cancel-text">${esc(SeatPage.cancelCopy(cancel))}</span> <a href="/refunds">Cancellation and refund policy</a></p>
 </div>
 <form class="seat-book" id="book" method="get" action="/checkout" aria-labelledby="seat-book-title" data-price="${price}" data-holds="${holds}" data-slug="${esc(hotel.slug)}" data-code="${esc(pass.code)}" data-hotel="${esc(hotel.name)}">
 <h2 id="seat-book-title">Book this seat</h2>
@@ -265,11 +273,17 @@ function paint(state){
     barGo.classList.toggle('is-alt', alt);
   }
 }
+function seatCancel(note){
+  var old="This booking is inside 24 hours of the start, so it can't be cancelled for free.";
+  if(note===old) return "This date starts within 24 hours, so a booking can't be cancelled for free.";
+  return note||'';
+}
 function fromRow(date, row, cancel){
   var q=spots();
+  var lineNote=seatCancel(cancel);
   if(!date||!row){
     paint({kind:'pick', canBook:false, text:'Pick a date', button:'Select · Continue to booking', qty:q});
-    if(cancelText) cancelText.textContent=cancel||'Pick a date to see your free-cancellation deadline.';
+    if(cancelText) cancelText.textContent=lineNote||'Pick a date to see your free-cancellation deadline.';
     return;
   }
   var when=dayLabel(date);
@@ -282,7 +296,7 @@ function fromRow(date, row, cancel){
     else if(left<q) paint({kind:'short', canBook:false, text:left+' left on '+when, button:'Only '+left+' left on this date', when:when, qty:q, left:left});
     else paint({kind:'open', canBook:true, text:left+' left on '+when, button:'Select · Continue to booking', when:when, qty:q, left:left});
   }
-  if(cancelText) cancelText.textContent=cancel||'';
+  if(cancelText) cancelText.textContent=lineNote;
 }
 function apply(data){
   var date=dateInput?dateInput.value:'';

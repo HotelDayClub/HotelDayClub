@@ -6,7 +6,8 @@ const http = require('http');
 const { spawn } = require('child_process');
 const { SeatPage } = require('../seatPage');
 const { seatPhoto } = require('../inclusions');
-const { FOOD_RULE } = require('../offering');
+const { FOOD_RULE, cancelNote } = require('../offering');
+const { HotelClock } = require('../calendar');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-seat-'));
 const dbPath = path.join(dir, 'daypass.db');
@@ -155,6 +156,38 @@ function ymd(date) {
     assert.strictEqual(kept.status, 200);
     assert.ok(!kept.headers.location);
     assert.ok(kept.body.includes('class="pass-card is-sel" id="pass-card-daybed"'));
+
+    const hotelRow = db.prepare('SELECT * FROM hotels WHERE slug=?').get('saltwater-terrace');
+    const startDay = HotelClock.today(hotelRow);
+    const bookingInside = "This booking is inside 24 hours of the start, so it can't be cancelled for free.";
+    const dateInside = 'This date starts within 24 hours, so a booking can&#39;t be cancelled for free.';
+    let insideDate = '';
+    let freeDate = '';
+    for (let i = 0; i < 21 && !(insideDate && freeDate); i++) {
+      const day = new Date(startDay + 'T12:00:00');
+      day.setDate(day.getDate() + i);
+      const iso = ymd(day);
+      if (db.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?').get(hotelRow.id, iso)) continue;
+      const note = cancelNote(db, hotelRow, iso);
+      if (!insideDate && note === bookingInside) insideDate = iso;
+      if (!freeDate && /^Free cancellation until /.test(note)) freeDate = iso;
+    }
+    assert.ok(insideDate, 'expected a date inside 24 hours');
+    assert.ok(freeDate, 'expected a later free-cancellation date');
+    assert.strictEqual(cancelNote(db, hotelRow, insideDate), bookingInside);
+    const insidePage = await get(port, `/h/saltwater-terrace/seat/lounger?date=${insideDate}&qty=1`);
+    assert.strictEqual(insidePage.status, 200);
+    assert.ok(insidePage.body.includes(`id="seat-cancel-text">${dateInside}</span>`));
+    assert.ok(!insidePage.body.includes('id="seat-cancel-text">This booking is inside'));
+    const insideList = await get(port, `/h/saltwater-terrace?date=${insideDate}`);
+    assert.ok(insideList.body.includes(bookingInside.replace("can't", 'can&#39;t')));
+    assert.ok(!insideList.body.includes('This date starts within 24 hours'));
+    const insideApi = await get(port, `/api/availability?hotel=saltwater-terrace&date=${insideDate}`);
+    assert.ok(insideApi.body.includes(bookingInside));
+    assert.ok(!insideApi.body.includes('This date starts within 24 hours'));
+    const freePage = await get(port, `/h/saltwater-terrace/seat/lounger?date=${freeDate}&qty=1`);
+    assert.ok(freePage.body.includes('id="seat-cancel-text">Free cancellation until'));
+    assert.ok(!freePage.body.includes(`id="seat-cancel-text">${dateInside}</span>`));
 
     db.close();
     const write = new Sqlite(dbPath);
