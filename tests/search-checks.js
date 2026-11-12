@@ -51,7 +51,7 @@ function titleOf(html) {
   return m[1].replace(/&amp;/g, '&').replace(/&#39;/g, "'");
 }
 function names(html, kind) {
-  const marker = `class="list ${kind}"`;
+  const marker = `class="list ${kind}`;
   const at = html.indexOf(marker);
   assert.ok(at >= 0, 'missing list ' + kind);
   const block = html.slice(at, html.indexOf('</div>', at));
@@ -237,6 +237,7 @@ assert.deepStrictEqual(nearest.map(h => h.id), [2, 3, 1]);
     assert.ok(filtered.body.includes(`1 place in Bondi &amp; Eastern Beaches · Pool on ${nice(saturday)}`));
     assert.ok(filtered.body.includes('<h1>Hotel day passes in Bondi &amp; Eastern Beaches</h1>'));
     assert.deepStrictEqual(names(filtered.body, 'results'), ['The Saltwater Terrace (Demo)']);
+    assert.ok(filtered.body.includes('class="list results is-single"'));
     assert.ok(filtered.body.includes('Eastern Beaches'));
     assert.ok(!filtered.body.includes('Example listings · not real hotels'));
     assert.ok(filtered.body.includes('>Clear all</a>'));

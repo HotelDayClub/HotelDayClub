@@ -565,18 +565,22 @@ function searchPage(query) {
   }
   const others = result.empty ? `<h2 class="other">Other example listings</h2><div class="list others">${otherCards}</div>` : '';
   const keepSort = params.sort ? `<input type="hidden" name="sort" value="${esc(params.sort)}">` : '';
-  const body = `<div class="search-page wrap"><form class="sbar" action="/search" method="get">
+  const resultClass = result.list.length === 1 ? 'list results is-single' : 'list results';
+  const body = `<div class="search-page"><form class="sbar" action="/search" method="get">
 ${keepSort}
 <div class="seg"><label for="w">Where</label><select id="w" class="hdc-pick" name="destination" aria-label="Where"><option value="" data-icon="pin"${selectedDest ? '' : ' selected'}>All of Australia</option>${whereOptions(selectedDest)}</select></div>
 <div class="seg"><label for="when">When</label><input id="when" class="hdc-date" type="date" name="date" min="${today()}" max="${ymd(addDays(new Date(), 90))}" value="${esc(params.date)}"></div>
 <div class="seg"><label for="p">What</label><select id="p" class="hdc-pick" name="want">${WANTS.map(w => `<option value="${esc(w.id)}" data-icon="${esc(w.icon)}"${params.want === w.id ? ' selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
+<div class="seg"><label for="guests">Guests</label><select id="guests" class="hdc-pick" name="guests">${guestOptions}</select></div>
+<div class="seg"><label for="price">Price</label><select id="price" class="hdc-pick" name="price">${priceOptions}</select></div>
+<div class="seg"><label for="age">Age</label><select id="age" class="hdc-pick" name="age">${ageOptions}</select></div>
 <button type="submit">Search</button>
-<div class="frow"><label class="f">Guests<select class="hdc-pick" name="guests">${guestOptions}</select></label><label class="f">Price<select class="hdc-pick" name="price">${priceOptions}</select></label><label class="f">Age<select class="hdc-pick" name="age">${ageOptions}</select></label></div>
 </form>
-<div class="rhead"><div><h1>${esc(result.heading)}</h1><p class="count">${esc(result.count)}</p></div>
-<form class="sort-form" action="/search" method="get">${searchHidden(params, 'sort')}<label class="sort-label">Sort<select class="hdc-pick" name="sort" aria-label="Sort listings" onchange="this.form.submit()">${sortOptions}</select></label><noscript><button type="submit">Sort</button></noscript></form></div>
+<div class="rhead"><div class="rhead-title"><h1>${esc(result.heading)}</h1>
+<form class="sort-form" action="/search" method="get">${searchHidden(params, 'sort')}<label class="sort-label"><span class="sort-name">Sort</span><select class="hdc-pick" name="sort" aria-label="Sort listings" onchange="this.form.submit()">${sortOptions}</select></label><noscript><button type="submit">Sort</button></noscript></form></div>
+<p class="count">${esc(result.count)}</p></div>
 ${chips ? `<div class="chips" aria-label="Active filters">${chips}${clear}</div>` : ''}
-${empty || `<div class="list results">${cards}</div>`}${others}
+${empty || `<div class="${resultClass}">${cards}</div>`}${others}
 <p class="note">Shown while the site is in demo mode. These hotels are fictional. No real bookings are taken. <a href="/guides">Read the day pass guides</a>.</p>
 </div>`;
   return page(result.heading, body, {
