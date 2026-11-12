@@ -27,6 +27,7 @@ const { eventWindow, bookingIcs, passCalendarLink, hotelToday, HotelClock } = re
 const { parseBookingCode } = require('./public/checkin-parse');
 const { sendBookingConfirmation, sendContactAlert, sendCancellation, bookingHasParking } = require('./notices');
 const { BookingCancel } = require('./cancelBooking');
+const { PauseBooked } = require('./pauseBooked');
 const { DESTINATIONS, destIcon, destinationBySlug } = require('./destinations');
 const seo = require('./seo');
 const compress = require('./compress');
@@ -1515,14 +1516,8 @@ app.post('/hotel/note', hotelAuth, (req, res) => {
   const [p, hash] = safe.split('#');
   res.redirect(303, p + (p.includes('?') ? '&' : '?') + 'msg=' + encodeURIComponent(msg) + (hash ? '#' + hash : ''));
 });
-function pauseDate(hotelId, date, mode) {
-  const existing = db.prepare('SELECT reason FROM blocked_dates WHERE hotel_id=? AND date=?').get(hotelId, date);
-  const drop = () => db.prepare('DELETE FROM blocked_dates WHERE hotel_id=? AND date=?').run(hotelId, date);
-  if (mode === 'toggle' && existing && existing.reason === 'Paused') { drop(); return { ok: true, msg: `Resumed ${nice(date)}. Guests can book it again.` }; }
-  if (existing && existing.reason !== 'Paused') return { ok: false, msg: `${nice(date)} is already closed (${existing.reason}).` };
-  if (existing) return { ok: true, msg: `${nice(date)} is already paused.` };
-  db.prepare("INSERT INTO blocked_dates(hotel_id,date,reason) VALUES (?,?, 'Paused')").run(hotelId, date);
-  return { ok: true, msg: `Paused ${nice(date)}. Guests can no longer book it.` };
+function pauseConfirm(hotel, opts) {
+  return dashShell(hotel, PauseBooked.confirmInner(opts));
 }
 function capDate(hotelId, date, raw) {
   const text = String(raw ?? '').trim();
@@ -1546,10 +1541,24 @@ function opsBar(h, passes) {
 ${cap ? `<form method="post" action="/hotel/cap"><input type="hidden" name="cap" value=""><button class="btn btn-line">Remove cap</button></form>` : ''}
 <span class="ops-links"><a href="/hotel/email-preview">Tonight's email</a><a href="/hotel/print">Print list</a></span></div>`;
 }
-app.post('/hotel/pause', hotelAuth, (req, res) => {
+app.post('/hotel/pause', hotelAuth, async (req, res) => {
   if (!ownForm(req, res)) return;
-  const when = req.body.when === 'tomorrow' ? HotelClock.offset(req.hotel, 1) : today(req.hotel);
-  const result = pauseDate(req.hotel.id, when, 'toggle');
+  const tomorrow = req.body.when === 'tomorrow';
+  const when = tomorrow ? HotelClock.offset(req.hotel, 1) : today(req.hotel);
+  const confirming = req.body.confirm === '1';
+  const result = PauseBooked.pause(db, req.hotel.id, when, { mode: confirming ? 'pause' : 'toggle', confirm: confirming });
+  if (result.kind === 'confirm') {
+    return res.send(pauseConfirm(req.hotel, {
+      heading: `Pause ${nice(when)}?`,
+      note: `This stops new bookings for ${nice(when)}. Existing bookings stay as they are.`,
+      groups: [{ date: when, bookings: result.bookings }],
+      action: '/hotel/pause',
+      fields: { when: tomorrow ? 'tomorrow' : 'today', confirm: '1' },
+      submitLabel: 'Pause this date',
+      backHref: '/hotel',
+    }));
+  }
+  if (result.alert) await PauseBooked.notify(db, req.hotel, when, result.bookings, 'Paused');
   res.redirect(303, '/hotel?msg=' + encodeURIComponent(result.msg));
 });
 app.post('/hotel/cap', hotelAuth, (req, res) => {
@@ -1591,14 +1600,49 @@ ${rows.length ? `<ul class="email-guests">${rows.map(b => `<li><b>${esc(b.guest_
 <div class="email-acts"><a class="btn btn-navy" href="/hotel/go/${pause}">Pause tomorrow</a>${capLinks}<a class="btn btn-line" href="/hotel/print?date=${tmr}">Print this list</a></div>
 </article>`, { here: '' }));
 });
+function opsMiss(res) {
+  return res.status(400).send(page('Link expired', `<div class="wrap sec narrow"><h1 class="l-title">This link has expired</h1><p class="muted">Open tonight's email again from the dashboard, or <a href="/hotel/login">log in</a>.</p></div>`, { bare: true, index: false, canonical: false }));
+}
+function opsDone(res, hotel, date, msg) {
+  return res.send(page('Saved', `<div class="wrap sec narrow"><h1 class="l-title">${esc(msg)}</h1><p class="muted">${esc(hotel.name)} · ${esc(nice(date))}</p><p style="margin-top:18px"><a class="btn btn-navy" href="/hotel/login">Log in to the dashboard</a></p></div>`, { bare: true, index: false, canonical: false }));
+}
+function opsHotel(token) {
+  const data = readOps(token);
+  const hotel = data && db.prepare('SELECT * FROM hotels WHERE id=?').get(data.h);
+  if (!hotel || !/^\d{4}-\d{2}-\d{2}$/.test(data.d || '')) return null;
+  return { data, hotel };
+}
+function pauseLinkConfirm(res, token, hotel, date, bookings) {
+  return res.send(pauseConfirm(hotelRow(hotel), {
+    heading: `Pause ${nice(date)}?`,
+    note: `This stops new bookings for ${nice(date)}. Existing bookings stay as they are.`,
+    groups: [{ date, bookings }],
+    action: '/hotel/go/' + token,
+    fields: { confirm: '1' },
+    submitLabel: 'Pause this date',
+    backHref: '/hotel/login',
+  }));
+}
 app.get('/hotel/go/:token', (req, res) => {
   const purpose = `${req.get('purpose') || ''} ${req.get('sec-purpose') || ''} ${req.get('sec-fetch-purpose') || ''}`.toLowerCase();
   if (purpose.includes('prefetch') || purpose.includes('preview') || req.get('sec-fetch-dest') === 'empty') return res.status(204).end();
-  const data = readOps(req.params.token);
-  const hotel = data && db.prepare('SELECT * FROM hotels WHERE id=?').get(data.h);
-  if (!hotel || !/^\d{4}-\d{2}-\d{2}$/.test(data.d || '')) return res.status(400).send(page('Link expired', `<div class="wrap sec narrow"><h1 class="l-title">This link has expired</h1><p class="muted">Open tonight's email again from the dashboard, or <a href="/hotel/login">log in</a>.</p></div>`, { bare: true, index: false, canonical: false }));
-  const msg = data.a === 'cap' ? capDate(hotel.id, data.d, data.n) : pauseDate(hotel.id, data.d, 'pause').msg;
-  res.send(page('Saved', `<div class="wrap sec narrow"><h1 class="l-title">${esc(msg)}</h1><p class="muted">${esc(hotel.name)} · ${esc(nice(data.d))}</p><p style="margin-top:18px"><a class="btn btn-navy" href="/hotel/login">Log in to the dashboard</a></p></div>`, { bare: true, index: false, canonical: false }));
+  const found = opsHotel(req.params.token);
+  if (!found) return opsMiss(res);
+  const { data, hotel } = found;
+  if (data.a === 'cap') return opsDone(res, hotel, data.d, capDate(hotel.id, data.d, data.n));
+  const result = PauseBooked.pause(db, hotel.id, data.d, { mode: 'pause', confirm: false });
+  if (result.kind === 'confirm') return pauseLinkConfirm(res, req.params.token, hotel, data.d, result.bookings);
+  return opsDone(res, hotel, data.d, result.msg);
+});
+app.post('/hotel/go/:token', async (req, res) => {
+  if (!ownForm(req, res)) return;
+  const found = opsHotel(req.params.token);
+  if (!found || found.data.a !== 'pause') return opsMiss(res);
+  const { data, hotel } = found;
+  const result = PauseBooked.pause(db, hotel.id, data.d, { mode: 'pause', confirm: req.body.confirm === '1' });
+  if (result.kind === 'confirm') return pauseLinkConfirm(res, req.params.token, hotel, data.d, result.bookings);
+  if (result.alert) await PauseBooked.notify(db, hotel, data.d, result.bookings, 'Paused');
+  return opsDone(res, hotel, data.d, result.msg);
 });
 app.get('/hotel/print', hotelAuth, (req, res) => {
   const h = req.hotel;
@@ -1652,17 +1696,34 @@ app.post('/hotel/arrival', hotelAuth, (req, res) => {
   if (result.err) return res.redirect('/hotel/settings?e=' + encodeURIComponent(result.err) + '#arrive-edit');
   res.redirect(303, '/hotel/settings?msg=' + encodeURIComponent('Saved getting there.') + '#arrive-edit');
 });
-app.post('/hotel/block', hotelAuth, (req, res) => {
+app.post('/hotel/block', hotelAuth, async (req, res) => {
   if (!ownForm(req, res)) return;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(req.body.date)) db.prepare('INSERT OR REPLACE INTO blocked_dates(hotel_id,date,reason) VALUES (?,?,?)').run(req.hotel.id, req.body.date, String(req.body.reason || 'Closed').slice(0, 80) || 'Closed');
-  res.redirect(303, '/hotel?msg=' + encodeURIComponent('Blocked ' + nice(req.body.date) + '. Guests can no longer book it.') + '#blocked');
+  const date = String(req.body.date || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.redirect(303, '/hotel?msg=' + encodeURIComponent('Blocked ' + nice(date) + '. Guests can no longer book it.') + '#blocked');
+  const reason = String(req.body.reason || 'Closed').slice(0, 80) || 'Closed';
+  const existing = db.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?').get(req.hotel.id, date);
+  const bookings = existing ? [] : PauseBooked.active(db, req.hotel.id, date);
+  if (bookings.length && req.body.confirm !== '1') {
+    return res.send(pauseConfirm(req.hotel, {
+      heading: `Block ${nice(date)}?`,
+      note: `This stops new bookings for ${nice(date)}. Existing bookings stay as they are. Nothing is saved until you confirm.`,
+      groups: [{ date, bookings }],
+      action: '/hotel/block',
+      fields: { date, reason, confirm: '1' },
+      submitLabel: 'Block this date',
+      backHref: '/hotel#blocked',
+    }));
+  }
+  db.prepare('INSERT OR REPLACE INTO blocked_dates(hotel_id,date,reason) VALUES (?,?,?)').run(req.hotel.id, date, reason);
+  if (bookings.length) await PauseBooked.notify(db, req.hotel, date, bookings, reason);
+  res.redirect(303, '/hotel?msg=' + encodeURIComponent('Blocked ' + nice(date) + '. Guests can no longer book it.') + '#blocked');
 });
 app.post('/hotel/unblock', hotelAuth, (req, res) => {
   if (!ownForm(req, res)) return;
   db.prepare('DELETE FROM blocked_dates WHERE hotel_id=? AND date=?').run(req.hotel.id, req.body.date);
   res.redirect(303, '/hotel?msg=' + encodeURIComponent('Unblocked ' + nice(req.body.date) + '.') + '#blocked');
 });
-app.post('/hotel/blocked', hotelAuth, (req, res) => {
+app.post('/hotel/blocked', hotelAuth, async (req, res) => {
   if (!ownForm(req, res)) return;
   const reason = String(req.body.reason || '').trim().slice(0, 80);
   const start = new Date();
@@ -1672,13 +1733,28 @@ app.post('/hotel/blocked', hotelAuth, (req, res) => {
     .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= todayStr && d <= horizon);
   const existing = db.prepare('SELECT date, reason FROM blocked_dates WHERE hotel_id=? AND date>=? AND date<=?').all(req.hotel.id, todayStr, horizon);
   const prev = new Map(existing.map(r => [r.date, r.reason || '']));
+  const addedDates = dates.filter(d => !prev.has(d));
+  const groups = PauseBooked.closingDates(db, req.hotel.id, addedDates);
+  if (groups.length && req.body.confirm !== '1') {
+    return res.send(pauseConfirm(req.hotel, {
+      heading: groups.length === 1 ? `Block ${nice(groups[0].date)}?` : 'Block dates that already have guests?',
+      note: 'Nothing is saved until you confirm. This stops new bookings on the dates you selected. Existing bookings stay as they are.',
+      groups,
+      action: '/hotel/blocked',
+      fields: { dates: dates.join(','), reason, confirm: '1' },
+      submitLabel: groups.length === 1 ? 'Block this date' : 'Block these dates',
+      backHref: '/hotel#blocked',
+    }));
+  }
   const keep = new Set(dates);
   const del = db.prepare('DELETE FROM blocked_dates WHERE hotel_id=? AND date=?');
   const up = db.prepare('INSERT OR REPLACE INTO blocked_dates(hotel_id,date,reason) VALUES (?,?,?)');
+  const stored = reason || 'Closed';
   db.transaction(() => {
     for (const row of existing) if (!keep.has(row.date)) del.run(req.hotel.id, row.date);
-    for (const d of dates) up.run(req.hotel.id, d, prev.has(d) ? (prev.get(d) || reason || 'Closed') : (reason || 'Closed'));
+    for (const d of dates) up.run(req.hotel.id, d, prev.has(d) ? (prev.get(d) || stored) : stored);
   })();
+  for (const group of groups) await PauseBooked.notify(db, req.hotel, group.date, group.bookings, stored);
   const added = dates.filter(d => !prev.has(d)).length;
   const removed = existing.filter(r => !keep.has(r.date)).length;
   const bit = (n, verb) => `${verb} ${n} date${n === 1 ? '' : 's'}`;
@@ -1789,6 +1865,7 @@ app.get('/admin', adminAuth, (req, res) => {
 ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <p class="eyebrow-s">Platform admin · Jason</p><h1 class="l-title">All bookings</h1>
 <p><a class="btn btn-line" href="/admin/backups">Backups and exports</a></p>
+${PauseBooked.adminSection(db)}
 ${pending.length ? `<section class="panel"><h2 class="ph2">Pending approval</h2>${pendingHtml}</section>` : ''}
 ${contactMessagesHtml()}
 <div class="stats">${stat('Bookings', tot.n, tot.passes + ' spots')}${stat('Gross sales', money(tot.gross), `Includes ${money(addonAll)} add-ons`)}${stat(`Paid to hotels (${hotelPct()}%)`, money(tot.gross * HOTEL_SHARE))}${stat(`Platform commission (${feePct()}%)`, money(tot.gross * (1 - HOTEL_SHARE)), 'Hotel Day Club revenue')}</div>
