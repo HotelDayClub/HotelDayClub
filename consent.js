@@ -48,7 +48,7 @@ class CheckoutConsent {
   }
 
   static shareHtml(hotelName) {
-    return esc(this.shareText(hotelName));
+    return `<b>${esc(this.shareText(hotelName))}</b>`;
   }
 
   static marketingHtml() {

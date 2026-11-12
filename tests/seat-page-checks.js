@@ -5,9 +5,11 @@ const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
 const { SeatPage } = require('../seatPage');
-const { seatPhoto } = require('../inclusions');
+const { seatPhoto, amenityLines, loadInclusions } = require('../inclusions');
 const { FOOD_RULE, cancelNote } = require('../offering');
 const { HotelClock } = require('../calendar');
+const { forPass, hotelAreas } = require('../access');
+const { esc } = require('../util');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-seat-'));
 const dbPath = path.join(dir, 'daypass.db');
@@ -47,7 +49,7 @@ function ymd(date) {
   try {
     const Sqlite = require('better-sqlite3');
     const db = new Sqlite(dbPath, { readonly: true });
-    const passes = db.prepare(`SELECT h.slug, p.code, p.kind, p.photo, p.holds FROM pass_types p JOIN hotels h ON h.id=p.hotel_id ORDER BY h.id, p.sort`).all();
+    const passes = db.prepare(`SELECT h.slug, h.id AS hotel_id, p.id AS pass_id, p.code, p.kind, p.photo, p.holds FROM pass_types p JOIN hotels h ON h.id=p.hotel_id ORDER BY h.id, p.sort`).all();
     assert.ok(passes.length >= 6);
     for (const pass of passes) {
       const res = await get(port, `/h/${pass.slug}/seat/${encodeURIComponent(pass.code)}`);
@@ -60,8 +62,24 @@ function ymd(date) {
       assert.ok(!res.body.includes('Next photo'), pass.slug);
       assert.ok(!res.body.includes('Photo not yet added'), pass.slug);
       assert.ok(!res.body.includes('\u2014'), pass.slug);
-      assert.ok(res.body.includes(FOOD_RULE), pass.slug);
+      assert.strictEqual(res.body.split(FOOD_RULE).length - 1, 1, pass.slug);
       assert.ok(!res.body.includes('Food and drink are not included in the pass.'), pass.slug);
+      const items = loadInclusions(db, pass.hotel_id);
+      const passAreas = forPass(db, pass.pass_id);
+      const lines = amenityLines(items, Math.max(1, Number(pass.holds) || 1), passAreas);
+      const includedAt = res.body.indexOf('<h2>What\'s included</h2>');
+      const foodAt = res.body.indexOf('class="seat-food"', includedAt);
+      const includedBlock = res.body.slice(includedAt, foodAt);
+      for (const line of lines) assert.ok(includedBlock.includes(esc(line.text)), `${pass.slug}/${pass.code} ${line.text}`);
+      assert.ok(!/\d+ × (?!Towels)/.test(includedBlock), `${pass.slug}/${pass.code} quantity`);
+      if (lines.some(line => /towel/i.test(line.name))) assert.ok(/\d+ × Towels/.test(includedBlock), `${pass.slug}/${pass.code} towels`);
+      const buy = hotelAreas(db, pass.hotel_id).filter(area => Number(area.serves_food));
+      if (buy.length) {
+        assert.ok(includedBlock.includes('<h4>On site to buy (not included)</h4>'), pass.slug);
+        for (const area of buy) assert.ok(includedBlock.includes(`<b>${esc(area.name)}</b>`), `${pass.slug} ${area.name}`);
+      } else {
+        assert.ok(!res.body.includes('On site to buy (not included)'), pass.slug);
+      }
       assert.ok(!/commission/i.test(res.body), pass.slug);
       assert.ok(!/pay online|stripe/i.test(res.body), pass.slug);
       const file = String(pass.photo || '');

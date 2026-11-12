@@ -1,4 +1,5 @@
 const { esc, money, nice } = require('./util');
+const { CheckoutFlow } = require('./checkout');
 const { spotLabel, swimNote, displayCancelNote, arrivalText, GuestCheckIn } = require('./offering');
 const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
 const { PASS_FOOD_LINE } = require('./inclusions');
@@ -152,6 +153,8 @@ ${ackHtml(b)}
 </div>
 </div>
 <script>
+${CheckoutFlow.clearFunction()}
+clearCheckoutMemory();
 (function(){
   document.querySelectorAll('[data-copy]').forEach(function(btn){
     btn.addEventListener('click', function(){

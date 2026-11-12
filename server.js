@@ -20,6 +20,7 @@ const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./sessio
 const { ymd, addDays, esc, money, nice } = require('./util');
 const { demoSite, operatorEmail, confirmationBlurb, PUBLISHED_ABN } = require('./siteMode');
 const { LegalVersions, ConsentLog, CheckoutConsent } = require('./consent');
+const { CheckoutFlow } = require('./checkout');
 const brand = require('./brand');
 const { codeFromQrToken } = require('./qr');
 const { bookingPageBody, bookingMissingBody } = require('./bookingPage');
@@ -967,7 +968,9 @@ function renderCheckout(query, res, extra = {}) {
   const rulesOpts = { ...hoursView(db, h, date), foodSentence: foodLine };
   const picked = new Set(v.addons.map(x => x.code));
   const offer = addonAvailability(h.id, date);
-  const addonFields = offer.length ? `<section class="co-card" id="addon-block"><h2><span class="co-step">3</span> Add extras <span class="extra-opt">(optional)</span></h2><div class="extra-list" id="co-addons">${offer.map(ad => {
+  const hasExtras = offer.length > 0;
+  const steps = CheckoutFlow.steps(hasExtras);
+  const addonFields = offer.length ? `<section class="co-card" id="extras"><h2><span class="co-step">${steps.extras}</span> Add extras <span class="extra-opt">(optional)</span></h2><div class="extra-list" id="co-addons">${offer.map(ad => {
     const need = ad.per === 'booking' ? 1 : people;
     const dis = ad.remaining < need;
     const on = !dis && picked.has(ad.code);
@@ -979,7 +982,7 @@ function renderCheckout(query, res, extra = {}) {
   const pickedArrival = arrivalChoices.some(option => option.value === draft.arrival) ? draft.arrival : 'unsure';
   const arrivalInvalid = errors.arrival ? ' aria-invalid="true" aria-describedby="err-arrival arrival-help"' : ' aria-describedby="arrival-help"';
   const arrivalOptionsHtml = arrivalChoices.map(option => `<option value="${esc(option.value)}"${option.value === pickedArrival ? ' selected' : ''}>${esc(option.label)}</option>`).join('');
-  const arrivalCard = `<section class="co-card" id="arrival-card"><h2><span class="co-step">2</span> Arrival</h2>
+  const arrivalCard = `<section class="co-card" id="arrival-card"><h2><span class="co-step">${steps.arrival}</span> Arrival</h2>
 <label class="fl" for="arrival">Expected arrival time
 <select id="arrival" name="arrival"${arrivalInvalid}>${arrivalOptionsHtml}</select>
 ${fieldError(errors, 'arrival')}</label>
@@ -988,6 +991,18 @@ ${fieldError(errors, 'arrival')}</label>
   const confirmLabel = `Confirm booking · ${money(grand)} (demo)`;
   const on = key => draft[key] === '1' || draft[key] === 'on';
   const tick = (name, html, required) => CheckoutConsent.box({ name, html, required, checked: on(name), invalid: !!errors[name] });
+  const remaining = CheckoutFlow.requiredTicks().filter(name => !on(name)).length;
+  const reasonText = CheckoutFlow.reason(remaining);
+  const seatHref = `/h/${encodeURIComponent(h.slug)}/seat/${encodeURIComponent(p.code)}?date=${encodeURIComponent(date)}&qty=${qty}`;
+  const dateHref = `/h/${encodeURIComponent(h.slug)}?date=${encodeURIComponent(date)}#book`;
+  const dateChange = CheckoutFlow.changeLink(dateHref, 'date');
+  const passChange = CheckoutFlow.changeLink(seatHref, 'pass');
+  const extraText = CheckoutFlow.extraHtml(v.addons);
+  const extrasRow = hasExtras ? `<dt>Extras</dt><dd class="co-fact"><span class="co-fact-val" id="co-extras-val">${extraText}</span>${CheckoutFlow.changeLink('#extras', 'extras')}</dd>` : '';
+  const asideBtn = CheckoutFlow.confirmControl({ id: 'co-btn', reasonId: 'co-reason-aside', label: confirmLabel, remaining, full: true });
+  const formBtn = CheckoutFlow.confirmControl({ id: 'co-btn-form', reasonId: 'co-reason-form', label: confirmLabel, remaining, full: true });
+  const dockBtn = CheckoutFlow.confirmControl({ id: 'co-btn-dock', reasonId: 'co-reason-dock', label: confirmLabel, remaining, full: false });
+  const paymentCard = `<section class="co-card co-pay" id="co-pay"><h2><span class="co-step">${steps.payment}</span> Payment</h2><div class="demo-pay"><p>Demo site. No card is collected and nothing is charged.</p></div></section>`;
   res.status(extra.status || 200).send(page('Checkout', `<div class="wrap sec checkout">
 <a class="link small" href="/h/${h.slug}?date=${date}">← Back to listing</a><h1 class="l-title">Book your day (demo)</h1>
 <div class="co-layout">
@@ -998,28 +1013,29 @@ ${fieldError(errors, 'arrival')}</label>
 <div class="pad">
 <h2>${esc(hotelLabel)}</h2>
 <p class="muted small">${esc(h.area)}</p>
-<dl><dt>Date</dt><dd>${esc(nice(date))}</dd><dt>Pass</dt><dd>${esc(passLabel)}</dd><dt>Guests</dt><dd>${people}</dd></dl>
+<dl><dt>Date</dt><dd class="co-fact"><span class="co-fact-val">${esc(nice(date))}</span>${dateChange}</dd><dt>Pass</dt><dd class="co-fact"><span class="co-fact-val co-pass-line">${esc(passLabel)} · ${esc(money(p.price * qty))} (demo)</span>${passChange}</dd><dt>Guests</dt><dd>${people}</dd>${extrasRow}</dl>
 ${included}
-<ul class="addon-lines" id="addon-lines">${v.addons.map(ad => `<li><span>${esc(ad.name)} × ${ad.qty}</span><b>${money(ad.line)}</b></li>`).join('')}</ul>
 <p class="cancel-note">${esc(cancel)}</p>
 <div class="bb-total"><span>Total</span><b class="co-total" id="co-total">${money(grand)}</b></div>
 <p class="muted small">Prices include GST. Demo only.</p>
-<button class="btn btn-coral full co-btn" id="co-btn" type="submit" form="co-form">${confirmLabel}</button>
+${asideBtn}
 </div></div></aside>
 <form class="co-form" id="co-form" method="post" action="/book">
 ${['hotel', 'date', 'qty'].map(k => `<input type="hidden" name="${k}" value="${esc(query[k])}">`).join('')}<input type="hidden" name="pass" value="${p.code}"><input type="hidden" name="book_token" value="${esc(bookToken)}">
-<p class="demo-caution">Demo site. No card is collected and nothing is charged.</p>
+<p class="sr-only" id="co-reason-live" aria-live="polite">${esc(reasonText)}</p>
 ${extra.formError ? `<div class="alert" role="alert">${esc(extra.formError)}</div>` : ''}
-<section class="co-card"><h2><span class="co-step">1</span> Your details</h2>
+<section class="co-card"><h2><span class="co-step">${steps.details}</span> Your details</h2>
 <label class="fl">Full name<input name="name" required autocomplete="name" placeholder="Alex Citizen" value="${esc(draft.name || '')}" ${errors.name ? 'aria-invalid="true" aria-describedby="err-name"' : ''}>${fieldError(errors, 'name')}</label>
 <div class="two"><label class="fl">Email<input name="email" type="email" required autocomplete="email" placeholder="alex@example.com" value="${esc(draft.email || '')}" ${errors.email ? 'aria-invalid="true" aria-describedby="err-email"' : ''}>${fieldError(errors, 'email')}</label>
 <label class="fl">Mobile<input name="phone" type="tel" required pattern="[0-9+ \\-\\(\\)]{8,}" autocomplete="tel" placeholder="0412 345 678" value="${esc(draft.phone || '')}" ${errors.phone ? 'aria-invalid="true" aria-describedby="err-phone"' : ''}>${fieldError(errors, 'phone')}</label></div>
 </section>
 ${arrivalCard}
 ${addonFields}
-<section class="co-card co-before" id="co-consent"><h2>Before you book</h2>
+${paymentCard}
+<section class="co-card co-before" id="co-consent"><h2><span class="co-step">${steps.before}</span> Before you book</h2>
 ${rulesCard(h, rulesOpts)}
 ${riskCard(h)}
+${CheckoutFlow.riskSlot()}
 <p class="cancel-note">${esc(cancel)} <a href="/refunds">Cancellation and refunds</a></p>
 ${tick('risk', CheckoutConsent.riskHtml(), true)}${fieldError(errors, 'risk')}
 ${tick('rules', CheckoutConsent.rulesHtml(), true)}${fieldError(errors, 'rules')}
@@ -1028,44 +1044,69 @@ ${tick('terms', CheckoutConsent.termsHtml(), true)}${fieldError(errors, 'terms')
 ${tick('share', CheckoutConsent.shareHtml(hotelLabel), true)}${fieldError(errors, 'share')}
 ${tick('marketing', CheckoutConsent.marketingHtml(), false)}
 <p class="privacy-note">${CheckoutConsent.noticeHtml(hotelLabel)}</p>
+<div class="co-decide">${formBtn}</div>
 </section>
 </form>
-<div class="co-dock"><div class="co-dock-total"><span>Total</span><b class="co-total">${money(grand)}</b></div><button class="btn btn-coral co-btn" type="submit" form="co-form">${confirmLabel}</button></div>
+<div class="co-dock"><div class="co-dock-total"><span>Total</span><b class="co-total">${money(grand)}</b></div>${dockBtn}</div>
 </div></div>
 <script>
+${CheckoutFlow.storageApi()}
+const required=${JSON.stringify(CheckoutFlow.requiredTicks())};
+const consentNames=${JSON.stringify(CheckoutFlow.consentTicks())};
 const pass=${p.price}, spots=${qty}, people=${people};
 const fmt=n=>'$'+n.toLocaleString('en-AU');
-function paint(){let extra=0;const lines=[];
- document.querySelectorAll('#co-addons input:checked').forEach(i=>{const price=+i.dataset.price,q=i.dataset.per==='booking'?1:people;extra+=price*q;const name=i.parentElement.querySelector('.extra-name').textContent;const cost=price>0?'<b>'+fmt(price*q)+'</b>':'';lines.push('<li><span>'+name+' × '+q+'</span>'+cost+'</li>')});
- const total=pass*spots+extra;
- const box=document.getElementById('addon-lines'); if(box) box.innerHTML=lines.join('');
- const label='Confirm booking · '+fmt(total)+' (demo)';
- document.querySelectorAll('.co-total').forEach(el=>{el.textContent=fmt(total)});
- document.querySelectorAll('.co-btn').forEach(btn=>{btn.textContent=label});
-}
-document.querySelectorAll('#co-addons input').forEach(i=>i.onchange=paint);paint();
-const sumBar=document.getElementById('co-sum-bar');
-if(sumBar) sumBar.addEventListener('click',function(){const open=document.getElementById('co-sum').classList.toggle('is-open');sumBar.setAttribute('aria-expanded',open?'true':'false')});
 let sending=false;
 const form=document.getElementById('co-form');
+function ticksLeft(){
+  var n=0;
+  required.forEach(function(name){ if(form[name] && !form[name].checked) n++; });
+  return n;
+}
+function syncConsent(){
+  if(sending) return;
+  var left=ticksLeft();
+  var text=checkoutReason(left);
+  document.querySelectorAll('.co-btn').forEach(function(btn){
+    var reasonId=btn.getAttribute('data-reason');
+    if(left>0){
+      btn.setAttribute('aria-disabled','true');
+      if(reasonId) btn.setAttribute('aria-describedby', reasonId);
+    } else {
+      btn.removeAttribute('aria-disabled');
+      btn.removeAttribute('aria-describedby');
+    }
+  });
+  document.querySelectorAll('.co-reason').forEach(function(el){
+    el.textContent=text;
+    el.hidden=left<=0;
+  });
+  var live=document.getElementById('co-reason-live');
+  if(live && live.textContent!==text) live.textContent=text;
+}
+function escHtml(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function paint(){let extra=0;const parts=[];
+ document.querySelectorAll('#co-addons input:checked').forEach(i=>{const price=+i.dataset.price,q=i.dataset.per==='booking'?1:people;extra+=price*q;const name=i.parentElement.querySelector('.extra-name').textContent;parts.push(escHtml(name)+' × '+q+' · <span class="co-nowrap">'+fmt(price*q)+' (demo)</span>')});
+ const total=pass*spots+extra;
+ const extras=document.getElementById('co-extras-val'); if(extras) extras.innerHTML=parts.length?parts.join(', '):'None';
+ const label='Confirm booking · '+fmt(total)+' (demo)';
+ document.querySelectorAll('.co-total').forEach(el=>{el.textContent=fmt(total)});
+ if(!sending) document.querySelectorAll('.co-btn').forEach(btn=>{btn.textContent=label});
+ syncConsent();
+}
+document.querySelectorAll('#co-addons input').forEach(i=>i.onchange=paint);
+const sumBar=document.getElementById('co-sum-bar');
+if(sumBar) sumBar.addEventListener('click',function(){const open=document.getElementById('co-sum').classList.toggle('is-open');sumBar.setAttribute('aria-expanded',open?'true':'false')});
 const storeKey='hdc-checkout:'+form.hotel.value+':'+form.date.value+':'+form.pass.value+':'+form.qty.value;
-function remembered(){try{return JSON.parse(sessionStorage.getItem(storeKey)||'{}')}catch(e){return {}}}
+function remembered(){try{return JSON.parse(sessionStorage.getItem(storeKey)||'null')}catch(e){return null}}
 function remember(){
-  const data={name:form.name.value,email:form.email.value,phone:form.phone.value,arrival:form.arrival.value,rules:form.rules.checked,terms:form.terms.checked,risk:form.risk.checked,group:form.group.checked,share:form.share.checked,marketing:form.marketing.checked,addon:[...form.querySelectorAll('input[name=addon]:checked')].map(i=>i.value)};
-  try{sessionStorage.setItem(storeKey, JSON.stringify(data))}catch(e){}
+  try{sessionStorage.setItem(storeKey, JSON.stringify(checkoutPayload(form)))}catch(e){}
 }
 const saved=remembered();
 if(saved && !form.name.value && !form.email.value && !form.phone.value){
-  if(saved.name) form.name.value=saved.name;
-  if(saved.email) form.email.value=saved.email;
-  if(saved.phone) form.phone.value=saved.phone;
-  if(saved.arrival){const opt=form.arrival.querySelector('option[value="'+String(saved.arrival).replace(/"/g,'')+'"]'); if(opt) form.arrival.value=saved.arrival;}
-  form.rules.checked=!!saved.rules; form.terms.checked=!!saved.terms; form.risk.checked=!!saved.risk; form.group.checked=!!saved.group; form.share.checked=!!saved.share; form.marketing.checked=!!saved.marketing;
-  (saved.addon||[]).forEach(code=>{const box=form.querySelector('input[name=addon][value="'+code.replace(/"/g,'')+'"]'); if(box && !box.disabled) box.checked=true});
-  paint();
+  applyCheckoutMemory(form, saved);
 }
 form.addEventListener('input', remember);
-form.addEventListener('change', remember);
+form.addEventListener('change', function(){ remember(); syncConsent(); });
 function clearInvalid(el){
   el.removeAttribute('aria-invalid');
   const ids=(el.getAttribute('aria-describedby')||'').split(/\\s+/).filter(Boolean);
@@ -1081,11 +1122,21 @@ form.querySelectorAll('[aria-invalid="true"]').forEach(el=>{
 const firstInvalid=form.querySelector('[aria-invalid="true"]');
 if(firstInvalid) firstInvalid.focus();
 form.addEventListener('submit', function(ev){
+  if(ticksLeft()>0){ev.preventDefault(); syncConsent(); return;}
   if(sending){ev.preventDefault(); return;}
   sending=true;
   document.querySelectorAll('.co-btn').forEach(btn=>{btn.disabled=true; btn.setAttribute('aria-busy','true'); btn.textContent='Confirming…';});
 });
-window.addEventListener('pageshow', function(ev){if(!ev.persisted) return; sending=false; document.querySelectorAll('.co-btn').forEach(btn=>{btn.disabled=false; btn.removeAttribute('aria-busy')}); paint();});
+window.addEventListener('pageshow', function(ev){
+  if(!ev.persisted) return;
+  sending=false;
+  var raw=null;
+  try{ raw=sessionStorage.getItem(storeKey); }catch(e){}
+  if(raw==null) consentNames.forEach(function(name){ if(form[name]) form[name].checked=false; });
+  document.querySelectorAll('.co-btn').forEach(btn=>{btn.disabled=false; btn.removeAttribute('aria-busy')});
+  paint();
+});
+paint();
 </script>`, { analytics: false, index: false, canonical: false }));
 }
 app.get('/checkout', (req, res) => renderCheckout(req.query, res));
