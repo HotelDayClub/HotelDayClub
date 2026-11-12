@@ -845,12 +845,13 @@ form.check-code input,form.check-code .btn{width:100%}
 .wrap.listing .gallery.swipe{position:relative;display:grid;grid-template-columns:2fr 1fr 1fr;grid-template-rows:167px 167px;gap:6px;height:340px;margin:24px 0 0;border-radius:12px;overflow:hidden;background:var(--hdc-tint)}
 .wrap.listing .gallery.swipe img{width:100%;height:167px;min-height:167px;min-width:0;object-fit:cover;display:block;cursor:pointer;aspect-ratio:auto;max-height:none;flex:none}
 .wrap.listing .gallery.swipe .g0{height:340px;min-height:340px;grid-row:1 / span 2}
-.listing .gallery.g-n1{grid-template-columns:1fr;grid-template-rows:1fr}
-.listing .gallery.g-n1 .g0{grid-row:auto}
-.listing .gallery.g-n2{grid-template-columns:2fr 1fr;grid-template-rows:1fr}
-.listing .gallery.g-n2 .g0{grid-row:auto}
-.listing .gallery.g-n3{grid-template-columns:2fr 1fr}
-.listing .gallery.g-n4 .g3{grid-column:2/4}
+.wrap.listing .gallery.swipe.g-n1{grid-template-columns:1fr;grid-template-rows:340px}
+.wrap.listing .gallery.swipe.g-n1 .g0{grid-row:auto;height:340px;min-height:340px}
+.wrap.listing .gallery.swipe.g-n2{grid-template-columns:2fr 1fr;grid-template-rows:340px}
+.wrap.listing .gallery.swipe.g-n2 .g0{grid-row:auto;height:340px;min-height:340px}
+.wrap.listing .gallery.swipe.g-n2 img{height:340px;min-height:340px}
+.wrap.listing .gallery.swipe.g-n3{grid-template-columns:2fr 1fr}
+.wrap.listing .gallery.swipe.g-n4 .g3{grid-column:2 / 4}
 .listing .view-all{position:absolute;right:14px;bottom:14px;background:var(--hdc-tint);color:var(--hdc-rose-ink);border:1px solid var(--hdc-border);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600}
 .listing .photo-credit{position:absolute;left:12px;bottom:12px;right:auto;top:auto;background:var(--hdc-deep);color:#fff;font-size:12px;padding:3px 10px;border-radius:999px}
 .listing .gal-chip{display:none}
@@ -862,11 +863,12 @@ form.check-code input,form.check-code .btn{width:100%}
 .listing .l-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:48px;align-items:start;padding-top:32px}
 .listing .l-main>section{margin-top:56px}
 .listing .listing-head{margin-top:0}
-.listing .l-tabs{position:sticky;top:64px;z-index:20;background:#fff;border-bottom:1px solid var(--hdc-border);margin-top:16px}
+.listing .l-tabs{position:sticky;top:var(--listing-sticky,67px);z-index:20;background:#fff;border-bottom:1px solid var(--hdc-border);margin-top:16px}
 .listing .l-tabs nav{display:flex;gap:28px;overflow-x:auto}
 .listing .l-tabs a{padding:14px 0;color:var(--hdc-secondary);text-decoration:none;font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
 .listing .l-tabs a[aria-current]{color:var(--hdc-text);border-bottom-color:var(--hdc-rose)}
-.listing #overview,.listing #passes,.listing #details{scroll-margin-top:120px}
+.listing #overview,.listing #passes,.listing #details,.listing #hours,.listing #getting-there,.listing #policy,.listing #cancel-fold,.listing #parking{scroll-margin-top:var(--listing-scroll,140px)}
+.listing #book{scroll-margin-top:var(--listing-book,80px)}
 .listing .l-meta{margin:8px 0 10px;color:var(--hdc-secondary);font-size:15px}
 .listing .demo-pill{display:inline-block;background:var(--hdc-sun-soft);color:var(--hdc-navy);border:1px solid var(--hdc-sun);font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px}
 .listing .day-lead{color:var(--hdc-secondary);margin:16px 0 4px;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;max-width:none;font-size:15px;line-height:1.6}
@@ -979,8 +981,8 @@ form.check-code input,form.check-code .btn{width:100%}
   .listing .l-layout{display:flex;flex-direction:column;gap:0;padding-top:0}
   .listing .l-main{display:contents}
   .listing .listing-head{order:1;padding-top:20px}
-  .listing .l-tabs{order:2;top:108px;margin:24px -16px 0;padding:0 16px}
-  .listing #passes{order:3;margin-top:32px;scroll-margin-top:170px}
+  .listing .l-tabs{order:2;top:var(--listing-sticky,93px);margin:24px -16px 0;padding:0 16px}
+  .listing #passes{order:3;margin-top:32px}
   .listing .book-box{order:4;position:static;margin-top:40px}
   .listing #addons-list{order:5;margin-top:40px}
   .listing #details{order:6;margin-top:40px}

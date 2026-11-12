@@ -334,14 +334,36 @@ if(filters){
 }
 const more=document.querySelector('.read-more');
 const desc=document.getElementById('overview-desc');
+function syncLead(){
+ if(!more||!desc) return;
+ var open=more.getAttribute('aria-expanded')==='true';
+ if(open){ more.hidden=false; return; }
+ more.hidden=desc.scrollHeight<=desc.clientHeight+1;
+}
 if(more&&desc){
  more.addEventListener('click', function(){
   const open=more.getAttribute('aria-expanded')==='true';
   more.setAttribute('aria-expanded', open?'false':'true');
   more.textContent=open?'Read more':'Read less';
   desc.classList.toggle('is-open', !open);
+  syncLead();
  });
 }
+function placeListingChrome(){
+ var hdr=document.querySelector('.hdr');
+ var tabs=document.querySelector('.l-tabs');
+ if(!hdr) return;
+ var h=Math.ceil(hdr.getBoundingClientRect().height);
+ var tabsH=tabs?Math.ceil(tabs.getBoundingClientRect().height):0;
+ var root=document.documentElement;
+ root.style.setProperty('--listing-sticky', h+'px');
+ root.style.setProperty('--listing-scroll', (h+tabsH+12)+'px');
+ root.style.setProperty('--listing-book', (h+12)+'px');
+}
+placeListingChrome();
+syncLead();
+window.addEventListener('resize', function(){ placeListingChrome(); syncLead(); });
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(function(){ placeListingChrome(); syncLead(); });
 const tabNav=document.querySelector('.l-tabs');
 if(tabNav){
  tabNav.addEventListener('click', function(e){
