@@ -48,11 +48,19 @@ html.js .n9-bar{display:flex}
 .terms{list-style:none;margin:8px 0 0;padding:0}
 .terms li{display:flex;align-items:flex-start;gap:6px;color:var(--hdc-text);font-size:13px;line-height:1.35}
 .terms svg{width:16px;height:16px;flex:0 0 auto;margin-top:1px;color:var(--hdc-primary)}
-.days{display:flex;align-items:center;gap:6px;margin-top:10px;min-width:0}
-.day-row{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:0;scroll-snap-type:x proximity;padding-bottom:2px}
-.daypill{box-sizing:border-box;flex:0 0 auto;min-height:44px;min-width:72px;padding:4px 10px;border-radius:12px;border:1.5px solid var(--hdc-border);background:#fff;color:var(--hdc-text);text-decoration:none;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;scroll-snap-align:start}
+.days{display:flex;align-items:center;gap:6px;margin-top:10px;width:100%;min-width:0;container-type:inline-size}
+.day-row{--pill:76px;--gap:6px;display:flex;gap:var(--gap);width:calc(3 * var(--pill) + 2 * var(--gap));flex:0 0 auto;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.day-row::-webkit-scrollbar{display:none}
+.daypill{box-sizing:border-box;flex:0 0 var(--pill);width:var(--pill);min-height:44px;padding:4px;border-radius:12px;border:1.5px solid var(--hdc-border);background:#fff;color:var(--hdc-text);text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;scroll-snap-align:start}
+.daypill b,.daypill span{white-space:nowrap}
 .daypill b{font-size:13px;line-height:1.2}
 .daypill span{font-size:12px;line-height:1.2;color:var(--hdc-secondary)}
+@container (max-width:289px){
+  .day-row{width:calc(2 * var(--pill) + var(--gap))}
+}
+@container (max-width:207px){
+  .day-row{width:var(--pill)}
+}
 .daypill.on{background:var(--hdc-primary);border-color:var(--hdc-primary);color:#fff}
 .daypill.on span,.daypill.on b{color:#fff}
 .daypill.off{color:var(--hdc-secondary);background:#fff}

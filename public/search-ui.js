@@ -140,9 +140,39 @@
     }, 160);
   }
 
+  function pillStep(row) {
+    var pill = row.querySelector('.daypill');
+    if (!pill) return 0;
+    var gap = parseFloat(getComputedStyle(row).columnGap || getComputedStyle(row).gap) || 0;
+    return pill.getBoundingClientRect().width + gap;
+  }
+  function visiblePills(row) {
+    var step = pillStep(row);
+    if (!step) return 1;
+    return Math.max(1, Math.round(row.clientWidth / step));
+  }
+  function showSelected(row) {
+    var step = pillStep(row);
+    if (!step) return;
+    var pills = [].slice.call(row.querySelectorAll('.daypill'));
+    var count = visiblePills(row);
+    var selected = -1;
+    pills.forEach(function (pill, index) {
+      if (pill.classList.contains('on') || pill.getAttribute('aria-pressed') === 'true') selected = index;
+    });
+    if (selected < 0) return;
+    var current = Math.round(row.scrollLeft / step);
+    if (selected >= current && selected < current + count) return;
+    var start = Math.min(Math.max(0, selected - count + 1), Math.max(0, pills.length - count));
+    row.scrollLeft = start * step;
+  }
   function syncMore(scope) {
     (scope || document).querySelectorAll('.day-row').forEach(function (row) {
       var btn = row.parentNode.querySelector('.day-more');
+      if (!row.dataset.aligned) {
+        showSelected(row);
+        row.dataset.aligned = '1';
+      }
       if (!btn) return;
       var overflow = row.scrollWidth > row.clientWidth + 2;
       var atEnd = row.scrollLeft + row.clientWidth >= row.scrollWidth - 2;
@@ -241,9 +271,11 @@
     var more = node.closest('.day-more');
     if (more) {
       var row = more.parentNode.querySelector('.day-row');
-      var pill = row && row.querySelector('.daypill');
-      var width = pill ? pill.getBoundingClientRect().width + 8 : 80;
-      row.scrollBy({ left: width * 3, behavior: reduce ? 'auto' : 'smooth' });
+      var step = row ? pillStep(row) : 0;
+      if (!row || !step) return;
+      var count = visiblePills(row);
+      var next = Math.min(row.scrollWidth - row.clientWidth, row.scrollLeft + step * count);
+      row.scrollTo({ left: next, behavior: reduce ? 'auto' : 'smooth' });
       return;
     }
     var chip = node.closest('.ichip');
@@ -287,6 +319,10 @@
     if (button) button.setAttribute('aria-busy', 'true');
   });
   window.addEventListener('popstate', function () { location.reload(); });
-  window.addEventListener('resize', function () { placeForm(); syncMore(); });
+  window.addEventListener('resize', function () {
+    placeForm();
+    document.querySelectorAll('.day-row').forEach(function (row) { delete row.dataset.aligned; });
+    syncMore();
+  });
   syncMore();
 })();
