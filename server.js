@@ -29,6 +29,7 @@ const { sendBookingConfirmation, sendContactAlert, sendCancellation, bookingHasP
 const { BookingCancel } = require('./cancelBooking');
 const { PauseBooked } = require('./pauseBooked');
 const { DESTINATIONS, destIcon, destinationBySlug } = require('./destinations');
+const { SearchQuery } = require('./search');
 const seo = require('./seo');
 const compress = require('./compress');
 const { parseSignup, saveSignup, notifyWebhook, rateLimited, waitlistCsv } = require('./waitlist');
@@ -38,7 +39,7 @@ const backups = require('./backups');
 const { bookingsCsv, hotelsCsv, hotelBookingsCsv } = require('./dataExport');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
-  hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST,
+  hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST, dayPlan,
   fmtTime, cancelNote, riskCard, riskText, swimNote, GuestCheckIn, FOOD_RULE, hotelLatePossible, lateWindow, amenitiesFrom,
   venueMissing, PICK_DATE_CANCEL, arrivalOptions, normalizeArrival, arrivalText,
 } = require('./offering');
@@ -76,7 +77,7 @@ app.get('/sitemap.xml', (req, res) => {
   const lastmod = ymd(new Date());
   const paths = [];
   if (seo.siteIndexable()) {
-    paths.push('/', '/for-hotels', '/how-it-works', '/faq', '/contact');
+    paths.push('/', '/search', '/for-hotels', '/how-it-works', '/faq', '/contact');
     if (seo.legalPagesIndexable()) paths.push('/privacy', '/terms', '/refunds', '/risk');
     paths.push('/guides');
     for (const g of seo.GUIDES) paths.push('/guides/' + g.slug);
@@ -303,6 +304,16 @@ if(dlg){
 window.__set=set;
 })();
 </script>`;
+const FIND_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>';
+const MENU_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
+const MENU_SCRIPT = `<script>(function(){var d=document.querySelector('.hdr-menu');if(!d)return;var s=d.querySelector('summary');function sync(){if(s)s.setAttribute('aria-expanded',d.open?'true':'false');}d.addEventListener('toggle',sync);sync();})();</script>`;
+function guestChrome(currentPath, waitHref) {
+  const onSearch = currentPath === '/search';
+  const here = onSearch ? ' aria-current="page"' : '';
+  const nav = `<nav class="hdr-nav" aria-label="Site"><a href="/search"${here}>Find a day pass</a><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a></nav>`;
+  const sheet = `<div class="hdr-m"><a class="ibtn" href="/search" aria-label="Find a day pass"${here}>${FIND_ICON}</a><details class="hdr-menu"><summary class="ibtn" aria-controls="site-menu" aria-expanded="false">${MENU_ICON}Menu</summary><div class="msheet" id="site-menu"><a href="/search"${here}>Find a day pass</a><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a><a class="pill" href="${waitHref}">Join the waitlist</a></div></details></div>`;
+  return { nav, sheet };
+}
 function page(title, body, opts = {}) {
   const nav = opts.nav || 'guest';
   const bare = !!opts.bare;
@@ -314,12 +325,12 @@ function page(title, body, opts = {}) {
   const right = nav === 'hotel' ? '<a class="hotel-link show" href="/hotel/logout">Log out</a>'
     : nav === 'admin' ? '<a class="hotel-link show" href="/admin/logout">Log out</a>'
     : `<a class="pill" href="${waitHref}">Join the waitlist</a>`;
-  const guestNav = `<nav class="hdr-nav" aria-label="Site"><a href="/how-it-works">How it works</a><a href="/for-hotels">For hotels</a></nav>`;
+  const chrome = nav === 'guest' ? guestChrome(opts.path || '', waitHref) : { nav: '<nav class="hdr-nav" aria-label="Site"></nav>', sheet: '' };
   const tags = analytics && nav === 'guest' ? gaSnippet(analyticsPath) : '';
   const preconnect = tags ? '<link rel="preconnect" href="https://www.googletagmanager.com">' : '';
   const canonicalUrl = opts.canonical === false || !opts.path ? '' : seo.absolute(opts.path);
   const meta = seo.headMeta({
-    documentTitle: seo.fullTitle(opts.documentTitle || title),
+    documentTitle: opts.titleReady ? (opts.documentTitle || title) : seo.fullTitle(opts.documentTitle || title),
     description: opts.description || '',
     robots: seo.robotsContent(index),
     canonicalUrl,
@@ -332,15 +343,15 @@ function page(title, body, opts = {}) {
   const pickerCss = '<link rel="stylesheet" href="/pickers.css">';
   const tokensCss = '<link rel="stylesheet" href="/tokens.css">';
   const css = home
-    ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-lunch-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-lunch.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}<link rel="stylesheet" href="/golden/home.css">`
-    : `${FONT_LINKS}${tokensCss}${pickerCss}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css">`;
+    ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-lunch-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-lunch.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}<link rel="stylesheet" href="/golden/home.css"><link rel="stylesheet" href="/header.css">`
+    : `${FONT_LINKS}${tokensCss}${pickerCss}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css"><link rel="stylesheet" href="/header.css">`;
   const bodyClass = home ? 'home' : nav === 'guest' ? 'guest' : 'staff';
-  const header = `<header class="hdr"><div class="wrap hdr-in">${logoLink('light')}${nav === 'guest' ? guestNav : '<nav class="hdr-nav" aria-label="Site"></nav>'}<div class="hdr-right">${right}</div></div></header>`;
+  const header = `<header class="hdr"><div class="wrap hdr-in">${logoLink('light')}${chrome.nav}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 ${demoSite() ? '<div class="demo-banner">Demo site: listings are examples, no real bookings or payments.</div>' : ''}
 ${header}<main>${body}</main>
-${bare ? '' : siteFooter(home ? 'light' : 'dark')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}
+${bare ? '' : siteFooter(home ? 'light' : 'dark')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}${nav === 'guest' ? MENU_SCRIPT : ''}
 </body></html>`;
 }
 const card = (h, date) => {
@@ -386,28 +397,28 @@ function hotelOffers(hotel, want) {
   if (want === 'pool-spa') return pool && spa;
   return true;
 }
-function homePage({ where = '', date = '', want = '', dest = '', destination = '', sort = '', joined = false, error = '', values = {} } = {}) {
-  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) date = '';
-  if (!WANTS.some(w => w.id === want)) want = '';
+function exampleCard(h, date) {
+  const prices = getPasses(h.id).map(p => p.price);
+  const from = prices.length ? Math.min(...prices) : 0;
+  const photo = h.photos[0] || '';
+  const base = String(photo).replace(/\.jpe?g$/i, '');
+  const webp = path.join(__dirname, 'public', 'golden', 'img', 'cards', base + '.webp');
+  const img = photo && fs.existsSync(webp)
+    ? `<img src="/golden/img/cards/${esc(base)}.webp" alt="${esc('Example photo of a hotel pool in ' + h.area + ', not a real hotel')}" width="800" height="600" loading="lazy" decoding="async">`
+    : photo ? `<img src="/assets/photos/${esc(photo)}" alt="${esc('Example photo of a hotel pool in ' + h.area + ', not a real hotel')}" width="1200" height="900" loading="lazy" decoding="async">` : '';
+  const facts = amenitiesFrom(h).filter(line => line !== h.age_policy).slice(0, 3);
+  const limit = h.age_policy ? `<p class="ex-limit">${esc(h.age_policy)}</p>` : '';
+  const href = `/h/${h.slug}${date ? '?date=' + encodeURIComponent(date) : ''}`;
+  return `<a class="ex" href="${href}">${img}<span class="tag">Example</span><h3>${esc(h.name)}</h3><p class="ex-area">${esc(h.area)}</p>${facts.length ? `<p class="ex-amen">${esc(facts.join(' · '))}</p>` : ''}<p class="ex-price">From ${money(from)}</p>${limit}<p class="ex-note">Demo</p></a>`;
+}
+function whereOptions(selectedId) {
+  return DESTINATIONS.map(d => `<option value="${esc(d.id)}" data-icon="${esc(d.icon)}"${d.id === selectedId ? ' selected' : ''}>${esc(d.name)}</option>`).join('');
+}
+function homePage({ destination = '', joined = false, error = '', values = {} } = {}) {
   const hotels = getHotels();
-  const areas = [...new Set(hotels.map(h => h.area))];
-  const destObj = DESTINATIONS.find(d => d.id === dest) || null;
   const pickedDest = Object.prototype.hasOwnProperty.call(values, 'destination') && values.destination !== undefined
     ? values.destination
     : destination;
-  let list = hotels.filter(h => !where || h.area === where);
-  if (destObj) list = list.filter(h => destObj.areas.includes(h.area));
-  if (want) list = list.filter(h => hotelOffers(h, want));
-  if (date) list = list.filter(h => !closureReason(db, h, date));
-  if (!['price', 'name'].includes(sort)) sort = '';
-  const fromPrice = hotel => {
-    const prices = getPasses(hotel.id).map(p => p.price);
-    return prices.length ? Math.min(...prices) : 0;
-  };
-  if (sort === 'price') list.sort((a, b) => fromPrice(a) - fromPrice(b) || String(a.name).localeCompare(String(b.name)));
-  if (sort === 'name') list.sort((a, b) => String(a.name).localeCompare(String(b.name)));
-  const filtered = Boolean(where || date || want || destObj);
-  const wantLabel = (WANTS.find(w => w.id === want) || {}).name || '';
   const counts = DESTINATIONS.map(d => ({ ...d, count: hotels.filter(h => d.areas.includes(h.area)).length }));
   const destCards = counts.map(d => {
     const href = `/destinations/${encodeURIComponent(d.slug)}`;
@@ -415,37 +426,18 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
       ? `<span class="dest-count">${exampleCount(d.count)}</span>`
       : '<span class="dest-soon">Coming soon</span> <span class="dest-none">No listings yet</span>';
     const go = d.count ? 'View example listings' : 'Join the waitlist';
-    return `<li><a class="dest-card" href="${href}"${destObj && destObj.id === d.id ? ' aria-current="true"' : ''}>
+    return `<li><a class="dest-card" href="${href}">
 <span class="dest-ico">${destIcon(d.icon)}</span>
 <span class="dest-name">${esc(d.name)}</span>
 <span class="dest-status">${status}</span>
 <span class="dest-go">${go}</span>
 </a></li>`;
   }).join('');
-  let exploreTitle = 'Example listings';
-  if (destObj && !list.length) exploreTitle = `No example listings in ${esc(destObj.name)} yet`;
-  else if (destObj) exploreTitle = `${exampleCount(list.length)} · ${esc(destObj.name)}`;
-  else if (where || date || want) exploreTitle = `${list.length} place${list.length === 1 ? '' : 's'} ${where ? 'in ' + esc(where) : 'around Australia'}${wantLabel && wantLabel !== 'Any' ? ' · ' + esc(wantLabel) : ''}${date ? ' on ' + esc(nice(date)) : ''}`;
-  const emptyCopy = destObj
-    ? `There are no example listings in ${esc(destObj.name)} yet. <a class="link" href="/?destination=${encodeURIComponent(destObj.id)}#waitlist">Join the waitlist</a>`
-    : 'Nothing matches. Try another date, or pool, gym or spa.';
   const form = values || {};
   const destOptions = DESTINATIONS.map(d => `<option value="${esc(d.id)}" data-icon="${esc(d.icon)}"${pickedDest === d.id ? ' selected' : ''}>${esc(d.name)}</option>`).join('');
   const lead = joined ? `<script>if(typeof gtag==='function')gtag('event','generate_lead');</script>` : '';
   const openWait = Boolean(joined || error || pickedDest);
-  const exampleCards = list.map(h => {
-    const prices = getPasses(h.id).map(p => p.price);
-    const from = prices.length ? Math.min(...prices) : 0;
-    const photo = h.photos[0] || '';
-    const base = String(photo).replace(/\.jpe?g$/i, '');
-    const webp = path.join(__dirname, 'public', 'golden', 'img', 'cards', base + '.webp');
-    const img = photo && fs.existsSync(webp)
-      ? `<img src="/golden/img/cards/${esc(base)}.webp" alt="${esc('Example photo of a hotel pool in ' + h.area + ', not a real hotel')}" width="800" height="600" loading="lazy" decoding="async">`
-      : photo ? `<img src="/assets/photos/${esc(photo)}" alt="${esc('Example photo of a hotel pool in ' + h.area + ', not a real hotel')}" width="1200" height="900" loading="lazy" decoding="async">` : '';
-    const facts = amenitiesFrom(h).filter(line => line !== h.age_policy).slice(0, 3);
-    const limit = h.age_policy ? `<p class="ex-limit">${esc(h.age_policy)}</p>` : '';
-    return `<a class="ex" href="/h/${h.slug}${date ? '?date=' + encodeURIComponent(date) : ''}">${img}<span class="tag">Example</span><h3>${esc(h.name)}</h3><p class="ex-area">${esc(h.area)}</p>${facts.length ? `<p class="ex-amen">${esc(facts.join(' · '))}</p>` : ''}<p class="ex-price">From ${money(from)}</p>${limit}<p class="ex-note">Demo</p></a>`;
-  }).join('');
+  const exampleCards = hotels.slice(0, 6).map(h => exampleCard(h, '')).join('');
   const slot = (src, alt, time, title, copy) => `<div class="slot"><picture><source type="image/webp" srcset="/golden/img/${src}.webp"><img src="/golden/img/${src}.jpg" alt="${alt}" width="900" height="600" loading="lazy" decoding="async"></picture><span class="t">${time}</span><div class="b"><h3>${title}</h3><p>${copy}</p></div></div>`;
   return page('Hotel day passes in Australia', `<header class="hero" data-slot="1"><div class="ph"><div class="media">
 <picture class="layer" data-slot="0"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-swim-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-swim-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-swim.webp"><img src="/golden/img/hero-swim.jpg" alt="Ocean pool at sunrise" width="1920" height="1080" decoding="async"></picture>
@@ -458,10 +450,10 @@ function homePage({ where = '', date = '', want = '', dest = '', destination = '
 <h2 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h2>
 <p class="lead">A hotel pool, gym, daybed or spa for the day, minutes from home, no room needed.</p>
 <div class="times"><button type="button" data-i="0" aria-pressed="false">Swim &amp; gym</button><button type="button" data-i="1" class="on" aria-pressed="true">Long lunch</button><button type="button" data-i="2" aria-pressed="false">Spa afternoon</button><button type="button" data-i="3" aria-pressed="false">Golden hour</button></div>
-<form class="search" action="/#explore" method="get">
-<div class="seg"><label for="w">Where</label><select id="w" class="hdc-pick" name="where"><option value="" data-icon="pin">All of Australia</option>${areas.map(a => `<option value="${esc(a)}" data-icon="pin"${a === where ? ' selected' : ''}>${esc(a)}</option>`).join('')}</select></div>
-<div class="seg"><label for="d">When</label><input id="d" class="hdc-date" type="date" name="date" min="${today()}" max="${ymd(addDays(new Date(), 90))}" value="${esc(date)}"></div>
-<div class="seg"><label for="p">What</label><select id="p" class="hdc-pick" name="want">${WANTS.map(w => `<option value="${w.id}" data-icon="${w.icon}"${want === w.id ? ' selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
+<form class="search" action="/search" method="get">
+<div class="seg"><label for="w">Where</label><select id="w" class="hdc-pick" name="destination" aria-label="Where"><option value="" data-icon="pin">All of Australia</option>${whereOptions('')}</select></div>
+<div class="seg"><label for="d">When</label><input id="d" class="hdc-date" type="date" name="date" min="${today()}" max="${ymd(addDays(new Date(), 90))}" value=""></div>
+<div class="seg"><label for="p">What</label><select id="p" class="hdc-pick" name="want">${WANTS.map(w => `<option value="${w.id}" data-icon="${w.icon}">${esc(w.name)}</option>`).join('')}</select></div>
 <button type="submit">Search</button></form></div></header>
 <div class="marquee" aria-label="Pool day, gym session, spa afternoon, daybed for two, cabana with friends, golden-hour swim"><div class="track" aria-hidden="true"><span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺<span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺</div></div>
 ${reassureStrip()}
@@ -477,10 +469,9 @@ ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the li
 <ol><li><span>01</span><div><b>Find a hotel</b><p>Pools, gyms and spas: each listing shows hours, the pass and exactly what's included.</p></div></li>
 <li><span>02</span><div><b>Pick a pass and a day</b><p>See the price before you confirm.</p></div></li>
 <li><span>03</span><div><b>Show up, switch off</b><p>Check in at the desk and the day is yours.</p></div></li></ol></section>
-<section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings · not real hotels</span><h2>${exploreTitle}</h2></div>${filtered || sort ? `<form class="sort-form" action="/#explore" method="get">${where ? `<input type="hidden" name="where" value="${esc(where)}">` : ''}${date ? `<input type="hidden" name="date" value="${esc(date)}">` : ''}${want ? `<input type="hidden" name="want" value="${esc(want)}">` : ''}${dest ? `<input type="hidden" name="dest" value="${esc(dest)}">` : ''}<label class="sort-label${sort ? ' is-on' : ''}">Sort<select name="sort" aria-label="Sort listings" onchange="this.form.submit()"><option value=""${sort ? '' : ' selected'}>Listed order</option><option value="name"${sort === 'name' ? ' selected' : ''}>Name</option><option value="price"${sort === 'price' ? ' selected' : ''}>From price</option></select></label>${filtered ? '<a class="clear" href="/#explore">Clear filters</a>' : ''}</form>` : ''}</div>
-${filtered ? `<p class="active-filters" role="status">${where ? `<span class="filter-on">${esc(where)}</span>` : ''}${date ? `<span class="filter-on">${esc(nice(date))}</span>` : ''}${wantLabel && wantLabel !== 'Any' ? `<span class="filter-on">${esc(wantLabel)}</span>` : ''}${sort === 'name' ? '<span class="filter-on">Name</span>' : ''}${sort === 'price' ? '<span class="filter-on">From price</span>' : ''}</p>` : ''}
+<section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings · not real hotels</span><h2>Example listings</h2></div><a class="see-all" href="/search">See all day passes</a></div>
 <p class="home-note">Shown while the site is in demo mode. These hotels are fictional. No real bookings are taken. <a href="/guides">Read the day pass guides</a>.</p>
-<div class="list">${exampleCards || `<p class="home-note">${emptyCopy}</p>`}</div></section>
+<div class="list">${exampleCards || '<p class="home-note">No example listings yet.</p>'}</div></section>
 <section id="destinations" data-rv><span class="kicker sand">Explore by destination</span><h2>Destinations</h2>
 <p class="home-note">The number on a card counts fictional example listings in this demo for that area. It does not mean a hotel has signed up. Coming soon means there is nothing listed there yet.</p>
 <ul class="dests">${destCards}</ul></section>
@@ -516,17 +507,96 @@ ${joined ? `<div class="wl-ok" role="status"><h3>You're on the list</h3><p>Thank
 <button class="btn" type="submit">Join the waitlist</button>
 </form></div></dialog>`, { analytics: true, home: true, index: true, ...seo.pageCopy('home'), jsonld: seo.homeJsonLd(contactEmail()) });
 }
+function searchHidden(params, skip) {
+  const bits = [];
+  const add = (key, value) => {
+    if (key === skip || value == null || value === '' || value === 0) return;
+    bits.push(`<input type="hidden" name="${key}" value="${esc(value)}">`);
+  };
+  add('destination', params.destination && params.destination.id);
+  add('date', params.date);
+  add('want', params.want);
+  add('guests', params.guests);
+  add('price', params.price);
+  add('age', params.age);
+  add('sort', params.sort);
+  return bits.join('');
+}
+function searchPage(query) {
+  const hotels = getHotels();
+  const passesById = new Map(hotels.map(h => [h.id, getPasses(h.id)]));
+  const parsed = SearchQuery.parse(query, DESTINATIONS);
+  const closedById = new Map();
+  const minutesById = new Map();
+  for (const h of hotels) {
+    if (parsed.date) closedById.set(h.id, Boolean(closureReason(db, h, parsed.date)));
+    const rows = db.prepare('SELECT weekday, open, opens, closes FROM hotel_hours WHERE hotel_id=?').all(h.id);
+    const plan = parsed.date ? dayPlan(db, h, parsed.date) : null;
+    minutesById.set(h.id, parsed.date ? SearchQuery.spanMinutes(plan) : SearchQuery.openMinutes(rows, h.room_only_from));
+  }
+  const result = SearchQuery.run({
+    hotels,
+    passesById,
+    closedById,
+    minutesById,
+    offers: hotelOffers,
+    destinations: DESTINATIONS,
+    query,
+  });
+  const params = result.params;
+  const selectedDest = params.destination ? params.destination.id : '';
+  const guestOptions = ['<option value="">Any</option>'].concat(result.guestChoices.map(n => `<option value="${n}"${params.guests === n ? ' selected' : ''}>${n}</option>`)).join('');
+  const priceOptions = ['<option value="">Any price</option>'].concat(result.priceChoices.map(n => `<option value="${n}"${params.price === n ? ' selected' : ''}>Under $${n}</option>`)).join('');
+  const ageOptions = ['<option value="">Any age</option>'].concat(result.ageChoices.map(a => `<option value="${esc(a.id)}"${params.age === a.id ? ' selected' : ''}>${esc(a.label)}</option>`)).join('');
+  const sortOptions = SearchQuery.SORTS.map(s => `<option value="${esc(s.id)}"${params.sort === s.id ? ' selected' : ''}>${esc(s.label)}</option>`).join('');
+  const chips = result.chips.map(chip => `<a class="chip" href="${esc(chip.href)}" aria-label="${esc(chip.remove)}">${esc(chip.label)} <b aria-hidden="true">×</b></a>`).join('');
+  const clear = result.showClear ? '<a class="clear" href="/search">Clear all</a>' : '';
+  const cards = result.list.map(h => exampleCard(h, params.date)).join('');
+  const otherCards = result.others.map(h => exampleCard(h, '')).join('');
+  let empty = '';
+  if (result.empty === 'destination') {
+    const id = encodeURIComponent(params.destination.id);
+    const name = esc(params.destination.name);
+    empty = `<div class="empty"><p>There are no example listings in ${name} yet. <a class="link" href="/?destination=${id}#waitlist">Join the waitlist</a></p><a class="btn" href="/?destination=${id}#waitlist">Join the waitlist</a></div>`;
+  } else if (result.empty === 'closed') {
+    empty = '<div class="empty"><p>No example hotels are open on this date.</p></div>';
+  } else if (result.empty === 'nomatch') {
+    empty = '<div class="empty"><p>No passes match. Try a higher price, another date or fewer filters.</p><a class="btn quiet" href="/search">Clear all filters</a></div>';
+  }
+  const others = result.empty ? `<h2 class="other">Other example listings</h2><div class="list others">${otherCards}</div>` : '';
+  const keepSort = params.sort ? `<input type="hidden" name="sort" value="${esc(params.sort)}">` : '';
+  const body = `<div class="search-page wrap"><form class="sbar" action="/search" method="get">
+${keepSort}
+<div class="seg"><label for="w">Where</label><select id="w" class="hdc-pick" name="destination" aria-label="Where"><option value="" data-icon="pin"${selectedDest ? '' : ' selected'}>All of Australia</option>${whereOptions(selectedDest)}</select></div>
+<div class="seg"><label for="when">When</label><input id="when" class="hdc-date" type="date" name="date" min="${today()}" max="${ymd(addDays(new Date(), 90))}" value="${esc(params.date)}"></div>
+<div class="seg"><label for="p">What</label><select id="p" class="hdc-pick" name="want">${WANTS.map(w => `<option value="${esc(w.id)}" data-icon="${esc(w.icon)}"${params.want === w.id ? ' selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
+<button type="submit">Search</button>
+<div class="frow"><label class="f">Guests<select class="hdc-pick" name="guests">${guestOptions}</select></label><label class="f">Price<select class="hdc-pick" name="price">${priceOptions}</select></label><label class="f">Age<select class="hdc-pick" name="age">${ageOptions}</select></label></div>
+</form>
+<div class="rhead"><div><h1>${esc(result.heading)}</h1><p class="count">${esc(result.count)}</p></div>
+<form class="sort-form" action="/search" method="get">${searchHidden(params, 'sort')}<label class="sort-label">Sort<select class="hdc-pick" name="sort" aria-label="Sort listings" onchange="this.form.submit()">${sortOptions}</select></label><noscript><button type="submit">Sort</button></noscript></form></div>
+${chips ? `<div class="chips" aria-label="Active filters">${chips}${clear}</div>` : ''}
+${empty || `<div class="list results">${cards}</div>`}${others}
+<p class="note">Shown while the site is in demo mode. These hotels are fictional. No real bookings are taken. <a href="/guides">Read the day pass guides</a>.</p>
+</div>`;
+  return page(result.heading, body, {
+    titleReady: true,
+    documentTitle: result.title,
+    description: 'Example day passes in Australia. Choose a place, a date, guests, a price and an age. These listings are fictional.',
+    path: '/search',
+    index: true,
+  });
+}
 app.get('/', (req, res) => {
-  const { where = '', date = '', want = '', dest = '', destination = '', sort = '' } = req.query;
+  const next = SearchQuery.homeRedirect(req.query);
+  if (next) return res.redirect(301, next);
   res.send(homePage({
-    where: String(where),
-    date: String(date),
-    want: String(want),
-    dest: String(dest),
-    destination: String(destination),
-    sort: String(sort),
+    destination: String(req.query.destination || ''),
     joined: req.query.waitlist === '1',
   }));
+});
+app.get('/search', (req, res) => {
+  res.send(searchPage(req.query));
 });
 app.post('/waitlist', async (req, res) => {
   const parsed = parseSignup(req.body || {}, DESTINATIONS);

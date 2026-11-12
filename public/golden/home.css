@@ -89,7 +89,8 @@ h2 em{color:var(--hdc-primary);font-style:italic}
 .steps li p{color:var(--hdc-soft);margin:6px 0 0;line-height:1.5}
 .steps .kicker,.hotels .kicker{color:var(--hdc-sun)}
 .sec-row{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
-.sec-row .clear{font-weight:600;text-decoration:underline;text-underline-offset:3px;color:var(--hdc-rose-ink)}
+.sec-row .clear,.see-all{font-weight:700;text-decoration:underline;text-underline-offset:3px;color:var(--hdc-rose-ink)}
+.see-all{min-height:44px;display:inline-flex;align-items:center}
 .home-note{max-width:640px;color:var(--hdc-secondary);margin:18px 0 0;line-height:1.5}
 .home-note a,.faq-more a,.wl-lead a,.wl-note a,.wl-ok a{color:var(--hdc-rose-ink);text-decoration:underline;text-underline-offset:3px}
 .list{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:40px}

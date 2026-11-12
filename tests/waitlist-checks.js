@@ -126,6 +126,9 @@ function cookie(res) {
     assert.ok(!home.body.includes('live chat') && !home.body.includes('7-day support'));
     assert.ok(!home.body.includes('Flexible cancellation'));
     assert.ok(home.body.includes('Example listings'));
+    assert.ok(home.body.includes('See all day passes'));
+    assert.ok(home.body.includes('action="/search"'));
+    assert.ok(home.body.includes('>Find a day pass</a>'));
     assert.ok(home.body.includes('Swim &amp; gym'));
     assert.ok(home.body.includes('Gym session'));
     assert.ok(home.body.includes('fetchpriority="high"'));
@@ -210,21 +213,27 @@ function cookie(res) {
     assert.ok(home.body.includes('All of Australia'));
     assert.ok(!home.body.includes('across Sydney') && !home.body.includes('around Sydney'));
 
-    const city = await get(port, '/?dest=sydney-cbd');
+    const cityHop = await get(port, '/?dest=sydney-cbd');
+    assert.strictEqual(cityHop.status, 301);
+    assert.ok(String(cityHop.headers.location).includes('/search?dest=sydney-cbd'));
+    const city = await get(port, '/search?destination=sydney-cbd');
+    assert.strictEqual(city.status, 200);
     assert.ok(city.body.includes('Harbourside Lido'));
-    assert.ok(city.body.includes('1 example listing · Sydney CBD'));
+    assert.ok(city.body.includes('Hotel day passes in Sydney CBD'));
+    assert.ok(city.body.includes('1 place in Sydney CBD'));
     assert.ok(!city.body.includes('Manly Sands'));
     assert.ok(!city.body.includes('Saltwater Terrace'));
 
-    const beach = await get(port, '/?dest=bondi');
+    const beach = await get(port, '/search?destination=bondi');
     assert.ok(beach.body.includes('Saltwater Terrace'));
     assert.ok(!beach.body.includes('Harbourside Lido'));
     assert.ok(!beach.body.includes('Bayview Spa'));
 
-    const none = await get(port, '/?dest=melbourne');
-    assert.ok(none.body.includes('No example listings in Melbourne yet'));
-    assert.ok(!none.body.includes('Saltwater Terrace'));
+    const none = await get(port, '/search?destination=melbourne');
+    assert.ok(none.body.includes('There are no example listings in Melbourne yet'));
+    assert.ok(none.body.includes('>Join the waitlist</a>'));
     assert.ok(none.body.includes('href="/?destination=melbourne#waitlist"'));
+    assert.ok(none.body.includes('Other example listings'));
 
     const prefill = await get(port, '/?destination=melbourne');
     assert.ok(prefill.body.includes('<option value="melbourne" data-icon="laneway" selected>Melbourne</option>'));
