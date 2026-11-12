@@ -224,12 +224,12 @@
         if (nextDrawer && drawer) copyControl(nextDrawer, drawer);
         var nextApply = nextDrawer && nextDrawer.querySelector('.apply');
         if (nextApply) paintCount(Number(nextApply.getAttribute('data-count')) || 0);
-        var nextPill = doc.querySelector('.cpill-tx');
-        var pill = document.querySelector('.cpill-tx');
-        if (nextPill && pill) pill.textContent = nextPill.textContent;
         var nextLabel = doc.querySelector('.cpill');
         var pillBtn = document.querySelector('.cpill');
-        if (nextLabel && pillBtn) pillBtn.setAttribute('aria-label', nextLabel.getAttribute('aria-label') || '');
+        if (nextLabel && pillBtn) {
+          pillBtn.innerHTML = nextLabel.innerHTML;
+          pillBtn.setAttribute('aria-label', nextLabel.getAttribute('aria-label') || '');
+        }
         document.title = doc.title;
         history.pushState({}, '', url);
         syncMore(live);

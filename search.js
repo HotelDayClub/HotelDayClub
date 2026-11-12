@@ -193,7 +193,17 @@ class SearchQuery {
     const where = params.destination ? params.destination.name : 'Anywhere';
     const when = params.dateLabel || 'Any date';
     const guests = params.guests ? String(params.guests) : 'Any';
-    return { where, when, guests, label: where + ' · ' + when + ' · ' + guests };
+    let face = 'Search';
+    if (params.destination || params.date || params.guests) {
+      let day = 'Any day';
+      if (params.date) {
+        const parsed = new Date(params.date + 'T00:00:00');
+        day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][parsed.getDay()] + ' ' + parsed.getDate();
+      }
+      face = where + ' · ' + day;
+      if (params.guests) face += ' · ' + params.guests;
+    }
+    return { where, when, guests, label: where + ' · ' + when + ' · ' + guests, face };
   }
 
   static partyCap(passes) {

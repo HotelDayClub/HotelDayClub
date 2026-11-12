@@ -7,11 +7,12 @@ html.js .search-page .sbar{display:none}
 .vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
 .srch-hero .bigsearch{display:flex;gap:12px;align-items:flex-end;background:var(--hdc-tint);border:1px solid var(--hdc-border);border-radius:16px;padding:12px}
-.srch-hero .bigsearch .seg{flex:1.2 1 0;min-width:0;display:flex;flex-direction:column;gap:4px}
-.srch-hero .bigsearch .seg:first-child{flex:1.6 1 0;min-width:12rem}
+.srch-hero .bigsearch .seg{flex:1.2 1 0;min-width:0;display:flex;flex-direction:column;gap:4px;padding:0;border:0;border-radius:0}
+.srch-hero .bigsearch .pk{width:100%}
+.srch-hero .bigsearch label.seg:first-of-type{flex:1.6 0 auto;min-width:16rem}
 .srch-hero .bigsearch .seg > span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--hdc-secondary)}
 .srch-hero .bigsearch .pk-btn{min-height:44px;color:var(--hdc-text)}
-.srch-hero .bigsearch .pk-txt{text-overflow:clip}
+.srch-hero .bigsearch label.seg:first-of-type .pk-txt{overflow:visible;text-overflow:clip}
 .srch-hero .bigsearch button[type="submit"]{flex:0 0 auto;min-height:48px;min-width:8.5rem;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;background:var(--hdc-rose);color:var(--hdc-navy);font-weight:700;cursor:pointer;padding:0 18px}
 .srch-hero .bigsearch button[type="submit"] svg{width:18px;height:18px}
 
@@ -121,19 +122,24 @@ body.lock{overflow:hidden}
 .bigsearch.is-compact .pk-txt{text-overflow:ellipsis}
 .bigsearch.is-compact button[type="submit"]{flex:0 0 auto;min-height:44px;min-width:44px;padding:0 12px;border:0;border-radius:10px;background:var(--hdc-rose);color:var(--hdc-navy);font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
 .bigsearch.is-compact button[type="submit"] svg{width:16px;height:16px}
-.cpill{align-items:center;gap:6px;min-height:44px;min-width:0;max-width:100%;padding:0 12px;border:1px solid var(--hdc-border);border-radius:999px;background:var(--hdc-tint);color:var(--hdc-text);font:700 14px/1 Inter,system-ui,sans-serif;cursor:pointer}
-.cpill-tx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cpill{align-items:center;gap:6px;min-height:44px;min-width:44px;max-width:100%;padding:0 14px;border:1px solid var(--hdc-border);border-radius:999px;background:var(--hdc-tint);color:var(--hdc-text);font:700 14px/1 Inter,system-ui,sans-serif;cursor:pointer}
+.cpill svg{width:18px;height:18px;flex:0 0 auto}
+.cpill-tx{white-space:nowrap}
 @media (max-width:699px){
   .hdr.cond .cslot{display:none !important}
   .hdr.cond .hdr-m a[aria-label="Find a day pass"]{display:none}
-  .hdr.cond .cpill:not([hidden]){display:inline-flex;flex:1 1 auto;min-width:0}
+  .hdr.cond .logo{flex:1 1 auto;min-width:0}
+  .hdr.cond .logo img{height:24px;width:auto}
+  .hdr.cond .cpill:not([hidden]){display:inline-flex;flex:0 0 auto}
   .hdr.cond .hdr-m{flex:0 0 auto}
-  .n9-bar,.ichips{flex-wrap:wrap;overflow:visible}
+  .toolrow{flex-wrap:nowrap}
+  .n9-bar{flex:1 1 auto;flex-wrap:nowrap;width:100%;min-width:0}
+  .ichips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .fbtn,.ichip{flex:0 0 auto}
+  html.js .toolrow .sort-form{display:none}
   .srch-hero .bigsearch{flex-direction:column;align-items:stretch;gap:8px;padding:10px}
-  .srch-hero .bigsearch .seg,.srch-hero .bigsearch .seg:first-child{flex:1 1 auto;width:100%;min-width:0}
+  .srch-hero .bigsearch .seg,.srch-hero .bigsearch label.seg:first-of-type{flex:1 1 auto;width:100%;min-width:0}
   .srch-hero .bigsearch button[type="submit"]{width:100%}
-  .n9-bar{flex:1 1 100%}
-  .toolrow .sort-form{margin-left:0}
   .drawer{top:auto;bottom:0;left:0;right:0;width:100%;height:90vh;max-height:90vh;overflow:hidden;border-radius:16px 16px 0 0;box-shadow:0 -8px 32px rgba(0,52,76,.16)}
   .search-page .bd h3{font-size:20px}
 }

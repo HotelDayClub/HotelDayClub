@@ -706,7 +706,10 @@ function searchPage(query) {
   const ageRadios = radioGroup('age', [{ value: '', label: 'Any age' }].concat(result.ageChoices.map(a => ({ value: a.id, label: a.label }))), params.age, 'ropt');
   const sortRadios = radioGroup('sort', SearchQuery.SORTS.map(s => ({ value: s.id, label: s.label })), params.sort, 'ropt');
   const guestAria = summary.guests === 'Any' ? 'any guests' : (summary.guests === '1' ? '1 guest' : summary.guests + ' guests');
-  const headerHtml = `<div class="cslot"></div><button type="button" class="cpill" hidden aria-haspopup="dialog" aria-controls="search-sheet" aria-label="Edit search: ${esc(summary.where)}, ${esc(summary.when)}, ${esc(guestAria)}"><span class="cpill-tx">${esc(summary.label)}</span></button>`;
+  const pillFace = summary.face === 'Search'
+    ? `${FIND_ICON}<span class="cpill-tx">Search</span>`
+    : `<span class="cpill-tx">${esc(summary.face)}</span>`;
+  const headerHtml = `<div class="cslot"></div><button type="button" class="cpill" hidden aria-haspopup="dialog" aria-controls="search-sheet" aria-label="Edit search: ${esc(summary.where)}, ${esc(summary.when)}, ${esc(guestAria)}">${pillFace}</button>`;
   const body = `<div class="search-page"><form class="sbar" action="/search" method="get">
 ${keepSort}
 <div class="seg"><label for="w">Where</label><select id="w" class="hdc-pick" name="destination" aria-label="Where"><option value="" data-icon="pin"${selectedDest ? '' : ' selected'}>All of Australia</option>${whereOptions(selectedDest)}</select></div>
