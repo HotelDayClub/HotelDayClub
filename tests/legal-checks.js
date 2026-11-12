@@ -389,10 +389,31 @@ function start(port, extra = {}) {
       assert.ok(!doc.body.split(stripeDocLink).join('').includes('">http'), pathName);
       assert.ok(!doc.body.includes('Jason Baranov') && !doc.body.includes('registration pending'), pathName);
       assert.ok(!doc.body.includes('{{ABN}}') && !doc.body.includes('{{CONTACT_EMAIL}}'), pathName);
+      const navAt = doc.body.indexOf('<nav class="legal-toc" aria-label="On this page">');
+      const articleAt = doc.body.indexOf('<article class="legal-doc">');
+      assert.ok(navAt !== -1 && articleAt !== -1 && navAt < articleAt, pathName);
+      const nav = doc.body.slice(navAt, doc.body.indexOf('</nav>', navAt));
+      const article = doc.body.slice(articleAt, doc.body.indexOf('</article>', articleAt));
+      assert.ok(!article.includes('<nav'), pathName);
+      assert.ok(!article.includes('aria-label="On this page"'), pathName);
+      const mdFile = { '/privacy': 'privacy-policy.md', '/terms': 'customer-terms.md', '/refunds': 'cancellation-refund-policy.md', '/risk': 'guest-risk-acknowledgement.md' }[pathName];
+      const sections = fs.readFileSync(path.join(__dirname, '..', 'legal', mdFile), 'utf8').split('\n').map(line => line.trim()).filter(line => line.startsWith('## ')).map(line => line.slice(3).trim());
+      assert.ok(sections.length > 0, pathName);
+      const navLinks = [...nav.matchAll(/<a href="#([^"]+)">([^<]+)<\/a>/g)];
+      assert.strictEqual(navLinks.length, sections.length, pathName);
+      sections.forEach((section, i) => {
+        assert.strictEqual(navLinks[i][2], section, pathName);
+        assert.ok(article.includes(`id="${navLinks[i][1]}"`), pathName + ' ' + section);
+        assert.strictEqual(article.split(section).length - 1, 1, pathName + ' ' + section);
+      });
       const visible = doc.body.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<[^>]+>/g, '');
       assert.ok(!/\[[^\]]+\]/.test(visible), pathName + ' still has a placeholder');
     }
     const terms = await get(port, '/terms');
+    const legalCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.css'), 'utf8');
+    assert.ok(legalCss.includes('.legal-doc{max-width:720px}'));
+    assert.match(legalCss, /@media\(min-width:860px\)\{\.legal-grid\{[^}]*\}\.legal-toc\{position:sticky/);
+    assert.ok(!legalCss.slice(legalCss.indexOf('.legal-toc a{'), legalCss.indexOf('}', legalCss.indexOf('.legal-toc a{'))).includes('position:sticky'));
     assert.ok(terms.body.includes('Customer terms'));
     assert.ok(!terms.body.includes('(draft)'));
     assert.ok(!/booking agent/i.test(terms.body));

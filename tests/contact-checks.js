@@ -206,6 +206,10 @@ const valid = {
     assert.strictEqual(thanks.status, 200);
     assert.ok(thanks.body.includes('Thanks, we have your message'));
     assert.ok(thanks.body.includes("We'll reply by email to the address you gave us."));
+    const sentCard = thanks.body.indexOf('contact-card');
+    const sentFlash = thanks.body.indexOf('<div class="flash">Message sent</div>');
+    const sentCopy = thanks.body.indexOf('You can also write to');
+    assert.ok(sentCard !== -1 && sentCard < sentFlash && sentFlash < sentCopy);
     assert.ok(!thanks.body.includes('nasty@example.com'));
     assert.ok(!thanks.body.includes('<script>alert(1)</script>'));
     assert.ok(!/response time|support hours|live chat|within \d+|business hours/i.test(thanks.body));

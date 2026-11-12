@@ -137,6 +137,48 @@ function recorder(decide) {
   assert.ok(direct.text.includes('No payment was taken'));
   assert.ok(direct.html.includes('https://www.hoteldayclub.com.au/booking/HDC-ABC'));
   const brand = require('../brand');
+  const alertMail = notices.contactAlert({
+    demo: true,
+    to: 'ops@hoteldayclub.com.au',
+    name: 'Ada <Guest>',
+    email: 'ada@example.com',
+    topic: 'Booking help',
+    bookingCode: 'HDC-1',
+    message: 'Hello <script>alert(1)</script>',
+  });
+  assert.strictEqual(alertMail.subject, 'New contact message: Booking help');
+  assert.ok(alertMail.html.includes('This message came from the demo site.'));
+  assert.ok(alertMail.text.includes('This message came from the demo site.'));
+  assert.ok(alertMail.html.includes('Helvetica'));
+  assert.ok(!/georgia|times new roman|iowan/i.test(alertMail.html));
+  assert.ok(alertMail.html.includes(brand['hdc-primary']));
+  assert.ok(alertMail.html.includes(brand['hdc-tint']));
+  assert.ok(alertMail.html.includes(brand['hdc-sun-soft']));
+  assert.ok(alertMail.html.includes('border-bottom:4px solid ' + brand['hdc-primary']));
+  assert.ok(alertMail.html.includes('max-width:600px'));
+  assert.ok(alertMail.html.includes('width="600"'));
+  assert.ok(pixelWidths(alertMail.html).includes(600));
+  assert.ok(pixelWidths(alertMail.html).every(n => n <= 600));
+  assert.ok(alertMail.html.includes('Ada &lt;Guest&gt;'));
+  assert.ok(alertMail.html.includes('Hello &lt;script&gt;alert(1)&lt;/script&gt;'));
+  assert.ok(!alertMail.html.includes('<script>alert(1)</script>'));
+  assert.ok(alertMail.html.includes('Internal note for the Hotel Day Club operator.'));
+  assert.ok(alertMail.text.includes('Internal note for the Hotel Day Club operator.'));
+  assert.ok(!/ABN/i.test(alertMail.html + alertMail.text));
+  assert.ok(!alertMail.html.includes('98 227 458 028') && !alertMail.text.includes('98 227 458 028'));
+  for (const old of ['#0A1428', '#0E1E3A', '#F6EFE6', '#0a1428', '#0e1e3a', '#f6efe6']) {
+    assert.ok(!alertMail.html.includes(old), old);
+  }
+  const liveAlert = notices.contactAlert({
+    demo: false,
+    to: 'ops@hoteldayclub.com.au',
+    name: 'Bea',
+    email: 'bea@example.com',
+    topic: 'Something else',
+    message: 'A question',
+  });
+  assert.ok(!liveAlert.html.includes('This message came from the demo site.'));
+  assert.ok(!/ABN/i.test(liveAlert.html + liveAlert.text));
   assert.ok(direct.html.includes(brand['hdc-text']) && direct.html.includes(brand['hdc-navy']));
   assert.ok(!direct.html.includes('#0A1428') && !direct.html.includes('#0E1E3A') && !direct.html.includes('#0B2545'));
   assert.ok(direct.html.includes('name="color-scheme" content="light only"'));

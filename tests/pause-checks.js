@@ -340,6 +340,8 @@ function tokenDate(token) {
     const linkSave = await post(port, '/hotel/go/' + token, { confirm: '1' });
     assert.strictEqual(linkSave.status, 200);
     assert.ok(linkSave.body.includes('Paused'));
+    const savedFlash = linkSave.body.indexOf('<div class="flash" role="status">Saved</div>');
+    assert.ok(savedFlash !== -1 && savedFlash < linkSave.body.indexOf('<h1'));
     assert.ok(!(linkSave.headers['set-cookie'] || []).join('').includes('hotel='));
     assert.strictEqual(reason(when), 'Paused');
     assert.strictEqual(alertCount(), 2);
