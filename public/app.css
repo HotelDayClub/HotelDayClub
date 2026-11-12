@@ -877,7 +877,7 @@ form.check-code input,form.check-code .btn{width:100%}
 .listing .l-tabs nav{display:flex;gap:28px;overflow-x:auto}
 .listing .l-tabs a{padding:14px 0;color:var(--hdc-secondary);text-decoration:none;font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
 .listing .l-tabs a[aria-current]{color:var(--hdc-text);border-bottom-color:var(--hdc-rose)}
-.listing #overview,.listing #passes,.listing #details,.listing #hours,.listing #getting-there,.listing #policy,.listing #cancel-fold,.listing #parking{scroll-margin-top:var(--listing-scroll,140px)}
+.listing #overview,.listing #passes,.listing #seating,.listing #details,.listing #hours,.listing #getting-there,.listing #policy,.listing #cancel-fold,.listing #parking{scroll-margin-top:var(--listing-scroll,140px)}
 .listing #book{scroll-margin-top:var(--listing-book,80px)}
 .listing .l-meta{margin:8px 0 10px;color:var(--hdc-secondary);font-size:15px}
 .listing .demo-pill{display:inline-block;background:var(--hdc-sun-soft);color:var(--hdc-navy);border:1px solid var(--hdc-sun);font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px}
@@ -911,16 +911,17 @@ form.check-code input,form.check-code .btn{width:100%}
 .listing .pc-price{font-weight:700;color:var(--hdc-text);white-space:normal}
 .listing .pc-price small,.listing .bb-price small,.listing .book-bar small,.listing .pass-price small,.listing .seat-chosen small{font-weight:400;color:var(--hdc-secondary);font-size:13px}
 .listing .pc-holds{color:var(--hdc-secondary)}
-.listing .pc-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;padding:8px 14px 14px;margin-top:auto}
+.listing .pc-acts{display:flex;flex-direction:column;flex-wrap:nowrap;gap:4px;align-items:stretch;padding:4px 14px 14px;margin-top:auto}
+.listing .pass-view{flex:none;display:flex;align-items:center;justify-content:flex-start;width:100%;min-height:44px;min-width:44px;padding:8px 2px;border:0;border-radius:0;background:transparent;color:var(--hdc-primary);font-weight:650;text-align:left;text-decoration:underline;text-underline-offset:3px}
 .listing .pass-detail{flex:1 1 calc(50% - 4px);min-width:0;margin:0;padding:0;background:transparent;border:0;border-radius:0}
 .listing .pass-detail summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;min-width:44px;padding:8px;border:1px solid var(--hdc-border);border-radius:999px;background:var(--hdc-bg);color:var(--hdc-text);font-weight:600;text-align:center}
 .listing .pass-detail summary::-webkit-details-marker{display:none}
 .listing .pass-detail[open]{flex-basis:100%}
 .listing .pass-detail-body{padding-top:12px;color:var(--hdc-text)}
-.listing .pass-select{flex:1 1 calc(50% - 4px);min-height:44px;min-width:44px;padding:8px;background:var(--hdc-bg);color:var(--hdc-text);border:1px solid var(--hdc-border);border-radius:999px;font:inherit;font-weight:600;cursor:pointer}
+.listing .pass-select{flex:none;width:100%;min-height:44px;min-width:44px;padding:8px 16px;background:var(--hdc-bg);color:var(--hdc-text);border:1px solid var(--hdc-border);border-radius:999px;font:inherit;font-weight:600;white-space:nowrap;cursor:pointer}
 .listing .pass-card.is-sel .pass-select,.seat-dialog .pass-select[aria-pressed="true"]{background:var(--hdc-primary);color:var(--white);border-color:var(--hdc-primary)}
 .listing .pass-select:disabled,.seat-dialog .pass-select:disabled{background:var(--hdc-tint);color:var(--hdc-secondary);border-color:var(--hdc-border);cursor:not-allowed}
-.listing .pass-select:focus-visible,.listing .pass-detail summary:focus-visible,.listing .pass-continue:focus-visible,.listing .seat-retry:focus-visible,.seat-dialog .sd-close:focus-visible{outline:3px solid var(--hdc-primary);outline-offset:2px}
+.listing .pass-select:focus-visible,.listing .pass-view:focus-visible,.listing .pass-detail summary:focus-visible,.listing .pass-continue:focus-visible,.listing .seat-retry:focus-visible,.seat-dialog .sd-close:focus-visible{outline:3px solid var(--hdc-primary);outline-offset:2px}
 .listing .pass-sold:not([hidden]){margin:0 14px 14px;padding:10px 12px;border-radius:10px;background:var(--hdc-rose-soft);color:var(--hdc-rose-ink);font-size:14px}
 .listing .pass-fit{margin:8px 0 0;font-weight:600;color:var(--hdc-text)}
 .listing .pass-price{margin:4px 0 0;font-weight:700;color:var(--hdc-text)}
@@ -996,7 +997,7 @@ form.check-code input,form.check-code .btn{width:100%}
   .listing .l-main{display:contents}
   .listing .listing-head{order:1;padding-top:20px}
   .listing .l-tabs{order:2;top:var(--listing-sticky,93px);align-self:stretch;margin:24px -16px 0;padding:0 16px}
-  .listing #passes{order:3;margin-top:32px}
+  .listing #seating{order:3;margin-top:32px}
   .listing #book,
   .listing .book-box{order:4;position:static;margin-top:40px;scroll-margin-top:var(--listing-scroll,180px)}
   .listing .read-more{scroll-margin-bottom:96px}
