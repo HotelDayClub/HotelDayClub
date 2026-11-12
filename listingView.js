@@ -3,6 +3,7 @@ const { instantConfirmationText } = require('./siteMode');
 const { KINDS, supervisionNote, safePhoto, FOOD_RULE } = require('./offering');
 const { includedNote, amenityLines } = require('./inclusions');
 const { arrivalInner } = require('./arrival');
+const { MapEmbed } = require('./mapEmbed');
 const { accessDetail } = require('./access');
 
 const SOLD_COPY = 'Sold out for this date. Pick another date or seat.';
@@ -149,7 +150,7 @@ function includedItems(passes, items, accessByPass) {
   return rows;
 }
 
-function listingScript(slug) {
+function listingScript(slug, leaflet) {
   return `<script>
 const $=s=>document.querySelector(s);
 const hotelSlug=${JSON.stringify(String(slug || ''))};
@@ -490,7 +491,7 @@ if(tabNav){
 }
 document.getElementById('date').addEventListener('change', function(){ load(false); });
 document.querySelector('select[name="qty"]').addEventListener('change',render);
-const peek=document.querySelector('.map-peek');
+${leaflet === false ? '' : `const peek=document.querySelector('.map-peek');
 const sheet=document.querySelector('.map-sheet');
 if(peek&&sheet){
  document.body.appendChild(sheet);
@@ -535,7 +536,7 @@ if(peek&&sheet){
  sheet.querySelector('.map-close').addEventListener('click',function(){sheet.close()});
  sheet.addEventListener('close',function(){peek.setAttribute('aria-expanded','false');peek.focus()});
 }
-seatFromHash();
+`}seatFromHash();
 load(true);setInterval(function(){ load(true); },15000);
 </script>`;
 }
@@ -634,7 +635,7 @@ ${chosenBlock(seat)}
 </div>
 ${goodToKnowBand({ policy, foodLine, includedNames: rows })}
 <div class="book-bar"><b><span id="bar-total">${barLabel}</span> (demo)</b><a href="#book">Book</a></div>
-${listingScript(h.slug)}`;
+${listingScript(h.slug, !MapEmbed.key())}`;
 }
 
 const ASSURE = [
