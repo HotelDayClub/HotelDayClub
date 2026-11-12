@@ -1,5 +1,8 @@
 const { csvCell } = require('./waitlist');
 const { arrivalText } = require('./offering');
+const { HotelClock } = require('./calendar');
+
+const UTC_STAMPS = ['created_at', 'checked_in_at', 'rules_ack_at', 'terms_ack_at', 'risk_ack_at', 'consent_at'];
 
 const BOOKING_COLUMNS = [
   'code', 'hotel', 'hotel_slug', 'date', 'qty', 'party', 'expected_arrival', 'guest_name', 'email', 'phone',
@@ -22,7 +25,11 @@ function toCsv(columns, rows) {
 }
 
 function bookingsCsv(rows) {
-  return toCsv(BOOKING_COLUMNS, rows);
+  return toCsv(BOOKING_COLUMNS, rows.map(row => {
+    const copy = { ...row };
+    for (const key of UTC_STAMPS) if (copy[key]) copy[key] = HotelClock.iso(copy[key]);
+    return copy;
+  }));
 }
 
 function hotelsCsv(rows) {

@@ -18,6 +18,7 @@ delete process.env.CONTACT_EMAIL;
 const db = require('../db');
 const { seed, ensureSchedules, DEMO_INTROS } = require('../seed');
 const offering = require('../offering');
+const { zoneToUtc, hotelZone } = require('../calendar');
 
 seed(db);
 ensureSchedules(db);
@@ -187,8 +188,9 @@ const sky = nextOpen('skyline-rooftop');
 assert.strictEqual(sky.plan.effective, '16:00', 'day pass ends when room guests only starts');
 assert.strictEqual(sky.plan.closes, '17:00', 'facility still closes at 5pm');
 const [y, m, d] = sky.date.split('-').map(Number);
-assert.ok(offering.dayClosure(db, sky.h, sky.date, new Date(y, m - 1, d, 16, 0, 0)), 'not sellable at room-only start');
-assert.ok(!offering.dayClosure(db, sky.h, sky.date, new Date(y, m - 1, d, 10, 0, 0)), 'morning is still sellable');
+const skyZone = hotelZone(sky.h);
+assert.ok(offering.dayClosure(db, sky.h, sky.date, zoneToUtc(skyZone, y, m, d, 16, 0)), 'not sellable at room-only start');
+assert.ok(!offering.dayClosure(db, sky.h, sky.date, zoneToUtc(skyZone, y, m, d, 10, 0)), 'morning is still sellable');
 assert.strictEqual(offering.lateWindow(db, sky.h, sky.date), null, 'late access must not cover the 4–5pm room-guests-only hour');
 assert.strictEqual(offering.latePossible({
   hours: [{ weekday: 1, open: 1, opens: '11:00', closes: '17:00' }],

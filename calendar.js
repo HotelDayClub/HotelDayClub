@@ -193,6 +193,74 @@ function googleCalendarUrl({ title, start, end, details, location }) {
   return 'https://calendar.google.com/calendar/render?' + params.toString();
 }
 
+// Stored booking clocks are UTC and have no zone marker. Guest and hotel
+// screens show the hotel's zone. Admin views and the export keep the UTC instant.
+class HotelClock {
+  static part(parts, type) {
+    const found = parts.find(item => item.type === type);
+    return found ? found.value : '';
+  }
+
+  static today(hotel, now = new Date()) {
+    return hotelToday(hotel, now);
+  }
+
+  static offset(hotel, days = 0, now = new Date()) {
+    const day = hotelToday(hotel, now);
+    if (!days) return day;
+    return ymd(addDays(new Date(`${day}T12:00:00`), days));
+  }
+
+  static parse(value) {
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    const text = String(value || '').trim();
+    if (!text) return null;
+    if (/[zZ]$/.test(text) || /[+-]\d{2}:\d{2}$/.test(text) || /[+-]\d{4}$/.test(text)) {
+      const dated = new Date(text);
+      return Number.isNaN(dated.getTime()) ? null : dated;
+    }
+    const match = text.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?(?:\.(\d{1,3}))?$/);
+    if (!match) return null;
+    const ms = (match[5] || '000').padEnd(3, '0').slice(0, 3);
+    const dated = new Date(`${match[1]}T${match[2]}:${match[3]}:${match[4] || '00'}.${ms}Z`);
+    return Number.isNaN(dated.getTime()) ? null : dated;
+  }
+
+  static iso(value) {
+    if (value == null || String(value).trim() === '') return '';
+    const instant = this.parse(value);
+    return instant ? instant.toISOString() : String(value);
+  }
+
+  static clock(hotel, value) {
+    const instant = this.parse(value);
+    if (!instant) return '';
+    const parts = new Intl.DateTimeFormat('en-AU', {
+      timeZone: hotelZone(hotel),
+      hour: 'numeric',
+      minute: '2-digit',
+      hourCycle: 'h12',
+    }).formatToParts(instant);
+    const hour = this.part(parts, 'hour');
+    const minute = this.part(parts, 'minute');
+    const ap = this.part(parts, 'dayPeriod').toLowerCase();
+    return `${hour}:${minute} ${ap}`;
+  }
+
+  static guestCheckedIn(hotel, value) {
+    const instant = this.parse(value);
+    if (!instant) return 'Checked in';
+    const parts = new Intl.DateTimeFormat('en-AU', {
+      timeZone: hotelZone(hotel),
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    }).formatToParts(instant);
+    const when = `${this.part(parts, 'weekday')} ${this.part(parts, 'day')} ${this.part(parts, 'month')}`;
+    return `Checked in ${this.clock(hotel, instant)}, ${when} (hotel time)`;
+  }
+}
+
 function passCalendarLink(booking, hotel, window) {
   if (!window || !window.start || !window.end) return '';
   const where = String((hotel && (hotel.address || hotel.area)) || '').trim();
@@ -206,6 +274,6 @@ function passCalendarLink(booking, hotel, window) {
 }
 
 module.exports = {
-  sydneyOffsetMinutes, hotelZone, hotelToday, zoneToUtc, accessInstants, formatUtc, eventWindow,
+  sydneyOffsetMinutes, hotelZone, hotelToday, HotelClock, zoneToUtc, accessInstants, formatUtc, eventWindow,
   bookingIcs, googleCalendarUrl, passCalendarLink,
 };

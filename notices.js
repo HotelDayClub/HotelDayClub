@@ -282,8 +282,7 @@ async function bookingMessage(db, code) {
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(row.hotel_id);
   const adds = db.prepare('SELECT name, qty, total FROM booking_addons WHERE booking_id=? ORDER BY name').all(row.id);
   const view = hoursView(db, hotel, row.date);
-  const bookedAt = row.created_at ? new Date(String(row.created_at).replace(' ', 'T')) : new Date();
-  const note = row.cancel_note || cancelNote(db, hotel, row.date, bookedAt);
+  const note = row.cancel_note || cancelNote(db, hotel, row.date, row.created_at || undefined);
   const window = eventWindow(db, hotel, row.date);
   const parking = bookingHasParking(db, row.id, row.hotel_id);
   const dayEntrance = hotel ? String(hotel.day_entrance || '').trim() : '';
