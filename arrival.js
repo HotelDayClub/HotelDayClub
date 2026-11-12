@@ -128,7 +128,9 @@ function arrivalParts(hotel) {
   const directions = address && !demo
     ? `<div class="arrive-acts"><a class="btn btn-navy" href="${esc(google)}" target="_blank" rel="noopener noreferrer">Get directions</a><a class="btn btn-line" href="${esc(apple)}" target="_blank" rel="noopener noreferrer">Apple Maps</a></div>`
     : '';
-  const fiction = demo ? `<p class="muted small">This is a fictional demo address. <a href="${esc(osm)}" rel="noopener noreferrer">Open the map</a>.</p>` : '';
+  const fiction = !demo ? '' : (embed
+    ? '<p class="muted small">This is a fictional demo address.</p>'
+    : `<p class="muted small">This is a fictional demo address. <a href="${esc(osm)}" rel="noopener noreferrer">Open the map</a>.</p>`);
   const addressHtml = address ? `<p class="arrive-addr">${esc(address)}</p>` : '';
   return { addressHtml, directions, fiction, preview, sheet, mapsLink };
 }

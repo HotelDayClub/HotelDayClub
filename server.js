@@ -39,7 +39,7 @@ const { bookingsCsv, hotelsCsv, hotelBookingsCsv } = require('./dataExport');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
   hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST,
-  fmtTime, cancelNote, riskCard, riskText, swimNote, GuestCheckIn, hotelLatePossible, lateWindow, amenitiesFrom,
+  fmtTime, cancelNote, riskCard, riskText, swimNote, GuestCheckIn, FOOD_RULE, hotelLatePossible, lateWindow, amenitiesFrom,
   venueMissing, PICK_DATE_CANCEL, arrivalOptions, normalizeArrival, arrivalText,
 } = require('./offering');
 const app = express();
@@ -1995,8 +1995,8 @@ app.get('/how-it-works', (req, res) => {
 <h2>For guests</h2>
 <div class="how-grid">
 <div><span class="n">1</span><h3>Browse</h3><p class="muted">Search by neighbourhood, date and what you want: pool, gym or spa. Each listing shows what's included and the pool rules.</p></div>
-<div><span class="n">2</span><h3>Book</h3><p class="muted">Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking or gym access if you want. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue. Tick the risk warning, the hotel rules, the group and children acknowledgement, the terms, and the sharing consent. Hot-day alerts are optional. The total updates before you confirm. This demo doesn't charge a card.</p></div>
-<div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">At the check-in point on your listing. The hours are on your confirmation. ${esc(GuestCheckIn.line())}</p></div>
+<div><span class="n">2</span><h3>Book</h3><p class="muted">Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking or gym access if you want. ${esc(FOOD_RULE)} Before you confirm, you'll tick the risk warning, hotel rules, group and children, terms and sharing consent. Hot-day alerts are optional. The total updates before you confirm. This demo doesn't charge a card.</p></div>
+<div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">${esc(GuestCheckIn.line())} The hours are on your confirmation.</p></div>
 <div><span class="n">4</span><h3>Enjoy</h3><p class="muted">Your spot, for the hours that hotel has set. Add-ons stay optional.</p></div>
 </div>
 <p style="margin-top:18px"><a class="btn btn-coral" href="/#explore">Browse pools</a></p>
@@ -2009,7 +2009,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <div class="partner-card"><b>Free to join</b><p>No signup fee and no monthly charge.</p></div>
 <div class="partner-card"><b>You set the offering</b><p>Seating types, how many people each holds, daily numbers, hours and pool rules.</p></div>
 <div class="partner-card"><b>Guest list the night before</b><p>We email the next day's guest list the evening before. The same list is on your dashboard, ready for check-in.</p></div>
-<div class="partner-card"><b>You keep food and drink spend</b><p>Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.</p></div>
+<div class="partner-card"><b>You keep food and drink spend</b><p>Guests buy food and drink from you at the venue. It is never sold through Hotel Day Club.</p></div>
 <div class="partner-card"><b>Paid monthly</b><p>Seating and add-on sales are paid out once a month. Your share is set out in your hotel agreement.</p></div>
 </div>
 <p class="hiw-cta"><a class="btn btn-coral" href="/for-hotels">Talk to us</a> <a class="btn btn-line" href="/hotel">Hotel login</a></p>
@@ -2022,11 +2022,11 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <details><summary>Age limits</summary><p>You need to be 18 or over to book. Each hotel sets its own age policy and kids' hours. They're on the listing, and in the risk warning, before you confirm.</p></details>
 <details><summary>Weather</summary><p>Rain on its own is not a closure. If the hotel closes the pool, you choose a full refund or a free rebooking. <a href="/faq">All questions</a>.</p></details>
 <details><summary>Do I need to book a room?</summary><p>No. A day pass is the pool, gym or spa for the hours that hotel has set. There is no room and no overnight stay.</p></details>
-<details><summary>How do I check in?</summary><p>At the front desk, when the hotel opens for day passes, show the booking code or the QR code on your confirmation. The hours are on that page. ${esc(GuestCheckIn.line())} In this demo the confirmation stays on the page, and a confirmation email is sent to the address you give. Bring photo ID when the hotel asks for it.</p></details>
-<details><summary>What does the pass include?</summary><p>Each hotel sets its own inclusions. The listing says what the pass covers for that date and those hours. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue. Treatments are not included unless the listing says so.</p></details>
+<details><summary>How do I check in?</summary><p>${esc(GuestCheckIn.line())} The hours are on that page. In this demo the confirmation stays on the page, and a confirmation email is sent to the address you give. Bring photo ID when the hotel asks for it.</p></details>
+<details><summary>What does the pass include?</summary><p>Each hotel sets its own inclusions. The listing says what the pass covers for that date and those hours. ${esc(FOOD_RULE)} Treatments are not included unless the listing says so.</p></details>
 <details><summary>Can children come?</summary><p>You need to be 18 or over to book. Each hotel sets its own age rules and kids' hours. They are on the listing and in the risk warning before you confirm. Children must be on the booking, and an adult on that booking supervises each child.</p></details>
 <details><summary>What if a pass is sold out?</summary><p>The page says when a pass is sold out for that date, or when there are not enough left. The terms say that if a pass sells out at the same moment and we can't confirm the booking, the booking is not made. This demo doesn't take a real payment.</p></details>
-<details><summary>Does this demo charge a card?</summary><p>No. Checkout is a mock payment. No card is needed and nothing is charged. This demo doesn't charge a card.</p></details>
+<details><summary>Does this demo charge a card?</summary><p>No. Checkout is a mock payment. No card is needed and nothing is charged.</p></details>
 <details><summary>What are the hours?</summary><p>Each hotel sets its own hours. A day pass is not sold past the time a room-guests-only period starts. Late access, where a hotel offers it, starts only after that period ends and stops when the pool closes.</p></details>
 <details><summary>Are these real hotels?</summary><p>No. This is a demo. The example listings use neighbourhood names in Australia. They are not participating hotels, and the photos are stock photos. No real bookings or payments are taken.</p></details>
 </div>

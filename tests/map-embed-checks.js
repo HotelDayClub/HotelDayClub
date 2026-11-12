@@ -66,10 +66,13 @@ try {
   assert.strictEqual(MapEmbed.src(salt), '');
   assert.strictEqual(MapEmbed.directionsUrl(salt), 'https://www.google.com/maps/dir/?api=1&destination=-33.8915%2C151.2767');
 
+  const osmLink = '<p class="muted small">This is a fictional demo address. <a href="https://www.openstreetmap.org/?mlat=-33.8915&amp;mlon=151.2767#map=16/-33.8915/151.2767" rel="noopener noreferrer">Open the map</a>.</p>';
+  const plainFiction = '<p class="muted small">This is a fictional demo address.</p>';
   const unset = section(salt);
   assert.ok(unset.includes(PEEK), 'svg preview stays');
   assert.ok(unset.includes(SHEET), 'leaflet dialog stays');
-  assert.ok(unset.includes('This is a fictional demo address.'));
+  assert.ok(unset.includes(osmLink));
+  assert.ok(!unset.includes(plainFiction));
   assert.ok(unset.includes('18 Demo Terrace, Bondi Beach NSW 2026'));
   assert.ok(!unset.includes('<iframe'));
   assert.ok(!unset.includes('google.com/maps/embed'));
@@ -78,6 +81,7 @@ try {
 
   const unsetPage = listing(salt);
   assert.ok(unsetPage.includes(PEEK));
+  assert.ok(unsetPage.includes(osmLink));
   assert.ok(unsetPage.includes('id="map-sheet"'));
   assert.ok(unsetPage.includes("s.src='/vendor/leaflet/leaflet.js'"));
   assert.ok(!unsetPage.includes('<iframe'));
@@ -86,6 +90,7 @@ try {
   process.env.GOOGLE_MAPS_EMBED_KEY = '   ';
   assert.strictEqual(MapEmbed.src(salt), '');
   assert.ok(section(salt).includes(PEEK));
+  assert.ok(section(salt).includes(osmLink));
   assert.ok(!section(salt).includes('<iframe'));
 
   process.env.GOOGLE_MAPS_EMBED_KEY = KEY;
@@ -97,18 +102,21 @@ try {
   assert.ok(set.includes('loading="lazy"'));
   assert.ok(set.includes('referrerpolicy="no-referrer-when-downgrade"'));
   assert.ok(set.includes('allowfullscreen'));
-  assert.ok(set.includes('This is a fictional demo address.'));
+  assert.ok(set.includes(plainFiction));
+  assert.ok(!set.includes('Open the map'));
+  assert.ok(!set.includes('openstreetmap.org'));
   assert.ok(set.includes('18 Demo Terrace, Bondi Beach NSW 2026'));
   assert.ok(!set.includes('class="map-peek"'));
   assert.ok(!set.includes('map-sheet'));
   assert.ok(!set.includes('leaflet'));
-  assert.ok(set.includes('Open the map'));
   directions(set, '-33.8915%2C151.2767');
   assert.strictEqual(set.split(KEY).length - 1, 1, 'key appears only in the iframe src');
   assert.ok(set.indexOf(KEY) > set.indexOf('src="'));
 
   const setPage = listing(salt);
   assert.ok(setPage.includes(iframe));
+  assert.ok(setPage.includes(plainFiction));
+  assert.ok(!setPage.includes('Open the map'));
   assert.ok(!setPage.includes('class="map-peek"'));
   assert.ok(!setPage.includes('map-sheet'));
   assert.ok(!setPage.includes('/vendor/leaflet/leaflet.js'));
@@ -122,6 +130,8 @@ try {
   directions(quoted, '1%20%22Demo%22%20%26%20Lane');
   assert.ok(!quoted.includes('class="map-peek"'));
   assert.ok(!quoted.includes('<dialog'));
+  assert.ok(quoted.includes(plainFiction));
+  assert.ok(!quoted.includes('Open the map'));
   assert.ok(quoted.includes('1 &quot;Demo&quot; &amp; Lane'));
 
   delete process.env.GOOGLE_MAPS_EMBED_KEY;
@@ -130,7 +140,8 @@ try {
   assert.ok(!quotedUnset.includes('class="map-peek"'));
   assert.ok(!quotedUnset.includes('<dialog'));
   directions(quotedUnset, '1%20%22Demo%22%20%26%20Lane');
-  assert.ok(quotedUnset.includes('This is a fictional demo address.'));
+  assert.ok(quotedUnset.includes('<p class="muted small">This is a fictional demo address. <a href="https://www.openstreetmap.org/search?query=1%20%22Demo%22%20%26%20Lane" rel="noopener noreferrer">Open the map</a>.</p>'));
+  assert.ok(!quotedUnset.includes(plainFiction));
 
   process.env.GOOGLE_MAPS_EMBED_KEY = KEY;
   const real = section(live);
