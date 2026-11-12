@@ -326,7 +326,7 @@ function cookie(res) {
     assert.ok(csv.body.includes('Melbourne') || csv.body.includes('Perth'));
     assert.ok(csv.body.includes('Quiet Pool House'));
     assert.ok(!csv.body.includes('test-token'));
-    const admin = await get(port, '/admin', { Cookie: jar });
+    const admin = await get(port, '/admin/messages', { Cookie: jar });
     assert.ok(admin.body.includes('guest.one@example.com'));
     assert.ok(!admin.body.includes('googletagmanager.com'));
 
@@ -335,6 +335,8 @@ function cookie(res) {
     idDb.close();
     const removed = await post(port, '/admin/waitlist/delete', { id: String(victim.id) }, { Cookie: jar });
     assert.strictEqual(removed.status, 302);
+    assert.ok(String(removed.headers.location).includes('/admin/messages'));
+    assert.ok(String(removed.headers.location).includes('#waitlist'));
     assert.ok(!rows().some(r => r.email === 'hotel@example.com'));
 
     for (let i = 1; i <= 8; i++) {

@@ -22,7 +22,7 @@ const { LegalVersions, ConsentLog, CheckoutConsent } = require('./consent');
 const brand = require('./brand');
 const { codeFromQrToken } = require('./qr');
 const { bookingPageBody, bookingMissingBody } = require('./bookingPage');
-const { HOTEL_SHARE, hotelPct, feePct } = require('./commission');
+const { AdminShell } = require('./adminShell');
 const { eventWindow, bookingIcs, passCalendarLink, hotelToday, HotelClock } = require('./calendar');
 const { parseBookingCode } = require('./public/checkin-parse');
 const { sendBookingConfirmation, sendContactAlert, sendCancellation, bookingHasParking } = require('./notices');
@@ -1165,15 +1165,18 @@ function arrivedField(b) {
 }
 function statusCell(b, { checkin, redirect, day, compact, adminCancel, hotel }) {
   const cancel = adminCancel && b.status !== 'cancelled'
-    ? `<form method="post" action="/admin/booking/cancel"><input type="hidden" name="code" value="${esc(b.code)}"><button class="btn btn-line btn-sm">Cancel (demo)</button></form>`
+    ? `<form method="post" action="/admin/booking/cancel"><input type="hidden" name="code" value="${esc(b.code)}"><button class="btn btn-line btn-sm adm-btn-d">Cancel (demo)</button></form>`
     : '';
-  if (b.status === 'cancelled') return '<span class="pill out">Cancelled</span>';
-  if (b.checked_in_at) return `<span class="pill ok checkin-state">${esc(checkedInLabel(b, hotel, adminCancel))}</span>${cancel}`;
+  if (b.status === 'cancelled') return adminCancel ? '<span class="adm-st adm-st-x">Cancelled</span>' : '<span class="pill out">Cancelled</span>';
+  if (b.checked_in_at) {
+    if (adminCancel) return `<span class="adm-st adm-st-ok">Arrived</span><div class="adm-muted small">${esc(checkedInLabel(b, hotel, true))}</div>${cancel}`;
+    return `<span class="pill ok checkin-state">${esc(checkedInLabel(b, hotel, false))}</span>${cancel}`;
+  }
   if (checkin && b.date === (day || today(hotel))) {
     const btn = compact ? 'btn btn-sm btn-navy' : 'btn btn-navy btn-check';
     return `<form method="post" action="/hotel/checkin"><input type="hidden" name="code" value="${esc(b.code)}"><input type="hidden" name="confirm" value="1"><input type="hidden" name="r" value="${esc(redirect)}">${arrivedField(b)}<button class="${btn}">Check in</button></form>${cancel}`;
   }
-  return `<span class="pill">Confirmed</span>${cancel}`;
+  return adminCancel ? `<span class="adm-st adm-st-ok">Confirmed</span>${cancel}` : `<span class="pill">Confirmed</span>${cancel}`;
 }
 function withNotes(rows) {
   if (!rows.length || rows[0].notes) return rows;
@@ -1429,7 +1432,7 @@ ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <div class="dash-actions"><a class="btn btn-line" href="/hotel/analytics">Analytics</a><a class="btn btn-line" href="/hotel/bookings.csv">Download bookings</a><a class="btn btn-navy" href="/hotel/checkin">Check in a guest</a></div></div>
 ${soldWarnHtml(h.id, passes, days, grid)}
 ${opsBar(h, passes)}
-<div class="stats">${stat('Spots booked', s.spots, `${s.n} bookings · ${s.people} people`)}${stat('Gross sales', money(s.gross), `Includes ${money(addonGross)} add-ons · last 30 days ${money(s30.gross)}`)}${stat(`Hotel share (${hotelPct()}%)`, money(s.gross * HOTEL_SHARE), 'Paid out to you')}${stat(`Platform commission (${feePct()}%)`, money(s.gross * (1 - HOTEL_SHARE)), 'Hotel Day Club fee')}</div>
+<div class="stats">${stat('Spots booked', s.spots, `${s.n} bookings · ${s.people} people`)}${stat('Gross sales', money(s.gross), `Includes ${money(addonGross)} add-ons · last 30 days ${money(s30.gross)}`)}</div>
 <div class="seat-stats">${bySeat.map(r => `<span><b>${esc(spotLabel(r))}</b> ${r.spots} booked · ${r.people} people</span>`).join('')}</div>
 ${todaySection(h)}
 <section id="lookup" class="panel"><h2 class="ph2">Booking lookup</h2><form class="lookup" method="get" action="/hotel#lookup"><input name="q" value="${esc(q)}" placeholder="Booking code (HDC-12345), name, email or phone"><button class="btn btn-navy">${ICON.search} Find</button>${q ? '<a class="link" href="/hotel">Clear</a>' : ''}</form>
@@ -1806,85 +1809,151 @@ app.post('/admin/login', (req, res) => {
   res.redirect('/admin');
 });
 app.get('/admin/logout', (req, res) => { clearStaffCookie(res, 'admin'); res.redirect('/'); });
-function hotelPasswordForm(hotel) {
-  if (String(hotel.login || '').startsWith('demo-')) return '<div class="muted small">Demo password is set on the server.</div>';
-  return `<form method="post" action="/admin/hotel-password"><input type="hidden" name="id" value="${hotel.id}"><label class="muted small">New password<input name="password" type="password" minlength="4" maxlength="200" required autocomplete="new-password" aria-label="New password for ${esc(hotel.name)}"></label><button class="btn btn-line btn-sm">Set password</button></form>`;
+function adminGo(res, path, msg, hash) {
+  res.redirect(path + '?msg=' + encodeURIComponent(msg) + (hash ? '#' + hash : ''));
+}
+function adminTotals() {
+  const per = db.prepare(`SELECT h.id, h.name, h.area, COUNT(b.id) n, COALESCE(SUM(b.qty),0) passes, COALESCE(SUM(b.total),0) gross,
+    COALESCE(SUM(CASE WHEN b.date=? THEN b.qty END),0) today
+    FROM hotels h LEFT JOIN bookings b ON b.hotel_id=h.id AND b.status!='cancelled' WHERE COALESCE(h.status,'active')='active' GROUP BY h.id ORDER BY gross DESC`).all(today());
+  const tot = per.reduce((a, r) => ({ n: a.n + r.n, passes: a.passes + r.passes, gross: a.gross + r.gross, today: a.today + r.today }), { n: 0, passes: 0, gross: 0, today: 0 });
+  const addonAll = db.prepare("SELECT COALESCE(SUM(ba.total),0) n FROM booking_addons ba JOIN bookings b ON b.id=ba.booking_id WHERE b.status!='cancelled'").get().n;
+  return { per, tot, addonAll };
+}
+function bookingFilter(req) {
+  const hotel = parseInt(req.query.hotel, 10) || 0;
+  const q = String(req.query.q || '').trim();
+  const status = ['confirmed', 'arrived', 'cancelled'].includes(req.query.status) ? req.query.status : '';
+  let page = parseInt(req.query.page, 10);
+  if (!Number.isFinite(page) || page < 1) page = 1;
+  const where = [];
+  const args = [];
+  if (hotel) { where.push('b.hotel_id=?'); args.push(hotel); }
+  if (q) {
+    where.push('(b.code LIKE ? OR b.guest_name LIKE ? OR b.email LIKE ?)');
+    args.push('%' + q + '%', '%' + q + '%', '%' + q + '%');
+  }
+  if (status === 'cancelled') where.push("b.status='cancelled'");
+  else if (status === 'arrived') where.push("b.status!='cancelled' AND b.checked_in_at IS NOT NULL");
+  else if (status === 'confirmed') where.push("b.status!='cancelled' AND b.checked_in_at IS NULL");
+  return { hotel, q, status, page, where, args };
+}
+function hotelStatusPill(status) {
+  if (status === 'pending') return '<span class="adm-st adm-st-wait">Pending</span>';
+  if (!status || status === 'active') return '<span class="adm-st adm-st-ok">Active</span>';
+  const label = String(status).charAt(0).toUpperCase() + String(status).slice(1);
+  return `<span class="adm-st adm-st-off">${esc(label)}</span>`;
+}
+function hotelActions(hotel) {
+  if (hotel.status === 'pending') {
+    return `<form method="post" action="/admin/approve"><input type="hidden" name="id" value="${hotel.id}"><button class="btn adm-btn-p">Approve</button></form>`;
+  }
+  if (String(hotel.login || '').startsWith('demo-')) return '<div class="adm-muted">Demo password is set on the server.</div>';
+  return `<a class="btn" href="#reset-${hotel.id}">Reset password</a>`;
+}
+function hotelConfirm(hotel) {
+  if (hotel.status === 'pending' || String(hotel.login || '').startsWith('demo-')) return '';
+  return `<div class="confirm" id="reset-${hotel.id}" role="alertdialog" aria-labelledby="reset-title-${hotel.id}">
+<h3 id="reset-title-${hotel.id}">Reset password for ${esc(hotel.name)}?</h3>
+<p>The old password stops working straight away. Tell the hotel the new one yourself; the site does not email it.</p>
+<form method="post" action="/admin/hotel-password"><input type="hidden" name="id" value="${hotel.id}">
+<label class="f">New password<input name="password" type="password" minlength="4" maxlength="200" required autocomplete="new-password" aria-label="New password for ${esc(hotel.name)}"></label>
+<button class="btn adm-btn-d">Set password</button>
+<a class="btn" href="/admin/hotels">Cancel</a>
+</form></div>`;
+}
+function pendingDetail(hotel) {
+  if (hotel.status !== 'pending') return '';
+  const spots = getPasses(hotel.id);
+  const who = [hotel.contact_name || 'No contact name', hotel.contact_email || ''].filter(Boolean).map(esc).join(' · ');
+  const passes = spots.map(s => `${esc(spotLabel(s))} · ${money(s.price)} · ${s.daily_cap} a day`).join('<br>');
+  return `<div class="adm-muted">${who}</div>${hotel.hours ? `<div class="adm-muted">${esc(hotel.hours)}</div>` : ''}<div class="small">${passes}</div>`;
 }
 app.post('/admin/hotel-password', adminAuth, (req, res) => {
   if (!ownForm(req, res)) return;
   const id = parseInt(req.body.id, 10);
   const password = String(req.body.password || '');
   const hotel = id && db.prepare('SELECT id, name, login FROM hotels WHERE id=?').get(id);
-  if (!hotel) return res.redirect('/admin?msg=' + encodeURIComponent('Hotel not found.'));
-  if (String(hotel.login || '').startsWith('demo-')) return res.redirect('/admin?msg=' + encodeURIComponent('The demo hotel password is set on the server.'));
-  if (password.length < 4 || password.length > 200) return res.redirect('/admin?msg=' + encodeURIComponent('Use a password of 4 to 200 characters.'));
+  if (!hotel) return adminGo(res, '/admin/hotels', 'Hotel not found.');
+  if (String(hotel.login || '').startsWith('demo-')) return adminGo(res, '/admin/hotels', 'The demo hotel password is set on the server.');
+  if (password.length < 4 || password.length > 200) return adminGo(res, '/admin/hotels', 'Use a password of 4 to 200 characters.');
   db.prepare('UPDATE hotels SET password=? WHERE id=?').run(hashPassword(password), hotel.id);
-  res.redirect('/admin?msg=' + encodeURIComponent(`Password set for ${hotel.name}.`));
+  return adminGo(res, '/admin/hotels', `Password set for ${hotel.name}.`);
 });
 app.post('/admin/booking/cancel', adminAuth, async (req, res) => {
   if (!ownForm(req, res)) return;
   const code = String(req.body.code || '').trim().toUpperCase();
   const b = db.prepare('SELECT id, code FROM bookings WHERE code=?').get(code);
-  if (!b) return res.redirect('/admin?msg=' + encodeURIComponent('Booking not found.'));
+  if (!b) return adminGo(res, '/admin/bookings', 'Booking not found.');
   const changed = BookingCancel.mark(db, b.id);
   if (changed) {
     try { await sendCancellation(db, b.code); } catch (err) { console.error('cancel email failed code=' + b.code); }
   }
   const msg = changed ? `${b.code} is cancelled in this demo. No payment was taken.` : `${b.code} was already cancelled.`;
-  res.redirect('/admin?msg=' + encodeURIComponent(msg));
+  return adminGo(res, '/admin/bookings', msg);
 });
 app.post('/admin/approve', adminAuth, (req, res) => {
   if (!ownForm(req, res)) return;
   const id = parseInt(req.body.id, 10);
   const h = id && db.prepare('SELECT * FROM hotels WHERE id=? AND status=?').get(id, 'pending');
-  if (!h) return res.redirect('/admin?msg=' + encodeURIComponent('Nothing to approve.'));
+  if (!h) return adminGo(res, '/admin/hotels', 'Nothing to approve.');
   const gaps = venueMissing(h);
-  if (gaps.length) return res.redirect('/admin?msg=' + encodeURIComponent(`${h.name} is not live yet. Set ${gaps.join(', ')} first.`));
+  if (gaps.length) return adminGo(res, '/admin/hotels', `${h.name} is not live yet. Set ${gaps.join(', ')} first.`);
   db.prepare("UPDATE hotels SET status='active' WHERE id=?").run(id);
-  res.redirect('/admin?msg=' + encodeURIComponent(`Approved ${h.name}.`));
+  return adminGo(res, '/admin/hotels', `Approved ${h.name}.`);
 });
 app.get('/admin', adminAuth, (req, res) => {
-  const hid = parseInt(req.query.hotel) || 0, q = String(req.query.q || '').trim();
-  const pending = db.prepare("SELECT * FROM hotels WHERE status='pending' ORDER BY id DESC").all();
-  const per = db.prepare(`SELECT h.id, h.name, h.area, h.login, COUNT(b.id) n, COALESCE(SUM(b.qty),0) passes, COALESCE(SUM(b.total),0) gross,
-    COALESCE(SUM(CASE WHEN b.date=? THEN b.qty END),0) today, COALESCE(SUM(CASE WHEN b.checked_in_at IS NOT NULL THEN b.qty END),0) checked
-    FROM hotels h LEFT JOIN bookings b ON b.hotel_id=h.id AND b.status!='cancelled' WHERE COALESCE(h.status,'active')='active' GROUP BY h.id ORDER BY gross DESC`).all(today());
-  const tot = per.reduce((a, r) => ({ n: a.n + r.n, passes: a.passes + r.passes, gross: a.gross + r.gross, today: a.today + r.today }), { n: 0, passes: 0, gross: 0, today: 0 });
-  const addonAll = db.prepare("SELECT COALESCE(SUM(ba.total),0) n FROM booking_addons ba JOIN bookings b ON b.id=ba.booking_id WHERE b.status!='cancelled'").get().n;
-  const where = [], args = []; if (hid) { where.push('b.hotel_id=?'); args.push(hid); } if (q) { where.push('(b.code LIKE ? OR b.guest_name LIKE ? OR b.email LIKE ?)'); args.push(...Array(3).fill('%' + q + '%')); }
-  const rows = db.prepare(`${BQ} ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY b.created_at DESC, b.id DESC LIMIT 100`).all(...args);
+  const counts = AdminShell.counts(db);
+  const { per, tot, addonAll } = adminTotals();
+  const recent = db.prepare(`${BQ} ORDER BY b.created_at DESC, b.id DESC LIMIT 5`).all();
   const notes = db.prepare(`SELECT n.*, b.code, b.guest_name, b.date, h.name hotel FROM guest_notes n JOIN bookings b ON b.id=n.booking_id JOIN hotels h ON h.id=n.hotel_id ORDER BY n.id DESC LIMIT 40`).all();
-  const waitRows = db.prepare('SELECT * FROM waitlist ORDER BY id DESC LIMIT 500').all();
-  const pendingHtml = pending.map(h => {
-    const spots = getPasses(h.id);
-    return `<div class="pending-row"><div><b>${esc(h.name)}</b><div class="muted small">${esc(h.area)} · ${esc(h.contact_name || 'No contact name')} · ${esc(h.contact_email || '')}</div>
-<div class="muted small">${esc(h.hours || '')}</div><div class="small">${spots.map(s => `${esc(spotLabel(s))} · ${money(s.price)} · ${s.daily_cap} a day`).join('<br>')}</div></div>
-<form method="post" action="/admin/approve"><input type="hidden" name="id" value="${h.id}"><button class="btn btn-navy">Approve</button></form></div>`;
-  }).join('');
-  res.send(page('Admin', `<div class="wrap sec">
-${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
-<p class="eyebrow-s">Platform admin · Jason</p><h1 class="l-title">All bookings</h1>
-<p><a class="btn btn-line" href="/admin/backups">Backups and exports</a></p>
+  const noteBody = notes.length ? notes.map(n => `<div class="pending-row"><div><b>${n.kind === 'incident' ? 'Incident' : 'No-show'}</b> · ${esc(n.guest_name)} · ${esc(n.code)}<div class="adm-muted small">${esc(n.hotel)} · ${esc(nice(n.date))} · ${esc(HotelClock.iso(n.created_at))}${n.note ? ' · ' + esc(n.note) : ''}</div></div></div>`).join('') : '<p class="adm-muted">No notes yet. Hotels log a no-show or an incident from the guest list.</p>';
+  const inner = `${AdminShell.flash(req.query.msg)}
+${AdminShell.heading('Overview', 'All active hotels. Cancelled bookings are not counted.')}
+${AdminShell.tiles(tot, addonAll)}
+${AdminShell.byHotel(per, tot)}
+<div class="adm-split">${AdminShell.attention(counts)}${AdminShell.recent(recent)}</div>
 ${PauseBooked.adminSection(db)}
-${pending.length ? `<section class="panel"><h2 class="ph2">Pending approval</h2>${pendingHtml}</section>` : ''}
-${contactMessagesHtml()}
-<div class="stats">${stat('Bookings', tot.n, tot.passes + ' spots')}${stat('Gross sales', money(tot.gross), `Includes ${money(addonAll)} add-ons`)}${stat(`Paid to hotels (${hotelPct()}%)`, money(tot.gross * HOTEL_SHARE))}${stat(`Platform commission (${feePct()}%)`, money(tot.gross * (1 - HOTEL_SHARE)), 'Hotel Day Club revenue')}</div>
-<p class="muted small" style="margin:-8px 0 16px">Gross includes add-ons. Commission stays at ${feePct()}% of that gross.</p>
-<section class="panel"><h2 class="ph2">By hotel</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Hotel</th><th>Bookings</th><th>Spots</th><th>Today</th><th>Gross</th><th>Hotel ${hotelPct()}%</th><th>Commission ${feePct()}%</th></tr></thead><tbody>
-${per.map(r => `<tr><td><a class="link" href="/admin?hotel=${r.id}#all"><b>${esc(r.name)}</b></a><div class="muted small">${esc(r.area)}</div>${hotelPasswordForm(r)}</td><td>${r.n}</td><td>${r.passes}</td><td>${r.today}</td><td>${money(r.gross)}</td><td>${money(r.gross * HOTEL_SHARE)}</td><td><b>${money(r.gross * (1 - HOTEL_SHARE))}</b></td></tr>`).join('')}
-<tr class="tot"><td>Total</td><td>${tot.n}</td><td>${tot.passes}</td><td>${tot.today}</td><td>${money(tot.gross)}</td><td>${money(tot.gross * HOTEL_SHARE)}</td><td>${money(tot.gross * (1 - HOTEL_SHARE))}</td></tr></tbody></table></div></section>
-<section class="panel" id="all"><h2 class="ph2">Latest bookings</h2><form class="lookup" method="get" action="/admin#all"><select name="hotel"><option value="">All hotels</option>${per.map(r => `<option value="${r.id}" ${r.id === hid ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select><input name="q" value="${esc(q)}" placeholder="Code, name or email"><button class="btn btn-navy">Filter</button></form>
-${guestList(rows, { checkin: false, hotelCol: true, log: false, adminCancel: true, arrival: 'short', versions: true })}<p class="muted small">Showing the latest ${rows.length} (max 100).</p></section>
-<section class="panel"><h2 class="ph2">Guest notes</h2>${notes.length ? notes.map(n => `<div class="pending-row"><div><b>${n.kind === 'incident' ? 'Incident' : 'No-show'}</b> · ${esc(n.guest_name)} · ${esc(n.code)}<div class="muted small">${esc(n.hotel)} · ${esc(nice(n.date))} · ${esc(HotelClock.iso(n.created_at))}${n.note ? ' · ' + esc(n.note) : ''}</div></div></div>`).join('') : '<p class="muted">No notes yet. Hotels log a no-show or an incident from the guest list.</p>'}</section>
-<section class="panel" id="waitlist"><h2 class="ph2">Waitlist</h2>
-<p class="muted small">${paths.dataDir()
-  ? 'These rows are stored in the database on the persistent disk. They are not shown on the public site. Download a CSV or a database backup if you want a copy off this server.'
-  : 'These rows are stored on this server only. They are not shown on the public site. Download the CSV before a redeploy if the spreadsheet connection is not set up. This disk is cleared when the app is redeployed.'}</p>
-<p><a class="btn btn-navy" href="/admin/waitlist.csv">Download CSV</a></p>
-${waitRows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Email</th><th>Name</th><th>Place</th><th>Role</th><th>Hotel</th><th>Destination</th><th>Alerts</th><th>Added</th><th></th></tr></thead><tbody>
-${waitRows.map(w => `<tr><td>${esc(w.email)}</td><td>${esc(w.first_name)}</td><td>${esc(w.place)}</td><td>${esc(w.role)}</td><td>${esc(w.hotel_name)}</td><td>${esc(w.destination)}</td><td>${Number(w.marketing_opt_in) === 1 ? 'Yes' : 'No'}</td><td>${esc(HotelClock.iso(w.created_at))}</td><td><form method="post" action="/admin/waitlist/delete"><input type="hidden" name="id" value="${w.id}"><button class="btn btn-line">Delete</button></form></td></tr>`).join('')}
-</tbody></table></div>` : '<p class="muted">No waitlist signups stored on this server.</p>'}
-</section></div>`, { nav: 'admin' }));
+<section class="adm-card"><h2>Guest notes</h2>${noteBody}</section>`;
+  res.send(AdminShell.page('/admin', inner, { title: 'Overview', ...counts }));
+});
+app.get('/admin/bookings', adminAuth, (req, res) => {
+  const counts = AdminShell.counts(db);
+  const { tot, addonAll } = adminTotals();
+  const filter = bookingFilter(req);
+  const whereSql = filter.where.length ? 'WHERE ' + filter.where.join(' AND ') : '';
+  const total = db.prepare(`SELECT COUNT(*) n FROM bookings b ${whereSql}`).get(...filter.args).n;
+  const pages = Math.max(1, Math.ceil(total / 10));
+  const page = Math.min(filter.page, pages);
+  const rows = db.prepare(`${BQ} ${whereSql} ORDER BY b.created_at DESC, b.id DESC LIMIT 10 OFFSET ?`).all(...filter.args, (page - 1) * 10);
+  const hotels = db.prepare('SELECT id, name FROM hotels ORDER BY name').all();
+  const list = rows.length
+    ? guestList(rows, { checkin: false, hotelCol: true, log: false, adminCancel: true, arrival: 'short', versions: true })
+    : '<p>No bookings match. <a href="/admin/bookings">Clear filters.</a></p>';
+  const inner = `${AdminShell.flash(req.query.msg)}
+${AdminShell.heading('Bookings', 'Newest first. Search by code, guest name or email.')}
+${AdminShell.tiles(tot, addonAll)}
+${AdminShell.filters({ q: filter.q, hotel: filter.hotel, status: filter.status, hotels })}
+${list}
+${AdminShell.pager({ q: filter.q, hotel: filter.hotel, status: filter.status, page, total, count: rows.length })}`;
+  res.send(AdminShell.page('/admin/bookings', inner, { title: 'Bookings', ...counts }));
+});
+app.get('/admin/hotels', adminAuth, (req, res) => {
+  const counts = AdminShell.counts(db);
+  const hotels = db.prepare("SELECT * FROM hotels ORDER BY CASE WHEN status='pending' THEN 0 ELSE 1 END, name, id").all();
+  const rows = hotels.map(h => `<tr>
+<td data-label="Hotel"><span><b>${esc(h.name)}</b><div class="adm-muted">${esc(h.area || '')}</div>${pendingDetail(h)}</span></td>
+<td data-label="Status">${hotelStatusPill(h.status)}</td>
+<td data-label="Login">${esc(h.login || '')}</td>
+<td data-label="Actions">${hotelActions(h)}</td>
+</tr>`).join('');
+  const inner = `${AdminShell.flash(req.query.msg)}
+${AdminShell.heading('Hotels', 'Approve a new hotel, or set a password for a hotel that is not a demo.')}
+<section class="adm-card"><div class="adm-table adm-stack"><table>
+<thead><tr><th>Hotel</th><th>Status</th><th>Login</th><th>Actions</th></tr></thead>
+<tbody>${rows}</tbody></table></div>
+${hotels.map(hotelConfirm).join('')}</section>`;
+  res.send(AdminShell.page('/admin/hotels', inner, { title: 'Hotels', ...counts }));
 });
 app.get('/admin/waitlist.csv', adminAuth, (req, res) => {
   const rows = db.prepare('SELECT email, first_name, place, role, hotel_name, destination, marketing_opt_in, created_at, updated_at FROM waitlist ORDER BY id').all()
@@ -1895,7 +1964,7 @@ app.post('/admin/waitlist/delete', adminAuth, (req, res) => {
   if (!ownForm(req, res)) return;
   const id = parseInt(req.body.id, 10);
   if (id) db.prepare('DELETE FROM waitlist WHERE id=?').run(id);
-  res.redirect('/admin?msg=' + encodeURIComponent(id ? 'Removed that waitlist signup.' : 'Nothing to remove.') + '#waitlist');
+  return adminGo(res, '/admin/messages', id ? 'Removed that waitlist signup.' : 'Nothing to remove.', 'waitlist');
 });
 function contactMessagesHtml() {
   const rows = db.prepare('SELECT * FROM contact_messages ORDER BY id DESC LIMIT 200').all();
@@ -1903,22 +1972,43 @@ function contactMessagesHtml() {
   const note = paths.dataDir()
     ? 'Saved in the database on the persistent disk. The app does not send these by email.'
     : 'Saved in the database on this server. The app does not send these by email. This disk is cleared when the app is redeployed.';
-  const body = rows.length ? `<div class="msg-list">${rows.map(r => `<article class="msg-card">
-<div class="msg-top"><b>${esc(r.name)}</b><span class="${r.handled ? 'msg-done' : 'msg-new'}">${r.handled ? 'Handled' : 'New'}</span></div>
-<p class="msg-meta">${esc(r.email)}${r.booking_code ? ` · Code ${esc(r.booking_code)}` : ''} · ${esc(topicLabel(r.topic))} · ${esc(HotelClock.iso(r.created_at))}</p>
-<p class="msg-body">${esc(r.message)}</p>
-${r.handled ? '' : `<form method="post" action="/admin/messages/handled"><input type="hidden" name="id" value="${r.id}"><button class="btn btn-line">Mark as handled</button></form>`}
-</article>`).join('')}</div>` : '<p class="muted">No messages yet.</p>';
-  return `<section class="panel" id="messages"><h2 class="ph2">Contact messages${waiting ? ` · ${waiting} new` : ''}</h2>
-<p class="muted small">${esc(note)}</p>
+  const body = rows.length ? `<div class="msg-list">${rows.map(r => `<article class="adm-msg${r.handled ? '' : ' is-new'}">
+<div class="adm-msg-top"><b>${esc(r.name)}</b><span class="adm-st ${r.handled ? 'adm-st-off' : 'adm-st-wait'}">${r.handled ? 'Handled' : 'New'}</span></div>
+<p class="adm-muted">${esc(r.email)}${r.booking_code ? ` · Code ${esc(r.booking_code)}` : ''} · ${esc(topicLabel(r.topic))} · ${esc(HotelClock.iso(r.created_at))}</p>
+<p>${esc(r.message)}</p>
+${r.handled ? '' : `<form method="post" action="/admin/messages/handled"><input type="hidden" name="id" value="${r.id}"><button class="btn">Mark as handled</button></form>`}
+</article>`).join('')}</div>` : '<p class="adm-muted">No messages yet.</p>';
+  return `<section class="adm-card" id="messages"><h2>Contact messages${waiting ? ` · ${waiting} new` : ''}</h2>
+<p class="adm-muted small">${esc(note)}</p>
 ${body}</section>`;
 }
+function waitlistSection() {
+  const waitRows = db.prepare('SELECT * FROM waitlist ORDER BY id DESC LIMIT 500').all();
+  const note = paths.dataDir()
+    ? 'These rows are stored in the database on the persistent disk. They are not shown on the public site. Download a CSV or a database backup if you want a copy off this server.'
+    : 'These rows are stored on this server only. They are not shown on the public site. Download the CSV before a redeploy if the spreadsheet connection is not set up. This disk is cleared when the app is redeployed.';
+  const table = waitRows.length ? `<div class="adm-table adm-stack"><table><thead><tr><th>Email</th><th>Name</th><th>Place</th><th>Role</th><th>Hotel</th><th>Destination</th><th>Alerts</th><th>Added</th><th>Actions</th></tr></thead><tbody>
+${waitRows.map(w => `<tr><td data-label="Email">${esc(w.email)}</td><td data-label="Name">${esc(w.first_name)}</td><td data-label="Place">${esc(w.place)}</td><td data-label="Role">${esc(w.role)}</td><td data-label="Hotel">${esc(w.hotel_name)}</td><td data-label="Destination">${esc(w.destination)}</td><td data-label="Alerts">${Number(w.marketing_opt_in) === 1 ? 'Yes' : 'No'}</td><td data-label="Added">${esc(HotelClock.iso(w.created_at))}</td><td data-label="Actions"><form method="post" action="/admin/waitlist/delete"><input type="hidden" name="id" value="${w.id}"><button class="btn adm-btn-d">Delete</button></form></td></tr>`).join('')}
+</tbody></table></div>` : '<p class="adm-muted">No waitlist signups stored on this server.</p>';
+  return `<section class="adm-card" id="waitlist"><div class="adm-card-h"><h2>Waitlist</h2><a class="btn adm-btn-p" href="/admin/waitlist.csv">Download CSV</a></div>
+<p class="adm-muted small">${note}</p>
+${table}</section>`;
+}
+app.get('/admin/messages', adminAuth, (req, res) => {
+  const counts = AdminShell.counts(db);
+  const inner = `${AdminShell.flash(req.query.msg)}
+${AdminShell.heading('Messages', 'Contact messages and the launch waitlist. Neither is shown on the public site.')}
+<nav class="adm-subnav" aria-label="On this page"><a href="#messages">Contact messages</a><a href="#waitlist">Waitlist</a></nav>
+${contactMessagesHtml()}
+${waitlistSection()}`;
+  res.send(AdminShell.page('/admin/messages', inner, { title: 'Messages', ...counts }));
+});
 app.post('/admin/messages/handled', adminAuth, (req, res) => {
   if (!ownForm(req, res)) return;
   const id = parseInt(req.body.id, 10);
   const row = id && db.prepare('SELECT id FROM contact_messages WHERE id=?').get(id);
   if (row) db.prepare("UPDATE contact_messages SET handled=1, handled_at=datetime('now') WHERE id=?").run(id);
-  res.redirect('/admin?msg=' + encodeURIComponent(row ? 'Marked that message as handled.' : 'Nothing to update.') + '#messages');
+  return adminGo(res, '/admin/messages', row ? 'Marked that message as handled.' : 'Nothing to update.', 'messages');
 });
 
 function privateDownload(res) {
@@ -1936,26 +2026,26 @@ function sendCsv(res, filename, body) {
 app.get('/admin/backups', adminAuth, (req, res) => {
   const latest = backups.latestBackup();
   const when = latest ? backups.formatSydney(new Date(latest.mtimeMs)) : 'No backup yet';
-  const size = latest ? backups.formatBytes(latest.bytes) : '—';
+  const size = latest ? backups.formatBytes(latest.bytes) : 'None';
   const auto = paths.dataDir()
     ? 'Automatic backups are on. A copy runs at 3:30am Sydney time, and also at startup when the newest file is older than 24 hours. The newest 14 files are kept.'
     : 'Automatic backups are off because DATA_DIR is not set. Back up now still saves a file next to the database. On the free plan that file is wiped with the server disk.';
-  res.set('Cache-Control', 'no-store');
-  res.send(page('Backups', `<div class="wrap sec">
-${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
-<p class="eyebrow-s">Platform admin · Jason</p><h1 class="l-title">Backups</h1>
-<p><a class="link" href="/admin">Back to all bookings</a></p>
-<section class="panel"><h2 class="ph2">Database copy</h2>
+  const counts = AdminShell.counts(db);
+  const inner = `${AdminShell.flash(req.query.msg)}
+${AdminShell.heading('Backups', 'A copy of the database, plus spreadsheets for your own files.')}
+<section class="adm-card"><h2>Database copy</h2>
 <p>Last backup: <b>${esc(when)}</b></p>
 <p>Size: <b>${esc(size)}</b>${latest ? ` · ${esc(latest.name)}` : ''}</p>
-<p class="muted small">${esc(auto)} The file is a consistent SQLite snapshot. It includes bookings, hotels, waitlist rows, contact messages and guest notes. Download it if you want a copy off this server. It is not a public link.</p>
-<form method="post" action="/admin/backups"><button class="btn btn-navy">Back up now</button></form>
-<p style="margin-top:14px"><a class="btn btn-line" href="/admin/backups/latest">Download latest backup</a></p>
+<p class="adm-muted small">${esc(auto)} The file is a consistent SQLite snapshot. It includes bookings, hotels, waitlist rows, contact messages and guest notes. Download it if you want a copy off this server. It is not a public link.</p>
+<form method="post" action="/admin/backups"><button class="btn adm-btn-p">Back up now</button></form>
+<p style="margin-top:14px"><a class="btn" href="/admin/backups/latest">Download latest backup</a></p>
 </section>
-<section class="panel"><h2 class="ph2">Spreadsheets</h2>
-<p class="muted small">These CSV files are for your own copy, for example in Google Drive. Hotels are exported without passwords. Guest notes stay in the database backup.</p>
-<p><a class="btn btn-navy" href="/admin/export/bookings.csv">Download bookings CSV</a> <a class="btn btn-line" href="/admin/export/hotels.csv">Download hotels CSV</a> <a class="btn btn-line" href="/admin/waitlist.csv">Download waitlist CSV</a></p>
-</section></div>`, { nav: 'admin' }));
+<section class="adm-card"><h2>Spreadsheets</h2>
+<p class="adm-muted small">These CSV files are for your own copy, for example in Google Drive. Hotels are exported without passwords. Guest notes stay in the database backup.</p>
+<p class="adm-row-actions"><a class="btn adm-btn-p" href="/admin/export/bookings.csv">Download bookings CSV</a> <a class="btn" href="/admin/export/hotels.csv">Download hotels CSV</a> <a class="btn" href="/admin/waitlist.csv">Download waitlist CSV</a></p>
+</section>`;
+  res.set('Cache-Control', 'no-store');
+  res.send(AdminShell.page('/admin/backups', inner, { title: 'Backups', ...counts }));
 });
 app.post('/admin/backups', adminAuth, async (req, res) => {
   if (!ownForm(req, res)) return;

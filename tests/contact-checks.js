@@ -233,7 +233,7 @@ const valid = {
     const login = await post(port, '/admin/login', { user: 'jason', pass: 'contact-admin-test' }, { 'X-Forwarded-For': '203.0.113.50' });
     assert.strictEqual(login.status, 302);
     const jar = cookie(login);
-    const admin = await get(port, '/admin', { Cookie: jar });
+    const admin = await get(port, '/admin/messages', { Cookie: jar });
     assert.strictEqual(admin.status, 200);
     assert.ok(admin.body.includes('Contact messages'));
     assert.ok(admin.body.includes('2 new'));

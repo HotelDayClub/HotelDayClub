@@ -152,11 +152,12 @@ function cookieFrom(res) {
     const login = await post(port, '/admin/login', { user: 'jason', pass: 'cancel-admin' });
     assert.strictEqual(login.status, 302);
     const jar = cookieFrom(login);
-    const admin = await get(port, '/admin', { Cookie: jar });
+    const admin = await get(port, '/admin/bookings', { Cookie: jar });
     assert.ok(admin.body.includes('action="/admin/booking/cancel"'));
     assert.ok(admin.body.includes('Cancel (demo)'));
     const adminCancel = await post(port, '/admin/booking/cancel', { code: 'HDC-CANCELLATE' }, { Cookie: jar });
     assert.strictEqual(adminCancel.status, 302);
+    assert.ok(String(adminCancel.headers.location).includes('/admin/bookings'));
     const lateRow = live.prepare('SELECT status, refunded FROM bookings WHERE code=?').get('HDC-CANCELLATE');
     assert.strictEqual(lateRow.status, 'cancelled');
     assert.strictEqual(lateRow.refunded, 1);
