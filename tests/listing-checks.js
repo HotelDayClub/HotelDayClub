@@ -256,7 +256,7 @@ function start(port) {
     assert.ok(salt.body.includes('href="/checkout?hotel=saltwater-terrace&amp;pass=lounger&amp;qty=1"') || salt.body.includes('href="/checkout?hotel=saltwater-terrace&pass=lounger&qty=1"'));
     assert.ok(salt.body.includes('>Continue to booking</a>'));
     assert.ok(salt.body.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
-    assert.ok(salt.body.includes('Sold out for this date — pick another date or seat'));
+    assert.ok(salt.body.includes('Sold out for this date. Pick another date or seat.'));
     assert.ok(!salt.body.includes('Sold out for this date - pick another date'));
     assert.ok(salt.body.includes('seatFromHash'));
     assert.ok(salt.body.includes('showModal'));
@@ -291,7 +291,7 @@ function start(port) {
       assert.ok(cab.includes('class="pass-card is-sold"'));
       assert.ok(/id="pass-cabana"[^>]*\sdisabled/.test(cab));
       assert.ok(/class="pass-select"[^>]*\sdisabled/.test(cab));
-      assert.ok(cab.includes('role="status">Sold out for this date — pick another date or seat'));
+      assert.ok(cab.includes('role="status">Sold out for this date. Pick another date or seat.'));
       assert.ok(!cab.includes('pass-sold" role="status" hidden'));
     } finally {
       const restore = new Sqlite(dbPath);

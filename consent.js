@@ -1,16 +1,14 @@
 const crypto = require('crypto');
 const { esc } = require('./util');
 
-// Dates of the legal pages currently served from legal/*.md. Those pages are
-// still drafts. privacy-policy.md says "Last updated: 23 October 2026". The
-// customer terms, cancellation policy and risk warning served with it have no
-// separate date, so they share that draft date.
-// The PR that publishes the replacement pages bumps these four values together.
+// Effective date of the legal pages served from legal/*.md (Version 1.0).
+// One shared config. New bookings store these values. Older rows keep the
+// versions written when they were booked.
 const LEGAL_VERSIONS = Object.freeze({
-  terms: '2026-10-23',
-  refunds: '2026-10-23',
-  privacy: '2026-10-23',
-  risk: '2026-10-23',
+  terms: '2026-11-12',
+  refunds: '2026-11-12',
+  privacy: '2026-11-12',
+  risk: '2026-11-12',
 });
 
 class LegalVersions {

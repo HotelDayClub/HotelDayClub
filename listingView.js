@@ -5,7 +5,7 @@ const { includedNote, amenityLines } = require('./inclusions');
 const { arrivalInner } = require('./arrival');
 const { accessDetail } = require('./access');
 
-const SOLD_COPY = 'Sold out for this date — pick another date or seat';
+const SOLD_COPY = 'Sold out for this date. Pick another date or seat.';
 
 const KIND_NAME = Object.fromEntries(KINDS.map(k => [k.code, k.name]));
 const KIND_ORDER = KINDS.map(k => k.code);

@@ -44,7 +44,7 @@ const PAGES = {
     path: '/terms',
     title: 'Customer terms',
     crumb: 'Customer terms',
-    description: 'Customer terms for booking a hotel pool, gym or spa day pass with Hotel Day Club in Australia. Draft, pending legal review.',
+    description: 'Customer terms for booking a hotel pool, gym or spa day pass with Hotel Day Club in Australia.',
   },
   refunds: {
     path: '/refunds',
@@ -56,7 +56,7 @@ const PAGES = {
     path: '/risk',
     title: 'Guest risk warning',
     crumb: 'Risk warning',
-    description: 'Guest risk warning for a hotel pool, gym or spa day pass booked with Hotel Day Club. Draft, pending legal review.',
+    description: 'Guest risk warning for a hotel pool, gym or spa day pass booked with Hotel Day Club.',
   },
   guides: {
     path: '/guides',
@@ -357,13 +357,12 @@ function faqItems(mailHtml, mailText) {
   return [
     { q: 'Is this a real booking site?', html: 'No. This is a demo. Listings are examples. No real bookings or payments are taken.' },
     { q: 'Are these real hotels?', html: 'No. The example listings use neighbourhood names in Australia. They are not participating hotels, and the photos are stock photos.' },
-    { q: 'Can I cancel for free?', html: 'Yes, if you cancel at least 24 hours before your access hours start. Checkout and your confirmation show the time for the date you chose. If you book inside that 24 hours, there is no free-cancellation window. A free date change may be available once, subject to availability. If the hotel closes or limits the facility you booked, you choose a full refund or a free rebooking. Nothing in the policy limits your rights under the Australian Consumer Law.' },
+    { q: 'Can I cancel for free?', html: 'Yes, if you cancel at least 24 hours before your access hours start. Checkout and your confirmation show the time for the date you chose. If you book inside that 24 hours, there is no free-cancellation window. If the hotel closes or limits the facility you booked, you choose a full refund or a free rebooking. Nothing in the policy limits your rights under the Australian Consumer Law.' },
     { q: 'What if it rains?', html: 'Rain on its own is not a closure. The listing says whether the pool is indoor, outdoor, heated or unheated. If the hotel decides to close, you get the choice above.' },
     { q: 'Who can book, and can children come?', html: "The person booking needs to be 18 or over. Each hotel sets its own age rules and kids' hours. They are on the listing and in the risk warning before you confirm. An adult on the booking supervises each child." },
     { q: 'What do I accept at checkout?', html: 'The risk warning is shown in full. Required boxes cover that warning, the hotel\'s rules, group and children, the <a href="/terms">Customer Terms</a> (including the <a href="/refunds">Cancellation and Refund Policy</a> and the <a href="/privacy">Privacy collection notice</a>), and a separate consent to share your name, email, mobile and booking details with the hotel. Hot-day alerts are a separate box, left unticked, and are not required.' },
     { q: 'What are the hours?', html: 'Each hotel sets its own hours. A day pass is not sold past the time a room-guests-only period starts. Late access, where a hotel offers it, starts only after that period ends and stops when the pool closes.' },
     { q: 'What should I bring?', html: 'Swimwear, and sunscreen if the pool is outdoors. The listing says if a towel is included and if photo ID is required.' },
-    { q: 'Do you sell gift cards or pass packs?', html: "Not on this demo. If we offer gift cards later, they'll be valid for at least 3 years from purchase." },
     { q: 'Do you show ratings or reviews?', html: 'No. Listings say New. This site does not publish star ratings or review counts.' },
     { q: 'How do I contact you?', html: `Email ${mailHtml} for a booking, a complaint, or a privacy request.`, text: `Email ${mailText} for a booking, a complaint, or a privacy request.` },
   ];
@@ -372,11 +371,11 @@ function faqItems(mailHtml, mailText) {
 function faqHtml(mailHtml) {
   const blocks = faqItems(mailHtml).map((item, i) => `<details${i === 0 ? ' open' : ''}><summary>${esc(item.q)}</summary><p>${item.html}</p></details>`).join('\n');
   return `<div class="wrap sec"><h1 class="l-title">Hotel day pass questions</h1>
-<p class="lead">Short answers, in line with the <a href="/terms">customer terms</a> and the <a href="/refunds">cancellation and refund policy</a>. Both of those pages are drafts.</p>
+<p class="lead">Short answers, in line with the <a href="/terms">customer terms</a> and the <a href="/refunds">cancellation and refund policy</a>.</p>
 <div class="faq">
 ${blocks}
 </div>
-<p>For a booking, a change or a cancellation, use the <a href="/contact">contact form</a>.</p></div>`;
+<p>Cancel in your booking link or email ${mailHtml} with your booking code.</p></div>`;
 }
 
 function faqJsonLd(mailText) {

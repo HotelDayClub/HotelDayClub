@@ -336,17 +336,20 @@ function start(port, extra = {}) {
     assert.ok(home.body.includes('href="/faq"'));
     assert.ok(home.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'));
     assert.ok(!home.body.includes('98 227 458 028'));
-    assert.ok(home.body.includes('Demo site — listings are examples, no real bookings or payments.'));
+    assert.ok(home.body.includes('Demo site: listings are examples, no real bookings or payments.'));
+    assert.ok(!home.body.includes('\u2014'));
     assert.ok(!home.body.includes('ABN: to be added'));
     assert.ok(!home.body.includes('Jason Baranov') && !home.body.includes('registration pending'));
     assert.ok(!/usually sells out|partners with Sydney hotels|star rating/i.test(home.body));
 
     const faq = await get(port, '/faq');
     assert.strictEqual(faq.status, 200);
-    assert.ok(faq.body.includes("If we offer gift cards later, they'll be valid for at least 3 years from purchase."));
+    assert.ok(!faq.body.includes('gift card') && !faq.body.includes('at least 3 years'));
     assert.ok(!faq.body.includes('5-pass pack is not offered'));
     assert.ok(faq.body.includes('24 hours before'));
-    assert.ok(faq.body.includes('A free date change may be available once, subject to availability.'));
+    assert.ok(!faq.body.includes('A free date change may be available once, subject to availability.'));
+    assert.ok(faq.body.includes('Cancel in your booking link or email <a href="mailto:hello@hoteldayclub.com.au">hello@hoteldayclub.com.au</a> with your booking code.'));
+    assert.ok(!faq.body.includes('contact form'));
     assert.ok(faq.body.includes('content="index, follow"'));
     assert.ok(!faq.body.includes('noindex'));
 
@@ -360,57 +363,73 @@ function start(port, extra = {}) {
     assert.ok(robots.body.includes('Sitemap: https://www.hoteldayclub.com.au/sitemap.xml'), robots.body);
     assert.ok(!/^Disallow:\s*\/\s*$/m.test(robots.body), robots.body);
 
-    const draft = 'Draft terms for demo purposes, pending legal review.';
+    const publishedAbn = '98 227 458 028';
     for (const pathName of ['/terms', '/privacy', '/refunds', '/risk']) {
       const doc = await get(port, pathName);
       assert.strictEqual(doc.status, 200, pathName);
-      assert.ok(doc.body.includes(draft), pathName);
+      assert.ok(!doc.body.includes('Draft terms for demo purposes, pending legal review.'), pathName);
+      assert.ok(!doc.body.includes('(draft)'), pathName);
+      assert.ok(doc.body.includes('Version 1.0'), pathName);
+      assert.ok(doc.body.includes('Effective 12 November 2026'), pathName);
       assert.ok(doc.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'), pathName);
-      assert.ok(!doc.body.includes('98 227 458 028'), pathName);
+      const abnHits = doc.body.split(publishedAbn).length - 1;
+      assert.strictEqual(abnHits, pathName === '/terms' || pathName === '/privacy' ? 1 : 0, pathName);
+      assert.ok(!/booking agent/i.test(doc.body), pathName);
+      assert.ok(!/food and drink credit/i.test(doc.body), pathName);
+      assert.ok(!doc.body.includes('[TO FILL]'), pathName);
       assert.ok(doc.body.includes('content="noindex, follow"'), pathName);
       assert.ok(!doc.body.includes('noindex, nofollow'), pathName);
       assert.ok(doc.body.includes('rel="canonical" href="https://www.hoteldayclub.com.au' + pathName + '"'), pathName);
       assert.ok(!doc.body.includes('DRAFT: NOT FOR PUBLICATION'), pathName);
       assert.ok(!/LAWYER/.test(doc.body), pathName);
       assert.ok(!/partner hotels?/i.test(doc.body), pathName);
-      assert.ok(!doc.body.includes('">http'), pathName);
+      const stripeDocLink = '<a href="https://docs.stripe.com/radar/how-radar-works">https://docs.stripe.com/radar/how-radar-works</a>';
+      assert.ok(!doc.body.split(stripeDocLink).join('').includes('">http'), pathName);
       assert.ok(!doc.body.includes('Jason Baranov') && !doc.body.includes('registration pending'), pathName);
       assert.ok(!doc.body.includes('{{ABN}}') && !doc.body.includes('{{CONTACT_EMAIL}}'), pathName);
       const visible = doc.body.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<[^>]+>/g, '');
       assert.ok(!/\[[^\]]+\]/.test(visible), pathName + ' still has a placeholder');
     }
     const terms = await get(port, '/terms');
-    assert.ok(terms.body.includes('Customer terms (draft)'));
-    assert.ok(terms.body.includes('We are a booking agent.'));
-    assert.ok(terms.body.includes('Hotel Day Club is a registered business name (ABN (sample) 00 000 000 000). In these terms, &#39;we&#39; means the owner of that business name.'));
-    assert.ok(terms.body.includes('Hotel ABN (sample) 00 000 000 000'));
-    assert.ok(!terms.body.includes('Stripe') && !/card refund/i.test(terms.body));
+    assert.ok(terms.body.includes('Customer terms'));
+    assert.ok(!terms.body.includes('(draft)'));
+    assert.ok(!/booking agent/i.test(terms.body));
+    assert.ok(terms.body.includes('Hotel Day Club is a registered business name (ABN 98 227 458 028) (&quot;<strong>Hotel Day Club</strong>&quot;, &quot;<strong>we</strong>&quot;, &quot;<strong>us</strong>&quot;).'));
+    assert.ok(terms.body.includes('We do not publish a home address.'));
+    assert.ok(terms.body.includes('operates an online booking platform'));
+    assert.strictEqual((terms.body.match(/Stripe/g) || []).length, 1);
+    assert.ok(terms.body.includes('Payment is taken by our payment provider Stripe when you book.'));
     assert.ok(terms.body.includes('ticking the boxes'));
-    assert.ok(terms.body.includes('A free date change may be available once, subject to availability.'));
-    assert.ok(terms.body.includes('href="https://www.legislation.gov.au/C2004A00109/latest/text"'));
-    assert.ok(terms.body.includes('14. Complaints'));
-    assert.ok(!terms.body.includes('Gift cards') && !terms.body.includes('Referrals') && !/>\s*14\. Reviews/.test(terms.body));
+    assert.ok(!terms.body.includes('A free date change may be available once, subject to availability.'));
+    assert.ok(terms.body.includes('17. Complaints'));
+    assert.ok(!terms.body.includes('Gift cards') && !terms.body.includes('food and drink credit'));
     const risk = await get(port, '/risk');
-    assert.ok(risk.body.includes('Risk warning (draft)'));
+    assert.ok(risk.body.includes('>Risk warning</h1>'));
+    assert.ok(!risk.body.includes('(draft)'));
     assert.ok(!risk.body.includes('NOT LEGAL ADVICE'));
+    assert.strictEqual((risk.body.match(/Stripe/g) || []).length, 0);
+    assert.ok(risk.body.includes('pool access pass or wristband'));
+    assert.ok(risk.body.includes('Look after your own belongings.'));
     const privacy = await get(port, '/privacy');
-    assert.ok(privacy.body.includes('In this policy, &#39;we&#39; means the owner of that business name.'));
-    assert.ok(privacy.body.includes('participating hotels'));
-    assert.ok(privacy.body.includes('Some of our service providers store data overseas, including in the United States.'));
-    assert.ok(privacy.body.includes('Last updated: 23 October 2026'));
-    assert.ok(privacy.body.includes('We use Google Analytics to understand how visitors use the public pages of this site'));
-    assert.ok(privacy.body.includes('which pages are viewed, and the approximate location, device and browser'));
-    assert.ok(privacy.body.includes('Google Analytics uses cookies'));
-    assert.ok(privacy.body.includes('may store it overseas, including in the United States'));
-    assert.ok(privacy.body.includes('We do not send your name, email, phone number or booking code to Google Analytics.'));
-    assert.ok(privacy.body.includes('href="https://tools.google.com/dlpage/gaoptout"'));
-    assert.ok(privacy.body.includes('blocking cookies in your browser'));
-    assert.ok(privacy.body.includes('If you join the waitlist we collect your email address.'));
-    assert.ok(privacy.body.includes('a destination you want to hear about'));
-    assert.ok(privacy.body.includes('We do not sell this information.'));
-    assert.ok(privacy.body.includes('delete your waitlist details'));
-    assert.ok(privacy.body.includes('lead event with no name, email or other personal details'));
-    assert.ok(privacy.body.includes('That event does not include your name, email or other personal details.'));
+    assert.ok(privacy.body.includes('Hotel Day Club is a registered business name (ABN 98 227 458 028) (&quot;we&quot;, &quot;us&quot;).'));
+    assert.ok(privacy.body.includes('Last updated 11 November 2026'));
+    assert.ok(privacy.body.includes('Effective 12 November 2026'));
+    assert.ok(privacy.body.includes('online booking platform'));
+    assert.ok(!/booking agent/i.test(privacy.body));
+    assert.strictEqual((privacy.body.match(/Stripe/g) || []).length, 10);
+    assert.ok(privacy.body.includes('handled by our payment provider, Stripe, when live payments are switched on.'));
+    assert.ok(privacy.body.includes('from Stripe, about payment status and fraud-screening outcomes'));
+    assert.ok(privacy.body.includes('payments: Stripe'));
+    assert.ok(privacy.body.includes('Payment card data is handled by Stripe'));
+    assert.ok(privacy.body.includes('Stripe may process data in the United States and India'));
+    assert.ok(privacy.body.includes('where Stripe or its service providers operate'));
+    assert.ok(privacy.body.includes('Stripe may use Stripe Radar'));
+    assert.ok(privacy.body.includes('Stripe describes Radar'));
+    assert.ok(privacy.body.includes('Payment is processed by Stripe.'));
+    assert.ok(privacy.body.includes('Google Analytics 4 (measurement ID G-9F5ZH1T4YN)'));
+    assert.ok(privacy.body.includes('You can block cookies in your browser.'));
+    assert.ok(privacy.body.includes('We do not run advertising pixels'));
+    assert.ok(privacy.body.includes('We do not sell your information'));
     assert.ok(!home.body.includes('googletagmanager.com'));
     const mail = 'mailto:hello@hoteldayclub.com.au';
     function onlyThisMail(body, where) {
@@ -419,14 +438,17 @@ function start(port, extra = {}) {
     }
     const link = '<a href="' + mail + '">hello@hoteldayclub.com.au</a>';
     onlyThisMail(terms.body, 'terms');
-    assert.ok(terms.body.includes('14. Complaints') && terms.body.includes('Contact us at ' + link));
+    assert.ok(terms.body.includes('17. Complaints') && terms.body.includes('Contact ' + link));
     onlyThisMail(privacy.body, 'privacy');
-    assert.ok(privacy.body.includes('Access, correction and complaints') && privacy.body.includes('contacting us at ' + link) && privacy.body.includes('email ' + link));
+    assert.ok(privacy.body.includes('Access, correction and complaints') && privacy.body.includes('emailing ' + link) && privacy.body.includes('email ' + link));
     const refunds = await get(port, '/refunds');
     onlyThisMail(refunds.body, 'refunds');
-    assert.ok(refunds.body.includes('Contact and complaints') && refunds.body.includes('contact us at ' + link));
-    assert.ok(terms.body.includes('You can also contact NSW Fair Trading, or the consumer affairs agency in your state or territory.'));
-    assert.ok(refunds.body.includes('You can also contact NSW Fair Trading, or the consumer affairs agency in your state or territory.'));
+    assert.ok(refunds.body.includes('Contact and complaints') && refunds.body.includes('Contact ' + link));
+    assert.strictEqual((refunds.body.match(/Stripe/g) || []).length, 0);
+    assert.ok(refunds.body.includes('This policy does not itself promise a free date change'));
+    assert.ok(!refunds.body.includes('A free date change may be available once, subject to availability.'));
+    assert.ok(terms.body.includes('You can also contact NSW Fair Trading.'));
+    assert.ok(refunds.body.includes('you can contact NSW Fair Trading.'));
     onlyThisMail(faq.body, 'faq');
     assert.ok(faq.body.includes('How do I contact you?') && faq.body.includes('Email ' + link));
     assert.ok(!faq.body.includes('Jason Baranov') && !faq.body.includes('registration pending'));
@@ -439,16 +461,35 @@ function start(port, extra = {}) {
     assert.ok(forHotels.body.includes('Free to list, no monthly fee. You set the seating, prices, numbers and hours. You are paid monthly with a statement. The terms are set out in your hotel agreement.'));
     assert.ok(!forHotels.body.includes('You stay in control. You stay in control.'));
     const publicPaths = ['/', '/for-hotels', '/how-it-works', '/faq', '/contact', '/privacy', '/terms', '/refunds', '/risk', '/guides', '/h/saltwater-terrace', '/destinations/sydney', '/destinations/melbourne', '/hotel/login', '/checkout?hotel=skyline-rooftop&date=' + encodeURIComponent(freeSky.date) + '&pass=chair&qty=1'];
+    const legalPaths = new Set(['/privacy', '/terms', '/refunds', '/risk']);
     for (const pathName of publicPaths) {
       const doc = await get(port, pathName);
       assert.strictEqual(doc.status, 200, pathName);
       assert.ok(!/\bcommission\b/i.test(doc.body), pathName + ' mentions commission');
-      assert.ok(!/stripe/i.test(doc.body), pathName + ' mentions Stripe');
-      assert.ok(!doc.body.includes('98 227 458 028'), pathName);
+      const visibleCopy = doc.body.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ');
+      assert.ok(!/\d+\s*%/.test(visibleCopy), pathName + ' shows a percent');
+      if (!legalPaths.has(pathName)) {
+        assert.ok(!/stripe/i.test(doc.body), pathName + ' mentions Stripe');
+        assert.ok(!doc.body.includes('98 227 458 028'), pathName);
+      }
+    }
+    const prosePaths = ['/', '/how-it-works', '/faq', '/for-hotels', '/guides', '/guides/what-is-a-hotel-day-pass', '/guides/how-to-choose-a-hotel-pool-day-pass', '/terms', '/privacy', '/refunds', '/risk'];
+    for (const pathName of prosePaths) {
+      const doc = await get(port, pathName);
+      assert.strictEqual(doc.status, 200, pathName);
+      const prose = doc.body.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<t[dh][^>]*>[\s\S]*?<\/t[dh]>/gi, '');
+      assert.ok(!prose.includes('\u2014'), pathName + ' has an em dash in prose');
+      assert.ok(!/booking agent/i.test(prose), pathName);
+      assert.ok(!/food and drink credit/i.test(prose), pathName);
+      assert.ok(!prose.includes('[TO FILL]'), pathName);
+      assert.ok(!prose.includes('Jason'), pathName);
     }
     const how = await get(port, '/how-it-works');
     assert.strictEqual(how.status, 200);
     assert.ok(how.body.includes('Seating and add-on sales are paid out once a month. Your share is set out in your hotel agreement.'));
+    assert.ok(!how.body.includes('A free date change may be available once, subject to availability.'));
+    assert.ok(how.body.includes('A day pass includes no hotel room, and you can&#39;t charge anything to a room.'));
+    assert.ok(how.body.includes('pool access pass or wristband'));
     assert.ok(!/75%|25%/.test(how.body));
     const join = await get(port, '/hotel/join');
     assert.strictEqual(join.status, 302);
@@ -495,6 +536,8 @@ function start(port, extra = {}) {
     assert.ok(!checkout.body.includes('Card number') && !checkout.body.includes('4242'));
     assert.ok(!/stripe/i.test(checkout.body));
     assert.ok(!/fbq\(|facebook\.net|googleadservices|doubleclick|hotjar/i.test(checkout.body));
+    assert.ok(!checkout.body.includes('(draft)'));
+    assert.ok(checkout.body.includes('>Risk warning</a>'));
     assert.ok(checkout.body.includes('No lifeguard is on duty'));
     assert.ok(!checkout.body.includes('hotel terms apply'));
     assert.ok(checkout.body.includes(data.cancel));
@@ -558,6 +601,13 @@ function start(port, extra = {}) {
     assert.ok(page.body.includes(', Australia'));
     assert.ok(!page.body.includes(', Sydney'));
     assert.ok(page.body.includes('Before you swim'));
+    assert.ok(page.body.includes('Look after your own belongings.'));
+    assert.ok(page.body.includes('A day pass includes no hotel room, and you can&#39;t charge anything to a room.'));
+    assert.ok(page.body.includes('>Privacy policy</a>'));
+    assert.ok(page.body.includes('>Customer terms</a>'));
+    assert.ok(page.body.includes('>Risk warning</a>'));
+    assert.ok(page.body.includes('>Cancellation and refunds</a>'));
+    assert.ok(!page.body.includes('(draft)'));
     assert.ok(page.body.includes('A confirmation email is sent to the address you gave.'));
     assert.ok(page.body.includes('This is a demo booking. No payment was taken and no real booking exists.'));
     assert.ok(!page.body.includes('No email is sent'));
@@ -568,6 +618,12 @@ function start(port, extra = {}) {
     assert.ok(!page.body.includes('googletagmanager.com') && !/stripe/i.test(page.body));
     const { LegalVersions, ConsentLog } = require('../consent');
     const versions = LegalVersions.current();
+    assert.deepStrictEqual(versions, {
+      terms: '2026-11-12',
+      refunds: '2026-11-12',
+      privacy: '2026-11-12',
+      risk: '2026-11-12',
+    });
     const code = String(loc || '').split('/').pop();
     const savedBook = new Database(dbPath, { readonly: true });
     const stored = savedBook.prepare('SELECT id, terms_version, refunds_version, privacy_version, risk_version, consent_at, consent_ip, marketing_opt_in, rules_text FROM bookings WHERE code=?').get(code);
@@ -623,6 +679,7 @@ function start(port, extra = {}) {
     const found = [...terms.body.matchAll(/mailto:([^"'?\s]+)/g)].map(m => m[1]);
     assert.ok(found.length >= 2 && found.every(m => m === 'desk@example.com'), found.join(','));
     assert.ok(terms.body.includes('ABN (sample) 00 000 000 000'));
+    assert.strictEqual(terms.body.split('98 227 458 028').length - 1, 1);
     assert.ok(!terms.body.includes('11 222 333 444'));
     assert.ok(!terms.body.includes('{{CONTACT_EMAIL}}') && !terms.body.includes('{{ABN}}'));
     assert.ok(!terms.body.includes('Jason Baranov'));
@@ -637,6 +694,19 @@ function start(port, extra = {}) {
     assert.ok(!home.body.includes('98 227 458 028'));
   } finally {
     bad.kill('SIGTERM');
+  }
+  for (const [flagPort, flag] of [[3196, '0'], [3197, '1']]) {
+    const flagged = await start(flagPort, { SHOW_ABN: flag });
+    try {
+      const terms = await get(flagPort, '/terms');
+      const privacy = await get(flagPort, '/privacy');
+      assert.strictEqual(terms.body.split('98 227 458 028').length - 1, 1, 'SHOW_ABN=' + flag);
+      assert.strictEqual(privacy.body.split('98 227 458 028').length - 1, 1, 'SHOW_ABN=' + flag);
+      assert.ok(terms.body.includes('Hotel Day Club · ABN (sample) 00 000 000 000'));
+      assert.ok(!terms.body.includes('{{ABN}}'));
+    } finally {
+      flagged.kill('SIGTERM');
+    }
   }
   const gaSnippet = '<script async src="https://www.googletagmanager.com/gtag/js?id=G-9F5ZH1T4YN"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag(\'js\',new Date());gtag(\'config\',\'G-9F5ZH1T4YN\');</script>';
   const gaPort = 3194;
