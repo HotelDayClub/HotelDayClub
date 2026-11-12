@@ -54,8 +54,26 @@ function names(html, kind) {
   const marker = `class="list ${kind}`;
   const at = html.indexOf(marker);
   assert.ok(at >= 0, 'missing list ' + kind);
-  const block = html.slice(at, html.indexOf('</div>', at));
-  return [...block.matchAll(/<h3>([^<]*)<\/h3>/g)].map(m => m[1]);
+  const rest = html.slice(at);
+  const stop = rest.search(/<p class="note"|<h2 class="other"/);
+  const block = stop > 0 ? rest.slice(0, stop) : rest;
+  return [...block.matchAll(/<h3>\s*(?:<a\b[^>]*>)?([^<]+)/g)].map(m => m[1].trim());
+}
+function nestedAnchor(html) {
+  let depth = 0;
+  const re = /<\/?a\b[^>]*>/gi;
+  let match;
+  while ((match = re.exec(html))) {
+    if (match[0][1] === '/') depth -= 1;
+    else {
+      if (depth > 0) return true;
+      depth += 1;
+    }
+  }
+  return depth !== 0;
+}
+function articles(html) {
+  return [...html.matchAll(/<article class="ex[\s\S]*?<\/article>/g)].map(m => m[0]);
 }
 function selectOf(html, name) {
   const m = html.match(new RegExp(`<select[^>]*name="${name}"[\\s\\S]*?<\\/select>`));
@@ -83,6 +101,29 @@ const nearest = SearchQuery.nearest([
   { id: 3, area: 'Melbourne' },
 ], fakeDest[0], h => ({ 1: 10, 2: 90, 3: 5 }[h.id]), SearchQuery.regionByArea(fakeDest));
 assert.deepStrictEqual(nearest.map(h => h.id), [2, 3, 1]);
+
+const chipRows = [
+  { age_policy: 'All ages', price: 25, pool: true, spa: false, gym: true },
+  { age_policy: '18+', price: 80, pool: true, spa: true, gym: false },
+];
+assert.deepStrictEqual(
+  SearchQuery.intentChips(chipRows, (h, want) => h[want], h => h.price).map(c => c.label),
+  ['Spa', 'Gym', 'Kids welcome', 'Adults only (18+)', 'Under $50'],
+);
+const soldOrder = SearchQuery.run({
+  hotels: [
+    { id: 1, area: 'A', age_policy: 'All ages' },
+    { id: 2, area: 'A', age_policy: 'All ages' },
+  ],
+  passesById: new Map([[1, [{ price: 40, holds: 1 }]], [2, [{ price: 20, holds: 1 }]]]),
+  closedById: new Map([[1, false], [2, false]]),
+  minutesById: new Map([[1, 100], [2, 100]]),
+  remainingById: new Map([[1, 3], [2, 0]]),
+  offers: () => true,
+  destinations: [{ id: 'x', name: 'X', areas: ['A'], slug: 'x' }],
+  query: { date: '2026-11-14', sort: 'price-asc' },
+});
+assert.deepStrictEqual(soldOrder.list.map(h => h.id), [1, 2]);
 
 (async () => {
   const port = 3361;
@@ -159,6 +200,42 @@ assert.deepStrictEqual(nearest.map(h => h.id), [2, 3, 1]);
     assert.ok(plain.body.includes('aria-label="Find a day pass" aria-current="page"'));
     assert.ok(plain.body.includes('>Menu</summary>'));
     assert.ok(plain.body.includes('id="site-menu"'));
+    assert.ok(plain.body.includes('role="search"'));
+    assert.ok(plain.body.includes('Anywhere in Australia'));
+    assert.ok(plain.body.includes('id="filters-btn"'));
+    assert.ok(plain.body.includes('id="filter-drawer"'));
+    assert.ok(plain.body.includes('role="dialog"'));
+    assert.ok(plain.body.includes('aria-modal="true"'));
+    assert.ok(plain.body.includes('aria-live="polite"'));
+    assert.ok(plain.body.includes('data-count="6"'));
+    assert.ok(plain.body.includes('>Show 6 results</button>'));
+    assert.ok(!/<button class="apply"[^>]*disabled/.test(plain.body));
+    assert.ok(plain.body.includes('Free until 24 hours before your access hours start'));
+    assert.ok(plain.body.includes('View details'));
+    assert.ok(plain.body.includes('>Book<span'));
+    assert.ok(plain.body.includes('class="hrs"'));
+    assert.ok(plain.body.includes('loading="eager"'));
+    assert.ok(plain.body.includes('fetchpriority="high"'));
+    assert.ok(plain.body.includes('loading="lazy"'));
+    assert.ok(plain.body.includes('srcset='));
+    assert.strictEqual((plain.body.match(/fetchpriority="high"/g) || []).length, 1);
+    assert.ok(plain.body.includes('>Closed</span>'));
+    assert.ok(plain.body.includes('aria-label="Days for The Saltwater Terrace (Demo)"'));
+    assert.ok(plain.body.includes('More days for The Saltwater Terrace (Demo)'));
+    const quick = plain.body.match(/aria-label="Quick filters"[^>]*>([\s\S]*?)<\/div>/)[1];
+    for (const label of ['Spa', 'Gym', 'Kids welcome', 'Adults only (18+)', 'Under $50']) assert.ok(quick.includes('>' + label + '</a>'), label);
+    assert.ok(!quick.includes('Under $100'));
+    assert.ok(!quick.includes('Under $150'));
+    assert.ok(!quick.includes('>Pool</a>'));
+    assert.ok(!/show map|map view|leaflet|map-toggle/i.test(plain.body));
+    for (const card of articles(plain.body)) assert.ok(!nestedAnchor(card), card.slice(0, 80));
+    const drawer = plain.body.slice(plain.body.indexOf('id="filter-drawer"'), plain.body.indexOf('id="search-sheet"'));
+    assert.ok(drawer.includes('Under $50'));
+    assert.ok(!drawer.includes('Under $100'));
+    assert.ok(drawer.includes('Fewer guests'));
+    assert.ok(drawer.includes('More guests'));
+    assert.ok(drawer.includes('No places match these filters. Try a higher price or Any age.'));
+    assert.ok(drawer.includes('hidden'));
 
     const hiw = await get(port, '/how-it-works');
     assert.strictEqual(hiw.status, 200);
@@ -239,6 +316,7 @@ assert.deepStrictEqual(nearest.map(h => h.id), [2, 3, 1]);
     assert.deepStrictEqual(names(filtered.body, 'results'), ['The Saltwater Terrace (Demo)']);
     assert.ok(filtered.body.includes('class="list results is-single"'));
     assert.ok(filtered.body.includes('Eastern Beaches'));
+    assert.ok(filtered.body.includes('From $45 <small>(demo)</small> · Pool'));
     assert.ok(!filtered.body.includes('Example listings · not real hotels'));
     assert.ok(filtered.body.includes('>Clear all</a>'));
     assert.ok(filtered.body.includes('aria-label="Remove Pool"'));
@@ -272,6 +350,9 @@ assert.deepStrictEqual(nearest.map(h => h.id), [2, 3, 1]);
     assert.ok(none.body.includes('There are no example listings in Melbourne yet'));
     assert.ok(none.body.includes('href="/?destination=melbourne#waitlist"'));
     assert.ok((none.body.match(/>Join the waitlist</g) || []).length >= 2);
+    const emptyBlock = none.body.match(/<div class="empty">[\s\S]*?<\/div>/)[0];
+    assert.strictEqual((emptyBlock.match(/Join the waitlist/g) || []).length, 1);
+    assert.ok(!emptyBlock.includes('class="link"'));
     assert.ok(none.body.includes('Other example listings'));
     assert.deepStrictEqual(names(none.body, 'others'), [
       'Palm Court Resort (Demo)',
@@ -294,6 +375,18 @@ assert.deepStrictEqual(nearest.map(h => h.id), [2, 3, 1]);
     assert.ok(miss.body.includes('>Clear all filters</a>'));
     assert.ok(miss.body.includes('>Clear all</a>'));
     assert.ok(miss.body.includes('Other example listings'));
+    assert.ok(miss.body.includes('data-count="0"'));
+    assert.ok(miss.body.includes('>Show 0 results</button>'));
+    assert.ok(/<button class="apply"[^>]*disabled/.test(miss.body));
+    const hint = miss.body.match(/<p class="hint"[^>]*>/)[0];
+    assert.ok(hint.includes('role="status"'));
+    assert.ok(!/\shidden/.test(hint));
+    assert.ok(miss.body.includes('No places match these filters. Try a higher price or Any age.'));
+    const counted = await get(port, '/api/search-count?price=50');
+    assert.strictEqual(JSON.parse(counted.body).count, 3);
+    const priced = await get(port, '/search?price=50');
+    assert.ok(priced.body.includes('data-count="3"'));
+    assert.ok(priced.body.includes('>Show 3 results</button>'));
 
     const hop = await get(port, `/?want=pool&date=${saturday}&guests=2&price=50&age=kids&sort=hours`);
     assert.strictEqual(hop.status, 301);
@@ -311,6 +404,32 @@ assert.deepStrictEqual(nearest.map(h => h.id), [2, 3, 1]);
     assert.ok(String(both.headers.location).includes('destination=melbourne'));
     assert.ok(String(both.headers.location).includes('want=pool'));
 
+    const Database = require('better-sqlite3');
+    const soldDb = new Database(dbPath);
+    const palm = soldDb.prepare("SELECT id FROM hotels WHERE slug='palm-court'").get();
+    const palmPasses = soldDb.prepare('SELECT id, daily_cap, price FROM pass_types WHERE hotel_id=?').all(palm.id);
+    const sellOut = soldDb.prepare('INSERT INTO bookings(code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,status) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+    palmPasses.forEach((pass, i) => {
+      sellOut.run('HDC-SOLDOUT-' + i, palm.id, pass.id, saturday, pass.daily_cap, pass.price, pass.price * pass.daily_cap, 'Sold Out', 'soldout@example.com', '0400000000', 'confirmed');
+    });
+    soldDb.close();
+    const sold = await get(port, '/search?date=' + encodeURIComponent(saturday) + '&want=pool');
+    assert.deepStrictEqual(names(sold.body, 'results'), [
+      'The Saltwater Terrace (Demo)',
+      'Skyline Rooftop Hotel (Demo)',
+      'Harbourside Lido (Demo)',
+      'Manly Sands House (Demo)',
+      'Bayview Spa Hotel (Demo)',
+      'Palm Court Resort (Demo)',
+    ]);
+    assert.ok(sold.body.includes('Sold out on ' + nice(saturday)));
+    assert.ok(sold.body.includes('See other dates'));
+    const palmCard = sold.body.slice(sold.body.indexOf('Palm Court Resort (Demo)'), sold.body.indexOf('</article>', sold.body.indexOf('Palm Court Resort (Demo)')));
+    assert.ok(palmCard.includes('class="soldtxt"'));
+    assert.ok(!palmCard.includes('class="ex-price"'));
+    assert.ok(!sold.body.includes('Pay online'));
+    for (const card of articles(sold.body)) assert.ok(!nestedAnchor(card));
+
     const headerCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'header.css'), 'utf8');
     assert.ok(headerCss.includes('max-height:64px') || headerCss.includes('max-height: 64px'));
     assert.ok(headerCss.includes('699px'));
@@ -319,6 +438,16 @@ assert.deepStrictEqual(nearest.map(h => h.id), [2, 3, 1]);
     const siteCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'golden', 'site.css'), 'utf8');
     assert.ok(siteCss.includes('min-height:44px'));
     assert.ok(siteCss.includes('prefers-reduced-motion'));
+    const searchCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'search.css'), 'utf8');
+    assert.ok(searchCss.includes('width:400px'));
+    assert.ok(searchCss.includes('min-height:44px'));
+    assert.ok(searchCss.includes('prefers-reduced-motion'));
+    assert.ok(searchCss.includes('aspect-ratio:4/3'));
+    assert.ok(searchCss.includes('max-height:90vh'));
+    assert.ok(searchCss.includes('line-through'));
+    const homeCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'golden', 'home.css'), 'utf8');
+    assert.ok(homeCss.includes('flex:1.6'));
+    assert.ok(homeCss.includes('flex:1.2'));
 
     console.log('search checks passed');
   } finally {

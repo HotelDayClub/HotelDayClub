@@ -139,6 +139,73 @@ class SearchQuery {
     return out;
   }
 
+  // A chip is shown only when it both keeps and drops at least one hotel.
+  static intentChips(hotels, offers, priceOf) {
+    const list = hotels || [];
+    const rows = list.map(h => ({
+      pool: Boolean(offers(h, 'pool')),
+      spa: Boolean(offers(h, 'spa')),
+      gym: Boolean(offers(h, 'gym')),
+      kids: SearchQuery.kidsWelcome(h.age_policy),
+      adults: SearchQuery.adultsOnly(h.age_policy),
+      price: priceOf(h),
+    }));
+    const changes = pred => {
+      const n = rows.filter(pred).length;
+      return rows.length > 0 && n > 0 && n < rows.length;
+    };
+    const chips = [];
+    if (changes(r => r.pool)) chips.push({ key: 'want', value: 'pool', label: 'Pool' });
+    if (changes(r => r.spa)) chips.push({ key: 'want', value: 'spa', label: 'Spa' });
+    if (changes(r => r.gym)) chips.push({ key: 'want', value: 'gym', label: 'Gym' });
+    if (changes(r => r.kids)) chips.push({ key: 'age', value: 'kids', label: 'Kids welcome' });
+    if (changes(r => r.adults)) chips.push({ key: 'age', value: '18', label: 'Adults only (18+)' });
+    for (const cap of SearchQuery.priceChoices(rows.map(r => r.price), 0)) {
+      chips.push({ key: 'price', value: String(cap), label: 'Under $' + cap });
+    }
+    return chips;
+  }
+
+  static chipOn(params, chip) {
+    return String(params[chip.key] == null ? '' : params[chip.key]) === String(chip.value);
+  }
+
+  static toggle(params, chip) {
+    const next = {
+      destination: params.destination,
+      date: params.date,
+      want: params.want,
+      guests: params.guests,
+      price: params.price,
+      age: params.age,
+      sort: params.sort,
+    };
+    next[chip.key] = SearchQuery.chipOn(params, chip) ? '' : chip.value;
+    if (chip.key === 'price') next.price = next.price ? Number(next.price) : 0;
+    return next;
+  }
+
+  static drawerCount(params) {
+    return ['want', 'price', 'age', 'guests'].filter(key => params[key]).length;
+  }
+
+  static summary(params) {
+    const where = params.destination ? params.destination.name : 'Anywhere';
+    const when = params.dateLabel || 'Any date';
+    const guests = params.guests ? String(params.guests) : 'Any';
+    let face = 'Search';
+    if (params.destination || params.date || params.guests) {
+      let day = 'Any day';
+      if (params.date) {
+        const parsed = new Date(params.date + 'T00:00:00');
+        day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][parsed.getDay()] + ' ' + parsed.getDate();
+      }
+      face = where + ' · ' + day;
+      if (params.guests) face += ' · ' + params.guests;
+    }
+    return { where, when, guests, label: where + ' · ' + when + ' · ' + guests, face };
+  }
+
   static partyCap(passes) {
     const holds = (passes || []).map(p => Number(p.holds) || 1);
     return holds.length ? Math.max(...holds) : 1;
@@ -240,7 +307,7 @@ class SearchQuery {
     }).slice(0, 3).map(row => row.h);
   }
 
-  static run({ hotels, passesById, closedById, minutesById, offers, destinations, query }) {
+  static run({ hotels, passesById, closedById, minutesById, remainingById, offers, destinations, query }) {
     const params = SearchQuery.parse(query, destinations);
     const list = hotels || [];
     const passesOf = h => (passesById && passesById.get(h.id)) || [];
@@ -263,6 +330,11 @@ class SearchQuery {
     const order = new Map(list.map((h, i) => [h.id, i]));
     const sort = params.sort;
     pool.sort((a, b) => {
+      if (remainingById) {
+        const as = (remainingById.get(a.id) || 0) === 0 ? 1 : 0;
+        const bs = (remainingById.get(b.id) || 0) === 0 ? 1 : 0;
+        if (as !== bs) return as - bs;
+      }
       if (sort === 'price-asc' || sort === 'price-desc') {
         const diff = priceOf(a) - priceOf(b);
         if (diff) return sort === 'price-asc' ? diff : -diff;
@@ -290,6 +362,8 @@ class SearchQuery {
       priceChoices: SearchQuery.priceChoices(prices, params.price),
       guestChoices: SearchQuery.guestChoices(holds, params.guests),
       ageChoices: SearchQuery.ageChoices(policies, params.age),
+      intentChips: SearchQuery.intentChips(list, offers, priceOf),
+      drawerCount: SearchQuery.drawerCount(params),
       heading: SearchQuery.heading(params),
       title: SearchQuery.documentTitle(params),
       count: SearchQuery.countLine(pool.length, params),

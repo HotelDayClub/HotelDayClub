@@ -326,6 +326,9 @@ function page(title, body, opts = {}) {
     : nav === 'admin' ? '<a class="hotel-link show" href="/admin/logout">Log out</a>'
     : `<a class="pill" href="${waitHref}">Join the waitlist</a>`;
   const chrome = nav === 'guest' ? guestChrome(opts.path || '', waitHref) : { nav: '<nav class="hdr-nav" aria-label="Site"></nav>', sheet: '' };
+  const extraCss = opts.css ? `<link rel="stylesheet" href="${esc(opts.css)}">` : '';
+  const extraJs = opts.js ? `<script src="${esc(opts.js)}"></script>` : '';
+  const headerExtra = opts.headerHtml || '';
   const tags = analytics && nav === 'guest' ? gaSnippet(analyticsPath) : '';
   const preconnect = tags ? '<link rel="preconnect" href="https://www.googletagmanager.com">' : '';
   const canonicalUrl = opts.canonical === false || !opts.path ? '' : seo.absolute(opts.path);
@@ -344,14 +347,14 @@ function page(title, body, opts = {}) {
   const tokensCss = '<link rel="stylesheet" href="/tokens.css">';
   const css = home
     ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-lunch-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-lunch.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}<link rel="stylesheet" href="/golden/home.css"><link rel="stylesheet" href="/header.css">`
-    : `${FONT_LINKS}${tokensCss}${pickerCss}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css"><link rel="stylesheet" href="/header.css">`;
+    : `${FONT_LINKS}${tokensCss}${pickerCss}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css"><link rel="stylesheet" href="/header.css">${extraCss}`;
   const bodyClass = home ? 'home' : nav === 'guest' ? 'guest' : 'staff';
-  const header = `<header class="hdr"><div class="wrap hdr-in">${logoLink('light')}${chrome.nav}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
+  const header = `<header class="hdr" id="site-hdr"><div class="wrap hdr-in">${logoLink('light')}${chrome.nav}${headerExtra}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 ${demoSite() ? '<div class="demo-banner">Demo site: listings are examples, no real bookings or payments.</div>' : ''}
 ${header}<main>${body}</main>
-${bare ? '' : siteFooter(home ? 'light' : 'dark')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}${nav === 'guest' ? MENU_SCRIPT : ''}
+${bare ? '' : siteFooter(home ? 'light' : 'dark')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}${nav === 'guest' ? MENU_SCRIPT : ''}${extraJs}
 </body></html>`;
 }
 const card = (h, date) => {
@@ -522,27 +525,145 @@ function searchHidden(params, skip) {
   add('sort', params.sort);
   return bits.join('');
 }
-function searchPage(query) {
+const FILTER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
+const CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+const CLOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+const MORE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function hoursSpan(plan) {
+  if (!plan || !plan.open) return '';
+  return fmtTime(plan.opens) + '\u2013' + fmtTime(plan.effective || plan.closes);
+}
+function hotelDays(hotel, selected) {
+  const start = new Date(today() + 'T12:00:00');
+  const pills = [];
+  let openCount = 0;
+  for (let i = 0; i < 14; i++) {
+    const date = ymd(addDays(start, i));
+    const plan = dayPlan(db, hotel, date);
+    const why = closureReason(db, hotel, date);
+    const closed = !plan || !plan.open || Boolean(why);
+    if (!closed) openCount += 1;
+    const d = new Date(date + 'T00:00:00');
+    pills.push({
+      date,
+      label: WEEKDAYS[d.getDay()] + ' ' + d.getDate(),
+      hours: closed ? 'Closed' : hoursSpan(plan),
+      closed,
+      selected: date === selected,
+    });
+  }
+  return { pills, openCount };
+}
+function cardOffer(hotel, date, want) {
+  const passes = getPasses(hotel.id);
+  const from = SearchQuery.fromPrice(passes);
+  if (!date) return { sold: false, price: from, activity: '' };
+  const rows = availability(hotel.id, date);
+  const left = rows.filter(p => p.remaining > 0 && !p.blocked && !p.past);
+  if (!left.length) return { sold: true, price: 0, activity: '' };
+  const activity = want ? ((SearchQuery.WANTS.find(w => w.id === want) || {}).label || '') : '';
+  return { sold: false, price: Math.min(...left.map(p => Number(p.price))), activity };
+}
+function spotsLeft(hotel, date) {
+  const rows = availability(hotel.id, date);
+  return rows.reduce((sum, p) => sum + (p.blocked || p.past ? 0 : p.remaining), 0);
+}
+function cardImage(photo, alt, index) {
+  if (!photo) return '';
+  const eager = index >= 0 && index < 3;
+  const priority = index === 0 ? ' fetchpriority="high"' : '';
+  const loading = eager ? 'eager' : 'lazy';
+  const base = String(photo).replace(/\.jpe?g$/i, '');
+  const webpFile = path.join(__dirname, 'public', 'golden', 'img', 'cards', base + '.webp');
+  const jpg = `/assets/photos/${esc(photo)}`;
+  const attrs = `alt="${esc(alt)}" width="800" height="600" loading="${loading}" decoding="async"${priority}`;
+  if (fs.existsSync(webpFile)) {
+    const webp = `/golden/img/cards/${esc(base)}.webp`;
+    return `<picture><source type="image/webp" srcset="${webp} 800w" sizes="(max-width:699px) 100vw, 360px"><img src="${jpg}" ${attrs}></picture>`;
+  }
+  return `<img src="${jpg}" ${attrs}>`;
+}
+function dayPillsHtml(hotel, selected) {
+  const { pills, openCount } = hotelDays(hotel, selected);
+  if (!openCount) return '<p class="day-empty">No open days in the next 2 weeks</p>';
+  const selectedOpen = pills.some(p => p.selected && !p.closed);
+  let given = false;
+  const items = pills.map(pill => {
+    if (pill.closed) {
+      return `<span class="daypill off" aria-disabled="true"><b><s>${esc(pill.label)}</s></b><span>Closed</span></span>`;
+    }
+    const stop = !given && (pill.selected || !selectedOpen);
+    if (stop) given = true;
+    const pressed = pill.selected ? ' aria-pressed="true" aria-current="date"' : ' aria-pressed="false"';
+    return `<a class="daypill${pill.selected ? ' on' : ''}" href="/h/${esc(hotel.slug)}?date=${esc(pill.date)}"${pressed} tabindex="${stop ? '0' : '-1'}"><b>${esc(pill.label)}</b><span>${esc(pill.hours)}</span></a>`;
+  }).join('');
+  return `<div class="days"><div class="day-row" role="group" aria-label="Days for ${esc(hotel.name)}">${items}</div><button type="button" class="day-more ibtn" aria-label="More days for ${esc(hotel.name)}" hidden>${MORE_ICON}</button></div>`;
+}
+function searchCard(hotel, params, index) {
+  const photo = (hotel.photos && hotel.photos[0]) || '';
+  const alt = Number(hotel.is_demo) === 1
+    ? 'Example photo of a hotel pool in ' + hotel.area + ', not a real hotel'
+    : 'Photo of ' + hotel.name;
+  const offer = cardOffer(hotel, params.date, params.want);
+  const days = hotelDays(hotel, params.date);
+  const span = (params.date && (days.pills.find(p => p.date === params.date && !p.closed) || {}).hours)
+    || (days.pills.find(p => !p.closed) || {}).hours
+    || '';
+  const query = [];
+  if (params.date) query.push('date=' + encodeURIComponent(params.date));
+  if (params.want) query.push('want=' + encodeURIComponent(params.want));
+  const listing = '/h/' + hotel.slug + (query.length ? '?' + query.join('&') : '');
+  const area = hotel.area + (hotel.age_policy ? ' · ' + hotel.age_policy : '');
+  const price = offer.sold
+    ? `<p class="soldtxt">Sold out on ${esc(nice(params.date))}</p>`
+    : `<p class="ex-price">From ${money(offer.price)} <small>(demo)</small>${offer.activity ? ' · ' + esc(offer.activity) : ''}</p>`;
+  const terms = offer.sold ? '' : `<ul class="terms" aria-label="Booking terms"><li>${CHECK_ICON}<span>Free until 24 hours before your access hours start</span></li></ul>`;
+  const book = offer.sold
+    ? `<a class="btn quiet" href="/h/${esc(hotel.slug)}#book">See other dates</a>`
+    : `<a class="btn book" href="${esc(listing)}#book">Book<span class="vh"> ${esc(hotel.name)}</span></a>`;
+  return `<article class="ex${offer.sold ? ' is-sold' : ''}"><div class="ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></div><div class="bd"><h3><a href="${esc(listing)}">${esc(hotel.name)}</a></h3><p class="ex-area">${esc(area)}</p>${span ? `<p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p>` : ''}${price}${terms}${dayPillsHtml(hotel, params.date)}<p class="ex-note">Demo</p><div class="act"><a class="tlink" href="${esc(listing)}">View details</a>${book}</div></div></article>`;
+}
+function radioGroup(name, options, current, klass) {
+  const now = String(current || '');
+  return options.map(opt => {
+    const on = now === String(opt.value);
+    return `<label class="${klass}"><input type="radio" name="${esc(name)}" value="${esc(opt.value)}"${on ? ' checked' : ''}><span>${esc(opt.label)}</span></label>`;
+  }).join('');
+}
+function hiddenField(name, value) {
+  if (value == null || value === '' || value === 0) return '';
+  return `<input type="hidden" name="${name}" value="${esc(value)}">`;
+}
+function loadSearch(query) {
   const hotels = getHotels();
   const passesById = new Map(hotels.map(h => [h.id, getPasses(h.id)]));
   const parsed = SearchQuery.parse(query, DESTINATIONS);
   const closedById = new Map();
   const minutesById = new Map();
+  const remainingById = parsed.date ? new Map() : null;
   for (const h of hotels) {
-    if (parsed.date) closedById.set(h.id, Boolean(closureReason(db, h, parsed.date)));
+    if (parsed.date) {
+      closedById.set(h.id, Boolean(closureReason(db, h, parsed.date)));
+      remainingById.set(h.id, spotsLeft(h, parsed.date));
+    }
     const rows = db.prepare('SELECT weekday, open, opens, closes FROM hotel_hours WHERE hotel_id=?').all(h.id);
     const plan = parsed.date ? dayPlan(db, h, parsed.date) : null;
     minutesById.set(h.id, parsed.date ? SearchQuery.spanMinutes(plan) : SearchQuery.openMinutes(rows, h.room_only_from));
   }
-  const result = SearchQuery.run({
+  return SearchQuery.run({
     hotels,
     passesById,
     closedById,
     minutesById,
+    remainingById,
     offers: hotelOffers,
     destinations: DESTINATIONS,
     query,
   });
+}
+function searchPage(query) {
+  const result = loadSearch(query);
   const params = result.params;
   const selectedDest = params.destination ? params.destination.id : '';
   const guestOptions = ['<option value="">Any</option>'].concat(result.guestChoices.map(n => `<option value="${n}"${params.guests === n ? ' selected' : ''}>${n}</option>`)).join('');
@@ -551,13 +672,13 @@ function searchPage(query) {
   const sortOptions = SearchQuery.SORTS.map(s => `<option value="${esc(s.id)}"${params.sort === s.id ? ' selected' : ''}>${esc(s.label)}</option>`).join('');
   const chips = result.chips.map(chip => `<a class="chip" href="${esc(chip.href)}" aria-label="${esc(chip.remove)}">${esc(chip.label)} <b aria-hidden="true">×</b></a>`).join('');
   const clear = result.showClear ? '<a class="clear" href="/search">Clear all</a>' : '';
-  const cards = result.list.map(h => exampleCard(h, params.date)).join('');
-  const otherCards = result.others.map(h => exampleCard(h, '')).join('');
+  const cards = result.list.map((h, i) => searchCard(h, params, i)).join('');
+  const otherCards = result.others.map(h => searchCard(h, { date: '', want: '' }, -1)).join('');
   let empty = '';
   if (result.empty === 'destination') {
     const id = encodeURIComponent(params.destination.id);
     const name = esc(params.destination.name);
-    empty = `<div class="empty"><p>There are no example listings in ${name} yet. <a class="link" href="/?destination=${id}#waitlist">Join the waitlist</a></p><a class="btn" href="/?destination=${id}#waitlist">Join the waitlist</a></div>`;
+    empty = `<div class="empty"><p>There are no example listings in ${name} yet.</p><a class="btn" href="/?destination=${id}#waitlist">Join the waitlist</a></div>`;
   } else if (result.empty === 'closed') {
     empty = '<div class="empty"><p>No example hotels are open on this date.</p></div>';
   } else if (result.empty === 'nomatch') {
@@ -566,22 +687,69 @@ function searchPage(query) {
   const others = result.empty ? `<h2 class="other">Other example listings</h2><div class="list others">${otherCards}</div>` : '';
   const keepSort = params.sort ? `<input type="hidden" name="sort" value="${esc(params.sort)}">` : '';
   const resultClass = result.list.length === 1 ? 'list results is-single' : 'list results';
+  const maxDate = ymd(addDays(new Date(), 90));
+  const minDate = today();
+  const heroKeep = hiddenField('want', params.want) + hiddenField('price', params.price) + hiddenField('age', params.age) + hiddenField('sort', params.sort);
+  const intent = result.intentChips.map(chip => {
+    const on = SearchQuery.chipOn(params, chip);
+    const href = SearchQuery.href(SearchQuery.toggle(params, chip));
+    return `<a class="ichip" href="${esc(href)}" aria-pressed="${on ? 'true' : 'false'}" data-key="${esc(chip.key)}" data-value="${esc(chip.value)}">${esc(chip.label)}</a>`;
+  }).join('');
+  const summary = SearchQuery.summary(params);
+  const guestMax = result.guestChoices.length ? result.guestChoices[result.guestChoices.length - 1] : 1;
+  const guestShown = params.guests ? String(params.guests) : 'Any';
+  const countN = result.list.length;
+  const badge = result.drawerCount ? `<span class="cnt">${result.drawerCount}</span>` : '';
+  const resetHref = SearchQuery.href({ date: params.date });
+  const wantRadios = radioGroup('want', [{ value: '', label: 'Any' }].concat(WANTS.filter(w => w.id).map(w => ({ value: w.id, label: w.name }))), params.want, 'fchip');
+  const priceRadios = radioGroup('price', [{ value: '', label: 'Any price' }].concat(result.priceChoices.map(n => ({ value: String(n), label: 'Under $' + n }))), params.price ? String(params.price) : '', 'ropt');
+  const ageRadios = radioGroup('age', [{ value: '', label: 'Any age' }].concat(result.ageChoices.map(a => ({ value: a.id, label: a.label }))), params.age, 'ropt');
+  const sortRadios = radioGroup('sort', SearchQuery.SORTS.map(s => ({ value: s.id, label: s.label })), params.sort, 'ropt');
+  const guestAria = summary.guests === 'Any' ? 'any guests' : (summary.guests === '1' ? '1 guest' : summary.guests + ' guests');
+  const pillFace = summary.face === 'Search'
+    ? `${FIND_ICON}<span class="cpill-tx">Search</span>`
+    : `<span class="cpill-tx">${esc(summary.face)}</span>`;
+  const headerHtml = `<div class="cslot"></div><button type="button" class="cpill" hidden aria-haspopup="dialog" aria-controls="search-sheet" aria-label="Edit search: ${esc(summary.where)}, ${esc(summary.when)}, ${esc(guestAria)}">${pillFace}</button>`;
   const body = `<div class="search-page"><form class="sbar" action="/search" method="get">
 ${keepSort}
 <div class="seg"><label for="w">Where</label><select id="w" class="hdc-pick" name="destination" aria-label="Where"><option value="" data-icon="pin"${selectedDest ? '' : ' selected'}>All of Australia</option>${whereOptions(selectedDest)}</select></div>
-<div class="seg"><label for="when">When</label><input id="when" class="hdc-date" type="date" name="date" min="${today()}" max="${ymd(addDays(new Date(), 90))}" value="${esc(params.date)}"></div>
+<div class="seg"><label for="when">When</label><input id="when" class="hdc-date" type="date" name="date" min="${minDate}" max="${maxDate}" value="${esc(params.date)}"></div>
 <div class="seg"><label for="p">What</label><select id="p" class="hdc-pick" name="want">${WANTS.map(w => `<option value="${esc(w.id)}" data-icon="${esc(w.icon)}"${params.want === w.id ? ' selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
 <div class="seg"><label for="guests">Guests</label><select id="guests" class="hdc-pick" name="guests">${guestOptions}</select></div>
 <div class="seg"><label for="price">Price</label><select id="price" class="hdc-pick" name="price">${priceOptions}</select></div>
 <div class="seg"><label for="age">Age</label><select id="age" class="hdc-pick" name="age">${ageOptions}</select></div>
 <button type="submit">Search</button>
 </form>
-<div class="rhead"><div class="rhead-title"><h1>${esc(result.heading)}</h1>
+<div class="srch-hero n9-hero"><div class="hero-slot"><form class="bigsearch" action="/search" method="get" role="search" aria-label="Search day passes">${heroKeep}
+<label class="seg"><span id="where-label">Where</span><select id="where-hero" class="hdc-pick" name="destination" aria-labelledby="where-label"><option value="" data-icon="pin"${selectedDest ? '' : ' selected'}>Anywhere in Australia</option>${whereOptions(selectedDest)}</select></label>
+<label class="seg"><span id="when-label">When</span><input id="when-hero" class="hdc-date" type="date" name="date" min="${minDate}" max="${maxDate}" value="${esc(params.date)}" aria-labelledby="when-label"></label>
+<label class="seg"><span id="guests-label">Guests</span><select id="guests-hero" class="hdc-pick" name="guests" aria-labelledby="guests-label">${guestOptions}</select></label>
+<button type="submit">${FIND_ICON}<span>Search</span></button>
+</form></div></div>
+<div class="toolrow"><div class="n9-bar"><button type="button" class="fbtn" id="filters-btn" aria-haspopup="dialog" aria-controls="filter-drawer" aria-expanded="false">${FILTER_ICON}<span>Filters</span>${badge}</button><div class="ichips" role="group" aria-label="Quick filters">${intent}</div></div>
 <form class="sort-form" action="/search" method="get">${searchHidden(params, 'sort')}<label class="sort-label"><span class="sort-name">Sort</span><select class="hdc-pick" name="sort" aria-label="Sort listings" onchange="this.form.submit()">${sortOptions}</select></label><noscript><button type="submit">Sort</button></noscript></form></div>
-<p class="count">${esc(result.count)}</p></div>
+<div data-live><div class="rhead"><h1>${esc(result.heading)}</h1>
+<p class="count" role="status" aria-live="polite">${esc(result.count)}</p></div>
 ${chips ? `<div class="chips" aria-label="Active filters">${chips}${clear}</div>` : ''}
 ${empty || `<div class="${resultClass}">${cards}</div>`}${others}
 <p class="note">Shown while the site is in demo mode. These hotels are fictional. No real bookings are taken. <a href="/guides">Read the day pass guides</a>.</p>
+</div>
+<div class="sheet-bd" data-close-drawer hidden></div>
+<form id="filter-drawer" class="drawer" action="/search" method="get" role="dialog" aria-modal="true" aria-labelledby="filters-h" hidden>
+<div class="dh"><h2 id="filters-h" tabindex="-1">Filters</h2><a class="tlink" href="${esc(resetHref)}">Reset</a><button class="ibtn" type="button" data-close-drawer aria-label="Close filters">Close</button></div>
+<div class="dbody">
+<fieldset><legend>Sort</legend><div class="rgrid">${sortRadios}</div></fieldset>
+<fieldset><legend>What</legend><div class="fgrid">${wantRadios}</div></fieldset>
+<fieldset><legend>Price</legend><div class="rgrid">${priceRadios}</div></fieldset>
+<fieldset><legend>Age</legend><div class="rgrid">${ageRadios}</div></fieldset>
+<fieldset><legend>Guests</legend><div class="step" data-max="${guestMax}"><button class="ibtn" type="button" data-step="-1" aria-label="Fewer guests">&#8722;</button><output aria-live="polite">${esc(guestShown)}</output><button class="ibtn" type="button" data-step="1" aria-label="More guests">+</button><input type="hidden" name="guests" value="${params.guests ? esc(params.guests) : ''}"></div><p class="step-note">Up to ${guestMax} per booking.</p></fieldset>
+</div>
+<div class="df">${hiddenField('destination', selectedDest)}${hiddenField('date', params.date)}<p class="hint" id="filter-hint" role="status"${countN ? ' hidden' : ''}>No places match these filters. Try a higher price or Any age.</p><button class="apply" type="submit" data-count="${countN}" aria-live="polite"${countN ? '' : ' disabled aria-describedby="filter-hint"'}>Show ${countN} results</button></div>
+</form>
+<div id="search-sheet" class="ssheet" role="dialog" aria-modal="true" aria-labelledby="ssheet-h" hidden>
+<div class="ssheet-bar"><h2 id="ssheet-h" tabindex="-1">Edit search</h2><button class="ibtn" type="button" data-close-sheet aria-label="Close search">Close</button></div>
+<div class="ssheet-body"></div>
+</div>
 </div>`;
   return page(result.heading, body, {
     titleReady: true,
@@ -589,6 +757,9 @@ ${empty || `<div class="${resultClass}">${cards}</div>`}${others}
     description: 'Example day passes in Australia. Choose a place, a date, guests, a price and an age. These listings are fictional.',
     path: '/search',
     index: true,
+    css: '/search.css',
+    js: '/search-ui.js',
+    headerHtml,
   });
 }
 app.get('/', (req, res) => {
@@ -601,6 +772,9 @@ app.get('/', (req, res) => {
 });
 app.get('/search', (req, res) => {
   res.send(searchPage(req.query));
+});
+app.get('/api/search-count', (req, res) => {
+  res.json({ count: loadSearch(req.query).list.length });
 });
 app.post('/waitlist', async (req, res) => {
   const parsed = parseSignup(req.body || {}, DESTINATIONS);
