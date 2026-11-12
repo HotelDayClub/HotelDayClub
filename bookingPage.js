@@ -142,7 +142,7 @@ ${cancelForm}
 <p><a href="/refunds">Cancellation and refunds (draft)</a></p>
 </section>
 <section class="bk-card bk-legal" aria-labelledby="bk-lg"><h2 id="bk-lg">Your details and the hotel</h2>
-<p>We share your name, booking code, party size and add-ons with ${esc(b.hotel)} so it can prepare for and check you in.</p>
+<p>We share your name, email, mobile and booking details with ${esc(b.hotel)} so it can check you in and contact you about this booking.</p>
 ${ackHtml(b)}
 <p><a href="/privacy">Privacy policy (draft)</a> · <a href="/terms">Customer terms (draft)</a> · <a href="/risk">Risk warning (draft)</a></p>
 <p>Questions: <a href="mailto:${contact}">${contact}</a></p>
