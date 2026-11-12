@@ -13,6 +13,7 @@ const {
 const { ensureArrival, saveArrival, arrivalForm, directionsHref } = require('./arrival');
 const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hotelAreas, linkedIds } = require('./access');
 const { listingHtml, reassureStrip } = require('./listingView');
+const { SeatPage } = require('./seatPage');
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
 const { adminPassword, verifyPassword, safeEqual, hashPassword, migrateHotelPasswords, maskName, maskEmail } = require('./passwords');
 const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
@@ -801,6 +802,44 @@ app.post('/waitlist', async (req, res) => {
   res.redirect(303, '/?waitlist=1#waitlist');
 });
 
+app.get('/h/:slug/seat/:code', (req, res) => {
+  const h = publicHotel(req.params.slug);
+  if (!h) return sendNotFound(res);
+  const code = String(req.params.code || '');
+  const pass = getPasses(h.id).find(p => p.code === code);
+  if (!pass) return sendNotFound(res);
+  const startDay = today(h);
+  const maxDate = ymd(addDays(new Date(startDay + 'T12:00:00'), 90));
+  const date = chosenDate(req.query.date, h);
+  const qty = SeatPage.qty(req.query.qty);
+  const row = date ? availability(h.id, date).find(p => p.id === pass.id) : null;
+  const items = loadInclusions(db, h.id);
+  const areas = forPass(db, pass.id);
+  const closed = [];
+  const origin = new Date(startDay + 'T12:00:00');
+  for (let i = 0; i < 90; i++) {
+    const d = ymd(addDays(origin, i));
+    if (closureReason(db, h, d)) closed.push(d);
+  }
+  const demo = Number(h.is_demo) === 1;
+  const photo = SeatPage.photoSrc(pass);
+  const alt = SeatPage.altText(pass, h);
+  const cancel = date ? cancelNote(db, h, date) : PICK_DATE_CANCEL;
+  const body = SeatPage.html({
+    hotel: h, pass, date, qty, row, items, areas, cancel,
+    minDate: startDay, maxDate, closed: closed.join(','),
+  });
+  res.send(page(`${pass.name} · ${h.name}`, body, {
+    analytics: false,
+    index: demoSite() ? 'follow' : (demo ? 'follow' : true),
+    path: `/h/${h.slug}/seat/${pass.code}`,
+    description: SeatPage.description(pass, h),
+    image: seo.absolute(photo),
+    imageAlt: alt,
+    css: '/seat.css',
+  }));
+});
+
 app.get('/h/:slug', (req, res) => {
   const h = publicHotel(req.params.slug); if (!h) return sendNotFound(res);
   const startDay = today(h);
@@ -832,6 +871,7 @@ app.get('/h/:slug', (req, res) => {
     foodLine,
     policy: policyInner(h, foodLine),
     passCode: String(req.query.pass || '').slice(0, 40),
+    qty: req.query.qty,
   }), {
     analytics: true,
     index: demo ? 'follow' : true,
