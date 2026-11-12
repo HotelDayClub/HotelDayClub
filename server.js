@@ -1604,7 +1604,7 @@ function opsMiss(res) {
   return res.status(400).send(page('Link expired', `<div class="wrap sec narrow"><h1 class="l-title">This link has expired</h1><p class="muted">Open tonight's email again from the dashboard, or <a href="/hotel/login">log in</a>.</p></div>`, { bare: true, index: false, canonical: false }));
 }
 function opsDone(res, hotel, date, msg) {
-  return res.send(page('Saved', `<div class="wrap sec narrow"><h1 class="l-title">${esc(msg)}</h1><p class="muted">${esc(hotel.name)} · ${esc(nice(date))}</p><p style="margin-top:18px"><a class="btn btn-navy" href="/hotel/login">Log in to the dashboard</a></p></div>`, { bare: true, index: false, canonical: false }));
+  return res.send(page('Saved', `<div class="wrap sec narrow"><div class="flash" role="status">Saved</div><h1 class="l-title">${esc(msg)}</h1><p class="muted">${esc(hotel.name)} · ${esc(nice(date))}</p><p style="margin-top:18px"><a class="btn btn-navy" href="/hotel/login">Log in to the dashboard</a></p></div>`, { bare: true, index: false, canonical: false }));
 }
 function opsHotel(token) {
   const data = readOps(token);
@@ -2022,7 +2022,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <details><summary>Age limits</summary><p>You need to be 18 or over to book. Each hotel sets its own age policy and kids' hours. They're on the listing, and in the risk warning, before you confirm.</p></details>
 <details><summary>Weather</summary><p>Rain on its own is not a closure. If the hotel closes the pool, you choose a full refund or a free rebooking. <a href="/faq">All questions</a>.</p></details>
 <details><summary>Do I need to book a room?</summary><p>No. A day pass is the pool, gym or spa for the hours that hotel has set. There is no room and no overnight stay.</p></details>
-<details><summary>How do I check in?</summary><p>${esc(GuestCheckIn.line())} The hours are on that page. In this demo the confirmation stays on the page, and a confirmation email is sent to the address you give. Bring photo ID when the hotel asks for it.</p></details>
+<details><summary>How do I check in?</summary><p>${esc(GuestCheckIn.line())} The hours are on your confirmation. In this demo the confirmation stays on the page, and a confirmation email is sent to the address you give. Bring photo ID when the hotel asks for it.</p></details>
 <details><summary>What does the pass include?</summary><p>Each hotel sets its own inclusions. The listing says what the pass covers for that date and those hours. ${esc(FOOD_RULE)} Treatments are not included unless the listing says so.</p></details>
 <details><summary>Can children come?</summary><p>You need to be 18 or over to book. Each hotel sets its own age rules and kids' hours. They are on the listing and in the risk warning before you confirm. Children must be on the booking, and an adult on that booking supervises each child.</p></details>
 <details><summary>What if a pass is sold out?</summary><p>The page says when a pass is sold out for that date, or when there are not enough left. The terms say that if a pass sells out at the same moment and we can't confirm the booking, the booking is not made. This demo doesn't take a real payment.</p></details>
@@ -2049,6 +2049,7 @@ function contactHtml({ error, values, sent }) {
 <h1 class="l-title">Thanks, we have your message</h1>
 <p class="lead">We'll reply by email to the address you gave us.</p>
 <div class="login-card contact-card contact-ok" role="status">
+<div class="flash">Message sent</div>
 <p>You can also write to ${mail}.</p>
 <p><a href="/">Back to the homepage</a></p>
 </div></div>`, opts);
@@ -2131,7 +2132,37 @@ function tableCells(row) {
 function isRuleRow(row) {
   return tableCells(row).every(c => /^:?-+:?$/.test(c));
 }
+class LegalContents {
+  static headings(src) {
+    const found = [];
+    const used = new Set();
+    for (const line of String(src).replace(/\r\n/g, '\n').split('\n')) {
+      const match = line.trim().match(/^##\s+(.+)$/);
+      if (!match) continue;
+      const text = match[1].trim();
+      const base = this.slug(text);
+      let id = base;
+      let n = 2;
+      while (used.has(id)) id = `${base}-${n++}`;
+      used.add(id);
+      found.push({ id, text });
+    }
+    return found;
+  }
+
+  static slug(text) {
+    const base = String(text).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 72);
+    return base || 'section';
+  }
+
+  static nav(headings) {
+    const links = headings.map(h => `<a href="#${esc(h.id)}">${esc(h.text)}</a>`).join('');
+    return `<nav class="legal-toc" aria-label="On this page"><p>On this page</p>${links}</nav>`;
+  }
+}
 function mdToHtml(src) {
+  const headings = LegalContents.headings(src);
+  let headingAt = 0;
   const lines = String(src).replace(/\r\n/g, '\n').split('\n');
   let html = '', list = false, i = 0;
   const endList = () => { if (list) { html += '</ul>'; list = false; } };
@@ -2168,7 +2199,9 @@ function mdToHtml(src) {
     const h = t.match(/^(#{1,4})\s+(.*)$/);
     if (h) {
       endList();
-      html += `<h${Math.min(4, h[1].length + 1)}>${inlineMd(h[2])}</h${Math.min(4, h[1].length + 1)}>`;
+      const level = Math.min(4, h[1].length + 1);
+      const id = h[1].length === 2 && headings[headingAt] ? ` id="${esc(headings[headingAt++].id)}"` : '';
+      html += `<h${level}${id}>${inlineMd(h[2])}</h${level}>`;
       i++;
       continue;
     }
@@ -2196,7 +2229,7 @@ function legalDoc(heading, file) {
   const raw = fs.readFileSync(path.join(__dirname, 'legal', file), 'utf8');
   const article = mdToHtml(raw).split('{{CONTACT_EMAIL}}').join(contactMail()).split('{{ABN}}').join(esc(PUBLISHED_ABN));
   const copy = seo.pageCopy(LEGAL_PAGES[file]);
-  return page(heading, `<div class="wrap sec"><h1 class="l-title">${esc(heading)}</h1><article class="legal-doc">${article}</article></div>`, {
+  return page(heading, `<div class="wrap sec legal-page"><h1 class="l-title">${esc(heading)}</h1><div class="legal-grid">${LegalContents.nav(LegalContents.headings(raw))}<article class="legal-doc">${article}</article></div></div>`, {
     analytics: true,
     index: seo.legalPagesIndexable() ? true : 'follow',
     ...copy,
@@ -2264,11 +2297,31 @@ app.get('/guides/:slug', (req, res) => {
   }));
 });
 
+class ServerError {
+  static page() {
+    return page('Something went wrong', `<div class="wrap sec narrow error-page">
+<p class="eyebrow-s">500</p>
+<h1 class="l-title">Something went wrong</h1>
+<p class="lead">This page did not load. Try again in a minute.</p>
+<p>If it keeps happening, email ${contactMail()}.</p>
+<p class="error-acts"><a class="btn btn-teal" href="">Try again</a><a class="btn btn-line" href="/">Home</a><a class="btn btn-line" href="/contact">Contact</a></p>
+</div>`, {
+      bare: true,
+      index: false,
+      canonical: false,
+      analytics: false,
+      description: 'This page did not load.',
+    });
+  }
+}
 function sendNotFound(res, extra = {}) {
   const title = extra.title || 'Page not found';
-  const body = extra.body || `<div class="wrap sec"><h1 class="l-title">Page not found</h1>
+  const body = extra.body || `<div class="wrap sec narrow error-page">
+<p class="eyebrow-s">404</p>
+<h1 class="l-title">Page not found</h1>
 <p class="lead">That page is not on Hotel Day Club.</p>
-<p><a href="/">Home</a> · <a href="/how-it-works">How it works</a> · <a href="/faq">FAQ</a> · <a href="/destinations/sydney">Sydney</a> · <a href="/destinations/gold-coast">Gold Coast</a></p></div>`;
+<p class="error-links"><a class="btn btn-line" href="/">Home</a><a class="btn btn-line" href="/how-it-works">How it works</a><a class="btn btn-line" href="/faq">FAQ</a><a class="btn btn-line" href="/guides">Guides</a><a class="btn btn-line" href="/contact">Contact</a></p>
+</div>`;
   res.status(extra.status || 404).send(page(title, body, {
     analytics: extra.analytics === false ? false : true,
     analyticsPath: extra.analyticsPath || '',
@@ -2278,10 +2331,23 @@ function sendNotFound(res, extra = {}) {
     description: extra.description || 'That page is not on Hotel Day Club.',
   }));
 }
+if (process.env.HDC_ERROR_PROBE === '1') {
+  app.get('/__hdc_error', (req, res, next) => next(new Error('probe-secret-stack')));
+}
 app.use((req, res) => {
   if (req.path.startsWith('/api')) return res.status(404).json({ error: 'not found' });
   const bookingPath = req.path.startsWith('/booking/');
   sendNotFound(res, { analytics: bookingPath ? false : true, analyticsPath: '' });
+});
+app.use((err, req, res, next) => {
+  void next;
+  console.error(err && err.stack ? err.stack : err);
+  if (res.headersSent) {
+    res.end();
+    return;
+  }
+  if (req.path.startsWith('/api')) return res.status(500).json({ error: 'something went wrong' });
+  res.status(500).send(ServerError.page());
 });
 
 app.listen(PORT, () => {

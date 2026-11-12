@@ -300,7 +300,16 @@ function alts(html, where) {
     assert.ok(missingHtml.includes('Page not found'));
     assert.ok(missingHtml.includes('href="/"'));
     assert.ok(missingHtml.includes('href="/faq"'));
+    const missingLinks = missingHtml.slice(missingHtml.indexOf('class="error-links"'), missingHtml.indexOf('</main>'));
+    assert.ok(missingLinks.includes('href="/guides"'));
+    assert.ok(missingLinks.includes('href="/contact"'));
+    assert.ok(missingLinks.includes('href="/how-it-works"'));
+    assert.ok(!missingLinks.includes('/destinations/sydney'));
+    assert.ok(!missingLinks.includes('/destinations/gold-coast'));
     assert.ok(!missingHtml.includes('Cannot GET'));
+    const hiddenProbe = await get(port, '/__hdc_error');
+    assert.strictEqual(hiddenProbe.status, 404);
+    assert.ok(!text(hiddenProbe).includes('probe-secret-stack'));
     assert.ok(missingHtml.includes('noindex'));
     assert.ok(!missingHtml.includes('rel="canonical"'));
     oneH1(missingHtml, '404');
@@ -374,6 +383,8 @@ function alts(html, where) {
     assert.strictEqual(times(partners, a12), 0);
     assert.strictEqual(times(hiw, a12), 2);
     assert.ok(guests.includes(`${a12} The hours are on your confirmation.`));
+    assert.ok(hiwFaq.includes(`${a12} The hours are on your confirmation.`));
+    assert.ok(!hiw.includes('The hours are on that page.'));
     assert.ok(!hiw.includes('At the check-in point on your listing.'));
     assert.ok(!hiw.includes('At the front desk, when the hotel opens for day passes'));
     assert.ok(guests.includes("Before you confirm, you'll tick the risk warning, hotel rules, group and children, terms and sharing consent."));
@@ -461,6 +472,25 @@ function alts(html, where) {
     }
   } finally {
     legalOn.kill('SIGTERM');
+  }
+  const errPort = 3325;
+  const errChild = await start(errPort, { HDC_ERROR_PROBE: '1' });
+  try {
+    const crashed = await get(errPort, '/__hdc_error');
+    assert.strictEqual(crashed.status, 500);
+    const crashedHtml = text(crashed);
+    assert.ok(crashedHtml.includes('Something went wrong'));
+    assert.ok(crashedHtml.includes('This page did not load. Try again in a minute.'));
+    assert.ok(crashedHtml.includes('href="/"'));
+    assert.ok(crashedHtml.includes('href="/contact"'));
+    assert.ok(crashedHtml.includes('Try again'));
+    assert.ok(crashedHtml.includes('noindex'));
+    assert.ok(!crashedHtml.includes('probe-secret-stack'));
+    assert.ok(!crashedHtml.includes('at ServerError'));
+    assert.ok(!/\n\s+at\s/.test(crashedHtml));
+    assert.ok(!crashedHtml.includes('<footer'));
+  } finally {
+    errChild.kill('SIGTERM');
   }
   console.log('seo checks passed');
 })().catch(err => {

@@ -210,46 +210,65 @@ ${info.calendarUrl ? `<p style="margin:0 0 16px;font-family:${FONT};font-size:16
   return { to: info.to, subject, html, text };
 }
 
+class ContactAlertMail {
+  static note() {
+    return 'Internal note for the Hotel Day Club operator. Do not forward this message to the guest.';
+  }
+
+  static build(info) {
+    const demo = !!info.demo;
+    const topic = info.topic || 'Message';
+    const code = info.bookingCode ? info.bookingCode : 'Not given';
+    const warning = 'This message came from the demo site.';
+    const note = this.note();
+    const facts = [
+      ['Name', info.name],
+      ['Email', info.email],
+      ['Topic', topic],
+      ['Booking code', code],
+    ];
+    const text = [
+      'Hotel Day Club',
+      '',
+      'New contact message',
+      '',
+      demo ? warning : '',
+      ...facts.map(([label, value]) => `${label}: ${value}`),
+      '',
+      info.message,
+      '',
+      note,
+    ].filter(line => line !== '').join('\n');
+    const demoStrip = demo
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${brand['hdc-sun-soft']}" style="background:${brand['hdc-sun-soft']};border:1px solid ${brand['hdc-sun']};margin:0 0 16px;"><tr><td style="padding:14px 16px;"><p style="margin:0;font-family:${FONT};font-size:16px;line-height:1.5;color:${brand['hdc-navy']};font-weight:600;">${esc(warning)}</p></td></tr></table>`
+      : '';
+    const messageBox = mailCard(`<p style="margin:0;font-family:${FONT};font-size:16px;line-height:1.5;color:${brand['hdc-text']};white-space:pre-wrap;overflow-wrap:anywhere;">${esc(info.message || '')}</p>`);
+    const html = `<!DOCTYPE html><html lang="en-AU" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only"><meta name="x-apple-disable-message-reformatting"><title>New contact message</title><!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]--></head>
+<body style="margin:0;padding:0;background:${brand['hdc-tint']};color:${brand['hdc-text']};font-family:${FONT};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${brand['hdc-tint']}" style="background:${brand['hdc-tint']};"><tr><td align="center" style="padding:24px 12px;">
+<!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${brand['hdc-bg']}" style="max-width:600px;background:${brand['hdc-bg']};border:1px solid ${brand['hdc-border']};">
+<tr><td style="padding:24px 28px 16px;border-bottom:4px solid ${brand['hdc-primary']};"><p style="margin:0;font-family:${FONT};font-size:20px;font-weight:800;color:${brand['hdc-navy']};">Hotel Day <span style="color:${brand['hdc-rose-ink']};">Club</span></p></td></tr>
+<tr><td style="padding:24px 28px 8px;">
+<h1 style="margin:0 0 16px;font-family:${FONT};font-size:28px;line-height:1.2;color:${brand['hdc-navy']};font-weight:700;">New contact message</h1>
+${demoStrip}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${factRows(facts)}</table>
+${messageBox}
+</td></tr>
+<tr><td style="padding:16px 28px 28px;border-top:1px solid ${brand['hdc-border']};"><p style="margin:0;font-family:${FONT};font-size:13px;line-height:1.5;color:${brand['hdc-secondary']};">${esc(note)}</p></td></tr>
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr></table></body></html>`;
+    return {
+      to: info.to,
+      subject: `New contact message: ${String(topic).replace(/[\r\n]+/g, ' ').slice(0, 80)}`,
+      html,
+      text,
+    };
+  }
+}
 function contactAlert(info) {
-  const demo = !!info.demo;
-  const topic = info.topic || 'Message';
-  const code = info.bookingCode ? info.bookingCode : 'Not given';
-  const warning = 'This message came from the demo site.';
-  const facts = [
-    ['Name', info.name],
-    ['Email', info.email],
-    ['Topic', topic],
-    ['Booking code', code],
-  ];
-  const text = [
-    'Hotel Day Club',
-    '',
-    'New contact message',
-    '',
-    demo ? warning : '',
-    ...facts.map(([label, value]) => `${label}: ${value}`),
-    '',
-    info.message,
-  ].filter(line => line !== '').join('\n');
-  const rows = facts.map(([label, value]) => `<tr>
-<td style="padding:10px 12px 10px 0;border-bottom:1px solid #0E1E3A;font-weight:700;vertical-align:top;color:#0A1428;">${esc(label)}</td>
-<td style="padding:10px 0;border-bottom:1px solid #0E1E3A;vertical-align:top;color:#0A1428;overflow-wrap:anywhere;">${htmlValue(value)}</td>
-</tr>`).join('');
-  const html = `<!DOCTYPE html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>New contact message</title></head>
-<body style="margin:0;background:#ffffff;color:#0A1428;">
-<div style="max-width:560px;margin:0 auto;padding:28px 18px;font-family:Georgia,'Iowan Old Style','Times New Roman',serif;font-size:18px;line-height:1.45;color:#0A1428;">
-<p style="margin:0 0 8px;font-family:system-ui,Segoe UI,Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:#0E1E3A;">Hotel Day Club</p>
-<h1 style="margin:0 0 16px;font-size:32px;line-height:1.15;color:#0E1E3A;font-weight:700;">New contact message</h1>
-${demo ? `<p style="margin:0 0 20px;padding:14px 16px;background:#F6EFE6;color:#0A1428;border:2px solid #0E1E3A;">${esc(warning)}</p>` : ''}
-<table role="presentation" style="width:100%;border-collapse:collapse;">${rows}</table>
-<p style="margin:20px 0 0;color:#0A1428;white-space:pre-wrap;overflow-wrap:anywhere;">${esc(info.message)}</p>
-</div></body></html>`;
-  return {
-    to: info.to,
-    subject: `New contact message: ${String(topic).replace(/[\r\n]+/g, ' ').slice(0, 80)}`,
-    html,
-    text,
-  };
+  return ContactAlertMail.build(info);
 }
 
 async function claimAndSend(db, claimSql, claimArgs, triesSql, triesArgs, stateSql, stateHead, failLine, send) {
