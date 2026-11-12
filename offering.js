@@ -9,6 +9,7 @@ const KINDS = [
   { code: 'custom', name: 'Custom' },
 ];
 const KIND_NAME = Object.fromEntries(KINDS.map(k => [k.code, k.name]));
+const FOOD_RULE = 'Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.';
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -307,7 +308,7 @@ function rulesLines(hotel, opts = {}) {
   if (hotel.age_policy) lines.push(hotel.age_policy);
   if (hotel.kids_hours) lines.push(`Kids: ${hotel.kids_hours}`);
   lines.push(hotel.towels ? 'Towels included' : 'Bring your own towel');
-  lines.push(opts.foodSentence || hotel.food_rule || 'Food and drink are not included in the pass.');
+  lines.push(opts.foodSentence || hotel.food_rule || FOOD_RULE);
   lines.push(hotel.id_required ? 'Photo ID required' : 'Photo ID not required');
   const guard = guardFacts(hotel);
   if (guard.line) lines.push(guard.on ? `${guard.line}. ${guard.watch}` : guard.line);
@@ -465,7 +466,7 @@ function blankJoin() {
     hotel: {
       name: '', area: '', tagline: '', blurb: '', contact_name: '', contact_email: '', login: '',
       cutoff_hours: 2, heated: 0, setting: 'outdoor', age_policy: 'All ages', kids_hours: 'All open hours',
-      towels: 1, food_rule: 'Food and drink are not included. Buy them from the hotel.', id_required: 1, lifeguard: 0,
+      towels: 1, food_rule: FOOD_RULE, id_required: 1, lifeguard: 0,
       season_start: '', season_end: '', season_opens: '', season_closes: '', room_only_from: '', room_only_to: '',
     },
     spots: [{ kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the pool, with a towel.', holds: 1, price: 45, daily_cap: 20, photo: 'hero-loungers.jpg' }],
@@ -744,8 +745,8 @@ ${DAY_ORDER.map(wd => {
 <div class="two">${yn('towels', 'Towels included', h.towels)}${yn('id_required', 'Photo ID required', h.id_required !== 0)}</div>
 <div class="two"><label class="fl">Lifeguard<select name="lifeguard"><option value="" ${guardChoice(h.lifeguard) === '' ? 'selected' : ''}>Choose</option><option value="1" ${guardChoice(h.lifeguard) === '1' ? 'selected' : ''}>On duty</option><option value="0" ${guardChoice(h.lifeguard) === '0' ? 'selected' : ''}>Not on duty</option><option value="2" ${guardChoice(h.lifeguard) === '2' ? 'selected' : ''}>On duty for set hours</option></select></label>
 <label class="fl">Lifeguard hours<input name="lifeguard_hours" maxlength="120" value="${esc(h.lifeguard_hours || '')}" placeholder="10am to 4pm"></label></div>
-<label class="fl">Food and drink<input name="food_rule" maxlength="160" value="${esc(h.food_rule || '')}" placeholder="Not included. Name where guests can buy them."></label>
-<p class="muted small">Food and drink are never included in the pass. Say where guests can buy it.</p>
+<label class="fl">Food and drink<input name="food_rule" maxlength="160" value="${esc(h.food_rule || '')}" placeholder="${esc(FOOD_RULE)}"></label>
+<p class="muted small">${esc(FOOD_RULE)}</p>
 <label class="fl">Dress code<input name="dress_code" maxlength="160" value="${esc(h.dress_code || '')}" placeholder="Swimwear at the pool. A cover-up in the lobby."></label>
 ${account ? `<label class="tick"><input type="checkbox" name="marketing" value="1" ${h.marketing ? 'checked' : ''}> Email me about listing a hotel. Optional, and separate from this application.</label>
 <p class="privacy-note">We use your name, email and login to review this application and reply to you. <a href="/privacy">Privacy policy</a></p>` : ''}
@@ -873,7 +874,7 @@ function arrivalText(value, mode) {
 }
 
 module.exports = {
-  KINDS, PHOTOS, fmtTime, parseTime, minutes, spotLabel, hoursSummary, dayPlan, dayClosure, closureReason,
+  KINDS, PHOTOS, FOOD_RULE, fmtTime, parseTime, minutes, spotLabel, hoursSummary, dayPlan, dayClosure, closureReason,
   rulesLines, rulesText, rulesCard, amenitiesFrom, slugify, hoursFor, blankJoin, readForm,
   policyFacts, guardFacts, supervisionNote, venueMissing, PICK_DATE_CANCEL,
   writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,

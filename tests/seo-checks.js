@@ -359,8 +359,15 @@ function alts(html, where) {
     const hiw = text(await get(port, '/how-it-works'));
     assert.ok(hiw.includes('href="/hotel"'));
     assert.ok(hiw.includes('At the check-in point on your listing.'));
-    assert.ok(text(await get(port, '/guides/how-to-choose-a-hotel-pool-day-pass')).includes('kids\u2019 hours'));
+    const choose = text(await get(port, '/guides/how-to-choose-a-hotel-pool-day-pass'));
+    assert.ok(choose.includes('kids\u2019 hours'));
+    assert.ok(choose.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
+    assert.ok(!choose.includes('optional food and drink credit'));
+    assert.ok(!choose.includes('prepaid food and drink credit'));
     assert.ok(hiw.includes('href="/guides"'));
+    assert.ok(hiw.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
+    assert.ok(!hiw.includes('prepaid food and drink credit'));
+    assert.ok(!hiw.includes('optional food and drink credit'));
     assert.strictEqual(titleOf(hiw), 'How hotel day passes work · Hotel Day Club');
 
     const live = new Database(dbPath);

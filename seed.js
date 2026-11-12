@@ -1,23 +1,22 @@
 const fs = require('fs'); const path = require('path');
 const { ymd, addDays } = require('./util');
-const { parseTime, writeOffering, rulesText, syncLateAddons, dayPlan } = require('./offering');
+const { parseTime, writeOffering, rulesText, syncLateAddons, dayPlan, FOOD_RULE } = require('./offering');
 const { demoHotelPassword } = require('./passwords');
 
 const CATALOG = [
   { code: 'gym', name: 'Gym access', blurb: 'Use the gym on the same day.', per: 'guest', price: 25, cap: 20 },
   { code: 'parking', name: 'Parking', blurb: 'One car space for the day.', per: 'booking', price: 20, cap: 25 },
-  { code: 'food', name: 'Prepaid food and drink credit (optional)', blurb: 'Optional credit to spend at the bar or café. Not included in the pass.', per: 'guest', price: 30, cap: 40 },
   { code: 'cabana', name: 'Cabana upgrade', blurb: 'A reserved cabana for your group.', per: 'booking', price: 80, cap: 6 },
   { code: 'robe', name: 'Towel & robe pack', blurb: 'An extra towel and a robe.', per: 'guest', price: 15, cap: 30 },
   { code: 'late', name: 'Late access', blurb: 'Stay until the pool closes, after day-pass hours end. It does not run past closing time.', per: 'guest', price: 35, cap: 12 },
 ];
 const PRESETS = {
-  'saltwater-terrace': { gym: { enabled: 1, price: 25, cap: 20 }, parking: { enabled: 1, price: 18, cap: 30 }, food: { enabled: 1, price: 30, cap: 40 }, cabana: { enabled: 1, price: 85, cap: 6 }, robe: { enabled: 0 }, late: { enabled: 0, price: 35, cap: 15 } },
-  'skyline-rooftop': { gym: { enabled: 1, price: 20, cap: 25 }, parking: { enabled: 1, price: 40, cap: 16 }, food: { enabled: 1, price: 28, cap: 30 }, cabana: { enabled: 1, price: 95, cap: 4 }, robe: { enabled: 1, price: 18, cap: 20 }, late: { enabled: 0, price: 40, cap: 10 } },
-  'harbourside-lido': { gym: { enabled: 1, price: 30, cap: 15 }, parking: { enabled: 1, price: 45, cap: 12 }, food: { enabled: 1, price: 35, cap: 25 }, cabana: { enabled: 0 }, robe: { enabled: 1, price: 22, cap: 20 }, late: { enabled: 0, price: 30, cap: 10 } },
-  'palm-court': { gym: { enabled: 0 }, parking: { enabled: 0 }, food: { enabled: 1, price: 22, cap: 40 }, cabana: { enabled: 1, price: 60, cap: 8 }, robe: { enabled: 1, price: 12, cap: 25 }, late: { enabled: 0, price: 25, cap: 15 } },
-  'manly-sands': { gym: { enabled: 0 }, parking: { enabled: 1, price: 15, cap: 20 }, food: { enabled: 1, price: 28, cap: 35 }, cabana: { enabled: 1, price: 70, cap: 6 }, robe: { enabled: 0 }, late: { enabled: 0, price: 32, cap: 12 } },
-  'bayview-spa': { gym: { enabled: 1, price: 25, cap: 12 }, parking: { enabled: 1, price: 28, cap: 18 }, food: { enabled: 1, price: 40, cap: 20 }, cabana: { enabled: 1, price: 110, cap: 5 }, robe: { enabled: 1, price: 20, cap: 20 }, late: { enabled: 0 } },
+  'saltwater-terrace': { gym: { enabled: 1, price: 25, cap: 20 }, parking: { enabled: 1, price: 18, cap: 30 }, cabana: { enabled: 1, price: 85, cap: 6 }, robe: { enabled: 0 }, late: { enabled: 0, price: 35, cap: 15 } },
+  'skyline-rooftop': { gym: { enabled: 1, price: 20, cap: 25 }, parking: { enabled: 1, price: 40, cap: 16 }, cabana: { enabled: 1, price: 95, cap: 4 }, robe: { enabled: 1, price: 18, cap: 20 }, late: { enabled: 0, price: 40, cap: 10 } },
+  'harbourside-lido': { gym: { enabled: 1, price: 30, cap: 15 }, parking: { enabled: 1, price: 45, cap: 12 }, cabana: { enabled: 0 }, robe: { enabled: 1, price: 22, cap: 20 }, late: { enabled: 0, price: 30, cap: 10 } },
+  'palm-court': { gym: { enabled: 0 }, parking: { enabled: 0 }, cabana: { enabled: 1, price: 60, cap: 8 }, robe: { enabled: 1, price: 12, cap: 25 }, late: { enabled: 0, price: 25, cap: 15 } },
+  'manly-sands': { gym: { enabled: 0 }, parking: { enabled: 1, price: 15, cap: 20 }, cabana: { enabled: 1, price: 70, cap: 6 }, robe: { enabled: 0 }, late: { enabled: 0, price: 32, cap: 12 } },
+  'bayview-spa': { gym: { enabled: 1, price: 25, cap: 12 }, parking: { enabled: 1, price: 28, cap: 18 }, cabana: { enabled: 1, price: 110, cap: 5 }, robe: { enabled: 1, price: 20, cap: 20 }, late: { enabled: 0 } },
 };
 
 const ALL_WEEK = '0,1,2,3,4,5,6';
@@ -28,7 +27,7 @@ function week(days, opens, closes) {
 const OFFERINGS = {
   'saltwater-terrace': {
     hours: week(ALL_WEEK, '10:00', '16:00'), cutoff_hours: 2, heated: 1, setting: 'outdoor',
-    age_policy: 'All ages', kids_hours: 'All open hours', towels: 1, food_rule: 'Food and drink are not included. Buy them from the pool bar.',
+    age_policy: 'All ages', kids_hours: 'All open hours', towels: 1, food_rule: FOOD_RULE,
     id_required: 1, lifeguard: 0,
     spots: [
       { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the infinity pool, with a towel.', holds: 1, price: 45, daily_cap: 24, photo: 'hero-loungers.jpg', featured: 1 },
@@ -38,7 +37,7 @@ const OFFERINGS = {
   },
   'skyline-rooftop': {
     hours: week('0,1,2,3,4,6', '11:00', '17:00'), cutoff_hours: 1, heated: 1, setting: 'outdoor',
-    age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: 'Food and drink are not included. The bar sells them from noon. No outside food or drink.',
+    age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: FOOD_RULE,
     id_required: 1, lifeguard: 0, room_only_from: '16:00', room_only_to: '17:00',
     spots: [
       { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair on the rooftop deck, with a towel.', holds: 1, price: 55, daily_cap: 20, photo: 'rooftop-city.jpg', featured: 1 },
@@ -48,7 +47,7 @@ const OFFERINGS = {
   },
   'harbourside-lido': {
     hours: week(ALL_WEEK, '09:00', '18:00'), cutoff_hours: 2, heated: 1, setting: 'indoor',
-    age_policy: '16+', kids_hours: '16 and over only', towels: 1, food_rule: 'Food and drink are not included. Buy them at the café. No outside food.',
+    age_policy: '16+', kids_hours: '16 and over only', towels: 1, food_rule: FOOD_RULE,
     id_required: 1, lifeguard: 0,
     season_start: '12-01', season_end: '03-31', season_opens: '08:00', season_closes: '19:00',
     spots: [
@@ -59,7 +58,7 @@ const OFFERINGS = {
   },
   'palm-court': {
     hours: week('0,4,5,6', '10:00', '17:00'), cutoff_hours: 1, heated: 0, setting: 'outdoor',
-    age_policy: 'All ages', kids_hours: 'All open hours, shallow end', towels: 1, food_rule: 'Food and drink are not included. They are available to buy at the café. The optional food and drink credit stays an extra. Packed lunches are welcome.',
+    age_policy: 'All ages', kids_hours: 'All open hours, shallow end', towels: 1, food_rule: FOOD_RULE,
     id_required: 1, lifeguard: 1,
     spots: [
       { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger in the palm gardens, with a towel.', holds: 1, price: 35, daily_cap: 40, photo: 'tropical-resort.jpg', featured: 1 },
@@ -69,7 +68,7 @@ const OFFERINGS = {
   },
   'manly-sands': {
     hours: week(ALL_WEEK, '10:00', '16:00'), cutoff_hours: 2, heated: 0, setting: 'outdoor',
-    age_policy: 'All ages', kids_hours: 'Children welcome until 2pm', towels: 1, food_rule: 'Food and drink are not included. Buy them at the kiosk. No glass.',
+    age_policy: 'All ages', kids_hours: 'Children welcome until 2pm', towels: 1, food_rule: FOOD_RULE,
     id_required: 1, lifeguard: 0,
     spots: [
       { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the magnesium pool, with a towel.', holds: 1, price: 40, daily_cap: 28, photo: 'infinity-palms.jpg', featured: 1 },
@@ -78,7 +77,7 @@ const OFFERINGS = {
   },
   'bayview-spa': {
     hours: week('0,2,3,4,5,6', '09:00', '16:00'), cutoff_hours: 3, heated: 1, setting: 'both',
-    age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: 'Food and drink are not included. No outside food or drink.',
+    age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: FOOD_RULE,
     id_required: 1, lifeguard: 0,
     spots: [
       { code: 'entry', kind: 'entry', name: 'General entry', description: 'Bathhouse, plunge pools and the outdoor pool.', holds: 1, price: 80, daily_cap: 24, photo: 'spa-steps.jpg', featured: 1 },
@@ -125,13 +124,20 @@ function ensureSchedules(db) {
     const demo = 'slug=? AND COALESCE(is_demo,0)=1';
     db.prepare(`UPDATE hotels SET blurb=REPLACE(blurb, 'right on the water line', 'steps from the beach') WHERE ${demo} AND blurb LIKE '%right on the water line%'`).run('manly-sands');
     db.prepare(`UPDATE hotels SET kids_hours='Children welcome until 2pm' WHERE ${demo} AND kids_hours='Until 2pm'`).run('manly-sands');
-    const palmFood = OFFERINGS['palm-court'].food_rule;
-    db.prepare(`UPDATE hotels SET food_rule=? WHERE ${demo} AND food_rule IN (?, ?)`).run(
-      palmFood,
-      'palm-court',
+    const oldFoodRules = [
       'Café on site. Packed lunches welcome.',
-      'Food and drink are not included. Buy them at the café, or add the optional food and drink credit. Packed lunches are welcome.'
-    );
+      'Food and drink are not included. Buy them at the café, or add the optional food and drink credit. Packed lunches are welcome.',
+      'Food and drink are not included. They are available to buy at the café. The optional food and drink credit stays an extra. Packed lunches are welcome.',
+      'Food and drink are not included. Buy them from the pool bar.',
+      'Food and drink are not included. The bar sells them from noon. No outside food or drink.',
+      'Food and drink are not included. Buy them at the café. No outside food.',
+      'Food and drink are not included. Buy them at the café. Packed lunches are welcome.',
+      'Food and drink are not included. Buy them at the kiosk. No glass.',
+      'Food and drink are not included. No outside food or drink.',
+      'Food and drink are not included. Buy them from the hotel.',
+    ];
+    const setFood = db.prepare('UPDATE hotels SET food_rule=? WHERE COALESCE(is_demo,0)=1 AND food_rule=?');
+    for (const old of oldFoodRules) setFood.run(FOOD_RULE, old);
     // Approved demo intros. A later edit that is not one of these old sentences is left alone.
     const setTag = db.prepare(`UPDATE hotels SET tagline=? WHERE ${demo} AND tagline=?`);
     const setBlurb = db.prepare(`UPDATE hotels SET blurb=? WHERE ${demo} AND blurb=?`);

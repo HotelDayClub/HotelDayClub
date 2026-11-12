@@ -143,8 +143,8 @@ const mailed = bookingNotice({
   arrival: '11 am – 12 pm (estimate)',
 });
 assert.ok(mailed.text.includes('Your demo booking'));
-assert.ok(mailed.text.includes('Food and drink are not included in your pass.'));
-assert.ok(mailed.html.includes('Food and drink are not included in your pass.'));
+assert.ok(mailed.text.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
+assert.ok(mailed.html.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
 assert.ok(mailed.text.includes('Expected arrival: 11 am – 12 pm (estimate)'));
 assert.ok(mailed.text.includes("Your pass is valid any time during the hotel's opening hours — your expected arrival time is an estimate, not a reservation."));
 assert.ok(mailed.html.includes("your expected arrival time is an estimate, not a reservation."));
