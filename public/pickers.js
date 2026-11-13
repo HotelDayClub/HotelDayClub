@@ -208,6 +208,9 @@
     var max = parseISO(input.max) || addDays(min, 90);
     var closed = {};
     (input.dataset.closed || '').split(',').forEach(function (s) { if (s) closed[s] = 1; });
+    var nextOpen = {};
+    (input.dataset.next || '').split(',').forEach(function (s) { if (s) nextOpen[s] = 1; });
+    var hold = input.dataset.hold || '';
     var view = parseISO(input.value) || new Date();
     view = new Date(view.getFullYear(), view.getMonth(), 1);
     var btn = null;
@@ -263,6 +266,8 @@
         b.setAttribute('aria-label', labelDate(date) + (why ? ', ' + why : ''));
         if (past) b.classList.add('is-past');
         if (past || future || shut) b.disabled = true;
+        if (hold && iso === hold) b.classList.add('is-hold');
+        if (nextOpen[iso] && !past && !future && !shut) b.classList.add('is-next');
         if (selected && same(date, selected)) {
           b.classList.add('is-on');
           b.setAttribute('aria-selected', 'true');

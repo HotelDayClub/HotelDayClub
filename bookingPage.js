@@ -1,4 +1,5 @@
 const { esc, money, nice } = require('./util');
+const { ShortCode } = require('./shortCode');
 const { CheckoutFlow } = require('./checkout');
 const { spotLabel, swimNote, displayCancelNote, arrivalText, GuestCheckIn } = require('./offering');
 const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
@@ -93,6 +94,7 @@ function bookingPageBody(v) {
   const cancelForm = v.mayCancel
     ? `<form method="post" action="/booking/${encodeURIComponent(b.code)}/cancel" class="bk-cancel-form"><button class="btn btn-rose" type="submit">Cancel this demo booking</button></form><p class="bk-muted">No payment was taken. Cancelling marks this demo booking refunded. Nothing is returned to a card.</p>`
     : '';
+  const shownCode = v.shownCode || b.short_code || b.code;
   const qrBlock = cancelled
     ? '<div class="bk-qr-off">This booking is cancelled, so the QR code is no longer shown and it won\'t check you in.</div>'
     : `<img class="qr" src="${v.qr}" alt="QR code for booking ${esc(b.code)}" width="220" height="220">`;
@@ -112,9 +114,8 @@ function bookingPageBody(v) {
 ${cancelled ? '' : '<p class="bk-how">Reception scans the QR code or types the booking code.</p>'}
 ${qrBlock}
 <p class="bk-code-lbl" id="bk-code-lbl">Booking code</p>
-<p class="bk-code" aria-describedby="bk-code-lbl">${esc(b.code)}</p>
-<button class="btn btn-line js-only" type="button" data-copy="${esc(b.code)}">Copy booking code</button>
-<p class="bk-copied" aria-live="polite"></p>
+<div class="bk-code-row"><p class="bk-code" id="bk-code" aria-describedby="bk-code-lbl">${esc(shownCode)}</p><button class="btn btn-line js-only" type="button" data-copy="${esc(shownCode)}" aria-describedby="bk-code-lbl">Copy booking code</button></div>
+<p class="bk-copied" role="status"></p>
 </aside>
 <div class="bk-cards">
 <section class="bk-card" aria-labelledby="bk-pass"><h2 id="bk-pass">Your pass</h2>
@@ -160,7 +161,12 @@ clearCheckoutMemory();
     btn.addEventListener('click', function(){
       var out = btn.parentElement.querySelector('.bk-copied');
       var text = btn.getAttribute('data-copy') || '';
-      var done = function(){ if (out) out.textContent = 'Booking code copied'; };
+      var done = function(){
+        if (!out) return;
+        out.textContent = 'Copied';
+        clearTimeout(out._hide);
+        out._hide = setTimeout(function(){ out.textContent = ''; }, 2500);
+      };
       var fail = function(){ if (out) out.textContent = 'Select the code above to copy it'; };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fail);
       else fail();
@@ -176,7 +182,7 @@ clearCheckoutMemory();
 function bookingMissingBody(email) {
   const safe = esc(email || operatorEmail());
   return `<div class="wrap bk bk-miss"><h1>We can't find that booking</h1>
-<p class="bk-blurb">Check the booking code in your confirmation email. Codes look like HDC-7Q4K2.</p>
+<p class="bk-blurb">Check the booking code in your confirmation email. Codes look like ${esc(ShortCode.example())}.</p>
 <div class="bk-card"><p>Still stuck? Email <a href="mailto:${safe}">${safe}</a> with your name and booking date.</p></div>
 <div class="bk-foot"><a class="btn btn-pri" href="/">Home</a><a class="btn btn-line" href="/faq">FAQ</a></div></div>`;
 }
