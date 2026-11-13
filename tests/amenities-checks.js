@@ -76,8 +76,36 @@ function group(html, cls) {
 function textOf(html) {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 }
+function channel(hex, i) {
+  const n = parseInt(hex.slice(1), 16);
+  const c = ((n >> (16 - i * 8)) & 255) / 255;
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+}
+function contrast(fg, bg) {
+  const lum = hex => 0.2126 * channel(hex, 0) + 0.7152 * channel(hex, 1) + 0.0722 * channel(hex, 2);
+  const hi = Math.max(lum(fg), lum(bg));
+  const lo = Math.min(lum(fg), lum(bg));
+  return (hi + 0.05) / (lo + 0.05);
+}
 
 (async () => {
+  const tokens = fs.readFileSync(path.join(__dirname, '..', 'public', 'tokens.css'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.css'), 'utf8');
+  const token = name => {
+    const found = tokens.match(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ':\\s*(#[0-9A-Fa-f]{6})'));
+    assert.ok(found, name);
+    return found[1].toUpperCase();
+  };
+  assert.match(css, /\.tago\{[^}]*color:\s*var\(--hdc-rose-ink\)/);
+  assert.match(css, /\.tago\{[^}]*background:\s*var\(--hdc-rose-soft\)/);
+  assert.match(css, /\.tagx\{[^}]*color:\s*var\(--hdc-deep\)/);
+  assert.match(css, /\.tagx\{[^}]*background:\s*var\(--hdc-soft\)/);
+  const payRatio = contrast(token('--hdc-rose-ink'), token('--hdc-rose-soft'));
+  const extraRatio = contrast(token('--hdc-deep'), token('--hdc-soft'));
+  assert.ok(payRatio >= 4.5, 'Pay the venue contrast ' + payRatio.toFixed(2));
+  assert.ok(extraRatio >= 4.5, 'Optional extra contrast ' + extraRatio.toFixed(2));
+  console.log(`contrast Pay the venue ${payRatio.toFixed(2)}:1 (${token('--hdc-rose-ink')} on ${token('--hdc-rose-soft')}), Optional extra ${extraRatio.toFixed(2)}:1 (${token('--hdc-deep')} on ${token('--hdc-soft')})`);
+
   const port = 3471;
   const started = await start(port);
   try {
@@ -172,6 +200,10 @@ function textOf(html) {
     assert.ok(longOn.includes('Show all ('));
     assert.ok(/Show all \(\d+\)/.test(longOn));
     assert.ok(longOn.includes('<details class="am-more">'));
+    assert.ok(long.includes('class="am-intro"'));
+    assert.ok(!long.includes('class="sec'));
+    const more = longOn.slice(longOn.indexOf('<details class="am-more">'), longOn.indexOf('</details>') + 10);
+    assert.ok(more.indexOf('Venue Seven') < more.indexOf('<summary'), 'Show fewer sits after the extra rows');
     assert.ok(longOn.includes('Venue Seven'));
     const seat = HotelAmenities.seatHtml(db, { id: lab, slug: 'amenity-lab', name: 'Amenity Lab (Demo)', is_demo: 1 }, { people: 1 });
     assert.ok(seat.includes('class="chips-c"'));
@@ -219,6 +251,12 @@ function textOf(html) {
     assert.ok(!group(listing.body, 'am-y').includes('Pool bar'));
     assert.ok(group(listing.body, 'am-os').includes('>Pool bar</span>'));
     assert.ok(!listing.body.includes('Pool access'));
+    const foodLine = 'Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.';
+    const amenityAt = listing.body.indexOf('id="amenities"');
+    const inclusionsAt = listing.body.indexOf('id="inclusions"');
+    const hoursAt = listing.body.indexOf('id="hours"');
+    assert.ok(amenityAt >= 0 && amenityAt < inclusionsAt && inclusionsAt < hoursAt);
+    assert.ok(listing.body.slice(inclusionsAt, hoursAt).includes('<li>' + foodLine + '</li>'));
     const seatPage = await get(port, '/h/saltwater-terrace/seat/lounger');
     assert.ok(seatPage.body.includes('class="chips-c"'));
     assert.ok(seatPage.body.includes('See all amenities'));

@@ -285,7 +285,7 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
   static listHtml(rows, kind) {
     const draw = list => `<ul class="am-list${kind === 'included' ? ' am-in' : ''}">${list.map(row => HotelAmenities.rowHtml(row, kind)).join('')}</ul>`;
     if (rows.length <= 6) return draw(rows);
-    return `${draw(rows.slice(0, 6))}<details class="am-more"><summary><span class="m-o">Show all (${rows.length})</span><span class="m-c">Show fewer</span></summary>${draw(rows.slice(6))}</details>`;
+    return `${draw(rows.slice(0, 6))}<details class="am-more">${draw(rows.slice(6))}<summary><span class="m-o">Show all (${rows.length})</span><span class="m-c">Show fewer</span></summary></details>`;
   }
 
   static sentenceHtml() {
@@ -310,12 +310,12 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
       parts.push(`<div class="am-grp am-y"><h3>Included in your pass</h3>${HotelAmenities.listHtml(groups.included, 'included')}</div>`);
     }
     if (groups.optional.length) {
-      parts.push(`<div class="am-grp am-x"><h3 id="am-x">Optional extras (not in the pass price)</h3><p class="sec small">Add at checkout. The price is shown there.</p>${HotelAmenities.listHtml(groups.optional, 'optional')}</div>`);
+      parts.push(`<div class="am-grp am-x"><h3 id="am-x">Optional extras (not in the pass price)</h3><p class="am-intro">Add at checkout. The price is shown there.</p>${HotelAmenities.listHtml(groups.optional, 'optional')}</div>`);
     }
     if (groups.onsite.length) {
       parts.push(`<div class="am-grp am-os"><h3>On site at this hotel</h3>${HotelAmenities.sentenceHtml()}${HotelAmenities.listHtml(groups.onsite, 'onsite')}</div>`);
     }
-    return `<section class="lsec am" id="amenities" aria-labelledby="am-h"><h2 id="am-h">${esc(title)}</h2><p class="sec small">${esc(intro)}</p><div class="am-cols">${parts.join('')}</div></section>`;
+    return `<section class="lsec am" id="amenities" aria-labelledby="am-h"><h2 id="am-h">${esc(title)}</h2><p class="am-intro">${esc(intro)}</p><div class="am-cols">${parts.join('')}</div></section>`;
   }
 
   static seatHtml(db, hotel, opts = {}) {
