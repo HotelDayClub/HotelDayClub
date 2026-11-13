@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 const paths = require('./paths');
+const { ShortCode } = require('./shortCode');
 const dbPath = paths.dbPath();
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 if (paths.dataDir()) fs.mkdirSync(paths.uploadsDir(), { recursive: true });
@@ -123,7 +124,9 @@ ensureCols('hotels', [
   ['is_demo', 'INTEGER NOT NULL DEFAULT 0'],
 ]);
 ensureCols('pass_types', [['holds', 'INTEGER DEFAULT 1'], ['photo', 'TEXT'], ['kind', 'TEXT'], ['featured', 'INTEGER DEFAULT 0']]);
-ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0'], ['terms_ack_at', 'TEXT'], ['risk_ack_at', 'TEXT'], ['risk_text', 'TEXT'], ['cancel_note', 'TEXT'], ['seeded', 'INTEGER NOT NULL DEFAULT 0'], ['refunded', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_tries', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_state', 'TEXT'], ['arrived_count', 'INTEGER'], ['expected_arrival', 'TEXT'], ['terms_version', 'TEXT'], ['refunds_version', 'TEXT'], ['privacy_version', 'TEXT'], ['risk_version', 'TEXT'], ['consent_at', 'TEXT'], ['consent_ip', 'TEXT']]);
+ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0'], ['terms_ack_at', 'TEXT'], ['risk_ack_at', 'TEXT'], ['risk_text', 'TEXT'], ['cancel_note', 'TEXT'], ['seeded', 'INTEGER NOT NULL DEFAULT 0'], ['refunded', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_tries', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_state', 'TEXT'], ['arrived_count', 'INTEGER'], ['expected_arrival', 'TEXT'], ['terms_version', 'TEXT'], ['refunds_version', 'TEXT'], ['privacy_version', 'TEXT'], ['risk_version', 'TEXT'], ['consent_at', 'TEXT'], ['consent_ip', 'TEXT'], ['short_code', 'TEXT']]);
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_short_code ON bookings(short_code)');
+ShortCode.backfill(db);
 ensureCols('contact_messages', [['alert_tries', 'INTEGER NOT NULL DEFAULT 0'], ['alert_state', 'TEXT'], ['marketing_opt_in', 'INTEGER DEFAULT 0']]);
 ensureCols('waitlist', [['marketing_opt_in', 'INTEGER DEFAULT 0']]);
 ensureCols('guest_notes', [['seeded', 'INTEGER NOT NULL DEFAULT 0']]);
