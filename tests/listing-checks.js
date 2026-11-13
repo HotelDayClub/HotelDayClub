@@ -100,7 +100,20 @@ assert.ok(pickerCss.includes('minmax(44px,1fr)'));
 const pickerJs = fs.readFileSync(path.join(__dirname, '..', 'public/pickers.js'), 'utf8');
 assert.ok(pickerJs.includes('aria-label="Calendar key"'));
 for (const word of [' Open</li>', ' Closed</li>', ' Sold out</li>', ' Selected</li>']) assert.ok(pickerJs.includes(word), word);
-assert.ok(pickerJs.includes('⊘') && pickerJs.includes('×') && pickerJs.includes('■'));
+assert.ok(pickerJs.includes('class="pk-day pk-key is-on"'), 'selected mark uses the selected cell class');
+assert.ok(pickerJs.includes("b.classList.add('is-on')"), 'selected cells use is-on');
+assert.ok(pickerJs.includes('class="pk-day pk-key" disabled'), 'closed mark is a disabled day cell');
+assert.ok(pickerJs.includes('b.disabled = true'), 'closed cells are disabled day buttons');
+assert.ok(pickerJs.includes('class="pk-day pk-key is-sold"'), 'sold-out mark uses the sold-out cell class');
+assert.ok(pickerJs.includes("b.classList.add('is-sold')"), 'sold-out cells use is-sold');
+assert.ok(!pickerCss.includes('.pk-key-sel') && !pickerCss.includes('.pk-key-sold') && !pickerCss.includes('.pk-key-open'));
+const selectedRule = pickerCss.match(/\.pk-day\.is-on\{[^}]*\}/);
+assert.ok(selectedRule && selectedRule[0].includes('background:#FF6B57'), selectedRule && selectedRule[0]);
+const closedRule = pickerCss.match(/\.pk-day:disabled\{[^}]*\}/);
+assert.ok(closedRule && closedRule[0].includes('text-decoration:line-through') && closedRule[0].includes('background:#eef1f4'), closedRule && closedRule[0]);
+assert.ok(!/\.pk-day\.is-sold\{[^}]*background/.test(pickerCss));
+assert.ok(pickerCss.includes('.pk-inline{') && pickerCss.includes('overflow:visible'));
+assert.ok(pickerCss.includes('.pk-cal-note{') && pickerCss.includes('padding:0 0 4px'));
 function sampleListing(photos, remaining) {
   return listingHtml({
     h: { name: 'Gallery Check (Demo)', slug: 'gallery-check', area: 'Eastern Beaches', tagline: 'Pool', blurb: 'A pool.', photos, is_demo: 1 },

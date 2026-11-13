@@ -208,6 +208,8 @@
     var max = parseISO(input.max) || addDays(min, 90);
     var closed = {};
     (input.dataset.closed || '').split(',').forEach(function (s) { if (s) closed[s] = 1; });
+    var sold = {};
+    (input.dataset.sold || '').split(',').forEach(function (s) { if (s) sold[s] = 1; });
     var view = parseISO(input.value) || new Date();
     view = new Date(view.getFullYear(), view.getMonth(), 1);
     var btn = null;
@@ -262,6 +264,7 @@
         var why = past ? 'unavailable' : future ? 'unavailable' : shut ? 'closed' : '';
         b.setAttribute('aria-label', labelDate(date) + (why ? ', ' + why : ''));
         if (past) b.classList.add('is-past');
+        if (sold[iso] && !past && !future && !shut) b.classList.add('is-sold');
         if (past || future || shut) b.disabled = true;
         if (selected && same(date, selected)) {
           b.classList.add('is-on');
@@ -279,7 +282,7 @@
       var clear = panel.querySelector('.pk-clear');
       if (clear) clear.classList.toggle('is-on', !input.value);
     }
-    var legend = inline ? '<ul class="pk-legend" aria-label="Calendar key"><li><span class="pk-key pk-key-open" aria-hidden="true">●</span> Open</li><li><span class="pk-key" aria-hidden="true">⊘</span> Closed</li><li><span class="pk-key pk-key-sold" aria-hidden="true">×</span> Sold out</li><li><span class="pk-key pk-key-sel" aria-hidden="true">■</span> Selected</li></ul>' : '';
+    var legend = inline ? '<ul class="pk-legend" aria-label="Calendar key"><li><span class="pk-day pk-key" aria-hidden="true">1</span> Open</li><li><button type="button" class="pk-day pk-key" disabled tabindex="-1" aria-hidden="true">7</button> Closed</li><li><span class="pk-day pk-key is-sold" aria-hidden="true">14</span> Sold out</li><li><span class="pk-day pk-key is-on" aria-hidden="true">3</span> Selected</li></ul>' : '';
     panel.innerHTML = '<div class="pk-cal-top"><button type="button" class="pk-nav" data-dir="-1" aria-label="Previous month">‹</button><div class="pk-cal-title" aria-live="polite"></div><button type="button" class="pk-nav" data-dir="1" aria-label="Next month">›</button></div><div class="pk-week" aria-hidden="true">' + WEEK.map(function (w) { return '<span>' + w + '</span>'; }).join('') + '</div><div role="grid"></div>' + legend + '<p class="pk-cal-note">Past dates are unavailable.' + (input.dataset.closed ? ' Closed days cannot be booked.' : '') + '</p>' + (required ? '' : '<button type="button" class="pk-clear">Any day</button>');
     panel.querySelector('.pk-cal-top').replaceChild(title, panel.querySelector('.pk-cal-title'));
     panel.querySelector('[data-dir="-1"]').addEventListener('click', function () { view = new Date(view.getFullYear(), view.getMonth() - 1, 1); paint(); });
