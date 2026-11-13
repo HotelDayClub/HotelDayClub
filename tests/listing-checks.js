@@ -3,7 +3,8 @@ const { DEMO_INTROS } = require('../seed');
 const { ListingPanel, listingHtml } = require('../listingView');
 const { hoursLines } = require('../offering');
 const { HotelClock } = require('../calendar');
-const { ymd, addDays } = require('../util');
+const { ymd, addDays, nice } = require('../util');
+const { DateHold } = require('../dateHold');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -114,6 +115,34 @@ assert.ok(closedRule && closedRule[0].includes('text-decoration:line-through') &
 assert.ok(pickerCss.includes('.pk-legend{display:flex;flex-wrap:nowrap'));
 assert.ok(pickerCss.includes('.pk-inline{') && pickerCss.includes('overflow:visible'));
 assert.ok(pickerCss.includes('.pk-cal-note{') && pickerCss.includes('padding:0 0 4px'));
+assert.strictEqual(ListingPanel.stepDay('', '2026-11-13', '2027-02-11', -1), '');
+assert.strictEqual(ListingPanel.stepDay('', '2026-11-13', '2027-02-11', 1), '2026-11-13');
+assert.strictEqual(ListingPanel.stepDay('2026-11-13', '2026-11-13', '2027-02-11', -1), '');
+assert.strictEqual(ListingPanel.stepDay('2026-11-13', '2026-11-13', '2027-02-11', 1), '2026-11-14');
+assert.strictEqual(ListingPanel.stepDay('2026-11-10', '2026-11-13', '2027-02-11', 1), '2026-11-13');
+assert.strictEqual(ListingPanel.stepDay('2027-02-11', '2026-11-13', '2027-02-11', 1), '');
+assert.strictEqual(ListingPanel.stepDay('2026-11-20', '2026-11-13', '2027-02-11', -1), '2026-11-19');
+const soldCopy = DateHold.offerCopy('soldout', 'Sat, 14 Nov', 'Sun, 15 Nov');
+assert.strictEqual(soldCopy.line, 'Sold out on Sat, 14 Nov.');
+assert.strictEqual(soldCopy.tryLabel, 'Try Sun, 15 Nov');
+assert.strictEqual(soldCopy.see, 'See Sun, 15 Nov');
+assert.strictEqual(soldCopy.button, 'Sold out on Sat, 14 Nov');
+assert.strictEqual(soldCopy.empty, '');
+assert.ok(!soldCopy.line.includes('\u2014') && !soldCopy.see.includes('\u2014'));
+const closedCopy = DateHold.offerCopy('closed', 'Mon, 2 Nov', '');
+assert.strictEqual(closedCopy.word, 'Closed');
+assert.strictEqual(closedCopy.empty, 'No open dates in the next 90 days.');
+function readOpen(hotelId, day) {
+  if (day < '2026-11-16') return [{ id: 7, remaining: 0, past: false, blocked: null }, { id: 8, remaining: 0, past: false, blocked: null }];
+  if (day === '2026-11-16') return [{ id: 7, remaining: 0, past: false, blocked: null }, { id: 8, remaining: 4, past: false, blocked: null }];
+  return [{ id: 7, remaining: 2, past: false, blocked: null }, { id: 8, remaining: 4, past: false, blocked: null }];
+}
+assert.strictEqual(DateHold.earliestOpen(readOpen, 1, [{ id: 7 }, { id: 8 }], 2, '2026-11-13', '2026-11-14'), '2026-11-16');
+assert.ok(appCss.includes('@keyframes price-tick{from{opacity:0;transform:translateY(-8px)}'));
+assert.ok(appCss.includes('html.js .book-bar{transform:translateY(110%);transition:transform 300ms cubic-bezier(.2,.7,.2,1)}'));
+assert.ok(appCss.includes('.price-num.is-tick{animation:none}'));
+assert.ok(appCss.includes('html.js .book-bar{transition:none}'));
+assert.ok(appCss.includes('.day-step-btn{display:inline-flex') && appCss.includes('min-width:44px;min-height:44px'));
 function sampleListing(photos, remaining) {
   return listingHtml({
     h: { name: 'Gallery Check (Demo)', slug: 'gallery-check', area: 'Eastern Beaches', tagline: 'Pool', blurb: 'A pool.', photos, is_demo: 1 },
@@ -338,9 +367,29 @@ assert.ok(!sevenPhotos.includes('class="left-badge"'));
     assert.ok(!salt.body.includes('quietest'));
     assert.ok(salt.body.includes('href="#overview"'));
     assert.ok(salt.body.includes('href="#passes"'));
-    assert.ok(salt.body.includes('href="#details"'));
+    assert.ok(salt.body.includes('href="#inclusions"'));
+    assert.ok(salt.body.includes('href="#location"'));
+    assert.ok(salt.body.includes('href="#policies"'));
+    assert.ok(!salt.body.includes('href="#details"'));
+    assert.ok(!salt.body.includes('id="details"'));
+    assert.ok(salt.body.includes('<a href="#overview" aria-current="true">Overview</a><a href="#passes">Passes</a><a href="#inclusions">Inclusions</a><a href="#location">Location</a><a href="#policies">Policies</a>'));
     assert.ok(salt.body.includes('id="overview"'));
-    assert.ok(salt.body.includes('id="details"'));
+    assert.ok(salt.body.includes('id="inclusions"'));
+    assert.ok(salt.body.includes('id="location"'));
+    assert.ok(salt.body.includes('id="policies"'));
+    assert.ok(salt.body.includes('aria-label="Previous day"'));
+    assert.ok(salt.body.includes('aria-label="Next day"'));
+    assert.ok(/id="day-prev"[^>]*aria-disabled="true"/.test(salt.body));
+    assert.ok(!/id="day-prev"[^>]*href=/.test(salt.body));
+    assert.ok(salt.body.includes('id="book-sheet"'));
+    assert.ok(salt.body.includes('class="book-sheet-close"'));
+    assert.ok(salt.body.includes('aria-haspopup="dialog"'));
+    assert.ok(salt.body.includes('aria-live="polite"'));
+    assert.ok(salt.body.includes('book-lock'));
+    assert.ok(salt.body.includes('is-tick'));
+    assert.ok(salt.body.includes('is-stuck'));
+    assert.ok(salt.body.includes('function openBookSheet'));
+    assert.ok(salt.body.includes('function sheetFocusable'));
     assert.ok(salt.body.includes('class="lightbox"'));
     assert.ok(salt.body.includes('aria-label="Previous photo"'));
     assert.ok(salt.body.includes('aria-label="Next photo"'));
@@ -445,6 +494,61 @@ assert.ok(!sevenPhotos.includes('class="left-badge"'));
       const restore = new Sqlite(dbPath);
       restore.prepare('UPDATE pass_types SET daily_cap=? WHERE id=?').run(cabRow.daily_cap, cabRow.id);
       restore.close();
+    }
+
+    const clockDb = new Sqlite(dbPath, { readonly: true });
+    const clockHotel = clockDb.prepare("SELECT id, timezone FROM hotels WHERE slug='saltwater-terrace'").get();
+    const listToday = HotelClock.today({ timezone: clockHotel.timezone });
+    clockDb.close();
+    const nextTag = salt.body.match(/id="day-next"[^>]*>/);
+    assert.ok(nextTag && nextTag[0].includes(`date=${listToday}`), nextTag && nextTag[0]);
+    const listMax = ymd(addDays(new Date(listToday + 'T12:00:00'), 90));
+    const edge = await get(port, `/h/saltwater-terrace?date=${listMax}&qty=1`);
+    assert.strictEqual(edge.status, 200);
+    assert.ok(/id="day-next"[^>]*aria-disabled="true"/.test(edge.body));
+    assert.ok(!/id="day-next"[^>]*href=/.test(edge.body));
+    const edgePrev = ymd(addDays(new Date(listMax + 'T12:00:00'), -1));
+    assert.ok(edge.body.match(/id="day-prev"[^>]*>/)[0].includes(`date=${edgePrev}`));
+    const pastDay = ymd(addDays(new Date(listToday + 'T12:00:00'), -3));
+    const pastPage = await get(port, `/h/saltwater-terrace?date=${pastDay}&pass=lounger&qty=1&notice=1`);
+    assert.strictEqual(pastPage.status, 200);
+    const pastNext = pastPage.body.match(/id="day-next"[^>]*>/);
+    assert.ok(pastNext && pastNext[0].includes(`date=${listToday}`), pastNext && pastNext[0]);
+    assert.ok(/id="day-prev"[^>]*aria-disabled="true"/.test(pastPage.body));
+    assert.ok(pastPage.body.includes('id="date-alert"'));
+
+    const soldDay = ymd(addDays(new Date(listToday + 'T12:00:00'), 12));
+    const soldNext = ymd(addDays(new Date(soldDay + 'T12:00:00'), 1));
+    const shutDay = ymd(addDays(new Date(listToday + 'T12:00:00'), 20));
+    const shutNext = ymd(addDays(new Date(shutDay + 'T12:00:00'), 1));
+    const offerDb = new Sqlite(dbPath);
+    const offerPasses = offerDb.prepare('SELECT id, daily_cap, price FROM pass_types WHERE hotel_id=?').all(clockHotel.id);
+    assert.ok(offerPasses.some(p => p.daily_cap > 0));
+    const insertBooking = offerDb.prepare(`INSERT INTO bookings (code, hotel_id, pass_type_id, date, qty, unit_price, total, guest_name, email, phone, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'Sold Guest', 'sold@example.com', '0412000000', 'confirmed')`);
+    for (const pass of offerPasses) {
+      if (pass.daily_cap > 0) insertBooking.run(`B7S${pass.id}`, clockHotel.id, pass.id, soldDay, pass.daily_cap, pass.price, pass.price * pass.daily_cap);
+    }
+    offerDb.prepare('INSERT INTO blocked_dates (hotel_id, date, reason) VALUES (?, ?, ?)').run(clockHotel.id, shutDay, 'Private event');
+    offerDb.close();
+    try {
+      const soldPage = await get(port, `/h/saltwater-terrace?date=${soldDay}&qty=1`);
+      assert.strictEqual(soldPage.status, 200);
+      assert.ok(soldPage.body.includes(`Sold out on ${nice(soldDay)}.`));
+      assert.ok(soldPage.body.includes(`Try ${nice(soldNext)}`));
+      assert.ok(soldPage.body.includes(`See ${nice(soldNext)}`));
+      assert.ok(soldPage.body.includes(`date=${soldNext}`));
+      assert.ok(soldPage.body.includes(`>${DateHold.offerCopy('soldout', nice(soldDay), nice(soldNext)).button}<`));
+      const shutPage = await get(port, `/h/saltwater-terrace?date=${shutDay}&qty=1`);
+      assert.strictEqual(shutPage.status, 200);
+      assert.ok(shutPage.body.includes(`Closed on ${nice(shutDay)}.`));
+      assert.ok(shutPage.body.includes(`Try ${nice(shutNext)}`));
+      assert.ok(shutPage.body.includes('id="date-alert"') === false);
+    } finally {
+      const cleanup = new Sqlite(dbPath);
+      cleanup.prepare("DELETE FROM bookings WHERE code LIKE 'B7S%'").run();
+      cleanup.prepare('DELETE FROM blocked_dates WHERE hotel_id=? AND date=?').run(clockHotel.id, shutDay);
+      cleanup.close();
     }
 
     const bay = await get(port, '/h/bayview-spa');

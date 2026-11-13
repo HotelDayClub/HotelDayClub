@@ -908,9 +908,9 @@ form.check-code input,form.check-code .btn{width:100%}
 .listing .listing-head{margin-top:0}
 .listing .l-tabs{position:sticky;top:var(--listing-sticky,67px);z-index:20;background:#fff;border-bottom:1px solid var(--hdc-border);margin-top:16px}
 .listing .l-tabs nav{display:flex;gap:28px;overflow-x:auto}
-.listing .l-tabs a{padding:14px 0;color:var(--hdc-secondary);text-decoration:none;font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
+.listing .l-tabs a{display:inline-flex;align-items:center;flex:0 0 auto;min-height:44px;padding:12px 0;color:var(--hdc-secondary);text-decoration:none;font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
 .listing .l-tabs a[aria-current]{color:var(--hdc-text);border-bottom-color:var(--hdc-rose)}
-.listing #overview,.listing #passes,.listing #seating,.listing #details,.listing #hours,.listing #getting-there,.listing #policy,.listing #cancel-fold,.listing #parking{scroll-margin-top:var(--listing-scroll,140px)}
+.listing #overview,.listing #passes,.listing #seating,.listing #inclusions,.listing #location,.listing #policies,.listing #hours,.listing #getting-there,.listing #policy,.listing #cancel-fold,.listing #parking{scroll-margin-top:var(--listing-scroll,140px)}
 .listing #book{scroll-margin-top:var(--listing-book,80px)}
 .listing .l-meta{margin:8px 0 10px;color:var(--hdc-secondary);font-size:15px}
 .listing .demo-pill{display:inline-block;background:var(--hdc-sun-soft);color:var(--hdc-navy);border:1px solid var(--hdc-sun);font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px}
@@ -981,7 +981,29 @@ form.check-code input,form.check-code .btn{width:100%}
 .seat-dialog .pass-sold:not([hidden]){margin:12px 0}
 .listing .extras,.listing #addons-list .extras{background:var(--hdc-tint);border:1px solid var(--hdc-border);border-radius:12px;box-shadow:none}
 .listing .extra{color:var(--hdc-text)}
-.listing .book-box{position:sticky;top:88px;order:0;background:var(--hdc-tint);border:1px solid var(--hdc-border);border-radius:12px;padding:24px;box-shadow:none}
+.listing .book-slot{min-width:0;align-self:stretch}
+.listing .book-sentinel{height:1px;margin:0}
+.listing .book-col{position:sticky;top:var(--listing-scroll,148px);align-self:start}
+.listing .book-box{position:static;order:0;background:var(--hdc-tint);border:1px solid var(--hdc-border);border-radius:12px;padding:24px;box-shadow:none}
+.listing .book-box.is-stuck{padding:14px 16px 12px}
+.listing .book-box.is-stuck:not(.is-hold) .pk-inline,
+.listing .book-box.is-stuck .cap-note,
+.listing .book-box.is-stuck:not(.is-hold) .seat-chosen{display:none}
+.listing .day-step{display:flex;align-items:center;gap:8px;margin:0 0 12px}
+.listing .day-step-btn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-width:44px;min-height:44px;border-radius:50%;border:1px solid var(--hdc-border);background:#fff;color:var(--hdc-text);text-decoration:none;flex:0 0 auto}
+.listing .day-step-btn[aria-disabled="true"]{color:var(--hdc-secondary);background:var(--hdc-tint);pointer-events:none}
+.listing .day-step-date{flex:1;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--hdc-outline);border-radius:12px;background:#fff;padding:6px 12px;text-align:center}
+.listing .day-step-date b{color:var(--hdc-text);font-size:16px;line-height:1.2}
+.listing .day-step-hours{color:var(--hdc-secondary);font-size:13px}
+.listing .day-offer{margin:0 0 12px;color:var(--hdc-rose-ink);font-weight:650}
+.listing .bb-sum{margin:6px 0 0;color:var(--hdc-secondary);font-size:14px}
+.listing a.day-see{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;margin-top:8px;padding:10px 16px;border:1px solid var(--hdc-primary);border-radius:999px;background:#fff;color:var(--hdc-primary);font-weight:700;text-decoration:none}
+.listing a.day-see:hover{color:var(--hdc-hover)}
+.listing a.day-see[hidden]{display:none}
+.listing .book-sheet-top{display:none}
+.price-num{display:inline-block}
+@keyframes price-tick{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.price-num.is-tick{animation:price-tick 200ms ease-out}
 .listing .book-box .bb-price{font-size:15px;color:var(--hdc-secondary)}
 .listing .book-box .bb-price b{font-size:24px;color:var(--hdc-text)}
 .listing .bb-label{font-size:13px;font-weight:600;color:var(--hdc-text);letter-spacing:0;text-transform:none}
@@ -1059,12 +1081,18 @@ form.check-code input,form.check-code .btn{width:100%}
   .listing .l-main{display:contents}
   .listing .listing-head{order:1;padding-top:20px}
   .listing .l-tabs{order:2;top:var(--listing-sticky,93px);align-self:stretch;margin:24px -16px 0;padding:0 16px}
+  .listing .l-tabs nav{gap:16px}
+  .listing .l-tabs a{font-size:14px}
   .listing #seating{order:3;margin-top:32px}
-  .listing #book,
-  .listing .book-box{order:4;position:static;margin-top:40px;scroll-margin-top:var(--listing-scroll,180px)}
+  .listing .book-slot{order:4;position:static}
+  html:not(.js) .listing .book-slot{margin-top:40px}
+  .listing .book-col{position:static}
+  .listing #book,.listing .book-box{position:static;scroll-margin-top:var(--listing-scroll,180px)}
   .listing .read-more{scroll-margin-bottom:96px}
   .listing #addons-list{order:5;margin-top:40px}
-  .listing #details{order:6;margin-top:40px}
+  .listing #inclusions{order:6;margin-top:40px}
+  .listing #location{order:7;margin-top:40px}
+  .listing #policies{order:8;margin-top:40px}
   .listing h1{font-size:26px}
   .listing .seat-head{flex-direction:column;align-items:flex-start;gap:4px}
   .listing .pc-acts{padding:8px 12px 12px}
@@ -1074,12 +1102,32 @@ form.check-code input,form.check-code .btn{width:100%}
   .book-bar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;background:var(--hdc-bg);border-top:1px solid var(--hdc-border)}
   .book-bar b{font-size:15px;color:var(--hdc-text)}
   .book-bar a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;background:var(--hdc-primary);color:var(--white);text-decoration:none;font-weight:700;border-radius:999px;padding:11px 24px}
+  .book-bar a.is-next{background:#fff;color:var(--hdc-primary);border:1px solid var(--hdc-primary)}
+  html.js .book-bar{transform:translateY(110%);transition:transform 300ms cubic-bezier(.2,.7,.2,1)}
+  html.js .book-bar.is-in{transform:none}
+  html.js .listing dialog.book-sheet[open]{display:flex;flex-direction:column;position:fixed;inset:auto 0 0 0;top:auto;width:100%;max-width:100%;max-height:min(92dvh,100%);height:auto;margin:0;padding:0 0 env(safe-area-inset-bottom);border:0;border-radius:16px 16px 0 0;background:var(--hdc-bg);color:var(--hdc-text);overflow:auto;box-shadow:0 -8px 30px rgba(0,52,76,.18)}
+  html.js .listing dialog.book-sheet::backdrop{background:rgba(0,52,76,.72)}
+  html.js .listing dialog.book-sheet[open] .book-sheet-top{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:1;padding:8px 12px 8px 16px;background:var(--hdc-bg);border-bottom:1px solid var(--hdc-border)}
+  html:not(.js) .listing dialog.book-sheet,html:not(.js) .listing dialog.book-sheet:not([open]){display:block;position:static;width:auto;max-width:none;max-height:none;height:auto;margin:0;padding:0;border:0;background:transparent;color:inherit;overflow:visible}
   .seat-dialog[open]{left:0;width:100%;border-radius:16px 16px 0 0}
   .seat-dialog .sd-grab{display:block}
   .seat-dialog .pass-actions{flex-direction:column;align-items:stretch}
   .seat-dialog .pass-select,.seat-dialog .pass-continue{flex:1 1 auto;width:100%}
   body.guest:has(.listing){padding-bottom:72px}
 }
+@media (min-width:761px){
+  .listing dialog.book-sheet,.listing dialog.book-sheet:not([open]){display:block;position:static;inset:auto;width:auto;max-width:none;max-height:none;height:auto;margin:0;padding:0;border:0;background:transparent;color:inherit;overflow:visible;box-shadow:none}
+}
+@media (max-width:760px) and (prefers-reduced-motion:reduce){
+  html.js .book-bar{transition:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .price-num.is-tick{animation:none}
+}
+.listing .day-step-btn:focus-visible,.listing .day-see:focus-visible,.listing .book-sheet-close:focus-visible,.book-bar a:focus-visible{outline:3px solid var(--hdc-primary);outline-offset:2px}
+.book-sheet-close{min-width:44px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--hdc-border);background:#fff;color:var(--hdc-text);font-weight:700}
+.book-sheet-top h2{margin:0;font-size:18px;font-weight:600;color:var(--hdc-text)}
+html.book-lock,html.book-lock body{overflow:hidden}
 @media (min-width:1100px){
   .listing .pass-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 }

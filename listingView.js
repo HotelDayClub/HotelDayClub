@@ -1,4 +1,4 @@
-const { esc, money } = require('./util');
+const { esc, money, nice, ymd, addDays } = require('./util');
 const { instantConfirmationText } = require('./siteMode');
 const { KINDS, supervisionNote, safePhoto, FOOD_RULE } = require('./offering');
 const { includedNote, amenityLines, includedLines } = require('./inclusions');
@@ -77,6 +77,75 @@ class ListingPanel {
     if (n <= 4) return '';
     return `View all ${n} photos`;
   }
+
+  static boundQty(raw) {
+    const n = parseInt(raw, 10);
+    if (!Number.isFinite(n) || n < 1 || n > 6) return 1;
+    return n;
+  }
+
+  static shiftDay(iso, days) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return '';
+    return ymd(addDays(new Date(iso + 'T12:00:00'), days));
+  }
+
+  static stepDay(date, min, max, dir) {
+    if (!min || !max) return '';
+    if (dir < 0) {
+      if (!date || date <= min) return '';
+      const prev = ListingPanel.shiftDay(date, -1);
+      if (!prev || prev < min) return '';
+      return prev;
+    }
+    if (!date) return min;
+    let next = ListingPanel.shiftDay(date, 1);
+    if (next && next < min) next = min;
+    if (!next || next > max || next === date) return '';
+    return next;
+  }
+
+  static dayHref(slug, date, opts = {}) {
+    const params = new URLSearchParams();
+    if (date) params.set('date', date);
+    const pass = String(opts.passCode || '').slice(0, 40);
+    if (pass) params.set('pass', pass);
+    params.set('qty', String(ListingPanel.boundQty(opts.qty)));
+    return `/h/${encodeURIComponent(slug)}?${params.toString()}#${opts.hash || 'passes'}`;
+  }
+
+  static dayHours(lines, iso) {
+    if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso) || !Array.isArray(lines)) return '';
+    const name = ListingPanel.DAY[new Date(iso + 'T12:00:00').getDay()];
+    const row = lines.find(item => item.day === name);
+    if (!row || !row.time || row.time === 'Closed') return '';
+    return row.time;
+  }
+}
+
+const CHEV_L = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>';
+const CHEV_R = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+function dayStepLinks({ slug, date, minDate, maxDate, passCode, qty }) {
+  const q = ListingPanel.boundQty(qty);
+  const prev = ListingPanel.stepDay(date || '', minDate, maxDate, -1);
+  const next = ListingPanel.stepDay(date || '', minDate, maxDate, 1);
+  const opt = { passCode, qty: q };
+  return {
+    label: date ? nice(date) : 'Pick a date',
+    prev: prev ? ListingPanel.dayHref(slug, prev, opt) : '',
+    next: next ? ListingPanel.dayHref(slug, next, opt) : '',
+    hours: '',
+  };
+}
+function stepControl(id, label, href, icon) {
+  const dis = href ? '' : ' aria-disabled="true" tabindex="-1"';
+  const dest = href ? ` href="${esc(href)}"` : '';
+  return `<a class="day-step-btn" id="${id}" aria-label="${label}"${dest}${dis}>${icon}</a>`;
+}
+function offerLine(offer) {
+  if (!offer) return '<p class="day-offer" id="day-offer" role="status" hidden></p>';
+  const link = offer.tryLabel && offer.href ? ` <a href="${esc(offer.href)}">${esc(offer.tryLabel)}</a>` : '';
+  const empty = offer.empty ? ` ${esc(offer.empty)}` : '';
+  return `<p class="day-offer" id="day-offer" role="status">${esc(offer.line)}${link}${empty}</p>`;
 }
 
 const KIND_NAME = Object.fromEntries(KINDS.map(k => [k.code, k.name]));
@@ -190,7 +259,7 @@ function listingScript(slug, leaflet) {
   return `<script>
 const $=s=>document.querySelector(s);
 const hotelSlug=${JSON.stringify(String(slug || ''))};
-let av=[],addons=[];
+let av=[],addons=[],currentOffer=null;
 function seatFromHash(){
  const m=/^#pass-detail-([A-Za-z0-9_-]+)$/.exec(location.hash||'');
  if(!m) return;
@@ -263,8 +332,9 @@ function render(){
  let extra=0;document.querySelectorAll('#addons-pick input:checked').forEach(i=>{const price=+i.dataset.price||0;const qty=i.dataset.per==='booking'?1:q*(holds||1);extra+=price*qty});
  const people=p?q*holds:q;
  const sum=p?p.price*q+extra:0;
- $('#total').innerHTML=p?'<span>'+fmt(p.price)+' × '+q+(people>q?' · '+people+' people':'')+(extra?' + '+fmt(extra)+' extras':'')+'</span><b>'+fmt(sum)+' <small>(demo)</small></b>':'';
- const bar=$('#bar-total'); if(bar) bar.textContent=p?(p.name+' · '+fmt(sum)):($('#from-price')?$('#from-price').textContent:'');
+ paintTotal(p,q,people,extra,sum);
+ paintBar(p,sum);
+ paintSum(p,q);
  const eq=document.getElementById('spot-eq');
  if(eq){ const n=p?people:q; eq.textContent='= '+n+(n===1?' person':' people'); }
  const chosen=document.getElementById('seat-chosen');
@@ -282,7 +352,7 @@ function render(){
  });
  const alert=document.getElementById('date-alert');
  const held=!!(alert && $('#date') && alert.getAttribute('data-date')===$('#date').value);
- $('#go').disabled=held||!p;
+ $('#go').disabled=held||!p||!!currentOffer;
  if(held){ const go=$('#go'); if(go) go.setAttribute('aria-disabled','true'); }
  else { const go=$('#go'); if(go) go.removeAttribute('aria-disabled'); }
  const blocked=dayBlocked;
@@ -297,13 +367,15 @@ function render(){
 function focusBook(){
  const alert=document.getElementById('date-alert');
  const book=document.getElementById('book');
+ if(sheetMobile()){
+  if(openBookSheet()){
+   if(alert) alert.focus();
+   return;
+  }
+ }
  const target=alert||book;
  if(!target) return;
  target.focus();
- if(window.matchMedia('(max-width:760px)').matches){
-  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(book) book.scrollIntoView({behavior:reduce?'auto':'smooth', block:'start'});
- }
 }
 const passBox=document.getElementById('passes');
 if(passBox){
@@ -500,7 +572,8 @@ if(tabNav){
  if(!quiet && state) state.innerHTML='<p class="seat-loading">Checking availability…</p>';
  if(!quiet && grid) grid.classList.add('is-loading');
  try {
-  const r=await fetch('/api/availability?hotel='+encodeURIComponent(hotelSlug)+'&date='+encodeURIComponent(el.value));
+  const passNow=document.querySelector('#passes input:checked');
+  const r=await fetch('/api/availability?hotel='+encodeURIComponent(hotelSlug)+'&date='+encodeURIComponent(el.value)+'&qty='+encodeURIComponent(String(guests()))+'&pass='+encodeURIComponent(passNow?passNow.value:''));
   if(!r.ok) throw new Error('status');
   const data=await r.json();
   av=data.passes||[]; addons=data.addons||[];
@@ -508,6 +581,8 @@ if(tabNav){
   if(note){ note.hidden=!el.value; note.textContent=data.cancel||''; }
   if(state) state.textContent='';
   if(grid) grid.classList.remove('is-loading');
+  applyStep(data.step);
+  applyOffer(data.offer);
   render();
   if(!el.value){ const st=$('#status'); if(st){ st.className='status'; st.textContent='Pick a date'; } }
  } catch(err) {
@@ -516,7 +591,7 @@ if(tabNav){
  }
 }
 document.getElementById('date').addEventListener('change', function(){ load(false); });
-document.querySelector('select[name="qty"]').addEventListener('change',render);
+document.querySelector('select[name="qty"]').addEventListener('change', function(){ render(); load(true); });
 ${leaflet === false ? '' : `const peek=document.querySelector('.map-peek');
 const sheet=document.querySelector('.map-sheet');
 if(peek&&sheet){
@@ -562,7 +637,243 @@ if(peek&&sheet){
  sheet.querySelector('.map-close').addEventListener('click',function(){sheet.close()});
  sheet.addEventListener('close',function(){peek.setAttribute('aria-expanded','false');peek.focus()});
 }
-`}seatFromHash();
+`}
+function setPrice(el, value){
+ if(!el) return;
+ const next=String(value||'');
+ const prev=el.getAttribute('data-price')||'';
+ if(el.textContent!==next) el.textContent=next;
+ el.setAttribute('data-price', next);
+ if(!prev||prev===next) return;
+ if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+ el.classList.remove('is-tick');
+ void el.offsetWidth;
+ el.classList.add('is-tick');
+}
+function paintTotal(p, q, people, extra, sum){
+ const total=document.getElementById('total');
+ if(!total) return;
+ if(!p||currentOffer){ total.textContent=''; return; }
+ let num=total.querySelector('.price-num');
+ const math=fmt(p.price)+' × '+q+(people>q?' · '+people+' people':'')+(extra?' + '+fmt(extra)+' extras':'');
+ if(!num){
+  total.innerHTML='<span class="tot-math"></span><b><span class="price-num"></span> <small>(demo)</small></b>';
+  num=total.querySelector('.price-num');
+ }
+ const mathEl=total.querySelector('.tot-math');
+ if(mathEl) mathEl.textContent=math;
+ setPrice(num, fmt(sum));
+}
+function paintBar(p, sum){
+ const text=document.getElementById('bar-text');
+ const price=document.getElementById('bar-price');
+ if(!text||!price) return;
+ if(currentOffer){
+  text.textContent=currentOffer.bar||currentOffer.word||'';
+  price.hidden=true;
+  price.textContent='';
+  return;
+ }
+ price.hidden=false;
+ text.textContent=p?(p.name+' · '):'From ';
+ const fromEl=document.getElementById('from-price');
+ setPrice(price, p?fmt(sum):(fromEl?fromEl.textContent:price.textContent));
+}
+function paintSum(p, q){
+ const line=document.getElementById('bb-sum');
+ if(!line) return;
+ const label=document.getElementById('day-step-label');
+ const when=label&&label.textContent&&label.textContent!=='Pick a date'?label.textContent:'';
+ const bits=[];
+ if(when) bits.push(when);
+ if(p) bits.push(p.name);
+ bits.push(String(q)+(q===1?' spot':' spots'));
+ line.textContent=bits.join(' · ');
+}
+function paintFrom(offer){
+ const bb=document.getElementById('bb-price');
+ if(!bb) return;
+ const from=bb.getAttribute('data-from')||'';
+ bb.replaceChildren();
+ const small=document.createElement('small');
+ small.textContent='(demo)';
+ if(offer){
+  const b=document.createElement('b');
+  b.textContent=offer.word||'';
+  bb.append(b, document.createTextNode(' '), small);
+  return;
+ }
+ bb.append(document.createTextNode('From '));
+ const b=document.createElement('b');
+ b.id='from-price';
+ b.textContent=from;
+ bb.append(b, document.createTextNode(' '), small);
+}
+function setStepLink(el, href){
+ if(!el) return;
+ if(href){
+  el.setAttribute('href', href);
+  el.removeAttribute('aria-disabled');
+  el.removeAttribute('tabindex');
+ } else {
+  el.removeAttribute('href');
+  el.setAttribute('aria-disabled','true');
+  el.setAttribute('tabindex','-1');
+ }
+}
+function applyStep(step){
+ if(!step) return;
+ const label=document.getElementById('day-step-label');
+ const hours=document.getElementById('day-step-hours');
+ if(label&&step.label) label.textContent=step.label;
+ if(hours){
+  hours.textContent=step.hours||'';
+  hours.hidden=!step.hours;
+ }
+ setStepLink(document.getElementById('day-prev'), step.prev||'');
+ setStepLink(document.getElementById('day-next'), step.next||'');
+}
+function applyOffer(offer){
+ currentOffer=offer||null;
+ const line=document.getElementById('day-offer');
+ if(line){
+  line.replaceChildren();
+  if(!currentOffer) line.hidden=true;
+  else {
+   line.hidden=false;
+   line.append(document.createTextNode(currentOffer.line||''));
+   if(currentOffer.tryLabel&&currentOffer.href){
+    line.append(document.createTextNode(' '));
+    const a=document.createElement('a');
+    a.href=currentOffer.href;
+    a.textContent=currentOffer.tryLabel;
+    line.append(a);
+   }
+   if(currentOffer.empty) line.append(document.createTextNode((currentOffer.tryLabel?' ':'')+currentOffer.empty));
+  }
+ }
+ const see=document.getElementById('day-see');
+ if(see){
+  if(currentOffer&&currentOffer.href&&currentOffer.see){
+   see.hidden=false;
+   see.href=currentOffer.href;
+   see.textContent=currentOffer.see;
+  } else see.hidden=true;
+ }
+ const go=document.getElementById('go');
+ if(go){
+  if(!go.dataset.label) go.dataset.label='Book your day (demo)';
+  go.textContent=currentOffer?currentOffer.button:go.dataset.label;
+ }
+ paintFrom(currentOffer);
+ const open=document.getElementById('book-open');
+ if(open){
+  if(currentOffer&&currentOffer.href){
+   open.href=currentOffer.href;
+   open.textContent='Next day';
+   open.classList.add('is-next');
+   open.removeAttribute('aria-haspopup');
+   open.removeAttribute('aria-controls');
+  } else {
+   open.href='#book';
+   open.textContent='Book';
+   open.classList.remove('is-next');
+   open.setAttribute('aria-haspopup','dialog');
+   open.setAttribute('aria-controls','book-sheet');
+  }
+ }
+}
+function sheetMobile(){
+ return window.matchMedia('(max-width:760px)').matches;
+}
+function openBookSheet(){
+ const bookSheet=document.getElementById('book-sheet');
+ const opener=document.getElementById('book-open');
+ if(!bookSheet||!bookSheet.showModal||!sheetMobile()) return false;
+ if(opener&&opener.getAttribute('href')&&opener.getAttribute('href').indexOf('#book')<0) return false;
+ if(!bookSheet.open) bookSheet.showModal();
+ document.documentElement.classList.add('book-lock');
+ const close=bookSheet.querySelector('.book-sheet-close');
+ if(close) close.focus();
+ return true;
+}
+function sheetFocusable(bookSheet){
+ return [...bookSheet.querySelectorAll('a[href],button,input,select,textarea,[tabindex]')].filter(function(el){
+  if(el.disabled||el.hidden) return false;
+  if(el.getAttribute('aria-hidden')==='true') return false;
+  if(el.tabIndex<0) return false;
+  if(el.closest('[hidden]')) return false;
+  const box=el.getBoundingClientRect();
+  return box.width>0||box.height>0;
+ });
+}
+function bindBookSheet(){
+ const bookSheet=document.getElementById('book-sheet');
+ const opener=document.getElementById('book-open');
+ if(!bookSheet) return;
+ if(opener) opener.addEventListener('click', function(e){
+  if(openBookSheet()) e.preventDefault();
+ });
+ const closeBtn=bookSheet.querySelector('.book-sheet-close');
+ if(closeBtn) closeBtn.addEventListener('click', function(){ bookSheet.close(); });
+ function releaseBookSheet(){
+  document.documentElement.classList.remove('book-lock');
+  const back=document.getElementById('book-open');
+  setTimeout(function(){ if(back&&back.focus) back.focus(); }, 0);
+ }
+ bookSheet.addEventListener('close', releaseBookSheet);
+ bookSheet.addEventListener('cancel', function(e){
+  if(e.target!==bookSheet) return;
+  releaseBookSheet();
+ });
+ bookSheet.addEventListener('keydown', function(e){
+  if(e.key!=='Tab'||!bookSheet.open) return;
+  const nodes=sheetFocusable(bookSheet);
+  if(!nodes.length) return;
+  const first=nodes[0], last=nodes[nodes.length-1];
+  if(e.shiftKey&&document.activeElement===first){ e.preventDefault(); last.focus(); }
+  else if(!e.shiftKey&&document.activeElement===last){ e.preventDefault(); first.focus(); }
+ });
+ const wide=window.matchMedia('(min-width:761px)');
+ if(wide.addEventListener) wide.addEventListener('change', function(){
+  if(wide.matches&&bookSheet.open) bookSheet.close();
+ });
+}
+function bindBookBar(){
+ const bar=document.querySelector('.book-bar');
+ const gal=document.querySelector('.gallery');
+ if(!bar) return;
+ const mobile=window.matchMedia('(max-width:760px)');
+ function place(show){
+  if(!mobile.matches){ bar.classList.remove('is-in'); return; }
+  bar.classList.toggle('is-in', !!show);
+ }
+ if(!gal||!('IntersectionObserver' in window)){ place(true); return; }
+ new IntersectionObserver(function(entries){
+  const e=entries[0];
+  place(!e.isIntersecting&&e.boundingClientRect.top<0);
+ }).observe(gal);
+}
+function bindCompact(){
+ const slot=document.querySelector('.book-sentinel');
+ const box=document.querySelector('.book-box');
+ if(!slot||!box||!('IntersectionObserver' in window)) return;
+ const wide=window.matchMedia('(min-width:761px)');
+ new IntersectionObserver(function(entries){
+  const e=entries[0];
+  const stuck=wide.matches&&!e.isIntersecting&&e.boundingClientRect.top<0;
+  box.classList.toggle('is-stuck', stuck);
+ }, {rootMargin:'-72px 0px 0px 0px', threshold:[0]}).observe(slot);
+}
+const dayStepEl=document.querySelector('.day-step');
+if(dayStepEl) dayStepEl.addEventListener('click', function(e){
+ const a=e.target.closest('a');
+ if(a&&a.getAttribute('aria-disabled')==='true') e.preventDefault();
+});
+bindBookSheet();
+bindBookBar();
+bindCompact();
+seatFromHash();
 load(true);setInterval(function(){ load(true); },15000);
 </script>`;
 }
@@ -609,9 +920,7 @@ function dateAlert(hold) {
   return `<div class="date-alert" role="alert" tabindex="-1" id="date-alert" data-date="${esc(hold.date)}">${ALERT_ICON}<div><span>${esc(hold.before)}${when}${esc(hold.after)}</span>${alts}</div></div>`;
 }
 function listingQty(raw) {
-  const n = parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 1 || n > 6) return 1;
-  return n;
+  return ListingPanel.boundQty(raw);
 }
 function listingHtml(opts) {
   const { h, date, minDate, maxDate, closed, passes, av, from, cancel, know, included, addonList, hours, policy, accessByPass, foodLine } = opts;
@@ -630,7 +939,28 @@ function listingHtml(opts) {
   const hoursHtml = hourRows ? ListingPanel.hoursTable(hourRows, opts.todayWd) : (hours || '');
   const seat = pickedPass(av, opts.passCode);
   const seatHolds = seat ? (Number(seat.holds) || 1) : 1;
-  const barLabel = seat ? `${esc(seat.name)} · ${money(seat.price)}` : `From ${money(from)}`;
+  const offer = opts.offer || null;
+  const step = dayStepLinks({ slug: h.slug, date, minDate, maxDate, passCode: opts.passCode, qty });
+  step.hours = ListingPanel.dayHours(hourRows, date);
+  const dayStep = `<div class="day-step" role="group" aria-label="Day">${stepControl('day-prev', 'Previous day', step.prev, CHEV_L)}<div class="day-step-date"><b id="day-step-label">${esc(step.label)}</b><span class="day-step-hours" id="day-step-hours"${step.hours ? '' : ' hidden'}>${esc(step.hours)}</span></div>${stepControl('day-next', 'Next day', step.next, CHEV_R)}</div>`;
+  const sumBits = [];
+  if (date) sumBits.push(nice(date));
+  if (seat) sumBits.push(seat.name);
+  sumBits.push(`${qty} ${qty === 1 ? 'spot' : 'spots'}`);
+  const seeLink = offer && offer.href && offer.see
+    ? `<a class="day-see" id="day-see" href="${esc(offer.href)}">${esc(offer.see)}</a>`
+    : '<a class="day-see" id="day-see" href="#passes" hidden></a>';
+  const fromHtml = offer
+    ? `<b>${esc(offer.word)}</b> <small>(demo)</small>`
+    : `From <b id="from-price">${money(from)}</b> <small>(demo)</small>`;
+  const barText = offer
+    ? `<span id="bar-text">${esc(offer.bar || offer.word)}</span><span class="price-num" id="bar-price" hidden></span>`
+    : `<span id="bar-text">${seat ? `${esc(seat.name)} · ` : 'From '}</span><span class="price-num" id="bar-price">${seat ? money(seat.price) : money(from)}</span>`;
+  const barAction = offer && offer.href
+    ? `<a class="book-open is-next" id="book-open" href="${esc(offer.href)}">Next day</a>`
+    : '<a class="book-open" id="book-open" href="#book" aria-haspopup="dialog" aria-controls="book-sheet">Book</a>';
+  const goDis = opts.hold || offer ? ' disabled aria-disabled="true"' : '';
+  const goText = offer ? esc(offer.button) : 'Book your day (demo)';
   const place = arrivalInner(h);
   const rows = includedItems(passes, items, accessByPass);
   const incList = rows.length ? `<ul class="inc">${rows.map(text => `<li>${ITEM_ICON}<span>${esc(text)}</span></li>`).join('')}</ul>` : '';
@@ -652,30 +982,44 @@ ${demo ? '<span class="demo-pill">Fictional demo listing</span>' : ''}
 <button type="button" class="read-more" aria-expanded="false" aria-controls="overview-desc">Read more</button>
 ${watch ? `<p class="guard-note">${esc(watch)}</p>` : ''}
 </section>
-<div class="l-tabs"><nav aria-label="Sections"><a href="#overview" aria-current="true">Overview</a><a href="#passes">Passes</a><a href="#details">Details</a></nav></div>
+<div class="l-tabs"><nav aria-label="Sections"><a href="#overview" aria-current="true">Overview</a><a href="#passes">Passes</a><a href="#inclusions">Inclusions</a><a href="#location">Location</a><a href="#policies">Policies</a></nav></div>
 <section id="seating" aria-labelledby="seat-h"><div class="seat-head"><h2 class="day-kicker" id="seat-h">Choose your seating</h2><p class="seat-sub">Prices per spot, before add-ons. Pick a date to see what's left.</p></div>
 <div id="seat-state" aria-live="polite"></div>
 <div id="passes">
+${dayStep}
+${offerLine(offer)}
 ${passSection(passes, av, h, date, opts.passCode, qty, items)}
 </div>
 </section>
 ${addonList || ''}
-<section id="details"><h2>Details</h2>
+<section id="inclusions"><h2>Inclusions</h2>
 <h3 class="sub">What's included</h3>
 ${incList}
 ${towelNote}
 <p class="food-note">${esc(foodLine || FOOD_RULE)}</p>
 <div class="l-acc">
 <details id="hours" open><summary>Opening hours</summary><div class="acc-body">${hoursHtml}</div></details>
+</div>
+</section>
+<section id="location"><h2>Location</h2>
+<div class="l-acc">
 <details id="getting-there"><summary>Getting there</summary><div class="acc-body">${place.address || ''}${place.there || ''}</div></details>
 ${parkFold}
+</div>
+</section>
+<section id="policies"><h2>Policies</h2>
+<div class="l-acc">
 <details id="policy"><summary>Guest policy</summary><div class="acc-body">${policy.body}</div></details>
 <details id="cancel-fold"><summary>Cancellation</summary><div class="acc-body"><p>You have 24 hours to cancel. Free until 24 hours before your access hours start. ${cancelCopy} <a href="/refunds">Cancellation and refund policy</a>.</p></div></details>
 </div>
 </section>
 </div>
+<div class="book-slot"><div class="book-sentinel" aria-hidden="true"></div><div class="book-col">
+<dialog class="book-sheet" id="book-sheet" aria-labelledby="book-sheet-title">
+<div class="book-sheet-top"><h2 id="book-sheet-title">Book a pass</h2><button type="button" class="book-sheet-close">Close</button></div>
 <aside class="book-box${opts.hold ? ' is-hold' : ''}" id="book" tabindex="-1">
-<div class="bb-price">From <b id="from-price">${money(from)}</b> <small>(demo)</small></div>
+<div class="bb-price" id="bb-price" data-from="${esc(money(from))}">${fromHtml}</div>
+<p class="bb-sum" id="bb-sum">${esc(sumBits.join(' · '))}</p>
 ${dateAlert(opts.hold)}
 <p class="bb-label" id="date-label">Date</p>
 ${opts.hold ? `<div class="date-hold" aria-hidden="true">${esc(opts.hold.longLabel)}</div>` : ''}
@@ -684,17 +1028,20 @@ ${opts.hold ? '<p class="date-leg"><span><i class="sw open"></i>Open</span><span
 <div id="status" class="status${opts.hold ? ' out' : ''}">${opts.hold ? esc(opts.hold.status) : ''}</div>
 <label class="fl" for="qty">Spots<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === qty ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
 <p class="spot-eq" id="spot-eq">${peopleLabel(seatHolds)}</p>
-<p class="muted small">Party size is capped at 6.</p>
+<p class="muted small cap-note">Party size is capped at 6.</p>
 ${chosenBlock(seat)}
-<div class="bb-total" id="total"></div>
+<div class="bb-total" id="total" aria-live="polite" aria-atomic="true"></div>
 <p class="cancel-note" id="cancel-note"${date ? '' : ' hidden'}>${esc(cancel)}</p>
-<button class="book-go" id="go" type="submit"${opts.hold ? ' disabled aria-disabled="true"' : ''}>Book your day (demo)</button>
+<button class="book-go" id="go" type="submit" data-label="Book your day (demo)"${goDis}>${goText}</button>
+${seeLink}
 <p class="prompt">You won't be charged. Demo payment only.</p>
 </aside>
+</dialog>
+</div></div>
 </form>
 </div>
 ${goodToKnowBand({ policy })}
-<div class="book-bar"><b><span id="bar-total">${barLabel}</span> (demo)</b><a href="#book">Book</a></div>
+<div class="book-bar" role="region" aria-label="Book"><b id="bar-total" aria-live="polite" aria-atomic="true">${barText} <small>(demo)</small></b>${barAction}</div>
 ${listingScript(h.slug, !MapEmbed.key())}`;
 }
 
@@ -737,4 +1084,4 @@ function reassureStrip(lite) {
   return `<section class="assure${lite ? ' assure-lite' : ''}" aria-label="Before you book"><ul>${items}</ul></section>`;
 }
 
-module.exports = { listingHtml, reassureStrip, ListingPanel };
+module.exports = { listingHtml, reassureStrip, ListingPanel, dayStepLinks };
