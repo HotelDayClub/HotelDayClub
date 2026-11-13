@@ -84,7 +84,7 @@ class SearchQuery {
     const wantRaw = SearchQuery.first(query, 'want');
     const want = SearchQuery.WANTS.some(w => w.id && w.id === wantRaw) ? wantRaw : '';
     const guestsRaw = parseInt(SearchQuery.first(query, 'guests'), 10);
-    const guests = guestsRaw >= 1 && guestsRaw <= 6 ? guestsRaw : 0;
+    const guests = guestsRaw >= 1 && guestsRaw <= SearchQuery.BOOKING_SPOTS ? guestsRaw : 0;
     const priceRaw = parseInt(SearchQuery.first(query, 'price'), 10);
     const price = PRICE_CAPS.includes(priceRaw) ? priceRaw : 0;
     const ageRaw = SearchQuery.first(query, 'age');
@@ -120,15 +120,66 @@ class SearchQuery {
     return caps;
   }
 
-  // Guest counts stop at the largest pass the data can hold, and never above 6.
-  static guestChoices(holds, current) {
-    const nums = (holds || []).map(n => Number(n) || 0).filter(n => n > 0);
-    const max = nums.length ? Math.max(...nums) : 1;
-    let top = Math.min(6, max);
-    if (current > top && current <= 6) top = current;
+  // Spots one booking can take. Shared with the listing, seat page and checkout clamps.
+  static BOOKING_SPOTS = 6;
+
+  static bookingSpots() {
     const out = [];
-    for (let n = 1; n <= top; n++) out.push(n);
+    for (let n = 1; n <= SearchQuery.BOOKING_SPOTS; n++) out.push(n);
     return out;
+  }
+
+  // The stepper and the guest selects offer a person count up to the booking spot limit.
+  static guestChoices() {
+    return SearchQuery.bookingSpots();
+  }
+
+  // Spots of this pass needed to seat the party. holds is people per spot.
+  static spotsFor(holds, guests) {
+    const people = Number(guests) || 0;
+    const each = Math.max(1, Number(holds) || 1);
+    if (people < 1) return 0;
+    return Math.ceil(people / each);
+  }
+
+  // A pass covers the party when the spots it needs fit in one booking.
+  // remaining is that day's spots left, and is used only when the row has it.
+  static passCovers(pass, guests) {
+    const spots = SearchQuery.spotsFor(pass && pass.holds, guests);
+    if (spots < 1 || spots > SearchQuery.BOOKING_SPOTS) return false;
+    if (!pass || pass.remaining == null || pass.remaining === '') return true;
+    const left = Number(pass.remaining);
+    return Number.isFinite(left) && left >= spots;
+  }
+
+  static partyFits(passes, guests) {
+    return (passes || []).some(p => {
+      const spots = SearchQuery.spotsFor(p && p.holds, guests);
+      return spots >= 1 && spots <= SearchQuery.BOOKING_SPOTS;
+    });
+  }
+
+  static coversGuests(passes, guests) {
+    return (passes || []).some(p => SearchQuery.passCovers(p, guests));
+  }
+
+  // Listing qty only when every covering pass needs the same number of spots
+  // and that number seats exactly this many people (for example one person per spot).
+  static bookingQty(passes, guests) {
+    const people = Number(guests) || 0;
+    if (people < 1) return 0;
+    const fits = (passes || []).filter(p => SearchQuery.passCovers(p, people));
+    if (!fits.length) return 0;
+    let qty = 0;
+    for (const pass of fits) {
+      const each = Math.max(1, Number(pass.holds) || 1);
+      if (people % each !== 0) return 0;
+      const spots = people / each;
+      if (spots < 1 || spots > SearchQuery.BOOKING_SPOTS) return 0;
+      if (!qty) qty = spots;
+      else if (qty !== spots) return 0;
+    }
+    return qty;
   }
 
   static ageChoices(policies, current) {
@@ -204,11 +255,6 @@ class SearchQuery {
       if (params.guests) face += ' · ' + params.guests;
     }
     return { where, when, guests, label: where + ' · ' + when + ' · ' + guests, face };
-  }
-
-  static partyCap(passes) {
-    const holds = (passes || []).map(p => Number(p.holds) || 1);
-    return holds.length ? Math.max(...holds) : 1;
   }
 
   static fromPrice(passes) {
@@ -312,21 +358,22 @@ class SearchQuery {
     const list = hotels || [];
     const passesOf = h => (passesById && passesById.get(h.id)) || [];
     const priceOf = h => SearchQuery.fromPrice(passesOf(h));
-    const capOf = h => SearchQuery.partyCap(passesOf(h));
     const regions = SearchQuery.regionByArea(destinations);
     const prices = list.map(priceOf);
-    const holds = list.map(capOf);
     const policies = list.map(h => h.age_policy);
     let pool = params.destination ? list.filter(h => params.destination.areas.includes(h.area)) : list.slice();
     const catalogInDestination = params.destination
       ? list.filter(h => params.destination.areas.includes(h.area)).length
       : list.length;
     if (params.want) pool = pool.filter(h => offers(h, params.want));
-    if (params.guests) pool = pool.filter(h => capOf(h) >= params.guests);
+    if (params.guests) pool = pool.filter(h => SearchQuery.partyFits(passesOf(h), params.guests));
     if (params.price) pool = pool.filter(h => priceOf(h) < params.price);
     if (params.age) pool = pool.filter(h => SearchQuery.ageMatch(h.age_policy, params.age));
     const beforeDate = pool.slice();
-    if (params.date) pool = pool.filter(h => !(closedById && closedById.get(h.id)));
+    if (params.date) {
+      pool = pool.filter(h => !(closedById && closedById.get(h.id)));
+      if (params.guests) pool = pool.filter(h => SearchQuery.coversGuests(passesOf(h), params.guests));
+    }
     const order = new Map(list.map((h, i) => [h.id, i]));
     const sort = params.sort;
     pool.sort((a, b) => {
@@ -360,7 +407,7 @@ class SearchQuery {
       chips,
       showClear: chips.length >= 2,
       priceChoices: SearchQuery.priceChoices(prices, params.price),
-      guestChoices: SearchQuery.guestChoices(holds, params.guests),
+      guestChoices: SearchQuery.guestChoices(),
       ageChoices: SearchQuery.ageChoices(policies, params.age),
       intentChips: SearchQuery.intentChips(list, offers, priceOf),
       drawerCount: SearchQuery.drawerCount(params),

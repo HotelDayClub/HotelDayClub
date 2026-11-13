@@ -82,7 +82,13 @@ function selectOf(html, name) {
 }
 
 assert.deepStrictEqual(SearchQuery.priceChoices([25, 40, 45, 55, 65, 80], 0), [50]);
-assert.deepStrictEqual(SearchQuery.guestChoices([4, 4, 2, 2, 2, 2], 0), [1, 2, 3, 4]);
+assert.deepStrictEqual(SearchQuery.guestChoices([4, 4, 2, 2, 2, 2], 0), [1, 2, 3, 4, 5, 6]);
+assert.strictEqual(SearchQuery.bookingQty([{ holds: 1 }, { holds: 1 }], 3), 3);
+assert.strictEqual(SearchQuery.bookingQty([{ holds: 1 }, { holds: 2 }], 3), 0);
+assert.strictEqual(SearchQuery.bookingQty([{ holds: 2 }], 4), 2);
+assert.strictEqual(SearchQuery.parse({ guests: '6' }, []).guests, 6);
+assert.strictEqual(SearchQuery.parse({ guests: '7' }, []).guests, 0);
+assert.strictEqual(SearchQuery.parse({ guests: '9' }, []).guests, 0);
 assert.strictEqual(SearchQuery.homeRedirect({ destination: 'melbourne' }), '');
 assert.strictEqual(SearchQuery.homeRedirect({ waitlist: '1' }), '');
 assert.ok(SearchQuery.homeRedirect({ date: '2026-11-14', want: 'pool' }).includes('date=2026-11-14'));
@@ -124,6 +130,49 @@ const soldOrder = SearchQuery.run({
   query: { date: '2026-11-14', sort: 'price-asc' },
 });
 assert.deepStrictEqual(soldOrder.list.map(h => h.id), [1, 2]);
+
+const soloParty = SearchQuery.run({
+  hotels: [{ id: 1, area: 'A', age_policy: 'All ages' }],
+  passesById: new Map([[1, [{ price: 30, holds: 1 }, { price: 35, holds: 1 }]]]),
+  closedById: new Map(),
+  minutesById: new Map([[1, 60]]),
+  remainingById: null,
+  offers: () => true,
+  destinations: [{ id: 'x', name: 'X', areas: ['A'], slug: 'x' }],
+  query: { guests: '3' },
+});
+assert.deepStrictEqual(soloParty.list.map(h => h.id), [1]);
+
+const tightDay = SearchQuery.run({
+  hotels: [
+    { id: 1, area: 'A', age_policy: 'All ages' },
+    { id: 2, area: 'A', age_policy: 'All ages' },
+  ],
+  passesById: new Map([
+    [1, [{ price: 30, holds: 1, remaining: 2 }]],
+    [2, [{ price: 30, holds: 1, remaining: 6 }]],
+  ]),
+  closedById: new Map([[1, false], [2, false]]),
+  minutesById: new Map([[1, 60], [2, 60]]),
+  remainingById: new Map([[1, 2], [2, 6]]),
+  offers: () => true,
+  destinations: [{ id: 'x', name: 'X', areas: ['A'], slug: 'x' }],
+  query: { guests: '3', date: '2026-11-14' },
+});
+assert.deepStrictEqual(tightDay.list.map(h => h.id), [2]);
+
+const closedParty = SearchQuery.run({
+  hotels: [{ id: 1, area: 'A', age_policy: 'All ages' }],
+  passesById: new Map([[1, [{ price: 30, holds: 1 }]]]),
+  closedById: new Map([[1, true]]),
+  minutesById: new Map([[1, 0]]),
+  remainingById: new Map([[1, 0]]),
+  offers: () => true,
+  destinations: [{ id: 'x', name: 'X', areas: ['A'], slug: 'x' }],
+  query: { guests: '3', date: '2026-11-14' },
+});
+assert.strictEqual(closedParty.empty, 'closed');
+assert.deepStrictEqual(closedParty.list, []);
 
 (async () => {
   const port = 3361;
@@ -182,8 +231,8 @@ assert.deepStrictEqual(soldOrder.list.map(h => h.id), [1, 2]);
     assert.ok(!price.includes('Under $100'));
     assert.ok(!price.includes('Under $150'));
     const guests = selectOf(plain.body, 'guests');
-    assert.ok(guests.includes('value="1"') && guests.includes('value="4"'));
-    assert.ok(!guests.includes('value="5"') && !guests.includes('value="6"'));
+    for (const n of [1, 2, 3, 4, 5, 6]) assert.ok(guests.includes(`value="${n}"`), 'guest ' + n);
+    assert.ok(!guests.includes('value="7"'));
     const age = selectOf(plain.body, 'age');
     assert.ok(age.includes('Any age'));
     assert.ok(age.includes('Kids welcome'));
@@ -234,6 +283,9 @@ assert.deepStrictEqual(soldOrder.list.map(h => h.id), [1, 2]);
     assert.ok(!drawer.includes('Under $100'));
     assert.ok(drawer.includes('Fewer guests'));
     assert.ok(drawer.includes('More guests'));
+    assert.ok(drawer.includes('data-max="6"'));
+    assert.ok(drawer.includes('Up to 6 per booking.'));
+    assert.ok(!drawer.includes('Up to 4 per booking.'));
     assert.ok(drawer.includes('No places match these filters. Try a higher price or Any age.'));
     assert.ok(drawer.includes('hidden'));
 
@@ -296,7 +348,26 @@ assert.deepStrictEqual(soldOrder.list.map(h => h.id), [1, 2]);
     assert.deepStrictEqual(names(party.body, 'results'), [
       'The Saltwater Terrace (Demo)',
       'Skyline Rooftop Hotel (Demo)',
+      'Harbourside Lido (Demo)',
+      'Palm Court Resort (Demo)',
+      'Manly Sands House (Demo)',
+      'Bayview Spa Hotel (Demo)',
     ]);
+    const three = await get(port, '/search?guests=3');
+    assert.deepStrictEqual(names(three.body, 'results'), names(party.body, 'results'));
+    assert.ok(three.body.includes('6 places around Australia'));
+    assert.ok(three.body.includes('>Show 6 results</button>'));
+    assert.ok(three.body.includes('Up to 6 per booking.'));
+    const six = await get(port, '/search?guests=6');
+    assert.deepStrictEqual(names(six.body, 'results'), names(party.body, 'results'));
+    assert.ok(six.body.includes('value="6" selected'));
+    assert.ok(six.body.includes('name="guests" value="6"'));
+    assert.ok(six.body.includes('Up to 6 per booking.'));
+    const over = await get(port, '/search?guests=8');
+    assert.deepStrictEqual(names(over.body, 'results'), names(plain.body, 'results'));
+    assert.ok(!over.body.includes('value="8"'));
+    assert.ok(!over.body.includes('Remove 8 guests'));
+    assert.ok(over.body.includes('Up to 6 per booking.'));
     const gym = await get(port, '/search?want=gym');
     assert.ok(gym.body.includes('Saltwater Terrace'));
     assert.ok(!gym.body.includes('Palm Court'));
@@ -429,6 +500,24 @@ assert.deepStrictEqual(soldOrder.list.map(h => h.id), [1, 2]);
     assert.ok(!palmCard.includes('class="ex-price"'));
     assert.ok(!sold.body.includes('Pay online'));
     for (const card of articles(sold.body)) assert.ok(!nestedAnchor(card));
+
+    const soloDb = new Database(dbPath);
+    const soloId = soloDb.prepare(`INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status,is_demo,age_policy)
+      VALUES ('solo-laps','Solo Laps (Demo)','CBD & Harbour','Laps','A pool.','[]','[]','',0,'solo-laps-login','x','active',1,'All ages')`).run().lastInsertRowid;
+    soloDb.prepare('INSERT INTO pass_types(hotel_id,code,name,price,daily_cap,sort,holds,kind) VALUES (?,?,?,?,?,?,?,?)')
+      .run(soloId, 'entry', 'General entry', 30, 20, 0, 1, 'entry');
+    soloDb.close();
+    const soloPage = await get(port, '/search?guests=3');
+    assert.ok(names(soloPage.body, 'results').includes('Solo Laps (Demo)'));
+    const soloAt = soloPage.body.indexOf('Solo Laps (Demo)');
+    const soloCard = soloPage.body.slice(soloPage.body.lastIndexOf('<article', soloAt), soloPage.body.indexOf('</article>', soloAt));
+    assert.ok(soloCard.includes('href="/h/solo-laps?qty=3"'), soloCard.slice(0, 400));
+    const saltAt = soloPage.body.indexOf('The Saltwater Terrace (Demo)');
+    const saltCard = soloPage.body.slice(soloPage.body.lastIndexOf('<article', saltAt), soloPage.body.indexOf('</article>', saltAt));
+    assert.ok(!saltCard.includes('qty='));
+    const soloListing = await get(port, '/h/solo-laps?qty=3');
+    assert.strictEqual(soloListing.status, 200);
+    assert.ok(soloListing.body.includes('value="3" selected'));
 
     const headerCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'header.css'), 'utf8');
     assert.ok(headerCss.includes('max-height:64px') || headerCss.includes('max-height: 64px'));
