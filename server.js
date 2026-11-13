@@ -263,27 +263,48 @@ function gaSnippet(safePath) {
     : `gtag('config','${id}');`;
   return `<script async src="https://www.googletagmanager.com/gtag/js?id=${id}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());${config}</script>`;
 }
-function siteFooter(tone) {
-  const logo = tone === 'light' ? logoLink('light') : logoLink('dark');
-  const destLinks = DESTINATIONS.map(d => `<a href="/destinations/${esc(d.slug)}">${esc(d.name)}</a>`).join('');
-  const guideLinks = [`<a href="/guides">All guides</a>`, ...seo.GUIDES.map(g => `<a href="/guides/${esc(g.slug)}">${esc(g.h1)}</a>`)].join('');
-  return `<footer class="app-ftr"><div class="wrap ftr-in"><div class="ftr-brand">${logo}<p class="muted small">Contact ${contactMail()}</p></div>
+class DestinationTiles {
+  static status(d) {
+    if (d.count) return `<span class="dest-count">${exampleCount(d.count)}</span>`;
+    return `<span class="dest-pill">${d.launch ? 'Coming soon' : 'No listings yet'}</span>`;
+  }
+}
+class SiteFooter {
+  static year(now = new Date()) {
+    return now.getFullYear();
+  }
+
+  static column(id, label, links, extra) {
+    const cls = extra ? `ftr-links ${extra}` : 'ftr-links';
+    return `<div class="ftr-col"><h2 class="ftr-h">${label}</h2><button type="button" class="ftr-toggle" aria-expanded="false" aria-controls="${id}">${label}</button><nav id="${id}" class="${cls}" aria-label="${label}">${links}</nav></div>`;
+  }
+
+  static html() {
+    const destLinks = DESTINATIONS.map(d => `<a href="/destinations/${esc(d.slug)}">${esc(d.name)}</a>`).join('');
+    const guideLinks = [`<a href="/guides">All guides</a>`, ...seo.GUIDES.map(g => `<a href="/guides/${esc(g.slug)}">${esc(g.h1)}</a>`)].join('');
+    const siteLinks = '<a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/contact">Contact</a><a href="/for-hotels">For hotels</a><a href="/hotel/login">Hotel login</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a>';
+    return `<footer class="app-ftr"><div class="wrap ftr-in"><div class="ftr-top"><div class="ftr-brand">${logoLink('dark')}<p>Contact ${contactMail()}</p></div>
 <div class="ftr-cols">
-<nav class="ftr-col ftr-dest" aria-label="Destinations"><p class="ftr-h">Destinations</p>${destLinks}</nav>
-<nav class="ftr-col" aria-label="Guides"><p class="ftr-h">Guides</p>${guideLinks}</nav>
-<nav class="ftr-col" aria-label="Site"><p class="ftr-h">Site</p><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/contact">Contact</a><a href="/for-hotels">For hotels</a><a href="/hotel/login">Hotel login</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a></nav>
-</div>
-<p class="muted small">Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p></div></footer>`;
+${this.column('ftr-dest', 'Destinations', destLinks, 'dest-links')}
+${this.column('ftr-guides', 'Guides', guideLinks)}
+${this.column('ftr-site', 'Site', siteLinks)}
+</div></div>
+<div class="ftr-bottom"><p>Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p><p>© ${this.year()} Hotel Day Club</p></div></div></footer>${this.script()}`;
+  }
+
+  static script() {
+    return `<script>(function(){document.querySelectorAll('.ftr-toggle').forEach(function(btn){btn.addEventListener('click',function(){var open=btn.getAttribute('aria-expanded')==='true';btn.setAttribute('aria-expanded',open?'false':'true');});});})();</script>`;
+  }
 }
 const FONT_LINKS = `<link rel="preload" href="/golden/fonts/f3.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/golden/fonts/f5.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/golden/fonts.css">`;
 const HOME_SCRIPT = `<script>
 (function(){
-var S=[["8:00","Swim & gym"],["12:00","Long lunch"],["15:00","Spa afternoon"],["18:00","Golden hour"]],media=[0,1,2,3],cur=1;
+var S=[["8:00","Swim & gym"],["15:00","Spa afternoon"],["18:00","Golden hour"]],media=[0,1,2],cur=0;
 var hero=document.querySelector('.hero'),bs=document.querySelectorAll('.times button');
 function set(i){cur=i;if(!hero)return;hero.dataset.slot=String(i);bs.forEach(function(b,k){b.classList.toggle('on',k===i);b.setAttribute('aria-pressed',k===i?'true':'false')});
 var ct=document.getElementById('ct'),cl=document.getElementById('cl');if(ct)ct.textContent=S[i][0];if(cl)cl.textContent=S[i][1];
 document.querySelectorAll('.layer').forEach(function(l){l.classList.toggle('on',+l.dataset.slot===media[i])});}
-bs.forEach(function(b){b.addEventListener('click',function(){set(+b.dataset.i)})});set(1);
+bs.forEach(function(b){b.addEventListener('click',function(){set(+b.dataset.i)})});set(0);
 var rm=matchMedia('(prefers-reduced-motion: reduce)').matches;
 var net=navigator.connection||{},slow=!!(net.saveData||/2g/.test(net.effectiveType||''));
 var box=document.querySelector('.media');
@@ -296,7 +317,7 @@ function show(el){el.classList.add('in')}
 if(rm||!('IntersectionObserver' in window)){els.forEach(show)}else{
   var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){show(e.target);io.unobserve(e.target)}})},{threshold:.05,rootMargin:'0px 0px -8% 0px'});
   els.forEach(function(e){io.observe(e)});
-  setTimeout(function(){els.forEach(show)},1200);
+  setTimeout(function(){els.forEach(show)},250);
 }
 var dlg=document.getElementById('waitlist');
 function openWl(){if(dlg&&typeof dlg.showModal==='function'&&!dlg.open)dlg.showModal();}
@@ -351,7 +372,7 @@ function page(title, body, opts = {}) {
   const pickerCss = '<link rel="stylesheet" href="/pickers.css">';
   const tokensCss = '<link rel="stylesheet" href="/tokens.css">';
   const css = home
-    ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-lunch-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-lunch.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}<link rel="stylesheet" href="/golden/home.css"><link rel="stylesheet" href="/header.css">`
+    ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}<link rel="stylesheet" href="/golden/home.css"><link rel="stylesheet" href="/header.css">`
     : `${FONT_LINKS}${tokensCss}${pickerCss}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css"><link rel="stylesheet" href="/header.css">${extraCss}`;
   const bodyClass = home ? 'home' : nav === 'guest' ? 'guest' : 'staff';
   const header = `<header class="hdr" id="site-hdr"><div class="wrap hdr-in">${logoLink('light')}${chrome.nav}${headerExtra}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
@@ -359,7 +380,7 @@ function page(title, body, opts = {}) {
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 ${demoSite() ? '<div class="demo-banner">Demo site: listings are examples, no real bookings or payments.</div>' : ''}
 ${header}<main>${body}</main>
-${bare ? '' : siteFooter(home ? 'light' : 'dark')}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}${nav === 'guest' ? MENU_SCRIPT : ''}${extraJs}
+${bare ? '' : SiteFooter.html()}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}${nav === 'guest' ? MENU_SCRIPT : ''}${extraJs}
 </body></html>`;
 }
 const card = (h, date) => {
@@ -430,9 +451,7 @@ function homePage({ destination = '', joined = false, error = '', values = {} } 
   const counts = DESTINATIONS.map(d => ({ ...d, count: hotels.filter(h => d.areas.includes(h.area)).length }));
   const destCards = counts.map(d => {
     const href = `/destinations/${encodeURIComponent(d.slug)}`;
-    const status = d.count
-      ? `<span class="dest-count">${exampleCount(d.count)}</span>`
-      : '<span class="dest-soon">Coming soon</span> <span class="dest-none">No listings yet</span>';
+    const status = DestinationTiles.status(d);
     const go = d.count ? 'View example listings' : 'Join the waitlist';
     return `<li><a class="dest-card" href="${href}">
 <span class="dest-ico">${destIcon(d.icon)}</span>
@@ -447,17 +466,16 @@ function homePage({ destination = '', joined = false, error = '', values = {} } 
   const openWait = Boolean(joined || error || pickedDest);
   const exampleCards = hotels.slice(0, 6).map(h => exampleCard(h, '')).join('');
   const slot = (src, alt, time, title, copy) => `<div class="slot"><picture><source type="image/webp" srcset="/golden/img/${src}.webp"><img src="/golden/img/${src}.jpg" alt="${alt}" width="900" height="600" loading="lazy" decoding="async"></picture><span class="t">${time}</span><div class="b"><h3>${title}</h3><p>${copy}</p></div></div>`;
-  return page('Hotel day passes in Australia', `<header class="hero" data-slot="1"><div class="ph"><div class="media">
-<picture class="layer" data-slot="0"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-swim-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-swim-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-swim.webp"><img src="/golden/img/hero-swim.jpg" alt="Ocean pool at sunrise" width="1920" height="1080" decoding="async"></picture>
-<picture class="layer on" data-slot="1"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-lunch-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-lunch-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-lunch.webp"><img fetchpriority="high" src="/golden/img/hero-lunch.jpg" alt="Resort pool with palm trees" width="1920" height="1080" decoding="async"></picture>
-<picture class="layer" data-slot="2"><source type="image/webp" srcset="/golden/img/3-sm.webp"><img src="/golden/img/3-sm.jpg" alt="Spa treatment room" width="900" height="600" loading="lazy" decoding="async"></picture>
-<picture class="layer" data-slot="3"><source type="image/webp" srcset="/golden/img/1-sm.webp"><img src="/golden/img/1-sm.jpg" alt="Hotel pool at dusk" width="900" height="900" loading="lazy" decoding="async"></picture>
+  return page('Hotel day passes in Australia', `<header class="hero" data-slot="0"><div class="ph"><div class="media">
+<picture class="layer on" data-slot="0"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-swim-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-swim-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-swim.webp"><img fetchpriority="high" src="/golden/img/hero-swim.jpg" alt="Ocean pool at sunrise" width="1920" height="1080" decoding="async"></picture>
+<picture class="layer" data-slot="1"><source type="image/webp" srcset="/golden/img/3-sm.webp"><img src="/golden/img/3-sm.jpg" alt="Spa treatment room" width="900" height="600" loading="lazy" decoding="async"></picture>
+<picture class="layer" data-slot="2"><source type="image/webp" srcset="/golden/img/1-sm.webp"><img src="/golden/img/1-sm.jpg" alt="Hotel pool at dusk" width="900" height="900" loading="lazy" decoding="async"></picture>
 <div class="shimmer" aria-hidden="true"></div><div class="tint"></div></div>
-<div class="clock"><span id="ct">12:00</span><small id="cl">Long lunch</small></div><span class="credit">Stock media · example only</span></div>
-<div class="copy"><h1 class="kicker">Hotel day passes in Australia</h1>
-<h2 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h2>
+<div class="clock"><span id="ct">8:00</span><small id="cl">Swim &amp; gym</small></div><span class="credit">Stock media · example only</span></div>
+<div class="copy"><p class="kicker">Hotel day passes in Australia</p>
+<h1 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h1>
 <p class="lead">A hotel pool, gym, daybed or spa for the day, minutes from home, no room needed.</p>
-<div class="times"><button type="button" data-i="0" aria-pressed="false">Swim &amp; gym</button><button type="button" data-i="1" class="on" aria-pressed="true">Long lunch</button><button type="button" data-i="2" aria-pressed="false">Spa afternoon</button><button type="button" data-i="3" aria-pressed="false">Golden hour</button></div>
+<div class="times"><button type="button" data-i="0" class="on" aria-pressed="true">Swim &amp; gym</button><button type="button" data-i="1" aria-pressed="false">Spa afternoon</button><button type="button" data-i="2" aria-pressed="false">Golden hour</button></div>
 <form class="search" action="/search" method="get">
 <div class="seg"><label for="w">Where</label><select id="w" class="hdc-pick" name="destination" aria-label="Where"><option value="" data-icon="pin">All of Australia</option>${whereOptions('')}</select></div>
 <div class="seg"><label for="d">When</label><input id="d" class="hdc-date" type="date" name="date" min="${today()}" max="${ymd(addDays(new Date(), 90))}" value=""></div>
@@ -481,7 +499,7 @@ ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the li
 <p class="home-note">Shown while the site is in demo mode. These hotels are fictional. No real bookings are taken. <a href="/guides">Read the day pass guides</a>.</p>
 <div class="list">${exampleCards || '<p class="home-note">No example listings yet.</p>'}</div></section>
 <section id="destinations" data-rv><span class="kicker sand">Explore by destination</span><h2>Destinations</h2>
-<p class="home-note">The number on a card counts fictional example listings in this demo for that area. It does not mean a hotel has signed up. Coming soon means there is nothing listed there yet.</p>
+<p class="home-note">The number on a card counts fictional example listings in this demo for that area. It does not mean a hotel has signed up. No listings yet means there is nothing listed there yet.</p>
 <ul class="dests">${destCards}</ul></section>
 <section class="faq" data-rv><div><span class="kicker sand">Good to know</span><h2>Questions about hotel day passes</h2></div>
 <div class="faq-list"><details open><summary>Do I need to stay at the hotel?</summary><p>No. A day pass gives you the pool, gym or spa for set hours, no room booking needed.</p></details>

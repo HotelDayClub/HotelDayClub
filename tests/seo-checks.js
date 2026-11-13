@@ -98,8 +98,8 @@ function alts(html, where) {
     assert.strictEqual(titleOf(home), 'Hotel day passes in Australia · Hotel Day Club');
     assert.ok(home.includes('rel="canonical" href="https://www.hoteldayclub.com.au/"'));
     const homeDesc = 'Book a hotel pool, spa or gym for the day in Australia, no room needed. We&#39;re launching soon, so join the waitlist.';
-    assert.ok(home.includes('<h1 class="kicker">Hotel day passes in Australia</h1>'));
-    assert.ok(home.includes('<h2 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h2>'));
+    assert.ok(home.includes('<p class="kicker">Hotel day passes in Australia</p>'));
+    assert.ok(home.includes('<h1 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h1>'));
     assert.ok(home.includes('>Plan your day</span>'));
     assert.ok(home.includes('A hotel day, your way'));
     assert.ok(home.includes('One example day. You book the day. The hotel sets the hours.'));
@@ -123,8 +123,12 @@ function alts(html, where) {
     assert.ok(home.includes('content="googleverify123"'));
     assert.ok(home.includes('name="msvalidate.01" content="BING123456"'));
     assert.ok(home.includes('https://www.hoteldayclub.com.au/assets/og-image-1200x630.png'));
+    const homeHeader = home.slice(home.indexOf('<header class="hdr"'), home.indexOf('<main>'));
+    const homeFooter = home.slice(home.indexOf('<footer'));
+    assert.ok(homeHeader.includes('src="/assets/hdc-lockup-light.svg"'));
+    assert.ok(!homeHeader.includes('hdc-lockup-dark.svg'));
+    assert.ok(homeFooter.includes('src="/assets/hdc-lockup-dark.svg"'));
     assert.ok(home.includes('src="/assets/hdc-lockup-light.svg"'));
-    assert.ok(!home.includes('hdc-lockup-dark.svg'));
     assert.ok(home.includes('alt="Hotel Day Club"'));
     assert.ok(!home.includes('logo-mark'));
     assert.ok(home.includes('href="/assets/hdc-icon.svg"'));
