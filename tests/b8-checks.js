@@ -40,6 +40,11 @@ assert.ok(/@media\(max-width:600px\)\{[\s\S]*\.clock\{display:none\}/.test(homeC
 assert.ok(homeCss.includes('.dest-go{margin-top:auto;font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:3px;color:var(--hdc-deep)}'));
 assert.ok(headerCss.includes('.ftr-toggle{display:flex') && headerCss.includes('min-height:44px'));
 assert.ok(headerCss.includes('aria-expanded="true"') || headerCss.includes('[aria-expanded="true"]'));
+const whereRule = homeCss.match(/\.search \.seg:first-child \.pk-btn \.pk-txt\{[^}]*\}/);
+assert.ok(whereRule, 'where segment text rule');
+assert.ok(whereRule[0].includes('overflow:visible'));
+assert.ok(whereRule[0].includes('text-overflow:clip'));
+assert.ok(!whereRule[0].includes('ellipsis'));
 assert.ok(homeCss.includes('#627377'));
 assert.ok(fs.readFileSync(path.join(root, 'public/pickers.css'), 'utf8').includes('#627377'));
 

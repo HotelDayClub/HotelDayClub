@@ -502,7 +502,7 @@ ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the li
 <p class="home-note">The number on a card counts fictional example listings in this demo for that area. It does not mean a hotel has signed up. No listings yet means there is nothing listed there yet.</p>
 <ul class="dests">${destCards}</ul></section>
 <section class="faq" data-rv><div><span class="kicker sand">Good to know</span><h2>Questions about hotel day passes</h2></div>
-<div class="faq-list"><details open><summary>Do I need to stay at the hotel?</summary><p>No. A day pass gives you the pool, gym or spa for set hours, no room booking needed.</p></details>
+<div class="faq-list"><details><summary>Do I need to stay at the hotel?</summary><p>No. A day pass gives you the pool, gym or spa for set hours, no room booking needed.</p></details>
 <details><summary>Is Hotel Day Club taking bookings?</summary><p>Not yet. Join the waitlist and we'll email you when passes open near you.</p></details>
 <details><summary>What's included?</summary><p>Each hotel sets its own inclusions (pool, gym, spa and towels), and every listing spells out what your pass covers. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.</p></details>
 <p class="faq-more"><a href="/faq">All questions</a></p></div></section>
