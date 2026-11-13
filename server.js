@@ -41,6 +41,7 @@ const { TOPICS, parseMessage, contactLimited, saveMessage, topicLabel, sameSiteP
 const paths = require('./paths');
 const backups = require('./backups');
 const { bookingsCsv, hotelsCsv, hotelBookingsCsv } = require('./dataExport');
+const { GuestPrivacy } = require('./guestPrivacy');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
   hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST, dayPlan,
@@ -1581,18 +1582,27 @@ function logForm(b, redirect, log) {
 function arrivalCell(value, mode) {
   return esc(arrivalText(value, mode === 'detail' ? 'detail' : 'short'));
 }
-const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false, hotel = null } = {}) => {
+function contactLine(b) {
+  if (b.contact_hidden) return '';
+  return `<div class="muted small">${esc(b.email)} · ${esc(b.phone)}</div>`;
+}
+function hotelRows(rows, { hotel, adminCancel }) {
   rows = withNotes(rows);
+  if (hotel && !adminCancel) rows = GuestPrivacy.presentAll(rows, hotel);
+  return rows;
+}
+const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false, hotel = null } = {}) => {
+  rows = hotelRows(rows, { hotel, adminCancel });
   const head = arrival ? '<th>Arrival</th>' : '';
   const cell = b => arrival ? `<td>${arrival === 'detail' ? `Expected arrival: ${arrivalCell(b.expected_arrival, 'detail')}` : arrivalCell(b.expected_arrival, 'short')}</td>` : '';
   const versionLine = b => versions ? ConsentLog.adminLine(b) : '';
   return rows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th>${hotelCol ? '<th>Hotel</th>' : ''}<th>Date</th><th>Guest</th>${head}<th>Seating</th><th>Spots</th><th>Total</th><th>Status</th></tr></thead><tbody>
-${rows.map(b => `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(b.hotel)}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(b.guest_name)}</b> ${parkingTag(b)}<div class="muted small">${esc(b.email)} · ${esc(b.phone)}</div>${versionLine(b)}</td>${cell(b)}${seatCell(b)}<td>${b.qty}</td><td>${money(b.total)}</td>
+${rows.map(b => `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(b.hotel)}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(b.guest_name)}</b> ${parkingTag(b)}${contactLine(b)}${versionLine(b)}</td>${cell(b)}${seatCell(b)}<td>${b.qty}</td><td>${money(b.total)}</td>
 <td>${statusCell(b, { checkin, redirect, day, compact: true, adminCancel, hotel })}${noteBits(b, hotel, adminCancel)}${logForm(b, redirect, log)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No guests.</p>';
 };
 const BQ = `SELECT b.*, p.name pass, p.holds, h.name hotel, (SELECT group_concat(ba.name || ' × ' || ba.qty, ', ') FROM booking_addons ba WHERE ba.booking_id=b.id) addons, (SELECT 1 FROM booking_addons ba JOIN addons a ON a.id=ba.addon_id WHERE ba.booking_id=b.id AND a.code='parking') parking_addon, (SELECT mode FROM inclusions i WHERE i.hotel_id=b.hotel_id AND i.code='parking') parking_mode FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id JOIN hotels h ON h.id=b.hotel_id`;
 function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false, hotel = null } = {}) {
-  rows = withNotes(rows);
+  rows = hotelRows(rows, { hotel, adminCancel });
   if (!rows.length) return '<p class="muted">No guests.</p>';
   return `<div class="guest-cards">${rows.map(b => {
     const label = spotLabel({ name: b.pass, holds: b.holds });
@@ -1609,7 +1619,6 @@ function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel
   }).join('')}</div>`;
 }
 function guestList(rows, opts = {}) {
-  rows = withNotes(rows);
   return `<div class="guests-wide">${guestTable(rows, opts)}</div><div class="guests-narrow">${guestCards(rows, opts)}</div>`;
 }
 function todaySection(h, { big = false, live = '/hotel/today-list', day = '' } = {}) {
@@ -1635,11 +1644,11 @@ app.get('/hotel/today-list', hotelAuth, (req, res) => {
   res.send(todaySection(req.hotel, { big, live: big ? '/hotel/today-list?view=checkin' : '/hotel/today-list' }));
 });
 app.get('/hotel/bookings.csv', hotelAuth, (req, res) => {
-  const rows = db.prepare(`SELECT b.date AS date, b.code AS booking_code, b.guest_name, p.name AS pass,
+  const rows = db.prepare(`SELECT b.id, b.date AS date, b.code AS booking_code, b.guest_name, b.email, b.phone, p.name AS pass,
     COALESCE(b.party, b.qty * COALESCE(p.holds, 1)) AS guests, b.expected_arrival, b.status, b.total AS gross_sales
     FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id
     WHERE b.hotel_id=? ORDER BY b.date, b.id`).all(req.hotel.id);
-  sendCsv(res, 'bookings.csv', hotelBookingsCsv(rows));
+  sendCsv(res, 'bookings.csv', hotelBookingsCsv(GuestPrivacy.presentAll(withNotes(rows), req.hotel)));
 });
 function bookingDayState(b, hotel) {
   const day = hotelToday(hotel);
@@ -1667,12 +1676,16 @@ function checkinSearch(hotel, raw) {
   const digits = q.replace(/\D/g, '');
   const short = ShortCode.canonical(q);
   const day = hotelToday(hotel);
+  const phoneLike = digits ? '%' + digits + '%' : '';
   return db.prepare(`${BQ} WHERE b.hotel_id=? AND (
-      lower(b.code) LIKE ? OR lower(b.guest_name) LIKE ? OR lower(b.email) LIKE ?
-      OR (? != '' AND replace(replace(replace(replace(replace(b.phone,' ',''),'-',''),'(',''),')',''),'+','') LIKE ?)
+      lower(b.code) LIKE ?
       OR (? != '' AND b.short_code = ?)
+      OR (${GuestPrivacy.contactGate()} AND (
+        lower(b.guest_name) LIKE ? OR lower(b.email) LIKE ?
+        OR (? != '' AND replace(replace(replace(replace(replace(b.phone,' ',''),'-',''),'(',''),')',''),'+','') LIKE ?)
+      ))
     ) ORDER BY CASE WHEN b.date=? THEN 0 WHEN b.date>? THEN 1 ELSE 2 END, b.date, b.guest_name LIMIT 40`)
-    .all(hotel.id, like, like, like, digits, digits ? '%' + digits + '%' : '', short, short, day, day);
+    .all(hotel.id, like, short, short, GuestPrivacy.cutoff(hotel), like, like, digits, phoneLike, day, day);
 }
 const checkinHits = new Map();
 function checkinLimited(ip) {
@@ -1698,7 +1711,7 @@ function checkinCard(info, hotel) {
   if (!info || !info.code) return '';
   if (info.st === 'missing') return `<div class="scan-status bad" role="status"><b>Not found</b><span>No booking ${esc(info.code)} at this hotel.</span></div>`;
   if (info.st === 'other') return `<div class="scan-status bad" role="status"><b>Another hotel</b><span>This booking is for another hotel.</span></div>`;
-  const b = info.b;
+  const b = GuestPrivacy.present(withNotes([info.b])[0], hotel);
   const pass = `${spotLabel({ name: b.pass, holds: b.holds })} × ${b.qty}`;
   const note = checkinStatusText(info, hotel);
   const tone = info.st === 'ready' ? 'valid' : info.st === 'used' ? 'used' : 'bad';
@@ -1803,7 +1816,12 @@ app.get('/hotel', hotelAuth, (req, res) => {
   const todayRows = db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? ORDER BY b.checked_in_at IS NOT NULL, b.guest_name`).all(h.id, t);
   const upcoming = db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date>? ORDER BY b.date, b.guest_name LIMIT 60`).all(h.id, t);
   const short = ShortCode.canonical(q);
-  const found = q ? db.prepare(`${BQ} WHERE b.hotel_id=? AND (b.code LIKE ? OR b.guest_name LIKE ? OR b.email LIKE ? OR b.phone LIKE ? OR (? != '' AND b.short_code = ?)) ORDER BY b.date DESC LIMIT 30`).all(h.id, ...Array(4).fill('%' + q + '%'), short, short) : null;
+  const like = '%' + q + '%';
+  const found = q ? db.prepare(`${BQ} WHERE b.hotel_id=? AND (
+      b.code LIKE ?
+      OR (? != '' AND b.short_code = ?)
+      OR (${GuestPrivacy.contactGate()} AND (b.guest_name LIKE ? OR b.email LIKE ? OR b.phone LIKE ?))
+    ) ORDER BY b.date DESC LIMIT 30`).all(h.id, like, short, short, GuestPrivacy.cutoff(h), like, like, like) : null;
   const s = db.prepare("SELECT COALESCE(SUM(qty),0) spots, COALESCE(SUM(COALESCE(party, qty)),0) people, COALESCE(SUM(total),0) gross, COUNT(*) n FROM bookings WHERE hotel_id=? AND status!='cancelled'").get(h.id);
   const s30 = db.prepare("SELECT COALESCE(SUM(total),0) gross FROM bookings WHERE hotel_id=? AND status!='cancelled' AND date>=?").get(h.id, ymd(addDays(new Date(), -30)));
   const inToday = todayRows.filter(b => b.checked_in_at).reduce((a, b) => a + b.qty, 0), dueToday = todayRows.reduce((a, b) => a + b.qty, 0);
@@ -1819,13 +1837,15 @@ app.get('/hotel', hotelAuth, (req, res) => {
   res.send(dashShell(h, `
 ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <div class="dash-head"><div><p class="eyebrow-s">Hotel dashboard</p><h1 class="l-title">G'day, ${esc(h.name.replace(' (Demo)', ''))}</h1><p class="muted">${esc(nice(t))} · ${inToday} of ${dueToday} spots checked in today · ${tally.arrived} arrived of ${tally.booked} booked</p></div>
-<div class="dash-actions"><a class="btn btn-line" href="/hotel/analytics">Analytics</a><a class="btn btn-line" href="/hotel/bookings.csv">Download bookings</a><a class="btn btn-navy" href="/hotel/checkin">Check in a guest</a></div></div>
+<div class="dash-export"><div class="dash-actions"><a class="btn btn-line" href="/hotel/analytics">Analytics</a><a class="btn btn-line" href="/hotel/bookings.csv">Download bookings</a><a class="btn btn-navy" href="/hotel/checkin">Check in a guest</a></div>
+${GuestPrivacy.note()}</div></div>
 ${soldWarnHtml(h.id, passes, days, grid)}
 ${opsBar(h, passes)}
 <div class="stats">${stat('Spots booked', s.spots, `${s.n} bookings · ${s.people} people`)}${stat('Gross sales', money(s.gross), `Includes ${money(addonGross)} add-ons · last 30 days ${money(s30.gross)}`)}</div>
 <div class="seat-stats">${bySeat.map(r => `<span><b>${esc(spotLabel(r))}</b> ${r.spots} booked · ${r.people} people</span>`).join('')}</div>
 ${todaySection(h)}
 <section id="lookup" class="panel"><h2 class="ph2">Booking lookup</h2><form class="lookup" method="get" action="/hotel#lookup"><input name="q" value="${esc(q)}" placeholder="Booking code (HDC-7Q4K-2M9X), name, email or phone"><button class="btn btn-navy">${ICON.search} Find</button>${q ? '<a class="link" href="/hotel">Clear</a>' : ''}</form>
+${GuestPrivacy.note()}
 ${found ? `<p class="muted small">${found.length} result${found.length === 1 ? '' : 's'} for “${esc(q)}”</p>${guestList(found, { redirect: '/hotel?q=' + encodeURIComponent(q) + '#lookup', arrival: 'detail', hotel: h })}` : ''}</section>
 <section id="upcoming" class="panel"><h2 class="ph2">Upcoming guests</h2>${guestList(upcoming, { checkin: false, hotel: h })}</section>
 <section id="avail" class="panel"><h2 class="ph2">Next 14 days</h2><div class="tbl-wrap"><table class="tbl avail"><thead><tr><th>Seating</th>${days.map(d => `<th>${nice(d).replace(' ', '<br>')}</th>`).join('')}</tr></thead><tbody>
@@ -1914,7 +1934,14 @@ app.post('/hotel/note', hotelAuth, (req, res) => {
   res.redirect(303, p + (p.includes('?') ? '&' : '?') + 'msg=' + encodeURIComponent(msg) + (hash ? '#' + hash : ''));
 });
 function pauseConfirm(hotel, opts) {
-  return dashShell(hotel, PauseBooked.confirmInner(opts));
+  const groups = (opts.groups || []).map(group => ({
+    ...group,
+    bookings: GuestPrivacy.presentAll(
+      withNotes((group.bookings || []).map(row => ({ ...row, date: row.date || group.date }))),
+      hotel,
+    ),
+  }));
+  return dashShell(hotel, PauseBooked.confirmInner({ ...opts, groups }));
 }
 function capDate(hotelId, date, raw) {
   const text = String(raw ?? '').trim();
@@ -1982,7 +2009,7 @@ function readOps(token) {
 }
 app.get('/hotel/email-preview', hotelAuth, (req, res) => {
   const h = req.hotel, tmr = HotelClock.offset(h, 1);
-  const rows = db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? AND b.status!='cancelled' ORDER BY b.guest_name`).all(h.id, tmr);
+  const rows = GuestPrivacy.presentAll(withNotes(db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? AND b.status!='cancelled' ORDER BY b.guest_name`).all(h.id, tmr)), h);
   const spots = rows.reduce((s, b) => s + b.qty, 0);
   const sum = getPasses(h.id).reduce((s, p) => s + p.daily_cap, 0);
   const caps = [...new Set([8, Math.max(1, Math.round(sum / 2)), Math.max(1, sum - 4)].filter(n => n > 0 && n < sum))].sort((a, b) => a - b).slice(0, 3);
@@ -2044,7 +2071,7 @@ app.post('/hotel/go/:token', async (req, res) => {
 app.get('/hotel/print', hotelAuth, (req, res) => {
   const h = req.hotel;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today(h);
-  const rows = withNotes(db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? AND b.status!='cancelled' ORDER BY b.guest_name`).all(h.id, date));
+  const rows = GuestPrivacy.presentAll(withNotes(db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? AND b.status!='cancelled' ORDER BY b.guest_name`).all(h.id, date)), h);
   res.send(page('Guest list', `<div class="wrap sec print-sheet"><div class="no-print"><a class="link" href="/hotel">← Dashboard</a></div>
 <h1 class="l-title">${esc(h.name)}</h1><p class="muted">${esc(nice(date))} · ${rows.length} booking${rows.length === 1 ? '' : 's'}</p>
 <p>${esc(GuestCheckIn.line())}</p>
