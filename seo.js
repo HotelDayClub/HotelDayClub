@@ -369,7 +369,7 @@ function faqItems(mailHtml, mailText) {
 }
 
 function faqHtml(mailHtml) {
-  const blocks = faqItems(mailHtml).map((item, i) => `<details${i === 0 ? ' open' : ''}><summary>${esc(item.q)}</summary><p>${item.html}</p></details>`).join('\n');
+  const blocks = faqItems(mailHtml).map(item => `<details><summary>${esc(item.q)}</summary><p>${item.html}</p></details>`).join('\n');
   return `<div class="wrap sec"><h1 class="l-title">Hotel day pass questions</h1>
 <p class="lead">Short answers, in line with the <a href="/terms">customer terms</a> and the <a href="/refunds">cancellation and refund policy</a>.</p>
 <div class="faq">

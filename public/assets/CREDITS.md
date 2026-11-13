@@ -41,7 +41,7 @@ The Unsplash help centre states that images can be used for most commercial and 
 |---|---|
 | golden/img/1-sm.jpg (dusk pool, Golden hour) | https://unsplash.com/photos/photo-1571896349842-33c89424de2d |
 | golden/img/3-sm.jpg (spa afternoon) | https://unsplash.com/photos/photo-1544161515-4ab6ce6db874 |
-| golden/img/4-sm.jpg (daybed and long lunch) | https://unsplash.com/photos/photo-1566073771259-6a8506099945 |
+| golden/img/4-sm.jpg (daybed by the pool) | https://unsplash.com/photos/photo-1566073771259-6a8506099945 |
 | golden/img/gym-sm.jpg (8 am gym) | https://unsplash.com/photos/photo-1534438327276-14e5300c3a48 |
 | Not used on the page: photo-1540541338287-41700207dee6, photo-1520250497591-112f2f40a3f4 | Unsplash |
 
@@ -55,6 +55,6 @@ Homepage hero stills, cropped to 16:9. They are example photos, not partner venu
 | File | Photo | Photographer |
 |---|---|---|
 | golden/img/hero-swim.jpg (8:00 Swim & gym) | https://www.pexels.com/photo/30975492/ | Yulius Santoso |
-| golden/img/hero-lunch.jpg (12:00 Long lunch) | https://www.pexels.com/photo/38188725/ | Relaxing Journeys |
+| golden/img/hero-lunch.jpg (resort pool still, not used on the homepage) | https://www.pexels.com/photo/38188725/ | Relaxing Journeys |
 
 WebP and smaller mobile copies sit beside those JPEGs. The on-page chip says "Stock media · example only". Attribution is optional under the Pexels licence. The footer photographer credit was removed on 26 Oct 2026.

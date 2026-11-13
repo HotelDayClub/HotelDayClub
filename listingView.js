@@ -1042,7 +1042,8 @@ ${seeLink}
 </div>
 ${goodToKnowBand({ policy })}
 <div class="book-bar" role="region" aria-label="Book"><b id="bar-total" aria-live="polite" aria-atomic="true">${barText} <small>(demo)</small></b>${barAction}</div>
-${listingScript(h.slug, !MapEmbed.key())}`;
+${listingScript(h.slug, !MapEmbed.key())}
+${DetailsAlias.script()}`;
 }
 
 const ASSURE = [
@@ -1084,4 +1085,14 @@ function reassureStrip(lite) {
   return `<section class="assure${lite ? ' assure-lite' : ''}" aria-label="Before you book"><ul>${items}</ul></section>`;
 }
 
-module.exports = { listingHtml, reassureStrip, ListingPanel, dayStepLinks };
+class DetailsAlias {
+  static replacement(hash) {
+    return hash === '#details' ? '#inclusions' : '';
+  }
+
+  static script() {
+    return `<script>(function(){function go(){if(location.hash!=='#details')return;var el=document.getElementById('inclusions');if(!el)return;var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;el.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});history.replaceState(null,'',location.pathname+location.search+'#inclusions');}addEventListener('hashchange',go);go();})();</script>`;
+  }
+}
+
+module.exports = { listingHtml, reassureStrip, ListingPanel, dayStepLinks, DetailsAlias };
