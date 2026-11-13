@@ -2,6 +2,7 @@ const { esc, money } = require('./util');
 const { safePhoto, FOOD_RULE } = require('./offering');
 const { seatPhoto, amenityLines } = require('./inclusions');
 const { ListingPanel } = require('./listingView');
+const { SearchQuery } = require('./search');
 const { accessDetail } = require('./access');
 const { demoSite } = require('./siteMode');
 
@@ -28,7 +29,7 @@ class SeatPage {
 
   static qty(raw) {
     const n = parseInt(raw, 10);
-    if (!Number.isFinite(n) || n < 1 || n > 6) return 1;
+    if (!Number.isFinite(n) || n < 1 || n > SearchQuery.BOOKING_SPOTS) return 1;
     return n;
   }
 
@@ -195,7 +196,7 @@ ${access}
 </label>
 <p class="seat-avl${status.kind === 'sold' || status.kind === 'closed' ? ' is-bad' : ''}" id="avl" aria-live="polite">${SeatPage.availHtml(status)}</p>
 <label for="seat-qty">Spots
-<select class="hdc-pick" id="seat-qty" name="qty">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === q ? ' selected' : ''}>${n}</option>`).join('')}</select>
+<select class="hdc-pick" id="seat-qty" name="qty">${SearchQuery.bookingSpots().map(n => `<option value="${n}"${n === q ? ' selected' : ''}>${n}</option>`).join('')}</select>
 </label>
 <p class="seat-eq">1 spot = ${holds} ${guest}</p>
 <p class="seat-cap-note">Party size is capped at 6.</p>

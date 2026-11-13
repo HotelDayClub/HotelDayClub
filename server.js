@@ -592,6 +592,12 @@ function spotsLeft(hotel, date) {
   const rows = availability(hotel.id, date);
   return rows.reduce((sum, p) => sum + (p.blocked || p.past ? 0 : p.remaining), 0);
 }
+function searchPasses(hotel, date) {
+  const passes = getPasses(hotel.id);
+  if (!date || closureReason(db, hotel, date)) return passes;
+  const left = new Map(availability(hotel.id, date).map(row => [row.id, row.remaining]));
+  return passes.map(p => ({ ...p, remaining: left.has(p.id) ? left.get(p.id) : 0 }));
+}
 function cardImage(photo, alt, index) {
   if (!photo) return '';
   const eager = index >= 0 && index < 3;
@@ -607,7 +613,7 @@ function cardImage(photo, alt, index) {
   }
   return `<img src="${jpg}" ${attrs}>`;
 }
-function dayPillsHtml(hotel, selected) {
+function dayPillsHtml(hotel, selected, qty) {
   const { pills, openCount } = hotelDays(hotel, selected);
   if (!openCount) return '<p class="day-empty">No open days in the next 2 weeks</p>';
   const selectedOpen = pills.some(p => p.selected && !p.closed);
@@ -619,7 +625,8 @@ function dayPillsHtml(hotel, selected) {
     const stop = !given && (pill.selected || !selectedOpen);
     if (stop) given = true;
     const pressed = pill.selected ? ' aria-pressed="true" aria-current="date"' : ' aria-pressed="false"';
-    return `<a class="daypill${pill.selected ? ' on' : ''}" href="/h/${esc(hotel.slug)}?date=${esc(pill.date)}"${pressed} tabindex="${stop ? '0' : '-1'}"><b>${esc(pill.label)}</b><span>${esc(pill.hours)}</span></a>`;
+    const qtyBit = qty ? '&qty=' + encodeURIComponent(String(qty)) : '';
+    return `<a class="daypill${pill.selected ? ' on' : ''}" href="/h/${esc(hotel.slug)}?date=${esc(pill.date)}${qtyBit}"${pressed} tabindex="${stop ? '0' : '-1'}"><b>${esc(pill.label)}</b><span>${esc(pill.hours)}</span></a>`;
   }).join('');
   return `<div class="days"><div class="day-row" role="group" aria-label="Days for ${esc(hotel.name)}">${items}</div><button type="button" class="day-more ibtn" aria-label="More days for ${esc(hotel.name)}" hidden>${MORE_ICON}</button></div>`;
 }
@@ -630,12 +637,14 @@ function searchCard(hotel, params, index) {
     : 'Photo of ' + hotel.name;
   const offer = cardOffer(hotel, params.date, params.want);
   const days = hotelDays(hotel, params.date);
+  const qty = SearchQuery.bookingQty(searchPasses(hotel, params.date), params.guests);
   const span = (params.date && (days.pills.find(p => p.date === params.date && !p.closed) || {}).hours)
     || (days.pills.find(p => !p.closed) || {}).hours
     || '';
   const query = [];
   if (params.date) query.push('date=' + encodeURIComponent(params.date));
   if (params.want) query.push('want=' + encodeURIComponent(params.want));
+  if (qty) query.push('qty=' + encodeURIComponent(String(qty)));
   const listing = '/h/' + hotel.slug + (query.length ? '?' + query.join('&') : '');
   const area = hotel.area + (hotel.age_policy ? ' · ' + hotel.age_policy : '');
   const price = offer.sold
@@ -645,7 +654,7 @@ function searchCard(hotel, params, index) {
   const book = offer.sold
     ? `<a class="btn quiet" href="/h/${esc(hotel.slug)}#book">See other dates</a>`
     : `<a class="btn book" href="${esc(listing)}#book">Book<span class="vh"> ${esc(hotel.name)}</span></a>`;
-  return `<article class="ex${offer.sold ? ' is-sold' : ''}"><div class="ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></div><div class="bd"><h3><a href="${esc(listing)}">${esc(hotel.name)}</a></h3><p class="ex-area">${esc(area)}</p>${span ? `<p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p>` : ''}${price}${terms}${dayPillsHtml(hotel, params.date)}<p class="ex-note">Demo</p><div class="act"><a class="tlink" href="${esc(listing)}">View details</a>${book}</div></div></article>`;
+  return `<article class="ex${offer.sold ? ' is-sold' : ''}"><div class="ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></div><div class="bd"><h3><a href="${esc(listing)}">${esc(hotel.name)}</a></h3><p class="ex-area">${esc(area)}</p>${span ? `<p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p>` : ''}${price}${terms}${dayPillsHtml(hotel, params.date, qty)}<p class="ex-note">Demo</p><div class="act"><a class="tlink" href="${esc(listing)}">View details</a>${book}</div></div></article>`;
 }
 function radioGroup(name, options, current, klass) {
   const now = String(current || '');
@@ -660,8 +669,8 @@ function hiddenField(name, value) {
 }
 function loadSearch(query) {
   const hotels = getHotels();
-  const passesById = new Map(hotels.map(h => [h.id, getPasses(h.id)]));
   const parsed = SearchQuery.parse(query, DESTINATIONS);
+  const passesById = new Map(hotels.map(h => [h.id, searchPasses(h, parsed.date)]));
   const closedById = new Map();
   const minutesById = new Map();
   const remainingById = parsed.date ? new Map() : null;
@@ -719,7 +728,7 @@ function searchPage(query) {
     return `<a class="ichip" href="${esc(href)}" aria-pressed="${on ? 'true' : 'false'}" data-key="${esc(chip.key)}" data-value="${esc(chip.value)}">${esc(chip.label)}</a>`;
   }).join('');
   const summary = SearchQuery.summary(params);
-  const guestMax = result.guestChoices.length ? result.guestChoices[result.guestChoices.length - 1] : 1;
+  const guestMax = SearchQuery.BOOKING_SPOTS;
   const guestShown = params.guests ? String(params.guests) : 'Any';
   const countN = result.list.length;
   const badge = result.drawerCount ? `<span class="cnt">${result.drawerCount}</span>` : '';
@@ -868,7 +877,7 @@ function listingHold(h, req, startDay) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
   const pass = getPasses(h.id).find(p => p.code === String(req.query.pass || '').slice(0, 40));
   if (!pass) return null;
-  const qty = Math.max(1, Math.min(6, parseInt(req.query.qty, 10) || 1));
+  const qty = Math.max(1, Math.min(SearchQuery.BOOKING_SPOTS, parseInt(req.query.qty, 10) || 1));
   const row = availability(h.id, raw).find(p => p.id === pass.id);
   const kind = DateHold.classify(row);
   if (!kind) return null;
@@ -877,7 +886,7 @@ function listingHold(h, req, startDay) {
 }
 function listingOffer(h, date, qty, passCode, rows) {
   if (!date || !rows || !rows.length || rows.some(r => r.past)) return null;
-  const qtyN = Math.max(1, Math.min(6, parseInt(qty, 10) || 1));
+  const qtyN = Math.max(1, Math.min(SearchQuery.BOOKING_SPOTS, parseInt(qty, 10) || 1));
   const blocked = rows.some(r => r.blocked);
   const allOut = rows.every(r => Number(r.remaining) < qtyN);
   if (!blocked && !allOut) return null;
@@ -953,7 +962,7 @@ app.get('/api/availability', (req, res) => {
   const rawDate = String(req.query.date || '');
   const startDay = today(h);
   const date = chosenDate(rawDate, h) || (/^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate < startDay ? rawDate : '');
-  const qty = Math.max(1, Math.min(6, parseInt(req.query.qty, 10) || 1));
+  const qty = Math.max(1, Math.min(SearchQuery.BOOKING_SPOTS, parseInt(req.query.qty, 10) || 1));
   const passCode = String(req.query.pass || '').slice(0, 40);
   const step = listingStep(h, date, qty, passCode);
   if (!date) {
@@ -968,7 +977,7 @@ app.get('/api/availability', (req, res) => {
 function validate(q) {
   const h = publicHotel(q.hotel); if (!h) return { err: 'Hotel not found.' };
   const date = String(q.date || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { err: 'Pick a date.', h };
-  const qty = Math.max(1, Math.min(6, parseInt(q.qty, 10) || 1));
+  const qty = Math.max(1, Math.min(SearchQuery.BOOKING_SPOTS, parseInt(q.qty, 10) || 1));
   const p = getPasses(h.id).find(x => x.code === q.pass); if (!p) return { err: 'Pick a pass.', h };
   const a = availability(h.id, date).find(x => x.id === p.id);
   if (a.past) return { err: 'That date has passed.', h, p, date, qty, kind: 'past' };

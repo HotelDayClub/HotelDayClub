@@ -5,6 +5,7 @@ const { includedNote, amenityLines, includedLines } = require('./inclusions');
 const { arrivalInner } = require('./arrival');
 const { MapEmbed } = require('./mapEmbed');
 const { ListingImprove } = require('./listingImprove');
+const { SearchQuery } = require('./search');
 
 const SOLD_COPY = 'Sold out for this date. Pick another date or seat.';
 function dateNote(row) {
@@ -81,7 +82,7 @@ class ListingPanel {
 
   static boundQty(raw) {
     const n = parseInt(raw, 10);
-    if (!Number.isFinite(n) || n < 1 || n > 6) return 1;
+    if (!Number.isFinite(n) || n < 1 || n > SearchQuery.BOOKING_SPOTS) return 1;
     return n;
   }
 
@@ -204,7 +205,7 @@ function chosenBlock(pick) {
 function seatHref(h, code, date, qty) {
   const params = new URLSearchParams();
   if (date) params.set('date', date);
-  const n = Math.max(1, Math.min(6, Number(qty) || 1));
+  const n = Math.max(1, Math.min(SearchQuery.BOOKING_SPOTS, Number(qty) || 1));
   params.set('qty', String(n));
   return `/h/${encodeURIComponent(h.slug)}/seat/${encodeURIComponent(code)}?${params.toString()}`;
 }
@@ -1054,7 +1055,7 @@ ${opts.hold ? `<div class="date-hold" aria-hidden="true">${esc(opts.hold.longLab
 <input type="date" class="hdc-date" data-inline="1" data-closed="${esc(closed)}" name="date" id="date" min="${minDate}" max="${maxDate}" value="${esc(date)}" required${holdAttrs(opts.hold)}>
 ${opts.hold ? '<p class="date-leg"><span><i class="sw open"></i>Open</span><span><i class="sw shut"></i>Closed</span><span><i class="sw today"></i>Today</span></p>' : ''}
 <div id="status" class="status${opts.hold ? ' out' : ''}">${opts.hold ? esc(opts.hold.status) : ''}</div>
-<label class="fl" for="qty">Spots<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === qty ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+<label class="fl" for="qty">Spots<select name="qty" id="qty" class="hdc-pick">${SearchQuery.bookingSpots().map(n => `<option value="${n}"${n === qty ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
 <p class="spot-eq" id="spot-eq">${peopleLabel(seatHolds)}</p>
 <p class="muted small cap-note">Party size is capped at 6.</p>
 ${chosenBlock(seat)}
