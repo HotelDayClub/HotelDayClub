@@ -939,10 +939,9 @@ form.check-code input,form.check-code .btn{width:100%}
 .listing .steps b,.listing .steps span{display:block}
 .listing .incl,.listing .two,.listing .hours-season{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-top:16px}
 .listing .incl>div,.listing .two .card,.listing .season{min-width:0;background:var(--hdc-tint);border:1px solid var(--hdc-border);border-radius:12px;padding:16px 20px;color:var(--hdc-text)}
-.listing .inc-label{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-weight:700;color:var(--hdc-text)}
+.listing .incl h3.sub{font-size:16px;font-weight:600;margin:0 0 12px}
 .listing .not-inc,.listing .plain,.listing .closed{margin:0;padding-left:1.2em;color:var(--hdc-text)}
 .listing .not-inc li,.listing .plain li,.listing .closed li{margin:4px 0}
-.listing .yes,.listing .no{font-weight:700}
 .listing .incl .inc{grid-template-columns:1fr;background:transparent;border:0;padding:0;margin:0}
 .listing .house-rules{display:flex;flex-direction:column;gap:12px;margin:0}
 .listing .house-rules > div{display:block;min-width:0;margin:0}
@@ -1145,7 +1144,7 @@ form.check-code input,form.check-code .btn{width:100%}
   .gtk-band .gtk-cols{grid-template-columns:1fr;gap:28px}
   .book-bar{display:flex;flex-wrap:wrap;position:fixed;left:0;right:0;bottom:0;z-index:30;justify-content:space-between;align-items:center;gap:4px 12px;padding:8px 16px calc(8px + env(safe-area-inset-bottom));background:var(--hdc-bg);border-top:1px solid var(--hdc-border)}
   .book-bar-row{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-width:0}
-  .book-bar-cancel{flex:1 0 100%;margin:0;font-size:13px;line-height:1.3;color:var(--hdc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .book-bar-cancel{flex:1 0 100%;margin:0;min-height:2.6em;font-size:13px;line-height:1.3;color:var(--hdc-text);white-space:normal}
   .book-bar b{font-size:15px;color:var(--hdc-text)}
   .book-bar a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;background:var(--hdc-primary);color:var(--white);text-decoration:none;font-weight:700;border-radius:999px;padding:11px 24px}
   .book-bar a.is-next{background:#fff;color:var(--hdc-primary);border:1px solid var(--hdc-primary)}
@@ -1159,7 +1158,7 @@ form.check-code input,form.check-code .btn{width:100%}
   .seat-dialog .sd-grab{display:block}
   .seat-dialog .pass-actions{flex-direction:column;align-items:stretch}
   .seat-dialog .pass-select,.seat-dialog .pass-continue{flex:1 1 auto;width:100%}
-  body.guest:has(.listing){padding-bottom:112px}
+  body.guest:has(.listing){padding-bottom:128px}
 }
 @media (min-width:761px){
   .listing dialog.book-sheet,.listing dialog.book-sheet:not([open]){display:block;position:static;inset:auto;width:auto;max-width:none;max-height:none;height:auto;margin:0;padding:0;border:0;background:transparent;color:inherit;overflow:visible;box-shadow:none}

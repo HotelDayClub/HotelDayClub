@@ -142,20 +142,29 @@ class ListingImprove {
     return `<section class="day-how" aria-labelledby="hiw"><h2 id="hiw">How it works</h2><ol class="steps">${items}</ol></section>`;
   }
 
+  static NOT_INCLUDED_CAP = 6;
+  static EXPECTED_OFF = ['towels', 'toiletries', 'sauna', 'spa'];
+
   static notIncludedLines(items) {
     const addons = [];
-    const off = [];
+    const byCode = new Map();
     for (const item of items || []) {
-      if (!item || item.code === 'pool' || item.code === 'towels' || SKIP_FOOD.has(item.code)) continue;
+      if (!item || item.code === 'pool' || SKIP_FOOD.has(item.code)) continue;
+      byCode.set(item.code, item);
       if (item.mode === 'addon') addons.push(`${item.name} (available as an add-on)`);
-      else if (item.mode === 'off') off.push(item.name);
     }
-    return [FOOD_RULE, ...addons, ...off];
+    const expected = [];
+    for (const code of ListingImprove.EXPECTED_OFF) {
+      const item = byCode.get(code);
+      if (!item || item.mode !== 'off') continue;
+      expected.push(item.name);
+    }
+    return [FOOD_RULE, ...addons, ...expected].slice(0, ListingImprove.NOT_INCLUDED_CAP);
   }
 
   static notIncludedHtml(items) {
     const lines = ListingImprove.notIncludedLines(items).map(line => `<li>${esc(line)}</li>`).join('');
-    return `<h3><span class="no" aria-hidden="true">✕</span> Not included</h3><ul class="not-inc">${lines}</ul>`;
+    return `<h3 class="sub">Not included</h3><ul class="not-inc">${lines}</ul>`;
   }
 
   static includedEmptyCopy(hasAccess) {
@@ -199,7 +208,19 @@ class ListingImprove {
       ['Food rule', FOOD_RULE, false],
       ['Glass', 'Ask the hotel', false],
       ['Dress code', dress, false],
-    ];
+    ].map(([label, text, example]) => [label, ListingImprove.stripLabel(label, text), example]);
+  }
+
+  static stripLabel(label, text) {
+    const raw = String(text || '').trim();
+    const name = String(label || '').trim();
+    if (!raw || !name) return raw;
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = raw.match(new RegExp(`^${escaped}\\s*[:.]?\\s*`, 'i'));
+    if (!match) return raw;
+    const rest = raw.slice(match[0].length).trim();
+    if (!rest) return raw;
+    return rest.charAt(0).toUpperCase() + rest.slice(1);
   }
 
   static recordedRules(hotel, opts) {
@@ -276,7 +297,7 @@ class ListingImprove {
   }
 
   static cancelHtml(note) {
-    return `<div class="cancel-sum"><p class="cancel-note" id="cancel-note" aria-live="polite">${esc(note || '')}</p><a class="cancel-policy" href="/refunds">Refund policy</a></div>`;
+    return `<div class="cancel-sum"><p class="cancel-note" id="cancel-note" aria-live="polite">${esc(note || '')}</p><a class="cancel-policy" href="/refunds">Cancellation and refunds</a></div>`;
   }
 }
 

@@ -1011,7 +1011,6 @@ ${addonList || ''}
 <div class="incl">
 <div>
 <h3 class="sub">What's included</h3>
-<p class="inc-label"><span class="yes" aria-hidden="true">✓</span> Included</p>
 ${incList || emptyIncluded}
 ${towelNote}
 </div>

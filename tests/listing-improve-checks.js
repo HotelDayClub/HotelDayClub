@@ -64,6 +64,32 @@ assert.strictEqual(ListingImprove.notIncludedLines([
 ])[0], FOOD_RULE);
 assert.ok(ListingImprove.notIncludedLines([{ code: 'gym', name: 'Fitness centre access', mode: 'addon' }]).includes('Fitness centre access (available as an add-on)'));
 assert.ok(!ListingImprove.notIncludedLines([{ code: 'pool', name: 'Pool access', mode: 'off' }]).includes('Pool access'));
+const noisy = ListingImprove.notIncludedLines([
+  { code: 'gym', name: 'Fitness centre access', mode: 'addon' },
+  { code: 'kids', name: "Kids' pool access", mode: 'off' },
+  { code: 'discount', name: 'Spa treatment credit', mode: 'off' },
+  { code: 'late', name: 'Late stay', mode: 'off' },
+  { code: 'room-shower', name: 'Room shower access', mode: 'off' },
+  { code: 'toiletries', name: 'Toiletries', mode: 'off' },
+  { code: 'sauna', name: 'Sauna and steam room', mode: 'off' },
+  { code: 'spa', name: 'Hot tub and spa pool', mode: 'off' },
+  { code: 'towels', name: 'Towels', mode: 'included' },
+]);
+assert.strictEqual(noisy[0], FOOD_RULE);
+assert.ok(noisy.includes('Toiletries'));
+assert.ok(noisy.includes('Sauna and steam room'));
+assert.ok(noisy.includes('Hot tub and spa pool'));
+assert.ok(!noisy.some(line => /Kids' pool access|Spa treatment credit|Late stay|Room shower access/.test(line)));
+assert.ok(!noisy.includes('Towels'));
+assert.ok(noisy.length <= 6);
+const manyAddons = ListingImprove.notIncludedLines([
+  ...[0, 1, 2, 3, 4, 5, 6, 7].map(i => ({ code: 'a' + i, name: 'Add ' + i, mode: 'addon' })),
+  { code: 'sauna', name: 'Sauna and steam room', mode: 'off' },
+]);
+assert.strictEqual(manyAddons.length, 6);
+assert.strictEqual(manyAddons[0], FOOD_RULE);
+assert.ok(!manyAddons.includes('Sauna and steam room'));
+assert.strictEqual(ListingImprove.notIncludedLines([{ code: 'towels', name: 'Towels', mode: 'off' }])[1], 'Towels');
 
 assert.strictEqual(ListingImprove.facts({}).length, 0);
 assert.strictEqual(ListingImprove.factsHtml({}), '');
@@ -82,6 +108,16 @@ const blankRules = ListingImprove.ruleRows({});
 assert.ok(blankRules.every(row => row[0] === 'Food rule' ? row[1] === FOOD_RULE : row[0] === 'Glass' ? row[1] === 'Ask the hotel' : row[1] === 'Ask the hotel' || row[1] === FOOD_RULE));
 assert.strictEqual(blankRules.find(row => row[0] === 'Glass')[1], 'Ask the hotel');
 assert.strictEqual(blankRules.find(row => row[0] === 'Food rule')[1], FOOD_RULE);
+for (const sample of [{}, { lifeguard: 0 }, { lifeguard: 1 }, { lifeguard: 2, lifeguard_hours: '10am to 4pm' }, { id_required: 1, age_policy: '18+', kids_hours: 'No children', dress_code: 'Swimwear on the roof.' }]) {
+  for (const [label, text] of ListingImprove.ruleRows(sample)) {
+    assert.ok(!String(text).toLowerCase().startsWith(String(label).toLowerCase()), `${label} / ${text}`);
+  }
+}
+assert.strictEqual(ListingImprove.ruleRows({ lifeguard: 0 }).find(row => row[0] === 'Lifeguard')[1], 'Not on duty');
+assert.strictEqual(ListingImprove.ruleRows({ lifeguard: 1 }).find(row => row[0] === 'Lifeguard')[1], 'On duty');
+const barRule = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.css'), 'utf8').match(/\.book-bar-cancel\{[^}]+\}/);
+assert.ok(barRule);
+assert.ok(!barRule[0].includes('ellipsis'));
 assert.strictEqual(ListingImprove.recordedRules({ age_policy: '18+', towels: 1, food_rule: FOOD_RULE, id_required: 1, lifeguard: 0, heated: 1, setting: 'outdoor' }), rulesText({ age_policy: '18+', towels: 1, food_rule: FOOD_RULE, id_required: 1, lifeguard: 0, heated: 1, setting: 'outdoor' }));
 
 const past = { date: '2020-01-02', reason: 'Old' };
