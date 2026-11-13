@@ -4,6 +4,7 @@ const { KINDS, supervisionNote, safePhoto, FOOD_RULE } = require('./offering');
 const { includedNote, amenityLines, includedLines } = require('./inclusions');
 const { arrivalInner } = require('./arrival');
 const { MapEmbed } = require('./mapEmbed');
+const { ListingImprove } = require('./listingImprove');
 
 const SOLD_COPY = 'Sold out for this date. Pick another date or seat.';
 function dateNote(row) {
@@ -69,7 +70,7 @@ class ListingPanel {
       const label = today ? `${row.day} (today)` : row.day;
       return `<tr${today ? ' class="is-today"' : ''}><th scope="row">${esc(label)}</th><td>${esc(row.time)}</td></tr>`;
     }).join('');
-    return `<table class="hours-table"><tbody>${rows}</tbody></table><p class="muted small">These are the day-pass hours for this demo listing.</p>`;
+    return `<table class="hours-table"><tbody>${rows}</tbody></table><p class="muted small">These are the day-pass hours for this demo listing.</p><p class="muted small">Times are the hotel's local time.</p>`;
   }
 
   static viewAllLabel(count) {
@@ -578,7 +579,9 @@ if(tabNav){
   const data=await r.json();
   av=data.passes||[]; addons=data.addons||[];
   const note=document.getElementById('cancel-note');
-  if(note){ note.hidden=!el.value; note.textContent=data.cancel||''; }
+  const barCancel=document.getElementById('bar-cancel');
+  if(note) note.textContent=data.cancel||'';
+  if(barCancel) barCancel.textContent=data.cancel||'';
   if(state) state.textContent='';
   if(grid) grid.classList.remove('is-loading');
   applyStep(data.step);
@@ -969,18 +972,30 @@ function listingHtml(opts) {
     : '';
   const parkFold = parkNote ? `<details class="fold" id="parking"><summary>Parking</summary><div class="acc-body"><p>${esc(parkNote)}</p></div></details>` : '';
   const cancelCopy = esc(know || cancel);
+  const shareUrl = ListingImprove.pageShareUrl(h.slug, {
+    date: date || '',
+    pass: opts.passCode || '',
+    qty: opts.shareQty || '',
+    guests: opts.shareGuests || '',
+  });
+  const age = ListingImprove.ageLabel(h.age_policy);
+  const badges = `${demo ? '<span class="demo-pill">Fictional demo listing</span>' : ''}${age ? `<span class="age-pill">${esc(age)}</span>` : ''}`;
+  const emptyIncluded = rows.length ? '' : `<p class="inc-empty">${esc(ListingImprove.includedEmptyCopy(false))}</p>`;
   return `<div class="wrap listing">
 ${galleryHtml(h, demo, short)}
 <form action="/checkout" method="get" id="bf" class="l-layout">
 <input type="hidden" name="hotel" value="${esc(h.slug)}">
 <div class="l-main">
 <section class="listing-head" id="overview">
-<h1 class="l-title">${esc(heading)}</h1>
+<div class="title-row"><h1 class="l-title">${esc(heading)}</h1>${ListingImprove.shareHtml(shareUrl)}</div>
 <p class="muted l-meta">${esc(meta)}</p>
-${demo ? '<span class="demo-pill">Fictional demo listing</span>' : ''}
+${badges ? `<div class="badges">${badges}</div>` : ''}
+${ListingImprove.factsHtml(h)}
+${ListingImprove.whyHtml()}
 <p class="day-lead" id="overview-desc"><b>${esc(h.tagline)}.</b> ${esc(h.blurb)}</p>
 <button type="button" class="read-more" aria-expanded="false" aria-controls="overview-desc">Read more</button>
 ${watch ? `<p class="guard-note">${esc(watch)}</p>` : ''}
+${ListingImprove.stepsHtml()}
 </section>
 <div class="l-tabs"><nav aria-label="Sections"><a href="#overview" aria-current="true">Overview</a><a href="#passes">Passes</a><a href="#inclusions">Inclusions</a><a href="#location">Location</a><a href="#policies">Policies</a></nav></div>
 <section id="seating" aria-labelledby="seat-h"><div class="seat-head"><h2 class="day-kicker" id="seat-h">Choose your seating</h2><p class="seat-sub">Prices per spot, before add-ons. Pick a date to see what's left.</p></div>
@@ -993,12 +1008,26 @@ ${passSection(passes, av, h, date, opts.passCode, qty, items)}
 </section>
 ${addonList || ''}
 <section id="inclusions"><h2>Inclusions</h2>
+<div class="incl">
+<div>
 <h3 class="sub">What's included</h3>
-${incList}
+<p class="inc-label"><span class="yes" aria-hidden="true">✓</span> Included</p>
+${incList || emptyIncluded}
 ${towelNote}
-<p class="food-note">${esc(foodLine || FOOD_RULE)}</p>
+</div>
+<div>
+${ListingImprove.notIncludedHtml(items)}
+</div>
+</div>
+<div class="two">
+${ListingImprove.bringHtml(h)}
+${ListingImprove.rulesHtml(h)}
+</div>
+<div class="hours-season">
 <div class="l-acc">
 <details id="hours" open><summary>Opening hours</summary><div class="acc-body">${hoursHtml}</div></details>
+</div>
+${ListingImprove.seasonHtml(h, hourRows, opts.upcomingClosed)}
 </div>
 </section>
 <section id="location"><h2>Location</h2>
@@ -1031,8 +1060,8 @@ ${opts.hold ? '<p class="date-leg"><span><i class="sw open"></i>Open</span><span
 <p class="muted small cap-note">Party size is capped at 6.</p>
 ${chosenBlock(seat)}
 <div class="bb-total" id="total" aria-live="polite" aria-atomic="true"></div>
-<p class="cancel-note" id="cancel-note"${date ? '' : ' hidden'}>${esc(cancel)}</p>
 <button class="book-go" id="go" type="submit" data-label="Book your day (demo)"${goDis}>${goText}</button>
+${ListingImprove.cancelHtml(cancel)}
 ${seeLink}
 <p class="prompt">You won't be charged. Demo payment only.</p>
 </aside>
@@ -1041,9 +1070,10 @@ ${seeLink}
 </form>
 </div>
 ${goodToKnowBand({ policy })}
-<div class="book-bar" role="region" aria-label="Book"><b id="bar-total" aria-live="polite" aria-atomic="true">${barText} <small>(demo)</small></b>${barAction}</div>
+<div class="book-bar" role="region" aria-label="Book"><div class="book-bar-row"><b id="bar-total" aria-live="polite" aria-atomic="true">${barText} <small>(demo)</small></b>${barAction}</div><p class="book-bar-cancel" id="bar-cancel">${esc(cancel)}</p></div>
 ${listingScript(h.slug, !MapEmbed.key())}
-${DetailsAlias.script()}`;
+${DetailsAlias.script()}
+<script src="/share.js"></script>`;
 }
 
 const ASSURE = [

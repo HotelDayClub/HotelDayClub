@@ -931,6 +931,9 @@ app.get('/h/:slug', (req, res) => {
     policy: policyInner(h, foodLine),
     passCode: String(req.query.pass || '').slice(0, 40),
     qty: req.query.qty,
+    shareQty: req.query.qty ? String(req.query.qty).slice(0, 8) : '',
+    shareGuests: req.query.guests ? String(req.query.guests).slice(0, 8) : '',
+    upcomingClosed: db.prepare('SELECT date, reason FROM blocked_dates WHERE hotel_id=? AND date>=? ORDER BY date LIMIT 3').all(h.id, startDay),
     hold,
     offer: listingOffer(h, date, req.query.qty, String(req.query.pass || '').slice(0, 40), date ? av : []),
   }), {
