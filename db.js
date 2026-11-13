@@ -40,6 +40,27 @@ CREATE TABLE IF NOT EXISTS listing_views(
   PRIMARY KEY(hotel_id, day, seeded)
 );
 CREATE INDEX IF NOT EXISTS idx_bookings_hotel_date ON bookings(hotel_id, date);
+CREATE TABLE IF NOT EXISTS hotel_amenities(
+  id INTEGER PRIMARY KEY,
+  hotel_id INTEGER NOT NULL REFERENCES hotels(id),
+  category TEXT NOT NULL CHECK(category IN ('gym','pool','spa','sauna','steam','restaurant','cafe','bar')),
+  label TEXT NOT NULL CHECK(length(label) BETWEEN 1 AND 60),
+  included INTEGER NOT NULL DEFAULT 0 CHECK(NOT(category IN ('restaurant','cafe','bar') AND included=1)),
+  hidden INTEGER NOT NULL DEFAULT 0,
+  hidden_by TEXT CHECK(hidden_by IN ('hotel','admin') OR hidden_by IS NULL),
+  sort INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS hotel_amenities_log(
+  id INTEGER PRIMARY KEY,
+  amenity_id INTEGER,
+  hotel_id INTEGER,
+  actor TEXT,
+  action TEXT,
+  old_value TEXT,
+  new_value TEXT,
+  at TEXT
+);
 CREATE TABLE IF NOT EXISTS inclusions(
   hotel_id INTEGER NOT NULL REFERENCES hotels(id),
   code TEXT NOT NULL,

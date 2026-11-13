@@ -85,10 +85,12 @@ function ymd(date) {
       assert.ok(!/towel/i.test(list), `${pass.slug}/${pass.code} towels stay off the shared list`);
       const buy = hotelAreas(db, pass.hotel_id).filter(area => Number(area.serves_food));
       if (buy.length) {
-        assert.ok(includedBlock.includes('<h4>On site to buy (not included)</h4>'), pass.slug);
-        for (const area of buy) assert.ok(includedBlock.includes(`<b>${esc(area.name)}</b>`), `${pass.slug} ${area.name}`);
+        assert.ok(includedBlock.includes('Pay the venue directly. Menus, prices and opening hours are set by the venue.'), pass.slug);
+        assert.ok(includedBlock.includes('See all amenities'), pass.slug);
+        for (const area of buy) assert.ok(includedBlock.includes(`>${esc(area.name)}</span>`), `${pass.slug} ${area.name}`);
       } else {
         assert.ok(!res.body.includes('On site to buy (not included)'), pass.slug);
+        assert.ok(!res.body.includes('Pay the venue'), pass.slug);
       }
       assert.ok(!/commission/i.test(res.body), pass.slug);
       assert.ok(!/pay online|stripe/i.test(res.body), pass.slug);

@@ -1008,6 +1008,7 @@ ${passSection(passes, av, h, date, opts.passCode, qty, items)}
 </div>
 </section>
 ${addonList || ''}
+${opts.amenitiesHtml || ''}
 <section id="inclusions"><h2>Inclusions</h2>
 <div class="incl">
 <div>
