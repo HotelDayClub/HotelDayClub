@@ -15,6 +15,32 @@ class DateHold {
     return '';
   }
 
+  static earliestOpen(readAvailability, hotelId, passes, qty, startDay, afterDate) {
+    let best = '';
+    for (const pass of passes || []) {
+      const id = pass && pass.id;
+      if (!id) continue;
+      const found = this.nextOpen(readAvailability, hotelId, id, qty, startDay, afterDate) || [];
+      const day = found[0] || '';
+      if (day && (!best || day < best)) best = day;
+    }
+    return best;
+  }
+
+  static offerCopy(kind, when, nextLabel) {
+    const word = kind === 'closed' ? 'Closed' : 'Sold out';
+    const next = String(nextLabel || '');
+    return {
+      kind: kind === 'closed' ? 'closed' : 'soldout',
+      word,
+      line: `${word} on ${when}.`,
+      tryLabel: next ? `Try ${next}` : '',
+      see: next ? `See ${next}` : '',
+      button: `${word} on ${when}`,
+      empty: next ? '' : 'No open dates in the next 90 days.',
+    };
+  }
+
   static nextOpen(readAvailability, hotelId, passId, qty, startDay, afterDate) {
     const need = Math.max(1, Number(qty) || 1);
     const horizon = ymd(addDays(new Date(startDay + 'T12:00:00'), this.lookAhead()));

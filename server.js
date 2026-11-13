@@ -12,7 +12,7 @@ const {
 } = require('./inclusions');
 const { ensureArrival, saveArrival, arrivalForm, directionsHref } = require('./arrival');
 const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hotelAreas, linkedIds } = require('./access');
-const { listingHtml, reassureStrip } = require('./listingView');
+const { listingHtml, reassureStrip, ListingPanel, dayStepLinks } = require('./listingView');
 const { SeatPage } = require('./seatPage');
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
 const { adminPassword, verifyPassword, safeEqual, hashPassword, migrateHotelPasswords, maskName, maskEmail } = require('./passwords');
@@ -857,6 +857,28 @@ function listingHold(h, req, startDay) {
   const next = DateHold.nextOpen(availability, h.id, pass.id, qty, startDay, raw);
   return DateHold.view({ hotel: h, pass, qty, date: raw, kind, reason: row && row.blocked, next });
 }
+function listingOffer(h, date, qty, passCode, rows) {
+  if (!date || !rows || !rows.length || rows.some(r => r.past)) return null;
+  const qtyN = Math.max(1, Math.min(6, parseInt(qty, 10) || 1));
+  const blocked = rows.some(r => r.blocked);
+  const allOut = rows.every(r => Number(r.remaining) < qtyN);
+  if (!blocked && !allOut) return null;
+  const startDay = today(h);
+  const next = DateHold.earliestOpen(availability, h.id, rows, qtyN, startDay, date);
+  const copy = DateHold.offerCopy(blocked ? 'closed' : 'soldout', nice(date), next ? nice(next) : '');
+  return {
+    ...copy,
+    href: next ? ListingPanel.dayHref(h.slug, next, { passCode, qty: qtyN }) : '',
+    bar: `${copy.word} · ${nice(date)}`,
+  };
+}
+function listingStep(h, date, qty, passCode) {
+  const startDay = today(h);
+  const maxDate = ymd(addDays(new Date(startDay + 'T12:00:00'), 90));
+  const step = dayStepLinks({ slug: h.slug, date, minDate: startDay, maxDate, passCode, qty });
+  step.hours = date ? ListingPanel.dayHours(hoursLines(db, h), date) : '';
+  return step;
+}
 app.get('/h/:slug', (req, res) => {
   const h = publicHotel(req.params.slug); if (!h) return sendNotFound(res);
   const startDay = today(h);
@@ -892,6 +914,7 @@ app.get('/h/:slug', (req, res) => {
     passCode: String(req.query.pass || '').slice(0, 40),
     qty: req.query.qty,
     hold,
+    offer: listingOffer(h, date, req.query.qty, String(req.query.pass || '').slice(0, 40), date ? av : []),
   }), {
     analytics: true,
     index: demo ? 'follow' : true,
@@ -907,13 +930,18 @@ app.get('/h/:slug', (req, res) => {
 app.get('/api/availability', (req, res) => {
   const h = publicHotel(req.query.hotel); if (!h) return res.status(404).json({ error: 'not found' });
   const rawDate = String(req.query.date || '');
-  const date = chosenDate(rawDate, h) || (/^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate < today(h) ? rawDate : '');
+  const startDay = today(h);
+  const date = chosenDate(rawDate, h) || (/^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate < startDay ? rawDate : '');
+  const qty = Math.max(1, Math.min(6, parseInt(req.query.qty, 10) || 1));
+  const passCode = String(req.query.pass || '').slice(0, 40);
+  const step = listingStep(h, date, qty, passCode);
   if (!date) {
     const passes = openAvailability(h.id);
-    return res.json({ hotel: h.slug, date: '', passes, day_left: null, addons: [], cancel: PICK_DATE_CANCEL });
+    return res.json({ hotel: h.slug, date: '', passes, day_left: null, addons: [], cancel: PICK_DATE_CANCEL, offer: null, step });
   }
   const passes = availability(h.id, date);
-  res.json({ hotel: h.slug, date, passes, day_left: passes.day_left ?? null, addons: addonAvailability(h.id, date), cancel: cancelNote(db, h, date) });
+  const offer = listingOffer(h, date, qty, passCode, passes);
+  res.json({ hotel: h.slug, date, passes, day_left: passes.day_left ?? null, addons: addonAvailability(h.id, date), cancel: cancelNote(db, h, date), offer, step });
 });
 
 function validate(q) {
