@@ -6,6 +6,11 @@ const { arrivalInner } = require('./arrival');
 const { MapEmbed } = require('./mapEmbed');
 
 const SOLD_COPY = 'Sold out for this date. Pick another date or seat.';
+function dateNote(row) {
+  if (row && row.past) return 'That date has passed.';
+  if (row && row.blocked) return 'Closed this day.';
+  return SOLD_COPY;
+}
 
 const KIND_NAME = Object.fromEntries(KINDS.map(k => [k.code, k.name]));
 const KIND_ORDER = KINDS.map(k => k.code);
@@ -83,7 +88,7 @@ ${chip}
 <a class="pass-view" data-code="${id}" href="${esc(seatHref(h, p.code, date, qty))}">View details</a>
 ${selectButton(p, on, dis)}
 </div>
-<p class="pass-sold" role="status"${dis ? '' : ' hidden'}>${SOLD_COPY}</p>
+<p class="pass-sold" role="status"${dis ? '' : ' hidden'}>${esc(dateNote(a))}</p>
 </article>`;
 }
 
@@ -164,13 +169,16 @@ function markPass(card){
 }
 function render(){
  const q=guests();
+ const dayBlocked=av[0]&&av[0].blocked;
+ const dayPast=av[0]&&av[0].past;
+ const note=dayPast?'That date has passed.':dayBlocked?'Closed this day.':'Sold out for this date. Pick another date or seat.';
  document.querySelectorAll('#passes .pass-card').forEach(card=>{
   const input=card.querySelector('input');
   const p=av.find(x=>x.code===input.value);
   const dis=!p||p.remaining<q;
   input.disabled=dis;
   card.classList.toggle('is-sold',dis);
-  card.querySelectorAll('.pass-sold').forEach(function(n){ n.hidden=!dis; });
+  card.querySelectorAll('.pass-sold').forEach(function(n){ n.hidden=!dis; n.textContent=note; });
   card.querySelectorAll('.pass-select').forEach(function(btn){ btn.disabled=dis; });
   card.querySelectorAll('a.pass-view').forEach(function(a){ a.hidden=false; });
   markPass(card);
@@ -185,7 +193,7 @@ function render(){
  const dated=!!($('#date')&&$('#date').value);
  if(dated&&box){
   const prev=[...box.querySelectorAll('input:checked')].map(i=>i.value);
-  box.innerHTML=addons.map(a=>{const dis=a.remaining<need(a,q,holds);const on=!dis&&prev.indexOf(a.code)>=0;const price=!dis&&a.price>0?'<span class="extra-price">'+fmt(a.price)+' <small>(demo)</small></span>':'';const note=dis?'<span class="extra-note">Sold out for this date</span>':'';return '<label class="extra'+(dis?' is-off':'')+'"><input type="checkbox" name="addon" value="'+h(a.code)+'" data-price="'+(+a.price||0)+'" data-per="'+h(a.per||'guest')+'" '+(dis?'disabled':'')+(on?' checked':'')+'><span class="extra-name">'+h(a.name)+'</span>'+price+note+'</label>'}).join('');
+  box.innerHTML=addons.map(a=>{const dis=a.remaining<need(a,q,holds);const on=!dis&&prev.indexOf(a.code)>=0;const price=!dis&&a.price>0?'<span class="extra-price">'+fmt(a.price)+' <small>(demo)</small></span>':'';const why=dayPast||dayBlocked?'Closed this day':'Sold out for this date';const extraNote=dis?'<span class="extra-note">'+why+'</span>':'';return '<label class="extra'+(dis?' is-off':'')+'"><input type="checkbox" name="addon" value="'+h(a.code)+'" data-price="'+(+a.price||0)+'" data-per="'+h(a.per||'guest')+'" '+(dis?'disabled':'')+(on?' checked':'')+'><span class="extra-name">'+h(a.name)+'</span>'+price+extraNote+'</label>'}).join('');
   if(wrap) wrap.hidden=!addons.length;
  }
  let extra=0;document.querySelectorAll('#addons-pick input:checked').forEach(i=>{const price=+i.dataset.price||0;const qty=i.dataset.per==='booking'?1:q*(holds||1);extra+=price*qty});
@@ -208,20 +216,29 @@ function render(){
   params.set('qty', String(q));
   a.href='/h/'+encodeURIComponent(hotelSlug)+'/seat/'+encodeURIComponent(code)+'?'+params.toString();
  });
- $('#go').disabled=!p;
- const blocked=av[0]&&av[0].blocked;
+ const alert=document.getElementById('date-alert');
+ const held=!!(alert && $('#date') && alert.getAttribute('data-date')===$('#date').value);
+ $('#go').disabled=held||!p;
+ if(held){ const go=$('#go'); if(go) go.setAttribute('aria-disabled','true'); }
+ else { const go=$('#go'); if(go) go.removeAttribute('aria-disabled'); }
+ const blocked=dayBlocked;
  const any=av.some(x=>x.remaining>0);
- const st=$('#status'); st.className='status'+(blocked||!any?' out':'');
- st.textContent=blocked?blocked:!any?'Sold out this day':'Available this day';
+ const st=$('#status');
+ if(!held && st){
+  st.className='status'+(blocked||!any?' out':'');
+  st.textContent=blocked?blocked:!any?'Sold out this day':'Available this day';
+ }
  document.querySelectorAll('#passes input, #addons-pick input').forEach(r=>{r.onchange=render});
 }
 function focusBook(){
+ const alert=document.getElementById('date-alert');
  const book=document.getElementById('book');
- if(!book) return;
- book.focus();
+ const target=alert||book;
+ if(!target) return;
+ target.focus();
  if(window.matchMedia('(max-width:760px)').matches){
   const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  book.scrollIntoView({behavior:reduce?'auto':'smooth', block:'start'});
+  if(book) book.scrollIntoView({behavior:reduce?'auto':'smooth', block:'start'});
  }
 }
 const passBox=document.getElementById('passes');
@@ -486,6 +503,21 @@ function goodToKnowBand({ policy, foodLine, includedNames }) {
 </div></section>`;
 }
 
+const ALERT_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v6M12 16.5v.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+function holdAttrs(hold) {
+  if (!hold) return '';
+  const next = (hold.links || []).map(link => link.date).join(',');
+  return ` data-hold="${esc(hold.date)}" data-next="${esc(next)}" aria-invalid="true" aria-describedby="date-alert"`;
+}
+function dateAlert(hold) {
+  if (!hold) return '';
+  const links = (hold.links || []).map(link => `<a class="date-alt" href="${esc(link.href)}">${esc(link.label)}</a>`).join('');
+  const alts = links
+    ? `<div class="date-alts">${links}</div>`
+    : `<p class="date-none">${esc(hold.empty)} <a href="${esc(hold.listingHref)}">Back to ${esc(hold.hotelName)}</a></p>`;
+  const when = hold.when ? `<b>${esc(hold.when)}</b>` : '';
+  return `<div class="date-alert" role="alert" tabindex="-1" id="date-alert" data-date="${esc(hold.date)}">${ALERT_ICON}<div><span>${esc(hold.before)}${when}${esc(hold.after)}</span>${alts}</div></div>`;
+}
 function listingQty(raw) {
   const n = parseInt(raw, 10);
   if (!Number.isFinite(n) || n < 1 || n > 6) return 1;
@@ -544,18 +576,21 @@ ${parkFold}
 </div>
 </section>
 </div>
-<aside class="book-box" id="book" tabindex="-1">
+<aside class="book-box${opts.hold ? ' is-hold' : ''}" id="book" tabindex="-1">
 <div class="bb-price">From <b id="from-price">${money(from)}</b> <small>(demo)</small></div>
+${dateAlert(opts.hold)}
 <p class="bb-label" id="date-label">Date</p>
-<input type="date" class="hdc-date" data-inline="1" data-closed="${esc(closed)}" name="date" id="date" min="${minDate}" max="${maxDate}" value="${esc(date)}" required>
-<div id="status" class="status"></div>
+${opts.hold ? `<div class="date-hold" aria-hidden="true">${esc(opts.hold.longLabel)}</div>` : ''}
+<input type="date" class="hdc-date" data-inline="1" data-closed="${esc(closed)}" name="date" id="date" min="${minDate}" max="${maxDate}" value="${esc(date)}" required${holdAttrs(opts.hold)}>
+${opts.hold ? '<p class="date-leg"><span><i class="sw open"></i>Open</span><span><i class="sw shut"></i>Closed</span><span><i class="sw today"></i>Today</span></p>' : ''}
+<div id="status" class="status${opts.hold ? ' out' : ''}">${opts.hold ? esc(opts.hold.status) : ''}</div>
 <label class="fl" for="qty">Spots<select name="qty" id="qty" class="hdc-pick">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${n === qty ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
 <p class="spot-eq" id="spot-eq">${peopleLabel(seatHolds)}</p>
 <p class="muted small">Party size is capped at 6.</p>
 ${chosenBlock(seat)}
 <div class="bb-total" id="total"></div>
 <p class="cancel-note" id="cancel-note"${date ? '' : ' hidden'}>${esc(cancel)}</p>
-<button class="book-go" id="go" type="submit">Book your day (demo)</button>
+<button class="book-go" id="go" type="submit"${opts.hold ? ' disabled aria-disabled="true"' : ''}>Book your day (demo)</button>
 <p class="prompt">You won't be charged. Demo payment only.</p>
 </aside>
 </form>

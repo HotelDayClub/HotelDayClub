@@ -102,7 +102,7 @@ function mainText(html) {
     assert.strictEqual(missing.status, 404);
     const lost = mainText(missing.body);
     assert.ok(lost.includes("We can't find that booking"));
-    assert.ok(lost.includes('HDC-7Q4K2'));
+    assert.ok(lost.includes('HDC-7Q4K-2M9X'));
     assert.ok(lost.includes('hello@hoteldayclub.com.au'));
     assert.ok(!lost.includes('HDC-MISSING'));
     console.log('booking page checks passed');

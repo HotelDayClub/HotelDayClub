@@ -292,7 +292,7 @@ async function claimAndSend(db, claimSql, claimArgs, triesSql, triesArgs, stateS
 }
 
 async function bookingMessage(db, code) {
-  const row = db.prepare(`SELECT b.id, b.code, b.date, b.qty, b.total, b.email, b.party, b.guest_name, b.cancel_note, b.created_at, b.hotel_id, b.expected_arrival,
+  const row = db.prepare(`SELECT b.id, b.code, b.short_code, b.date, b.qty, b.total, b.email, b.party, b.guest_name, b.cancel_note, b.created_at, b.hotel_id, b.expected_arrival,
     p.name AS pass_name, p.holds, p.id AS pass_id
     FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id WHERE b.code=?`).get(code);
   if (!row) return null;
@@ -320,7 +320,7 @@ async function bookingMessage(db, code) {
   return bookingNotice({
     demo: demoSite(),
     to: email,
-    code: row.code,
+    code: row.short_code || row.code,
     hotelName: hotel ? hotel.name : '',
     area: hotel ? hotel.area : '',
     dateLabel: nice(row.date),
@@ -436,7 +436,7 @@ ${mailCard(`<table role="presentation" width="100%" cellpadding="0" cellspacing=
 }
 
 async function sendCancellation(db, code) {
-  const row = db.prepare(`SELECT b.code, b.email, b.hotel_id, b.date, b.qty, p.name AS pass_name, p.holds
+  const row = db.prepare(`SELECT b.code, b.short_code, b.email, b.hotel_id, b.date, b.qty, p.name AS pass_name, p.holds
     FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id WHERE b.code=?`).get(code);
   if (!row) return { skipped: true };
   const email = String(row.email || '').trim();
@@ -444,7 +444,7 @@ async function sendCancellation(db, code) {
   const hotel = db.prepare('SELECT name FROM hotels WHERE id=?').get(row.hotel_id);
   const message = cancelNotice({
     to: email,
-    code: row.code,
+    code: row.short_code || row.code,
     hotelName: hotel ? hotel.name : '',
     link: seo.ORIGIN + '/booking/' + encodeURIComponent(row.code),
     dateLabel: nice(row.date),
