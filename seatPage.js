@@ -1,6 +1,7 @@
 const { esc, money } = require('./util');
 const { safePhoto, FOOD_RULE } = require('./offering');
 const { seatPhoto, amenityLines } = require('./inclusions');
+const { ListingPanel } = require('./listingView');
 const { accessDetail } = require('./access');
 const { demoSite } = require('./siteMode');
 
@@ -148,10 +149,13 @@ class SeatPage {
     const photo = SeatPage.photoSrc(pass);
     const alt = SeatPage.altText(pass, hotel);
     const caption = demo ? '<span class="seat-cap">Example photo (demo)</span>' : '';
-    const lines = amenityLines(items, holds, areas);
+    const amenity = amenityLines(items, holds, areas);
+    const towel = amenity.find(line => /towel/i.test(line.name || ''));
+    const lines = amenity.filter(line => !/towel/i.test(line.name || ''));
     const included = lines.length
       ? `<ul class="pass-inc-list seat-inc">${lines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>`
       : '';
+    const towelHtml = towel ? `<p class="seat-towels">${esc(ListingPanel.towelText(towel.qty))}</p>` : '';
     const access = accessDetail(areas, { demo });
     const guest = holds === 1 ? 'guest' : 'guests';
     const amount = price * q;
@@ -173,6 +177,7 @@ class SeatPage {
 <div class="seat-facts"><span>Fits ${holds}</span><span>${esc(chip)}</span></div>
 ${desc ? `<p class="seat-desc">${esc(desc)}</p>` : ''}
 <h2>What's included</h2>
+${towelHtml}
 ${included}
 ${access}
 <p class="seat-food">${esc(FOOD_RULE)}</p>

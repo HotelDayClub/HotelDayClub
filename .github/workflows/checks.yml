@@ -1,7 +1,9 @@
 name: checks
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'cursor/**'
   pull_request:
 jobs:
   check:

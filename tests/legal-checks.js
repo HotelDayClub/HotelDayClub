@@ -19,6 +19,7 @@ const db = require('../db');
 const { seed, ensureSchedules, DEMO_INTROS } = require('../seed');
 const offering = require('../offering');
 const { zoneToUtc, hotelZone, HotelClock } = require('../calendar');
+const { ListingPanel } = require('../listingView');
 
 seed(db);
 ensureSchedules(db);
@@ -527,18 +528,33 @@ function start(port, extra = {}) {
     assert.ok(home.body.includes('Contact ' + link));
     assert.ok(!risk.body.includes('{{CONTACT_EMAIL}}'));
 
+    const factsDb = new Database(dbPath, { readonly: true });
+    function shownMeta(slug) {
+      const hotel = factsDb.prepare('SELECT * FROM hotels WHERE slug=?').get(slug);
+      const wd = new Date(HotelClock.today(hotel) + 'T12:00:00').getDay();
+      return { line: ListingPanel.titleLine(hotel.area, offering.hoursLines(factsDb, hotel), wd), today: ListingPanel.DAY[wd] };
+    }
+    function hourCell(day, time, today) {
+      const label = day === today ? `${day} (today)` : day;
+      return `<th scope="row">${label}</th><td>${time}</td>`;
+    }
     const listing = await get(port, `/h/skyline-rooftop?date=${freeSky.date}`);
+    const skyShown = shownMeta('skyline-rooftop');
     const skyMeta = listing.body.slice(listing.body.indexOf('class="muted l-meta"'), listing.body.indexOf('day-lead'));
+    assert.ok(skyMeta.includes(skyShown.line), skyMeta);
     assert.ok(skyMeta.includes('North Sydney'), skyMeta);
-    assert.ok(!skyMeta.includes('New ·') && !skyMeta.includes('Mon–Thu') && !skyMeta.includes('11am'), skyMeta);
+    assert.ok(!skyMeta.includes('New ·') && !skyMeta.includes('Mon–Thu'), skyMeta);
     const skyHours = listing.body.slice(listing.body.indexOf('id="hours"'), listing.body.indexOf('id="getting-there"'));
-    assert.ok(skyHours.includes('<span>Monday</span><b>11am–4pm</b>') && skyHours.includes('<span>Friday</span><b>Closed</b>'), skyHours);
+    assert.ok(skyHours.includes(hourCell('Monday', '11am\u20134pm', skyShown.today)) && skyHours.includes(hourCell('Friday', 'Closed', skyShown.today)), skyHours);
     assert.ok(!listing.body.includes('Wed ·'));
     const saltListing = await get(port, `/h/saltwater-terrace?date=${salt.date}`);
+    const saltShown = shownMeta('saltwater-terrace');
     const saltMeta = saltListing.body.slice(saltListing.body.indexOf('class="muted l-meta"'), saltListing.body.indexOf('day-lead'));
-    assert.ok(saltMeta.includes('Eastern Beaches') && !saltMeta.includes('New ·') && !saltMeta.includes('10am'), saltMeta);
+    assert.ok(saltMeta.includes(saltShown.line) && saltMeta.includes('Eastern Beaches') && !saltMeta.includes('New ·'), saltMeta);
+    assert.ok(saltMeta.includes('Daily 10am\u20134pm'), saltMeta);
     const saltHours = saltListing.body.slice(saltListing.body.indexOf('id="hours"'), saltListing.body.indexOf('id="getting-there"'));
-    assert.ok(saltHours.includes('<span>Monday</span><b>10am–4pm</b>') && saltHours.includes('<span>Sunday</span><b>10am–4pm</b>'), saltHours);
+    assert.ok(saltHours.includes(hourCell('Monday', '10am\u20134pm', saltShown.today)) && saltHours.includes(hourCell('Sunday', '10am\u20134pm', saltShown.today)), saltHours);
+    factsDb.close();
 
     const avail = await get(port, `/api/availability?hotel=skyline-rooftop&date=${freeSky.date}`);
     const data = JSON.parse(avail.body);
