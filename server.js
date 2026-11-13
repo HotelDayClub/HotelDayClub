@@ -8,7 +8,7 @@ const db = require('./db');
 const { seed, ensureAddons, ensureSchedules, seedPerformance } = require('./seed');
 const {
   seatPhoto, SEAT_PHOTO, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
-  includedLines, includedNote, addonsHtml, inclusionsForm, beatsHtml, hoursInner, policyInner, guestFoodLine, PASS_FOOD_LINE, FOOD_DRINK,
+  includedLines, includedNote, addonsHtml, inclusionsForm, beatsHtml, policyInner, guestFoodLine, PASS_FOOD_LINE, FOOD_DRINK,
 } = require('./inclusions');
 const { ensureArrival, saveArrival, arrivalForm, directionsHref } = require('./arrival');
 const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hotelAreas, linkedIds } = require('./access');
@@ -868,7 +868,8 @@ app.get('/h/:slug', (req, res) => {
     included: items,
     accessByPass: byPass(db, h.id),
     addonList: addonsHtml(items, getAddons(h.id, true)),
-    hours: hoursInner(hoursLines(db, h)),
+    hourRows: hoursLines(db, h),
+    todayWd: new Date(startDay + 'T12:00:00').getDay(),
     foodLine,
     policy: policyInner(h, foodLine),
     passCode: String(req.query.pass || '').slice(0, 40),

@@ -28,6 +28,7 @@
 .seat-page .access-item{min-width:0}
 .seat-page .access-item div{min-width:0}
 .seat-page .access-item img{max-width:96px}
+.seat-towels{margin:0 0 8px;font-weight:650;color:var(--hdc-text)}
 .seat-food,.seat-cancel,.seat-eq,.seat-cap-note,.seat-demo-note,.seat-avl{color:var(--hdc-secondary)}
 .seat-food{margin:12px 0 0}
 .seat-cancel{margin:0}

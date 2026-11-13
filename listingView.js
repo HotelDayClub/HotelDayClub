@@ -1,11 +1,78 @@
 const { esc, money } = require('./util');
 const { instantConfirmationText } = require('./siteMode');
 const { KINDS, supervisionNote, safePhoto, FOOD_RULE } = require('./offering');
-const { includedNote, amenityLines } = require('./inclusions');
+const { includedNote, amenityLines, includedLines } = require('./inclusions');
 const { arrivalInner } = require('./arrival');
 const { MapEmbed } = require('./mapEmbed');
 
 const SOLD_COPY = 'Sold out for this date. Pick another date or seat.';
+
+class ListingPanel {
+  static DAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  static leftText(remaining) {
+    const n = Number(remaining);
+    if (!Number.isFinite(n) || n <= 0 || n > 10) return '';
+    return `${n} left`;
+  }
+
+  static towelText(qty) {
+    const n = Math.max(0, Number(qty) || 0);
+    if (n < 1) return '';
+    if (n === 1) return 'Towels: 1 per person';
+    return `${n} towels`;
+  }
+
+  static towelFor(items, people) {
+    const towel = includedLines(items, people).find(line => /towel/i.test(line.name || ''));
+    return towel ? ListingPanel.towelText(towel.qty) : '';
+  }
+
+  static sharedLines(passes, items, accessByPass) {
+    const rows = [];
+    const seen = new Set();
+    for (const p of passes || []) {
+      const lines = amenityLines(items, Number(p.holds) || 1, (accessByPass && accessByPass[p.id]) || []);
+      for (const line of lines) {
+        if (/towel/i.test(line.name || '') || /towel/i.test(line.text || '')) continue;
+        if (seen.has(line.text)) continue;
+        seen.add(line.text);
+        rows.push(line.text);
+      }
+    }
+    return rows;
+  }
+
+  static titleLine(area, lines, weekday) {
+    const place = String(area || '').trim();
+    const rows = Array.isArray(lines) ? lines : [];
+    const open = rows.filter(row => row && row.time && row.time !== 'Closed');
+    const uniform = open.length === 7 && open.every(row => row.time === open[0].time);
+    let when = '';
+    if (uniform) when = `Daily ${open[0].time}`;
+    else {
+      const today = rows.find(row => row.day === ListingPanel.DAY[weekday]);
+      when = !today || !today.time || today.time === 'Closed' ? 'Closed today' : `Today ${today.time}`;
+    }
+    return [when, place].filter(Boolean).join(' · ');
+  }
+
+  static hoursTable(lines, weekday) {
+    const todayName = ListingPanel.DAY[weekday] || '';
+    const rows = (lines || []).map(row => {
+      const today = row.day === todayName;
+      const label = today ? `${row.day} (today)` : row.day;
+      return `<tr${today ? ' class="is-today"' : ''}><th scope="row">${esc(label)}</th><td>${esc(row.time)}</td></tr>`;
+    }).join('');
+    return `<table class="hours-table"><tbody>${rows}</tbody></table><p class="muted small">These are the day-pass hours for this demo listing.</p>`;
+  }
+
+  static viewAllLabel(count) {
+    const n = Number(count) || 0;
+    if (n <= 4) return '';
+    return `View all ${n} photos`;
+  }
+}
 
 const KIND_NAME = Object.fromEntries(KINDS.map(k => [k.code, k.name]));
 const KIND_ORDER = KINDS.map(k => k.code);
@@ -66,19 +133,21 @@ function seatHref(h, code, date, qty) {
   params.set('qty', String(n));
   return `/h/${encodeURIComponent(h.slug)}/seat/${encodeURIComponent(code)}?${params.toString()}`;
 }
-function passCard(p, av, h, pick, date, qty) {
+function passCard(p, av, h, pick, date, qty, items) {
   const a = av.find(x => x.id === p.id);
   const dis = !a || a.remaining < 1;
   const on = !!(pick && p.code === pick.code && !dis);
   const holds = Number(p.holds) || 1;
   const id = esc(p.code);
   const desc = String(p.description || '').trim();
-  const chip = on ? '<span class="pc-chip"><span aria-hidden="true">✓</span> Selected</span>' : '';
+  const left = date ? ListingPanel.leftText(a && a.remaining) : '';
+  const leftHtml = left ? `<span class="left-badge">${esc(left)}</span>` : '';
+  const towel = ListingPanel.towelFor(items, holds);
+  const towelHtml = towel ? `<span class="pc-towel">${esc(towel)}</span>` : '';
   return `<article class="pass-card${dis ? ' is-sold' : ''}${on ? ' is-sel' : ''}" id="pass-card-${id}" data-kind="${esc(p.kind || 'custom')}" data-code="${id}">
 <input type="radio" id="pass-${id}" name="pass" value="${esc(p.code)}" data-kind="${esc(p.kind || 'custom')}" data-price="${p.price}" data-holds="${holds}" tabindex="-1"${dis ? ' disabled' : ''}${on ? ' checked' : ''}>
 ${photoBlock(p, h)}
-${chip}
-<div class="pc-copy"><b>${esc(p.name)}</b>${desc ? `<span class="pc-desc">${esc(desc)}</span>` : ''}<span class="pc-meta"><span class="pc-price">From ${demoPrice(p.price)}</span><span class="pc-holds">${esc(fitsText(holds))}</span></span></div>
+<div class="pc-copy"><b>${esc(p.name)}${leftHtml}</b>${desc ? `<span class="pc-desc">${esc(desc)}</span>` : ''}<span class="pc-meta"><span class="pc-price">From ${demoPrice(p.price)}</span><span class="pc-holds">${esc(fitsText(holds))}</span></span>${towelHtml}</div>
 <div class="pc-acts">
 <a class="pass-view" data-code="${id}" href="${esc(seatHref(h, p.code, date, qty))}">View details</a>
 ${selectButton(p, on, dis)}
@@ -87,7 +156,7 @@ ${selectButton(p, on, dis)}
 </article>`;
 }
 
-function passSection(passes, av, h, date, passCode, qty) {
+function passSection(passes, av, h, date, passCode, qty, items) {
   const pick = pickedPass(av, passCode);
   const kinds = [];
   passes.forEach(p => {
@@ -104,24 +173,12 @@ function passSection(passes, av, h, date, passCode, qty) {
     const at = ordered.findIndex(p => p.code === pick.code);
     if (at > 0) ordered.unshift(ordered.splice(at, 1)[0]);
   }
-  const cards = `<div class="pass-grid">${ordered.map(p => passCard(p, av, h, pick, date, qty)).join('')}</div>`;
+  const cards = `<div class="pass-grid">${ordered.map(p => passCard(p, av, h, pick, date, qty, items)).join('')}</div>`;
   return `${filters}${cards}<p class="seat-note">${esc(FOOD_RULE)}</p>`;
 }
 
 function includedItems(passes, items, accessByPass) {
-  const rows = [];
-  const seen = new Set();
-  for (const p of passes) {
-    const lines = amenityLines(items, Number(p.holds) || 1, (accessByPass && accessByPass[p.id]) || []);
-    for (const line of lines) {
-      if (/towel/i.test(line.text)) rows.push(`${line.text} (${p.name})`);
-      else if (!seen.has(line.text)) {
-        seen.add(line.text);
-        rows.push(line.text);
-      }
-    }
-  }
-  return rows;
+  return ListingPanel.sharedLines(passes, items, accessByPass);
 }
 
 function listingScript(slug, leaflet) {
@@ -147,20 +204,26 @@ function markPass(card){
  const input=card.querySelector('input');
  const on=!!(input && input.checked && !input.disabled);
  card.classList.toggle('is-sel', on);
- let chip=card.querySelector('.pc-chip');
- if(on && !chip){
-  chip=document.createElement('span');
-  chip.className='pc-chip';
-  chip.innerHTML='<span aria-hidden="true">✓</span> Selected';
-  const photo=card.querySelector('.pc-photo');
-  if(photo) photo.after(chip); else card.appendChild(chip);
- } else if(!on && chip) chip.remove();
  card.querySelectorAll('.pass-select').forEach(function(btn){
   btn.setAttribute('aria-pressed', on?'true':'false');
   const t=btn.querySelector('.t'); if(t) t.textContent=on?'✓ Selected':'Select';
   const name=btn.getAttribute('data-name')||'';
   btn.setAttribute('aria-label', on?name+' selected':'Select '+name);
  });
+}
+function syncLeft(card, p){
+ const dated=!!($('#date')&&$('#date').value);
+ const n=p?Number(p.remaining):0;
+ const text=dated&&n>0&&n<=10?n+' left':'';
+ let badge=card.querySelector('.left-badge');
+ const name=card.querySelector('.pc-copy b');
+ if(!text){ if(badge) badge.remove(); return; }
+ if(!badge&&name){
+  badge=document.createElement('span');
+  badge.className='left-badge';
+  name.appendChild(badge);
+ }
+ if(badge) badge.textContent=text;
 }
 function render(){
  const q=guests();
@@ -173,6 +236,7 @@ function render(){
   card.querySelectorAll('.pass-sold').forEach(function(n){ n.hidden=!dis; });
   card.querySelectorAll('.pass-select').forEach(function(btn){ btn.disabled=dis; });
   card.querySelectorAll('a.pass-view').forEach(function(a){ a.hidden=false; });
+  syncLeft(card, p);
   markPass(card);
  });
  if(!document.querySelector('#passes input:checked:not([disabled])')){const f=document.querySelector('#passes input:not([disabled])');if(f)f.checked=true}
@@ -330,6 +394,32 @@ if(tabNav){
   if(history.pushState) history.pushState(null,'',a.getAttribute('href'));
   tabNav.querySelectorAll('a').forEach(link=>{ if(link===a) link.setAttribute('aria-current','true'); else link.removeAttribute('aria-current'); });
  });
+ if('IntersectionObserver' in window){
+  const links=[].slice.call(tabNav.querySelectorAll('a[href^="#"]'));
+  const sections=links.map(function(link){ return document.querySelector(link.getAttribute('href')); }).filter(Boolean);
+  const ratios=new Map();
+  const spy=new IntersectionObserver(function(entries){
+   entries.forEach(function(entry){ ratios.set(entry.target, entry.isIntersecting ? entry.intersectionRatio : 0); });
+   let best=null, score=-1;
+   sections.forEach(function(section){
+    const now=ratios.get(section)||0;
+    if(now>score){ score=now; best=section; }
+   });
+   if(score<=0){
+    const line=Math.max(120, window.innerHeight*0.25);
+    let dist=Infinity;
+    sections.forEach(function(section){
+     const gap=Math.abs(section.getBoundingClientRect().top-line);
+     if(gap<dist){ dist=gap; best=section; }
+    });
+   }
+   links.forEach(function(link){
+    if(best && link.getAttribute('href')==='#'+best.id) link.setAttribute('aria-current','true');
+    else link.removeAttribute('aria-current');
+   });
+  }, { root:null, rootMargin:'-12% 0px -45% 0px', threshold:[0, 0.1, 0.25, 0.5, 0.75, 1] });
+  sections.forEach(function(section){ spy.observe(section); });
+ }
 }
 (function(){
  const gal=document.querySelector('.gallery');
@@ -467,21 +557,21 @@ function galleryHtml(h, demo, short) {
   const imgs = photos.map((p, i) => `<img class="g${i}" src="/assets/photos/${esc(p)}" alt="${esc(galAlt)}" width="1200" height="900" fetchpriority="high" decoding="async">`).join('');
   const countClass = n <= 1 ? 'g-n1' : n === 2 ? 'g-n2' : n === 3 ? 'g-n3' : n === 4 ? 'g-n4' : 'g-n5';
   const credit = demo ? '<span class="photo-credit">Stock photos · not this hotel</span>' : '';
-  return `<div class="mob-g"><div class="gallery swipe ${countClass}" aria-label="Photos">${imgs}${credit}<button type="button" class="view-all">View all (${n})</button></div><span class="gal-chip">1 / ${n || 0}</span></div>
+  const viewAll = ListingPanel.viewAllLabel(n);
+  const viewBtn = viewAll ? `<button type="button" class="view-all">${esc(viewAll)}</button>` : '';
+  return `<div class="mob-g"><div class="gallery swipe ${countClass}" aria-label="Photos">${imgs}${credit}${viewBtn}</div><span class="gal-chip">1 / ${n || 0}</span></div>
 <dialog class="lightbox" aria-label="Photos"><button type="button" class="lb-close" aria-label="Close">Close</button><button type="button" class="lb-prev" aria-label="Previous photo">‹</button><img alt="${esc(galAlt)}" width="1200" height="900"><button type="button" class="lb-next" aria-label="Next photo">›</button><p class="lb-count" aria-live="polite">1 / ${n || 1}</p></dialog>`;
 }
 
-function goodToKnowBand({ policy, foodLine, includedNames }) {
+function goodToKnowBand({ policy }) {
   const arrive = `Show your QR code at check-in. ${instantConfirmationText()}`;
-  const priced = includedNames.length ? `${includedNames.join(', ')}. ` : '';
-  const price = `${priced}${foodLine || FOOD_RULE}`;
   return `<section class="gtk-band" id="before" aria-label="Before you book"><div class="wrap">
 <h2 id="gtk">Good to know</h2>
 <div class="gtk-cols">
 <div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9V5h4M15 5h4v4M19 15v4h-4M9 19H5v-4"/><path d="M10 10h1.6v1.6H10zM12.6 12.6H14V14h-1.4z"/></svg><h3>What happens when I get there?</h3><p>${esc(arrive)}</p><p><b>Instant confirmation.</b> <a href="/contact">Help when you need it</a>.</p></div>
-<div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg><h3>What's included in the price?</h3><p>${esc(price)}</p></div>
 <div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3.5v3M16 3.5v3M4 10h16"/><path d="M8.8 15.2l2.1 2.1 4.6-4.8"/></svg><h3>Can I cancel if my plans change?</h3><p>You have 24 hours to cancel. Free until 24 hours before your access hours start. <a href="/refunds">Cancellation and refund policy</a>.</p></div>
 </div>
+<p class="gtk-more"><a href="#passes">What's included → see Passes</a></p>
 <p class="gtk-note">${policy.note}</p>
 </div></section>`;
 }
@@ -501,13 +591,20 @@ function listingHtml(opts) {
   const heading = demo ? `${short} (Demo)` : short;
   const watch = supervisionNote(h);
   const names = passes.map(p => p.name).filter(Boolean);
-  const meta = [h.area, names.join(', ')].filter(Boolean).join(' · ');
+  const hourRows = Array.isArray(opts.hourRows) ? opts.hourRows : null;
+  const meta = hourRows
+    ? ListingPanel.titleLine(h.area, hourRows, opts.todayWd)
+    : [h.area, names.join(', ')].filter(Boolean).join(' · ');
+  const hoursHtml = hourRows ? ListingPanel.hoursTable(hourRows, opts.todayWd) : (hours || '');
   const seat = pickedPass(av, opts.passCode);
   const seatHolds = seat ? (Number(seat.holds) || 1) : 1;
   const barLabel = seat ? `${esc(seat.name)} · ${money(seat.price)}` : `From ${money(from)}`;
   const place = arrivalInner(h);
   const rows = includedItems(passes, items, accessByPass);
   const incList = rows.length ? `<ul class="inc">${rows.map(text => `<li>${ITEM_ICON}<span>${esc(text)}</span></li>`).join('')}</ul>` : '';
+  const towelNote = passes.some(p => ListingPanel.towelFor(items, Number(p.holds) || 1))
+    ? '<p class="towel-note">Towels are listed on each pass.</p>'
+    : '';
   const parkFold = parkNote ? `<details class="fold" id="parking"><summary>Parking</summary><div class="acc-body"><p>${esc(parkNote)}</p></div></details>` : '';
   const cancelCopy = esc(know || cancel);
   return `<div class="wrap listing">
@@ -527,16 +624,17 @@ ${watch ? `<p class="guard-note">${esc(watch)}</p>` : ''}
 <section id="seating" aria-labelledby="seat-h"><div class="seat-head"><h2 class="day-kicker" id="seat-h">Choose your seating</h2><p class="seat-sub">Prices per spot, before add-ons. Pick a date to see what's left.</p></div>
 <div id="seat-state" aria-live="polite"></div>
 <div id="passes">
-${passSection(passes, av, h, date, opts.passCode, qty)}
+${passSection(passes, av, h, date, opts.passCode, qty, items)}
 </div>
 </section>
 ${addonList || ''}
 <section id="details"><h2>Details</h2>
 <h3 class="sub">What's included</h3>
 ${incList}
+${towelNote}
 <p class="food-note">${esc(foodLine || FOOD_RULE)}</p>
 <div class="l-acc">
-<details id="hours" open><summary>Opening hours</summary><div class="acc-body">${hours}</div></details>
+<details id="hours" open><summary>Opening hours</summary><div class="acc-body">${hoursHtml}</div></details>
 <details id="getting-there"><summary>Getting there</summary><div class="acc-body">${place.address || ''}${place.there || ''}</div></details>
 ${parkFold}
 <details id="policy"><summary>Guest policy</summary><div class="acc-body">${policy.body}</div></details>
@@ -560,7 +658,7 @@ ${chosenBlock(seat)}
 </aside>
 </form>
 </div>
-${goodToKnowBand({ policy, foodLine, includedNames: rows })}
+${goodToKnowBand({ policy })}
 <div class="book-bar"><b><span id="bar-total">${barLabel}</span> (demo)</b><a href="#book">Book</a></div>
 ${listingScript(h.slug, !MapEmbed.key())}`;
 }
@@ -604,4 +702,4 @@ function reassureStrip(lite) {
   return `<section class="assure${lite ? ' assure-lite' : ''}" aria-label="Before you book"><ul>${items}</ul></section>`;
 }
 
-module.exports = { listingHtml, reassureStrip };
+module.exports = { listingHtml, reassureStrip, ListingPanel };

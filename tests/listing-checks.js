@@ -1,5 +1,9 @@
 const assert = require('assert');
 const { DEMO_INTROS } = require('../seed');
+const { ListingPanel, listingHtml } = require('../listingView');
+const { hoursLines } = require('../offering');
+const { HotelClock } = require('../calendar');
+const { ymd, addDays } = require('../util');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -63,6 +67,61 @@ function start(port) {
   });
 }
 
+function hourCell(day, time, today) {
+  const label = day === today ? `${day} (today)` : day;
+  return `<th scope="row">${label}</th><td>${time}</td>`;
+}
+function listingFacts(db, slug) {
+  const hotel = db.prepare('SELECT * FROM hotels WHERE slug=?').get(slug);
+  const wd = new Date(HotelClock.today(hotel) + 'T12:00:00').getDay();
+  return { line: ListingPanel.titleLine(hotel.area, hoursLines(db, hotel), wd), today: ListingPanel.DAY[wd] };
+}
+
+assert.strictEqual(ListingPanel.leftText(10), '10 left');
+assert.strictEqual(ListingPanel.leftText(11), '');
+assert.strictEqual(ListingPanel.leftText(0), '');
+assert.strictEqual(ListingPanel.towelText(1), 'Towels: 1 per person');
+assert.strictEqual(ListingPanel.towelText(4), '4 towels');
+assert.strictEqual(ListingPanel.viewAllLabel(4), '');
+assert.strictEqual(ListingPanel.viewAllLabel(7), 'View all 7 photos');
+const daily = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => ({ day, time: '10am\u20134pm' }));
+assert.strictEqual(ListingPanel.titleLine('Eastern Beaches', daily, 5), 'Daily 10am\u20134pm · Eastern Beaches');
+const mixed = daily.map(row => (row.day === 'Friday' ? { day: 'Friday', time: 'Closed' } : { day: row.day, time: '11am\u20134pm' }));
+assert.strictEqual(ListingPanel.titleLine('North Sydney', mixed, 5), 'Closed today · North Sydney');
+assert.strictEqual(ListingPanel.titleLine('North Sydney', mixed, 1), 'Today 11am\u20134pm · North Sydney');
+assert.ok(ListingPanel.hoursTable(mixed, 1).includes('<tr class="is-today"><th scope="row">Monday (today)</th><td>11am\u20134pm</td></tr>'));
+assert.ok(ListingPanel.hoursTable(mixed, 1).includes('<th scope="row">Friday</th><td>Closed</td>'));
+const appCss = fs.readFileSync(path.join(__dirname, '..', 'public/app.css'), 'utf8');
+assert.ok(appCss.includes('.listing .hours-table{width:100%;max-width:340px'));
+assert.ok(appCss.includes('.listing .hours-table tr.is-today th,.listing .hours-table tr.is-today td{font-weight:700}'));
+const pickerCss = fs.readFileSync(path.join(__dirname, '..', 'public/pickers.css'), 'utf8');
+assert.ok(pickerCss.includes('min-height:44px;min-width:44px'));
+assert.ok(pickerCss.includes('minmax(44px,1fr)'));
+const pickerJs = fs.readFileSync(path.join(__dirname, '..', 'public/pickers.js'), 'utf8');
+assert.ok(pickerJs.includes('aria-label="Calendar key"'));
+for (const word of [' Open</li>', ' Closed</li>', ' Sold out</li>', ' Selected</li>']) assert.ok(pickerJs.includes(word), word);
+assert.ok(pickerJs.includes('⊘') && pickerJs.includes('×') && pickerJs.includes('■'));
+function sampleListing(photos, remaining) {
+  return listingHtml({
+    h: { name: 'Gallery Check (Demo)', slug: 'gallery-check', area: 'Eastern Beaches', tagline: 'Pool', blurb: 'A pool.', photos, is_demo: 1 },
+    date: '2026-11-20', minDate: '2026-11-13', maxDate: '2027-02-01', closed: '',
+    passes: [{ id: 1, code: 'lounger', name: 'Sun lounger', kind: 'lounger', holds: 1, price: 45, description: '' }],
+    av: [{ id: 1, code: 'lounger', remaining, holds: 1, price: 45, featured: 1 }],
+    from: 45, cancel: 'Pick a date.', know: 'Free cancellation until 24 hours before access hours start.',
+    included: [], addonList: '', policy: { body: '', note: '' }, accessByPass: {}, foodLine: '', passCode: 'lounger', qty: 1,
+  });
+}
+const fourPhotos = sampleListing(['a.jpg', 'b.jpg', 'c.jpg', 'd.jpg'], 4);
+assert.ok(!fourPhotos.includes('class="view-all"'));
+assert.ok(!fourPhotos.includes('View all'));
+assert.ok(fourPhotos.includes('class="left-badge">4 left'));
+assert.ok(fourPhotos.includes('class="pass-card is-sel"'));
+assert.strictEqual(fourPhotos.split('>✓ Selected</span>').length - 1, 1);
+assert.ok(!fourPhotos.includes('pc-chip'));
+const sevenPhotos = sampleListing(['a.jpg', 'b.jpg', 'c.jpg', 'd.jpg', 'e.jpg', 'f.jpg', 'g.jpg'], 24);
+assert.ok(sevenPhotos.includes('>View all 7 photos</button>'));
+assert.ok(!sevenPhotos.includes('class="left-badge"'));
+
 (async () => {
   const port = 3217;
   const child = await start(port);
@@ -119,15 +178,21 @@ function start(port) {
     assert.ok(salt.body.includes('type="button"'));
     assert.ok(salt.body.includes('<h3 class="sub">What\'s included</h3>'));
     const incList = salt.body.slice(salt.body.indexOf('<ul class="inc">'), salt.body.indexOf('</ul>', salt.body.indexOf('<ul class="inc">')));
-    assert.ok(incList.includes('Towels'));
+    assert.ok(incList.includes('Complimentary Wi-Fi'));
+    assert.strictEqual(incList.split('Complimentary Wi-Fi').length - 1, 1);
+    assert.ok(!incList.includes('Towel'));
     assert.ok(!/food|drink|café|cafe|\bbar\b/i.test(incList));
+    assert.ok(salt.body.includes('Towels: 1 per person'));
+    assert.ok(salt.body.includes('2 towels'));
+    assert.ok(salt.body.includes('4 towels'));
+    assert.ok(salt.body.includes('Towels are listed on each pass.'));
+    assert.ok(!salt.body.includes('1 × Towels'));
+    assert.ok(!salt.body.includes('2 × Towels'));
+    assert.ok(!salt.body.includes('4 × Towels'));
     assert.ok(salt.body.includes('From $'));
     assert.ok(!salt.body.includes('1 guest'));
     assert.ok(salt.body.includes('2 guests'));
     assert.ok(salt.body.includes('4 guests'));
-    assert.ok(salt.body.includes('1 × Towels'));
-    assert.ok(salt.body.includes('2 × Towels'));
-    assert.ok(salt.body.includes('4 × Towels'));
     assert.ok(!salt.body.includes('Pool access'));
     const seatLounger = await get(port, '/h/saltwater-terrace/seat/lounger');
     const seatDaybed = await get(port, '/h/saltwater-terrace/seat/daybed');
@@ -138,7 +203,8 @@ function start(port) {
     });
     assert.strictEqual(amenityLists.length, 3);
     for (const list of amenityLists) {
-      assert.ok(list.includes('× Towels'));
+      assert.ok(!list.includes('× Towels'));
+      assert.ok(!list.includes('Towel'));
       assert.ok(list.includes('Complimentary Wi-Fi'));
       assert.ok(list.includes('Showers and change rooms'));
       assert.ok(list.includes('Lockers'));
@@ -146,6 +212,10 @@ function start(port) {
       assert.ok(list.includes('Luggage storage'));
       assert.ok(!/\d+ × (?!Towels)/.test(list));
     }
+    assert.ok(seatLounger.body.includes('Towels: 1 per person'));
+    assert.ok(seatDaybed.body.includes('2 towels'));
+    assert.ok(seatCabana.body.includes('4 towels'));
+    assert.ok(!seatLounger.body.includes('× Towels'));
     assert.ok(seatLounger.body.includes('Included access'));
     assert.ok(seatLounger.body.includes('On site to buy (not included)'));
     assert.ok(salt.body.includes('>Opening hours</summary>'));
@@ -177,12 +247,18 @@ function start(port) {
     assert.ok(!/\b\d+ a day\b/.test(salt.body));
     assert.ok(salt.body.includes('id="hours"'));
     const saltHoursBlock = salt.body.slice(salt.body.indexOf('id="hours"'), salt.body.indexOf('id="getting-there"'));
-    assert.ok(saltHoursBlock.includes('<span>Monday</span><b>10am–4pm</b>'));
-    assert.ok(saltHoursBlock.includes('<span>Sunday</span><b>10am–4pm</b>'));
+    const saltDb = new (require('better-sqlite3'))(dbPath, { readonly: true });
+    const saltFacts = listingFacts(saltDb, 'saltwater-terrace');
+    saltDb.close();
+    assert.ok(saltHoursBlock.includes('<table class="hours-table">'));
+    assert.ok(saltHoursBlock.includes(hourCell('Monday', '10am\u20134pm', saltFacts.today)));
+    assert.ok(saltHoursBlock.includes(hourCell('Sunday', '10am\u20134pm', saltFacts.today)));
+    assert.ok(saltHoursBlock.includes(`<tr class="is-today"><th scope="row">${saltFacts.today} (today)</th>`));
     const saltMeta = salt.body.slice(salt.body.indexOf('class="muted l-meta"'), salt.body.indexOf('day-lead'));
+    assert.ok(saltMeta.includes(saltFacts.line), saltMeta);
     assert.ok(saltMeta.includes('Eastern Beaches'));
+    assert.ok(!saltMeta.includes('Sun lounger'));
     assert.ok(!saltMeta.includes('New ·'));
-    assert.ok(!saltMeta.includes('10am'));
     assert.ok(salt.body.includes('id="policy"'));
     assert.ok(salt.body.includes('Guest policy'));
     assert.ok(salt.body.includes('id="getting-there"'));
@@ -256,7 +332,19 @@ function start(port) {
     assert.ok(salt.body.includes('aria-label="Previous photo"'));
     assert.ok(salt.body.includes('aria-label="Next photo"'));
     assert.ok(salt.body.includes('aria-label="Close"'));
-    assert.ok(salt.body.includes('View all ('));
+    assert.ok(!salt.body.includes('class="view-all"'));
+    assert.ok(!salt.body.includes('View all'));
+    assert.ok(salt.body.includes('IntersectionObserver'));
+    assert.ok(salt.body.includes("matchMedia('(prefers-reduced-motion: reduce)')"));
+    assert.ok(salt.body.includes("behavior:reduce?'auto':'smooth'"));
+    assert.ok(!salt.body.includes('class="pc-chip"'));
+    assert.ok(!salt.body.includes("What's included in the price?"));
+    assert.ok(salt.body.includes('href="#passes">What\'s included → see Passes</a>'));
+    const gtk = salt.body.slice(salt.body.indexOf('class="gtk-band"'), salt.body.indexOf('class="book-bar"'));
+    assert.ok(!gtk.includes('Complimentary Wi-Fi'));
+    assert.ok(!gtk.includes('Luggage storage'));
+    assert.ok(gtk.includes('What happens when I get there?'));
+    assert.ok(gtk.includes('Can I cancel if my plans change?'));
     assert.ok(!/>\s*Reviews\s*</.test(salt.body));
     assert.ok(!/star rating|\b5 star\b|★|aggregateRating|class="stars"|class="rate"/i.test(salt.body));
     assert.ok(!/\bbed\s*#?\s*\d+\b/i.test(salt.body));
@@ -292,8 +380,37 @@ function start(port) {
     assert.ok(/id="pass-daybed"[^>]*\schecked/.test(pre.body));
     assert.ok(pre.body.includes('class="pass-card" id="pass-card-lounger"'));
     assert.ok(pre.body.includes('id="spot-eq">= 2 people</p>'));
+    assert.ok(!salt.body.includes('class="left-badge"'));
+    assert.strictEqual(pre.body.split('>✓ Selected</span>').length - 1, 1);
 
     const Sqlite = require('better-sqlite3');
+    const availDb = new Sqlite(dbPath, { readonly: true });
+    const availHotel = availDb.prepare("SELECT * FROM hotels WHERE slug='saltwater-terrace'").get();
+    const availStart = HotelClock.today(availHotel);
+    let openDate = '';
+    for (let i = 16; i < 70 && !openDate; i++) {
+      const day = ymd(addDays(new Date(availStart + 'T12:00:00'), i));
+      if (availDb.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?').get(availHotel.id, day)) continue;
+      openDate = day;
+    }
+    const availPasses = availDb.prepare('SELECT id, code, daily_cap FROM pass_types WHERE hotel_id=?').all(availHotel.id);
+    const soldOn = availDb.prepare("SELECT COALESCE(SUM(qty),0) n FROM bookings WHERE pass_type_id=? AND date=? AND status!='cancelled'");
+    const dated = await get(port, `/h/saltwater-terrace?date=${openDate}&pass=daybed`);
+    assert.strictEqual(dated.status, 200);
+    for (const pass of availPasses) {
+      const left = pass.daily_cap - soldOn.get(pass.id, openDate).n;
+      const at = dated.body.indexOf(`id="pass-card-${pass.code}"`);
+      const cardFrom = dated.body.lastIndexOf('<article', at);
+      const cardNext = dated.body.indexOf('<article', at + 1);
+      const cardEnd = cardNext === -1 ? dated.body.indexOf('class="seat-note"', at) : cardNext;
+      const card = dated.body.slice(cardFrom, cardEnd);
+      if (left > 0 && left <= 10) assert.ok(card.includes(`class="left-badge">${left} left`), `${pass.code} ${left}`);
+      else assert.ok(!card.includes('left-badge'), `${pass.code} ${left}`);
+    }
+    assert.ok(dated.body.includes('class="pass-card is-sel" id="pass-card-daybed"'));
+    assert.strictEqual(dated.body.split('>✓ Selected</span>').length - 1, 1);
+    availDb.close();
+
     const capDb = new Sqlite(dbPath);
     const saltHotel = capDb.prepare("SELECT id FROM hotels WHERE slug='saltwater-terrace'").get();
     const cabRow = capDb.prepare("SELECT id, daily_cap FROM pass_types WHERE hotel_id=? AND code='cabana'").get(saltHotel.id);
@@ -400,11 +517,15 @@ function start(port) {
 
     const sky = await get(port, '/h/skyline-rooftop');
     leadAndMeta(sky.body, 'skyline-rooftop', 'Skyline Rooftop Hotel', 'North Sydney');
+    const skyDb = new (require('better-sqlite3'))(dbPath, { readonly: true });
+    const skyFacts = listingFacts(skyDb, 'skyline-rooftop');
+    skyDb.close();
     const skyHours = sky.body.slice(sky.body.indexOf('id="hours"'), sky.body.indexOf('id="getting-there"'));
-    assert.ok(skyHours.includes('<span>Monday</span><b>11am–4pm</b>'));
-    assert.ok(skyHours.includes('<span>Thursday</span><b>11am–4pm</b>'));
-    assert.ok(skyHours.includes('<span>Friday</span><b>Closed</b>'));
+    assert.ok(skyHours.includes(hourCell('Monday', '11am\u20134pm', skyFacts.today)));
+    assert.ok(skyHours.includes(hourCell('Thursday', '11am\u20134pm', skyFacts.today)));
+    assert.ok(skyHours.includes(hourCell('Friday', 'Closed', skyFacts.today)));
     const skyMeta = sky.body.slice(sky.body.indexOf('class="muted l-meta"'), sky.body.indexOf('day-lead'));
+    assert.ok(skyMeta.includes(skyFacts.line), skyMeta);
     assert.ok(skyMeta.includes('North Sydney'));
     assert.ok(!skyMeta.includes('New ·'));
     assert.ok(!skyMeta.includes('Mon–Thu'));

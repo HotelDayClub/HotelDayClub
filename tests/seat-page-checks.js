@@ -5,6 +5,7 @@ const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
 const { SeatPage } = require('../seatPage');
+const { ListingPanel } = require('../listingView');
 const { seatPhoto, amenityLines, loadInclusions } = require('../inclusions');
 const { FOOD_RULE, cancelNote } = require('../offering');
 const { HotelClock } = require('../calendar');
@@ -70,9 +71,18 @@ function ymd(date) {
       const includedAt = res.body.indexOf('<h2>What\'s included</h2>');
       const foodAt = res.body.indexOf('class="seat-food"', includedAt);
       const includedBlock = res.body.slice(includedAt, foodAt);
-      for (const line of lines) assert.ok(includedBlock.includes(esc(line.text)), `${pass.slug}/${pass.code} ${line.text}`);
-      assert.ok(!/\d+ × (?!Towels)/.test(includedBlock), `${pass.slug}/${pass.code} quantity`);
-      if (lines.some(line => /towel/i.test(line.name))) assert.ok(/\d+ × Towels/.test(includedBlock), `${pass.slug}/${pass.code} towels`);
+      for (const line of lines) {
+        if (/towel/i.test(line.name)) {
+          assert.ok(!includedBlock.includes(line.text), `${pass.slug}/${pass.code} repeats ${line.text}`);
+          assert.ok(includedBlock.includes(ListingPanel.towelText(line.qty)), `${pass.slug}/${pass.code} towel line`);
+        } else {
+          assert.ok(includedBlock.includes(esc(line.text)), `${pass.slug}/${pass.code} ${line.text}`);
+        }
+      }
+      assert.ok(!/\d+ × /.test(includedBlock), `${pass.slug}/${pass.code} quantity`);
+      const listStart = includedBlock.indexOf('<ul class="pass-inc-list');
+      const list = includedBlock.slice(listStart, includedBlock.indexOf('</ul>', listStart));
+      assert.ok(!/towel/i.test(list), `${pass.slug}/${pass.code} towels stay off the shared list`);
       const buy = hotelAreas(db, pass.hotel_id).filter(area => Number(area.serves_food));
       if (buy.length) {
         assert.ok(includedBlock.includes('<h4>On site to buy (not included)</h4>'), pass.slug);
@@ -98,7 +108,8 @@ function ymd(date) {
     assert.ok(bare.body.includes('id="seat-go" type="submit" disabled'));
     assert.ok(bare.body.includes('href="/h/saltwater-terrace?qty=1#seating"'));
     assert.strictEqual(bare.body.split('href="/h/saltwater-terrace?qty=1#seating"').length - 1, 3);
-    assert.ok(bare.body.includes('2 × Towels'));
+    assert.ok(bare.body.includes('2 towels'));
+    assert.ok(!bare.body.includes('2 × Towels'));
     assert.ok(bare.body.includes('Example photo (demo)'));
     assert.ok(bare.body.includes('Example photo of a daybed (demo)'));
     assert.ok(bare.body.includes('name="hotel" value="saltwater-terrace"'));
@@ -119,7 +130,8 @@ function ymd(date) {
     assert.ok(bare.body.includes('1 spot = 2 guests'));
     assert.ok(bare.body.includes('Fits 2'));
     const dayList = bare.body.slice(bare.body.indexOf('<ul class="pass-inc-list'), bare.body.indexOf('</ul>', bare.body.indexOf('<ul class="pass-inc-list')));
-    assert.ok(!/\d+ × (?!Towels)/.test(dayList));
+    assert.ok(!/\d+ × /.test(dayList));
+    assert.ok(!/towel/i.test(dayList));
     const bad = await get(port, '/h/saltwater-terrace/seat/lounger?date=nope&qty=9');
     assert.strictEqual(bad.status, 200);
     assert.ok(bad.body.includes('Pick a date'));
