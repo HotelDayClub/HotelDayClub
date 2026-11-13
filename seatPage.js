@@ -181,6 +181,7 @@ ${desc ? `<p class="seat-desc">${esc(desc)}</p>` : ''}
 ${towelHtml}
 ${included}
 ${access}
+${opts.amenitiesHtml || ''}
 <p class="seat-food">${esc(FOOD_RULE)}</p>
 <a class="seat-all seat-all-mob" href="${esc(back)}">View all seating at ${esc(hotel.name)} →</a>
 <h2>Cancellation</h2>

@@ -95,19 +95,15 @@ function splitAreas(areas) {
   return { included, buy };
 }
 function accessDetail(areas, opts = {}) {
-  const { included, buy } = splitAreas(areas);
+  const { included } = splitAreas(areas);
   const extra = opts.amenities || '';
-  const parts = [];
-  if (included.length || extra) parts.push(`<h4>Included access</h4>${included.length ? accessList(included, opts) : ''}${extra}`);
-  if (buy.length) parts.push(`<h4>On site to buy (not included)</h4>${accessList(buy, opts)}`);
-  return parts.join('');
+  if (!included.length && !extra) return '';
+  return `<h4>Included access</h4>${included.length ? accessList(included, opts) : ''}${extra}`;
 }
 function accessBlock(areas, opts) {
-  const { included, buy } = splitAreas(areas);
-  const parts = [];
-  if (included.length) parts.push(`<div class="inc-recap"><b>Included access</b>${accessList(included, opts)}</div>`);
-  if (buy.length) parts.push(`<div class="inc-recap"><b>On site to buy (not included)</b>${accessList(buy, opts)}</div>`);
-  return parts.join('');
+  const { included } = splitAreas(areas);
+  if (!included.length) return '';
+  return `<div class="inc-recap"><b>Included access</b>${accessList(included, opts)}</div>`;
 }
 function linkedAreas(db, hotelId) {
   return db.prepare(`SELECT DISTINCT a.* FROM access_areas a

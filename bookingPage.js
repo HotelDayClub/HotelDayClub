@@ -4,7 +4,6 @@ const { CheckoutFlow } = require('./checkout');
 const { spotLabel, swimNote, displayCancelNote, arrivalText, GuestCheckIn } = require('./offering');
 const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
 const { PASS_FOOD_LINE } = require('./inclusions');
-const { accessLine } = require('./access');
 const seo = require('./seo');
 
 const TICK = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
@@ -23,17 +22,11 @@ function photoHtml(b) {
   return `<img src="/assets/photos/${esc(file)}" alt="${esc(alt)}" width="96" height="72">`;
 }
 
-function buyLine(areas) {
-  return (areas || []).filter(area => Number(area.serves_food)).map(area => accessLine(area)).filter(Boolean).join('; ');
-}
-
-function includedHtml(lines, areas) {
+function includedHtml(lines, areas, onsiteHtml) {
   const items = (lines || []).map(line => `<li class="bk-y">${esc(line.text)}</li>`).join('');
   const names = (areas || []).filter(area => !Number(area.serves_food)).map(area => String(area.name || '').trim()).filter(Boolean);
   const access = names.length ? `<li class="bk-y">Included access: ${esc(names.join(', '))}</li>` : '';
-  const buy = buyLine(areas);
-  const buyRow = buy ? `<p class="bk-buy">On site to buy (not included): ${esc(buy)}</p>` : '';
-  return `<ul class="bk-inc">${items}${access}<li class="bk-n">${esc(PASS_FOOD_LINE)}</li></ul>${buyRow}`;
+  return `<ul class="bk-inc">${items}${access}<li class="bk-n">${esc(PASS_FOOD_LINE)}</li></ul>${onsiteHtml || ''}`;
 }
 
 function towelBring(lines) {
@@ -133,7 +126,7 @@ ${emailRow}
 </section>
 ${addons}
 <section class="bk-card" aria-labelledby="bk-inc"><h2 id="bk-inc">What's included</h2>
-${includedHtml(v.lines, v.areas)}
+${includedHtml(v.lines, v.areas, v.onsiteHtml)}
 <p class="bk-swim">${esc(swimNote(v.hotel || {}))}</p>
 </section>
 ${next}

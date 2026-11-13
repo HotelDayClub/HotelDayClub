@@ -12,6 +12,7 @@ const {
 } = require('./inclusions');
 const { ensureArrival, saveArrival, arrivalForm, directionsHref } = require('./arrival');
 const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hotelAreas, linkedIds } = require('./access');
+const { HotelAmenities } = require('./hotelAmenities');
 const { listingHtml, reassureStrip, ListingPanel, dayStepLinks } = require('./listingView');
 const { SeatPage } = require('./seatPage');
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
@@ -859,6 +860,7 @@ app.get('/h/:slug/seat/:code', (req, res) => {
   const body = SeatPage.html({
     hotel: h, pass, date, qty, row, items, areas, cancel,
     minDate: startDay, maxDate, closed: closed.join(','),
+    amenitiesHtml: HotelAmenities.seatHtml(db, h, { people: Math.max(1, Number(pass.holds) || 1) }),
   });
   res.send(page(`${pass.name} · ${h.name}`, body, {
     analytics: false,
@@ -934,6 +936,7 @@ app.get('/h/:slug', (req, res) => {
     included: items,
     accessByPass: byPass(db, h.id),
     addonList: addonsHtml(items, getAddons(h.id, true)),
+    amenitiesHtml: HotelAmenities.listingHtml(db, h, { people: 1 }),
     hourRows: hoursLines(db, h),
     todayWd: new Date(startDay + 'T12:00:00').getDay(),
     foodLine,
@@ -1419,6 +1422,7 @@ app.get('/booking/:code', async (req, res) => {
     note,
     lines: includedLines(loadInclusions(db, hotel.id), party),
     areas: forPass(db, b.pass_type_id),
+    onsiteHtml: HotelAmenities.bookingHtml(db, hotel && hotel.id),
     shownName: maskName(b.guest_name),
     shownCode: b.short_code || b.code,
     shownEmail: maskEmail(b.email),
@@ -1830,9 +1834,10 @@ app.get('/hotel/settings', hotelAuth, (req, res) => {
   const locked = new Set(db.prepare('SELECT DISTINCT pass_type_id id FROM bookings WHERE hotel_id=?').all(row.id).map(r => r.id));
   res.send(dashShell(req.hotel, `${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 <p class="eyebrow-s">Settings</p><h1 class="l-title">Your offering</h1>
-<p class="muted">Passes, hours, what's included, included access, getting there and pool rules. Guests see this on the listing.</p>
+<p class="muted">Passes, hours, what's included, amenities, included access, getting there and pool rules. Guests see this on the listing.</p>
 ${offeringForm({ action: '/hotel/settings', hotel: row, spots: getPasses(row.id), hours: hoursFor(db, row.id), lockedIds: locked, error: req.query.e || '' })}
 ${inclusionsForm(loadInclusions(db, row.id))}
+${HotelAmenities.form(db, row)}
 ${accessForm(hotelAreas(db, row.id), getPasses(row.id), linkedIds(db, row.id))}
 ${arrivalForm(row)}`, { here: '/hotel/settings' }));
 });
@@ -2157,6 +2162,7 @@ app.post('/hotel/addons', hotelAuth, (req, res) => {
     enabled = syncAddonEdit(db, req.hotel.id, a.code, enabled, usePrice, useCap);
     up.run(enabled, usePrice, useCap, a.id, req.hotel.id);
   }))();
+  HotelAmenities.syncIncluded(db, req.hotel.id);
   const msg = blocked ? "Late access stays off. It can't overlap room guests only or run past the pool's closing time." : 'Add-ons saved. Guests see the changes straight away.';
   res.redirect(303, '/hotel?msg=' + encodeURIComponent(msg) + '#addons');
 });
@@ -2166,10 +2172,17 @@ app.post('/hotel/access', hotelAuth, (req, res) => {
   if (result.err) return res.redirect('/hotel/settings?e=' + encodeURIComponent(result.err) + '#included-access');
   res.redirect(303, '/hotel/settings?msg=' + encodeURIComponent('Saved included access.') + '#included-access');
 });
+app.post('/hotel/amenities', hotelAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
+  const result = HotelAmenities.save(db, req.hotel.id, req.body, 'hotel:' + req.hotel.id);
+  if (result.err) return res.redirect('/hotel/settings?e=' + encodeURIComponent(result.err) + '#amenities');
+  res.redirect(303, '/hotel/settings?msg=' + encodeURIComponent('Saved amenities.') + '#amenities');
+});
 app.post('/hotel/inclusions', hotelAuth, (req, res) => {
   if (!ownForm(req, res)) return;
   const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(req.hotel.id);
   const result = saveInclusions(db, req.hotel.id, req.body, { allowLate: hotelLatePossible(db, hotel) });
+  HotelAmenities.syncIncluded(db, req.hotel.id);
   const msg = result.lateBlocked ? "Late stay stays off. It can't overlap room guests only or run past the pool's closing time." : "Saved what's included.";
   res.redirect(303, '/hotel/settings?msg=' + encodeURIComponent(msg) + '#included');
 });
@@ -2373,6 +2386,12 @@ app.post('/admin/booking/cancel', adminAuth, async (req, res) => {
   const msg = changed ? `${b.code} is cancelled in this demo. No payment was taken.` : `${b.code} was already cancelled.`;
   return adminGo(res, '/admin/bookings', msg);
 });
+app.post('/admin/venues/hide', adminAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
+  const result = HotelAmenities.adminToggle(db, req.body, 'admin:jason');
+  const text = result.err || result.msg || 'Updated.';
+  return adminGo(res, '/admin', text, 'venues');
+});
 app.post('/admin/approve', adminAuth, (req, res) => {
   if (!ownForm(req, res)) return;
   const id = parseInt(req.body.id, 10);
@@ -2395,7 +2414,8 @@ ${AdminShell.tiles(tot, addonAll)}
 ${AdminShell.byHotel(per, tot)}
 <div class="adm-split">${AdminShell.attention(counts)}${AdminShell.recent(recent)}</div>
 ${PauseBooked.adminSection(db)}
-<section class="adm-card"><h2>Guest notes</h2>${noteBody}</section>`;
+<section class="adm-card"><h2>Guest notes</h2>${noteBody}</section>
+${HotelAmenities.adminHtml(db)}`;
   res.send(AdminShell.page('/admin', inner, { title: 'Overview', ...counts }));
 });
 app.get('/admin/bookings', adminAuth, (req, res) => {
@@ -2683,6 +2703,7 @@ db.prepare("UPDATE hotels SET is_demo=1 WHERE login LIKE 'demo-%' OR name LIKE '
 ensureSchedules(db);
 ensureInclusions(db);
 ensureAccess(db);
+HotelAmenities.ensure(db);
 ensureArrival(db);
 seedPerformance(db);
 syncHoursLabels(db);
