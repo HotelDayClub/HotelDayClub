@@ -113,7 +113,13 @@ CREATE TABLE IF NOT EXISTS consent_log(
   kind TEXT NOT NULL,
   policy_version TEXT NOT NULL,
   consented_at TEXT NOT NULL,
-  ip TEXT NOT NULL
+  ip TEXT NOT NULL,
+  terms_version TEXT,
+  refunds_version TEXT,
+  rules_version TEXT,
+  risk_version TEXT,
+  privacy_version TEXT,
+  marketing INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_consent_log_booking ON consent_log(booking_id);
 CREATE TABLE IF NOT EXISTS closure_alerts(
@@ -148,6 +154,14 @@ ensureCols('pass_types', [['holds', 'INTEGER DEFAULT 1'], ['photo', 'TEXT'], ['k
 ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0'], ['terms_ack_at', 'TEXT'], ['risk_ack_at', 'TEXT'], ['risk_text', 'TEXT'], ['cancel_note', 'TEXT'], ['seeded', 'INTEGER NOT NULL DEFAULT 0'], ['refunded', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_tries', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_state', 'TEXT'], ['arrived_count', 'INTEGER'], ['expected_arrival', 'TEXT'], ['terms_version', 'TEXT'], ['refunds_version', 'TEXT'], ['privacy_version', 'TEXT'], ['risk_version', 'TEXT'], ['consent_at', 'TEXT'], ['consent_ip', 'TEXT'], ['short_code', 'TEXT']]);
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_short_code ON bookings(short_code)');
 ShortCode.backfill(db);
+ensureCols('consent_log', [
+  ['terms_version', 'TEXT'],
+  ['refunds_version', 'TEXT'],
+  ['rules_version', 'TEXT'],
+  ['risk_version', 'TEXT'],
+  ['privacy_version', 'TEXT'],
+  ['marketing', 'INTEGER'],
+]);
 ensureCols('contact_messages', [['alert_tries', 'INTEGER NOT NULL DEFAULT 0'], ['alert_state', 'TEXT'], ['marketing_opt_in', 'INTEGER DEFAULT 0']]);
 ensureCols('waitlist', [['marketing_opt_in', 'INTEGER DEFAULT 0']]);
 ensureCols('guest_notes', [['seeded', 'INTEGER NOT NULL DEFAULT 0']]);

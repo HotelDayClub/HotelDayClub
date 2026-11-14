@@ -6,7 +6,7 @@ const http = require('http');
 const vm = require('vm');
 const { spawn } = require('child_process');
 const { CheckoutFlow } = require('../checkout');
-const { CheckoutConsent } = require('../consent');
+const { CheckoutConsent, ConsentLog, LEGAL_EFFECTIVE, LEGAL_VERSIONS } = require('../consent');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-checkout-'));
 const dbPath = path.join(dir, 'daypass.db');
@@ -114,7 +114,19 @@ function makeForm(opts = {}) {
   assert.strictEqual(CheckoutFlow.reason(2), 'Tick the 2 boxes above to continue.');
   assert.strictEqual(CheckoutFlow.reason(1), 'Tick the box above to continue.');
   assert.strictEqual(CheckoutFlow.reason(0), '');
-  assert.strictEqual(CheckoutFlow.riskSlot(), '<div id="co-risk-slot" hidden></div>');
+  assert.deepStrictEqual(CheckoutFlow.requiredTicks(), ['accept']);
+  assert.deepStrictEqual(CheckoutFlow.consentTicks(), ['accept', 'marketing']);
+  assert.strictEqual(CheckoutConsent.detailsSummary(), 'Read the full risk warning, hotel rules and group rules');
+  assert.ok(CheckoutConsent.keyPointsText({ lifeguard: 0 }).includes('No lifeguard is on duty at this pool.'));
+  assert.ok(!CheckoutConsent.keyPointsText({ lifeguard: 0 }).includes('A lifeguard is on duty'));
+  assert.ok(CheckoutConsent.keyPointsText({ lifeguard: 1 }).includes('A lifeguard is on duty.'));
+  assert.ok(!CheckoutConsent.keyPointsText({ lifeguard: 1 }).includes('No lifeguard is on duty at this pool.'));
+  assert.ok(CheckoutConsent.keyPointsText({ lifeguard: 2, lifeguard_hours: '10am to 4pm' }).includes('A lifeguard is on duty during 10am to 4pm.'));
+  assert.ok(CheckoutConsent.hazardLines({ kids_hours: 'All open hours, shallow end', age_policy: 'All ages', heated: 0, setting: 'outdoor' }).some(line => line.includes('shallow end')));
+  assert.deepStrictEqual(CheckoutConsent.hazardLines({}), []);
+  assert.ok(CheckoutConsent.acceptHtml().includes('href="/terms"') && CheckoutConsent.acceptHtml().includes('href="/refunds"'));
+  assert.ok(CheckoutConsent.checkoutMarketingText().includes('by email'));
+  assert.ok(!CheckoutConsent.checkoutMarketingText().includes('SMS'));
   assert.strictEqual(CheckoutFlow.extraValue([]), 'None');
   assert.strictEqual(CheckoutFlow.extraValue([{ name: 'Parking', qty: 1, line: 18 }]), 'Parking × 1 · $18 (demo)');
   assert.ok(CheckoutFlow.changeLink('#extras', 'extras').includes('aria-label="Change extras"'));
@@ -151,7 +163,8 @@ function makeForm(opts = {}) {
   const css = fs.readFileSync(path.join(__dirname, '../public/app.css'), 'utf8');
   assert.ok(css.includes('.co-before .tick{display:flex;align-items:flex-start;gap:12px;min-height:44px'));
   assert.ok(css.includes('.co-before .tick input[type="checkbox"]{width:22px;height:22px'));
-  assert.ok(css.includes('#co-risk-slot{display:none}'));
+  assert.ok(css.includes('.co-full summary{display:flex;align-items:center;min-height:44px'));
+  assert.ok(css.includes('.co-key{background:#F6EFE6'));
   assert.ok(css.includes('@media (prefers-reduced-motion: reduce)'));
 
   const port = 3482;
@@ -161,7 +174,7 @@ function makeForm(opts = {}) {
     const live = new Database(dbPath);
     const hotel = live.prepare("SELECT id FROM hotels WHERE slug='saltwater-terrace'").get();
     let when = '';
-    for (let i = 1; i < 21 && !when; i++) {
+    for (let i = 3; i < 24 && !when; i++) {
       const day = new Date();
       day.setDate(day.getDate() + i);
       const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
@@ -189,7 +202,8 @@ function makeForm(opts = {}) {
     assert.ok(body.includes('class="co-decide"'));
     assert.ok(body.includes('class="co-dock"'));
     assert.ok(body.includes('id="co-reason-live" aria-live="polite"'));
-    assert.ok(body.split('Tick the 5 boxes above to continue.').length - 1 >= 4);
+    assert.ok(body.split('Tick the box above to continue.').length - 1 >= 4);
+    assert.ok(!body.includes('Tick the 5 boxes'));
     assert.ok(body.includes('<span class="co-fact-val co-pass-line">Sun lounger × 1 · $45 (demo)</span>'));
     assert.ok(body.includes(`href="/h/saltwater-terrace/seat/lounger?date=${when}&amp;qty=1"`));
     assert.ok(body.includes(`href="/h/saltwater-terrace?date=${when}#book"`));
@@ -216,37 +230,84 @@ function makeForm(opts = {}) {
     assert.ok(body.includes('checkoutPayload'));
     assert.ok(body.includes('Confirming'));
 
-    const boxes = [...body.matchAll(/<input type="checkbox" name="(risk|rules|group|terms|share|marketing)"[^>]*>/g)];
-    assert.strictEqual(boxes.length, 6);
-    const requiredNames = boxes.filter(match => /(?:^|\s)required(?:\s|>)/.test(match[0])).map(match => match[1]).sort();
-    assert.deepStrictEqual(requiredNames, ['group', 'risk', 'rules', 'share', 'terms']);
+    const boxes = [...body.matchAll(/<input type="checkbox" name="(accept|marketing|risk|rules|group|terms|share)"[^>]*>/g)];
+    assert.strictEqual(boxes.length, 2, boxes.map(match => match[1]).join(','));
+    const requiredNames = boxes.filter(match => /(?:^|\s)required(?:\s|>)/.test(match[0])).map(match => match[1]);
+    assert.deepStrictEqual(requiredNames, ['accept']);
     assert.ok(!/(?:^|\s)required(?:\s|>)/.test(tickTag(body, 'marketing')));
-    for (const name of CheckoutFlow.requiredTicks()) assert.ok(!tickTag(body, name).includes('checked'), name);
-    assert.strictEqual(body.split(CheckoutConsent.riskHtml()).length - 1, 1);
-    assert.strictEqual((body.match(/<h3>Risk warning<\/h3>/g) || []).length, 1);
-    const slot = body.match(/<div id="co-risk-slot"[^>]*>[\s\S]*?<\/div>/);
-    assert.ok(slot);
-    assert.strictEqual(slot[0], '<div id="co-risk-slot" hidden></div>');
-    for (const phrase of ['pending Legal', 'existing wording, unchanged', 'Demo payment', 'No card is needed', 'No money is taken', 'Tick the 3 boxes', 'Card number', '4242']) {
+    assert.ok(!tickTag(body, 'accept').includes('checked'));
+    assert.ok(!tickTag(body, 'marketing').includes('checked'));
+    assert.ok(body.includes('by email'));
+    assert.ok(!body.includes('email/SMS'));
+    assert.ok(!body.includes('name="share"'));
+    const consent = body.slice(body.indexOf('id="co-consent"'), body.indexOf('class="co-decide"'));
+    const detailsAt = consent.indexOf('<details class="co-full">');
+    assert.ok(detailsAt > 0);
+    const detailsTag = consent.slice(detailsAt, consent.indexOf('>', detailsAt) + 1);
+    assert.ok(!/\sopen[\s>]/.test(detailsTag), detailsTag);
+    assert.ok(consent.includes('<summary>Read the full risk warning, hotel rules and group rules</summary>'));
+    const visible = consent.slice(0, detailsAt);
+    assert.ok(visible.includes('No lifeguard is on duty at this pool.'));
+    assert.ok(visible.includes('the hotel can refuse entry or ask you to leave, and no refund is payable unless the law requires it.'));
+    assert.ok(visible.includes('Kids: All open hours'));
+    assert.ok(!visible.includes('<h3>Risk warning</h3>'));
+    assert.ok(consent.includes('<h3>Risk warning</h3>'));
+    assert.ok(consent.includes('Group and children'));
+    assert.ok(!consent.includes('Towels included'));
+    assert.ok(!consent.includes('Free cancellation up to 24 hours before your access hours start.'));
+    const detailsEnd = consent.indexOf('</details>');
+    const noticeAt = consent.indexOf('We collect your name, email and mobile');
+    const cancelAt = consent.indexOf('Cancellation and refunds');
+    const tickAt = consent.indexOf('name="accept"');
+    assert.ok(detailsEnd > detailsAt && noticeAt > detailsEnd && noticeAt < tickAt, 'collection notice above the tick');
+    assert.ok(cancelAt > noticeAt && cancelAt < tickAt, 'cancellation line directly above the tick');
+    assert.strictEqual(body.split('class="cancel-note"').length - 1, 1);
+    assert.ok(body.includes('Nothing in this limits your rights under the Australian Consumer Law.'));
+    assert.ok(body.includes('Infinity pool, heated'));
+    for (const phrase of ['pending Legal', 'existing wording, unchanged', 'Demo payment', 'No card is needed', 'No money is taken', 'Tick the 3 boxes', 'Card number', '4242', 'I agree to Hotel Day Club sharing']) {
       assert.ok(!body.includes(phrase), phrase);
     }
     assert.ok(!/stripe/i.test(body));
-    assert.ok(body.includes('I agree to Hotel Day Club sharing my name, email, mobile and booking details with The Saltwater Terrace (Demo) for this booking.'));
-    assert.ok(body.includes('Send me hot-day alerts and offers by email/SMS. I can unsubscribe at any time.'));
+    assert.ok(!/\bcommission\b/i.test(body));
+    const visibleCopy = body.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ');
+    assert.ok(!visibleCopy.includes('\u2014'));
+    assert.ok(!/\d+\s*%/.test(visibleCopy));
+    assert.ok(body.includes('Send me hot-day alerts and offers by email. I can unsubscribe at any time.'));
+
+    let palmWhen = '';
+    for (let i = 3; i < 24 && !palmWhen; i++) {
+      const day = new Date();
+      day.setDate(day.getDate() + i);
+      if (![0, 4, 5, 6].includes(day.getDay())) continue;
+      const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+      const palm = await get(port, `/checkout?hotel=palm-court&date=${encodeURIComponent(iso)}&pass=lounger&qty=1`);
+      if (palm.status !== 200) continue;
+      palmWhen = iso;
+      const palmVisible = palm.body.slice(palm.body.indexOf('id="co-consent"'), palm.body.indexOf('<details class="co-full">'));
+      assert.ok(palmVisible.includes('A lifeguard is on duty.'));
+      assert.ok(!palmVisible.includes('No lifeguard is on duty at this pool.'));
+      assert.ok(palmVisible.includes('shallow end'));
+    }
+    assert.ok(palmWhen, 'palm-court checkout');
 
     const token = (body.match(/name="book_token" value="([a-f0-9]+)"/) || [])[1];
     assert.ok(token);
+    const oldDb = new Database(dbPath);
+    const passId = oldDb.prepare("SELECT id FROM pass_types WHERE hotel_id=? AND code='lounger'").get(hotel.id).id;
+    const oldBooking = oldDb.prepare(`INSERT INTO bookings(code, hotel_id, pass_type_id, date, qty, unit_price, total, guest_name, email, phone, status)
+      VALUES ('HDC-OLDCONS', ?, ?, ?, 1, 45, 45, 'Old Guest', 'old@example.com', '0412000000', 'confirmed')`).run(hotel.id, passId, when).lastInsertRowid;
+    const oldAt = '2026-11-12T01:02:03.000Z';
+    oldDb.prepare('INSERT INTO consent_log(booking_id, kind, policy_version, consented_at, ip) VALUES (?, ?, ?, ?, ?)').run(oldBooking, 'terms', '2026-11-12', oldAt, '203.0.113.9');
+    oldDb.prepare('INSERT INTO consent_log(booking_id, kind, policy_version, consented_at, ip) VALUES (?, ?, ?, ?, ?)').run(oldBooking, 'share', '2026-11-12', oldAt, '203.0.113.9');
+    oldDb.close();
+
     const partial = await post(port, '/book', {
       hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '1', book_token: token,
-      name: 'Alex Citizen', email: 'not-an-email', phone: '0412', risk: '1', rules: '1',
+      name: 'Alex Citizen', email: 'not-an-email', phone: '0412', risk: '1', rules: '1', terms: '1', group: '1', share: '1',
     });
     assert.strictEqual(partial.status, 409);
-    assert.ok(partial.body.includes('Tick the 3 boxes above to continue.'));
-    assert.ok(/name="risk"[^>]*\schecked/.test(partial.body));
-    assert.ok(/name="rules"[^>]*\schecked/.test(partial.body));
-    assert.ok(!/name="group"[^>]*\schecked/.test(partial.body));
-    assert.ok(!/name="terms"[^>]*\schecked/.test(partial.body));
-    assert.ok(!/name="share"[^>]*\schecked/.test(partial.body));
+    assert.ok(partial.body.includes('Tick the box above to continue.'));
+    assert.ok(!/name="accept"[^>]*\schecked/.test(partial.body));
     assert.ok(!/name="marketing"[^>]*\schecked/.test(partial.body));
     assert.ok(partial.body.includes('value="Alex Citizen"'));
     assert.ok(partial.body.includes('aria-disabled="true"'));
@@ -256,7 +317,7 @@ function makeForm(opts = {}) {
     const ready = await post(port, '/book', {
       hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '1', book_token: again,
       name: 'Alex Citizen', email: 'still-bad', phone: '0412345678',
-      risk: '1', rules: '1', group: '1', terms: '1', share: '1',
+      accept: '1',
     });
     assert.strictEqual(ready.status, 409);
     assert.ok(!ready.body.includes('aria-disabled="true"'));
@@ -264,16 +325,15 @@ function makeForm(opts = {}) {
     const reasons = [...ready.body.matchAll(/<p class="co-reason"[^>]*>([^<]*)<\/p>/g)];
     assert.strictEqual(reasons.length, 3);
     assert.ok(reasons.every(match => match[1] === ''));
-    assert.ok(!/>Tick the 5 boxes above to continue.</.test(ready.body));
     assert.ok(!/>Tick the box above to continue.</.test(ready.body));
     assert.ok(ready.body.includes('Enter a valid email.'));
-    for (const name of CheckoutFlow.requiredTicks()) assert.ok(tickTag(ready.body, name).includes('checked'), name);
+    assert.ok(tickTag(ready.body, 'accept').includes('checked'));
     assert.ok(!tickTag(ready.body, 'marketing').includes('checked'));
 
     const booked = await post(port, '/book', {
       hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '1', book_token: again,
       name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678',
-      risk: '1', rules: '1', group: '1', terms: '1', share: '1',
+      accept: '1',
     });
     assert.strictEqual(booked.status, 303, booked.body.slice(0, 300));
     const done = await get(port, booked.headers.location);
@@ -283,6 +343,35 @@ function makeForm(opts = {}) {
     assert.ok(done.body.includes("indexOf('hdc-checkout:')"));
     assert.ok(done.body.includes('sessionStorage.removeItem(key)'));
     assert.ok(done.body.includes('clearCheckoutMemory();'));
+    assert.ok(/Terms, Cancellation &amp; Refund Policy, hotel rules and risk warning: accepted at checkout \d{1,2} \w+ \d{4}, \d{1,2}:\d{2} (am|pm)\./.test(done.body));
+    assert.strictEqual((done.body.match(/accepted at checkout/g) || []).length, 1);
+    assert.ok(done.body.includes('Show your QR code or booking code at reception, with photo ID if the hotel asks.'));
+    assert.ok(!done.body.includes('<b>Bring</b>'));
+    assert.ok(done.body.includes('Before you swim'));
+    assert.ok(done.body.includes('Demo: nothing is charged or refunded.'));
+
+    const saved = new Database(dbPath);
+    const stored = saved.prepare('SELECT id, consent_at, consent_ip, marketing_opt_in, rules_text FROM bookings WHERE email=?').get('alex@example.com');
+    const logs = saved.prepare('SELECT kind, policy_version, consented_at, ip, terms_version, refunds_version, rules_version, risk_version, privacy_version, marketing FROM consent_log WHERE booking_id=?').all(stored.id);
+    assert.strictEqual(logs.length, 1);
+    assert.strictEqual(logs[0].kind, 'acceptance');
+    assert.strictEqual(logs[0].terms_version, LEGAL_VERSIONS.terms);
+    assert.strictEqual(logs[0].refunds_version, '2026-11-12');
+    assert.strictEqual(logs[0].risk_version, LEGAL_VERSIONS.risk);
+    assert.strictEqual(logs[0].privacy_version, LEGAL_VERSIONS.privacy);
+    assert.strictEqual(logs[0].rules_version, ConsentLog.rulesVersion(stored.rules_text));
+    assert.strictEqual(logs[0].consented_at, stored.consent_at);
+    assert.strictEqual(logs[0].ip, stored.consent_ip);
+    assert.ok(stored.consent_ip);
+    assert.strictEqual(logs[0].marketing, 0);
+    assert.strictEqual(stored.marketing_opt_in, 0);
+    assert.strictEqual(LEGAL_EFFECTIVE, '2026-11-14');
+    const kept = saved.prepare('SELECT kind, policy_version, consented_at, ip, terms_version, marketing FROM consent_log WHERE booking_id=? ORDER BY kind').all(oldBooking);
+    assert.deepStrictEqual(kept, [
+      { kind: 'share', policy_version: '2026-11-12', consented_at: oldAt, ip: '203.0.113.9', terms_version: null, marketing: null },
+      { kind: 'terms', policy_version: '2026-11-12', consented_at: oldAt, ip: '203.0.113.9', terms_version: null, marketing: null },
+    ]);
+    saved.close();
 
     const write = new Database(dbPath);
     write.prepare('UPDATE addons SET enabled=0 WHERE hotel_id=?').run(hotel.id);
@@ -297,8 +386,9 @@ function makeForm(opts = {}) {
     assert.ok(!plainMarkup.includes('Add extras'));
     assert.ok(!plainMarkup.includes('id="extras"'));
     assert.ok(!plainMarkup.includes('href="#extras"'));
-    assert.ok(plain.body.includes('Tick the 5 boxes above to continue.'));
-    assert.strictEqual(plain.body.split(CheckoutConsent.riskHtml()).length - 1, 1);
+    assert.ok(plain.body.includes('Tick the box above to continue.'));
+    assert.ok(plain.body.includes('No lifeguard is on duty at this pool.'));
+    assert.strictEqual((plain.body.match(/<input type="checkbox"/g) || []).length, 2);
     console.log('checkout checks passed');
   } finally {
     child.kill();

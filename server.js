@@ -1027,11 +1027,7 @@ function bookFieldErrors(body) {
   if (!/^\S+@\S+\.\S+$/.test(String(body.email || '').trim())) errors.email = 'Enter a valid email.';
   if (String(body.phone || '').replace(/\D/g, '').length < 8) errors.phone = 'Enter a mobile number.';
   const ticked = key => body[key] === '1' || body[key] === 'on';
-  if (!ticked('risk')) errors.risk = 'Tick the risk warning to continue.';
-  if (!ticked('rules')) errors.rules = 'Tick the hotel rules to continue.';
-  if (!ticked('group')) errors.group = 'Tick the group and children acknowledgement to continue.';
-  if (!ticked('terms')) errors.terms = 'Tick the customer terms to continue.';
-  if (!ticked('share')) errors.share = 'Tick the sharing consent to continue.';
+  if (!ticked('accept')) errors.accept = 'Tick the box above to continue.';
   return errors;
 }
 function fieldError(errors, key) {
@@ -1062,9 +1058,9 @@ function renderCheckout(query, res, extra = {}) {
   const demo = Number(h.is_demo) === 1;
   const hotelLabel = demo && !/\(Demo\)\s*$/i.test(h.name) ? `${seo.shortName(h.name)} (Demo)` : h.name;
   const passLabel = `${spotLabel(p)} × ${qty}`;
-  const includedBody = `${incLines.length ? `<ul class="co-inc-list">${incLines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : ''}${parkNote ? `<p class="pass-note">${esc(parkNote)}</p>` : ''}${accessBlock(forPass(db, p.id), { demo })}`;
+  const includedBody = `${incLines.length ? `<ul class="co-inc-list">${incLines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : ''}${parkNote ? `<p class="pass-note">${esc(parkNote)}</p>` : ''}${accessBlock(forPass(db, p.id), { demo, compact: true })}`;
   const included = includedBody.trim() ? `<details class="co-inc"><summary>What's included</summary><div class="co-inc-body">${includedBody}</div></details>` : '';
-  const rulesOpts = { ...hoursView(db, h, date), foodSentence: foodLine };
+  const rulesOpts = { ...hoursView(db, h, date), foodSentence: foodLine, checkout: true };
   const picked = new Set(v.addons.map(x => x.code));
   const offer = addonAvailability(h.id, date);
   const hasExtras = offer.length > 0;
@@ -1114,7 +1110,6 @@ ${fieldError(errors, 'arrival')}</label>
 <p class="muted small">${esc(h.area)}</p>
 <dl><dt>Date</dt><dd class="co-fact"><span class="co-fact-val">${esc(nice(date))}</span>${dateChange}</dd><dt>Pass</dt><dd class="co-fact"><span class="co-fact-val co-pass-line">${esc(passLabel)} · ${esc(money(p.price * qty))} (demo)</span>${passChange}</dd><dt>Guests</dt><dd>${people}</dd>${extrasRow}</dl>
 ${included}
-<p class="cancel-note">${esc(cancel)}</p>
 <div class="bb-total"><span>Total</span><b class="co-total" id="co-total">${money(grand)}</b></div>
 <p class="muted small">Prices include GST. Demo only.</p>
 ${asideBtn}
@@ -1132,17 +1127,18 @@ ${arrivalCard}
 ${addonFields}
 ${paymentCard}
 <section class="co-card co-before" id="co-consent"><h2><span class="co-step">${steps.before}</span> Before you book</h2>
+${CheckoutConsent.keyPointsHtml(h)}
+<details class="co-full">
+<summary>${esc(CheckoutConsent.detailsSummary())}</summary>
+${riskCard(h, { link: false })}
 ${rulesCard(h, rulesOpts)}
-${riskCard(h)}
-${CheckoutFlow.riskSlot()}
-<p class="cancel-note">${esc(cancel)} <a href="/refunds">Cancellation and refunds</a></p>
-${tick('risk', CheckoutConsent.riskHtml(), true)}${fieldError(errors, 'risk')}
-${tick('rules', CheckoutConsent.rulesHtml(), true)}${fieldError(errors, 'rules')}
-${tick('group', CheckoutConsent.groupHtml(), true)}${fieldError(errors, 'group')}
-${tick('terms', CheckoutConsent.termsHtml(), true)}${fieldError(errors, 'terms')}
-${tick('share', CheckoutConsent.shareHtml(hotelLabel), true)}${fieldError(errors, 'share')}
-${tick('marketing', CheckoutConsent.marketingHtml(), false)}
+<div class="co-group">${CheckoutConsent.groupHtml()}</div>
+</details>
 <p class="privacy-note">${CheckoutConsent.noticeHtml(hotelLabel)}</p>
+<p class="cancel-note">${esc(cancel)} <a href="/refunds">Cancellation and refunds</a></p>
+${tick('accept', CheckoutConsent.acceptHtml(), true)}${fieldError(errors, 'accept')}
+<p class="co-acl">${esc(CheckoutConsent.aclText())}</p>
+${tick('marketing', CheckoutConsent.checkoutMarketingHtml(), false)}
 <div class="co-decide">${formBtn}</div>
 </section>
 </form>
@@ -1291,7 +1287,7 @@ app.post('/book', async (req, res) => {
     const shortCode = ShortCode.take(db);
     const seen = { ...hoursView(db, v.h, v.date), foodSentence: guestFoodLine(db, v.h) };
     const note = cancelNote(db, v.h, v.date);
-    const rulesSnapshot = rulesText(v.h, seen);
+    const rulesSnapshot = rulesText(v.h, { ...seen, checkout: true });
     const versions = LegalVersions.current();
     const consentAt = ConsentLog.utcNow();
     const consentIp = ConsentLog.clientIp(req);

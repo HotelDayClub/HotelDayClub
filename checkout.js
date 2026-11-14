@@ -4,11 +4,11 @@ const { esc, money } = require('./util');
 // and which fields may be remembered. Consent ticks are never stored.
 class CheckoutFlow {
   static requiredTicks() {
-    return ['risk', 'rules', 'group', 'terms', 'share'];
+    return ['accept'];
   }
 
   static consentTicks() {
-    return ['risk', 'rules', 'group', 'terms', 'share', 'marketing'];
+    return ['accept', 'marketing'];
   }
 
   static reason(remaining) {
@@ -43,11 +43,6 @@ class CheckoutFlow {
     const rows = addons || [];
     if (!rows.length) return 'None';
     return rows.map(ad => `${esc(ad.name)} × ${ad.qty} · <span class="co-nowrap">${esc(money(ad.line))} (demo)</span>`).join(', ');
-  }
-
-  // Waiting on Legal. The hook is in the page and must render nothing.
-  static riskSlot() {
-    return '<div id="co-risk-slot" hidden></div>';
   }
 
   static clearFunction() {
