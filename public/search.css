@@ -143,6 +143,9 @@ body.lock{overflow:hidden}
   .drawer{top:auto;bottom:0;left:0;right:0;width:100%;height:90vh;max-height:90vh;overflow:hidden;border-radius:16px 16px 0 0;box-shadow:0 -8px 32px rgba(0,52,76,.16)}
   .search-page .bd h3{font-size:20px}
 }
+@media (max-width:760px){
+  .search label,.bigsearch .seg span,.srch-hero .bigsearch .seg > span,.ssheet .bigsearch .seg > span,.bigsearch.is-compact .seg > span,.search-page .sbar .seg > label{font-size:12px}
+}
 @media (prefers-reduced-motion:reduce){
   .drawer,.ssheet,.sheet-bd,.day-row,.ichip,.fbtn,.daypill,.apply,.cpill,.bigsearch{transition:none !important;animation:none !important;scroll-behavior:auto !important}
 }

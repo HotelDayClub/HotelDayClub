@@ -343,7 +343,7 @@ function policyParts(hotel, foodLine) {
     ['ID at check-in', hotel.id_required ? 'Bring photo ID.' : 'Photo ID is not required in this demo.'],
     ['Dress', hotel.dress_code || 'Swimwear at the pool.'],
     ['Food and drink', foodLine || hotel.food_rule || FOOD_NOTE],
-    ['Cancellation', 'Free cancellation until 24 hours before your access hours start, in this demo.'],
+    ['Cancellation', 'Free cancellation up to 24 hours before your access hours start.'],
   ];
   const note = Number(hotel.is_demo) === 1
     ? 'Example information for a fictional hotel. It is not a contract. <a href="/refunds">Cancellation and refund policy</a>.'
@@ -359,7 +359,7 @@ function policyHtml(hotel, foodLine) {
 }
 function policyInner(hotel, foodLine) {
   const { rows, note } = policyParts(hotel, foodLine);
-  return { body: policyDl(rows.filter(([k]) => k !== 'Cancellation')), note };
+  return { body: policyDl(rows.filter(([k]) => k !== 'Cancellation' && k !== 'Food and drink')), note };
 }
 function offerSelect(item) {
   return `<select name="inc_${item.code}" aria-label="${esc(item.name)} offer">
