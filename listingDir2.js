@@ -240,7 +240,7 @@ function sheetHtml(o) {
   const tiles = passes.map(p => {
     const on = pick && p.code === pick.code;
     const off = out(p);
-    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-fits="${esc(ListingD2.fitsLine(p, items))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}><img src="${esc(passPhoto(p))}" alt="" width="120" height="60" loading="lazy" decoding="async"><b>${esc(p.name)}</b><span>${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><i class="tk">${icon('tick')}</i></label>`;
+    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-fits="${esc(ListingD2.fitsLine(p, items))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}><img src="${esc(passPhoto(p))}" alt="${esc(isDemo(h) ? 'Stock photo, not this hotel' : p.name)}" width="120" height="60" loading="lazy" decoding="async"><b>${esc(p.name)}</b><span>${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><i class="tk">${icon('tick')}</i></label>`;
   }).join('');
   const noJsDate = `<noscript><form class="d2-nojs" action="/h/${esc(encodeURIComponent(h.slug))}#book" method="get"><label>Another date<input type="date" name="date" min="${esc(o.today)}" max="${esc(maxDate)}" value="${esc(outside ? date : '')}"></label><input type="hidden" name="pass" value="${esc(pick ? pick.code : '')}"><input type="hidden" name="qty" value="${qty}"><button class="d2-btn out" type="submit">Use this date</button></form></noscript>`;
   return `<section class="d2-book" id="book" aria-labelledby="d2-book-h" tabindex="-1">
@@ -291,7 +291,7 @@ function detailsHtml(o) {
     ? `<p class="d2-sub first">Included in your pass${demo ? ' <span class="ex">Example amenities (demo)</span>' : ''}</p><ul class="d2-ir">${groups.included.map(row).join('')}</ul>`
     : `<p class="d2-muted">${esc(ListingImprove.includedEmptyCopy(false))}</p>`;
   const onsite = groups.onsite.length
-    ? `<p class="d2-sub">On site (not included)</p><ul class="d2-ir">${groups.onsite.map(row).join('')}</ul>`
+    ? `<p class="d2-sub">On site (not included)</p><ul class="d2-ir">${groups.onsite.map(r => `<li>${icon('pin')}${esc(r.label)}</li>`).join('')}</ul>`
     : '';
   const off = ListingImprove.notIncludedLines(items).filter(line => line !== FOOD_RULE && !/available as an add-on/.test(line));
   const offLine = off.length ? `<p class="d2-muted">Not included: ${esc(off.join(' · '))}</p>` : '';

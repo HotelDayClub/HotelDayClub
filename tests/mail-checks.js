@@ -517,7 +517,7 @@ function recorder(decide) {
     }
     assert.ok(date, 'open date');
     const listing = await get('/h/skyline-rooftop?date=' + date);
-    assert.ok(listing.body.includes('Instant confirmation'));
+    assert.ok(listing.body.includes('What happens when I arrive?'));
     assert.ok(listing.body.includes('a confirmation email is sent to the address you give'));
     assert.ok(listing.body.includes('not a reservation at a real hotel'));
     const missing = await post('/book', {

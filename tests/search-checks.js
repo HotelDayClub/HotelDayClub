@@ -518,7 +518,7 @@ assert.deepStrictEqual(closedParty.list, []);
     assert.ok(!saltCard.includes('qty='));
     const soloListing = await get(port, '/h/solo-laps?qty=3');
     assert.strictEqual(soloListing.status, 200);
-    assert.ok(soloListing.body.includes('value="3" selected'));
+    assert.ok(/<input class="d2-qty" id="d2-qty" name="qty"[^>]* value="3"/.test(soloListing.body));
 
     const headerCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'header.css'), 'utf8');
     assert.ok(headerCss.includes('max-height:64px') || headerCss.includes('max-height: 64px'));

@@ -430,8 +430,7 @@ function alts(html, where) {
     assert.ok(real.includes('content="index, follow"'));
     assert.ok(!real.includes('noindex'));
     assert.ok(!real.includes('Fictional demo listing'));
-    assert.ok(real.includes('Get directions'));
-    assert.ok(real.includes('Apple Maps'));
+    assert.ok(real.includes('Open in Google Maps'));
     const realLd = ld(real);
     assert.ok(realLd.some(n => n['@type'] === 'Product' || n['@type'] === 'LodgingBusiness'));
     const offer = JSON.stringify(realLd);

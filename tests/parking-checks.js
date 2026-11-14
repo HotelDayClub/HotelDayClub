@@ -262,7 +262,7 @@ async function live() {
     assert.ok(!walkPage.body.includes(LINE));
     assert.ok(!walkPage.body.includes(ENTRANCE));
     assert.ok(walkPage.body.includes('Directions'));
-    assert.ok(walkPage.body.includes('(demo, no charge)'));
+    assert.ok(walkPage.body.includes('Demo: nothing is charged or refunded.'));
     assert.ok(!walkPage.body.includes('id="sold-warn"'));
     assert.ok(!/\bcommission\b/i.test(walkPage.body));
 
@@ -273,7 +273,7 @@ async function live() {
     assert.ok(parkBox.includes('>Directions</a>'));
     assert.ok(parkBox.includes('openstreetmap.org'));
     assert.ok(parkBox.includes(LINE));
-    assert.ok(parkedPage.body.includes('(demo, no charge)'));
+    assert.ok(parkedPage.body.includes('Demo: nothing is charged or refunded.'));
     assert.ok(!/\bcommission\b/i.test(parkedPage.body));
 
     const palmDate = await (async () => {

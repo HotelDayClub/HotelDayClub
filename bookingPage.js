@@ -111,7 +111,7 @@ function bookingPageBody(v) {
   const heading = cancelled
     ? 'This demo booking is cancelled.'
     : (demoSite() ? 'Your demo booking' : "You're booked in.");
-  const chip = cancelled ? 'Cancelled' : 'Confirmed';
+  const chip = cancelled ? 'Cancelled' : (b.checked_in_at && v.status ? v.status : 'Confirmed');
   const passText = `${b.pass}${Number(b.qty) > 1 ? ` \u00d7 ${b.qty}` : ''}`;
   const facts = [
     ['Date', TicketView.dayLabel(b.date)],
@@ -171,6 +171,7 @@ ${food}
 <p class="tk-cx${late ? ' late' : ''}">${esc(note)}</p>
 ${manage}
 <p class="tk-dm">Demo: nothing is charged or refunded.</p>
+${cancelled ? '' : `<p class="tk-dm">${esc(confirmationBlurb())}</p>`}
 ${rows}
 </section>
 <p class="tk-foot"><a href="/">Book another day</a></p>

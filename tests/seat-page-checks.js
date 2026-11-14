@@ -4,14 +4,6 @@ const os = require('os');
 const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
-const { SeatPage } = require('../seatPage');
-const { ListingPanel } = require('../listingView');
-const { seatPhoto, amenityLines, loadInclusions } = require('../inclusions');
-const { FOOD_RULE, cancelNote } = require('../offering');
-const { HotelClock } = require('../calendar');
-const { forPass, hotelAreas } = require('../access');
-const { esc } = require('../util');
-
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-seat-'));
 const dbPath = path.join(dir, 'daypass.db');
 
@@ -50,202 +42,35 @@ function ymd(date) {
   try {
     const Sqlite = require('better-sqlite3');
     const db = new Sqlite(dbPath, { readonly: true });
-    const passes = db.prepare(`SELECT h.slug, h.id AS hotel_id, p.id AS pass_id, p.code, p.kind, p.photo, p.holds FROM pass_types p JOIN hotels h ON h.id=p.hotel_id ORDER BY h.id, p.sort`).all();
+    const passes = db.prepare('SELECT h.slug, p.code FROM pass_types p JOIN hotels h ON h.id=p.hotel_id ORDER BY h.id, p.sort, p.id').all();
+    db.close();
     assert.ok(passes.length >= 6);
     for (const pass of passes) {
       const res = await get(port, `/h/${pass.slug}/seat/${encodeURIComponent(pass.code)}`);
-      assert.strictEqual(res.status, 200, `${pass.slug}/${pass.code}`);
-      assert.ok(res.body.includes('content="noindex, follow"'), pass.slug);
-      assert.ok(res.body.includes(`href="https://www.hoteldayclub.com.au/h/${pass.slug}/seat/${pass.code}"`), pass.slug);
-      assert.ok(!res.body.includes(`href="https://www.hoteldayclub.com.au/h/${pass.slug}/seat/${pass.code}?`), pass.slug);
-      assert.strictEqual((res.body.match(/class="seat-photo"/g) || []).length, 1, pass.slug);
-      assert.ok(!res.body.includes('Previous photo'), pass.slug);
-      assert.ok(!res.body.includes('Next photo'), pass.slug);
-      assert.ok(!res.body.includes('Photo not yet added'), pass.slug);
-      assert.ok(!res.body.includes('\u2014'), pass.slug);
-      assert.strictEqual(res.body.split(FOOD_RULE).length - 1, 1, pass.slug);
-      assert.ok(!res.body.includes('Food and drink are not included in the pass.'), pass.slug);
-      const items = loadInclusions(db, pass.hotel_id);
-      const passAreas = forPass(db, pass.pass_id);
-      const lines = amenityLines(items, Math.max(1, Number(pass.holds) || 1), passAreas);
-      const includedAt = res.body.indexOf('<h2>What\'s included</h2>');
-      const foodAt = res.body.indexOf('class="seat-food"', includedAt);
-      const includedBlock = res.body.slice(includedAt, foodAt);
-      for (const line of lines) {
-        if (/towel/i.test(line.name)) {
-          assert.ok(!includedBlock.includes(line.text), `${pass.slug}/${pass.code} repeats ${line.text}`);
-          assert.ok(includedBlock.includes(ListingPanel.towelText(line.qty)), `${pass.slug}/${pass.code} towel line`);
-        } else {
-          assert.ok(includedBlock.includes(esc(line.text)), `${pass.slug}/${pass.code} ${line.text}`);
-        }
-      }
-      assert.ok(!/\d+ × /.test(includedBlock), `${pass.slug}/${pass.code} quantity`);
-      const listStart = includedBlock.indexOf('<ul class="pass-inc-list');
-      const list = includedBlock.slice(listStart, includedBlock.indexOf('</ul>', listStart));
-      assert.ok(!/towel/i.test(list), `${pass.slug}/${pass.code} towels stay off the shared list`);
-      const buy = hotelAreas(db, pass.hotel_id).filter(area => Number(area.serves_food));
-      if (buy.length) {
-        assert.ok(includedBlock.includes('On site (not included)'), pass.slug);
-        assert.ok(!includedBlock.includes('Pay the venue directly. Menus, prices and opening hours are set by the venue.'), pass.slug);
-        assert.ok(!includedBlock.includes('Included in your pass'), pass.slug);
-        assert.ok(includedBlock.includes('See all amenities'), pass.slug);
-        for (const area of buy) assert.ok(includedBlock.includes(`>${esc(area.name)}</span>`), `${pass.slug} ${area.name}`);
-      } else {
-        assert.ok(!res.body.includes('On site to buy (not included)'), pass.slug);
-        assert.ok(!res.body.includes('Pay the venue'), pass.slug);
-      }
-      assert.ok(!/commission/i.test(res.body), pass.slug);
-      assert.ok(!/pay online|stripe/i.test(res.body), pass.slug);
-      const file = String(pass.photo || '');
-      if (!file) assert.ok(res.body.includes(`src="${seatPhoto(pass.kind)}"`), pass.slug + ' ' + pass.kind);
+      assert.strictEqual(res.status, 301, `${pass.slug}/${pass.code}`);
+      assert.strictEqual(res.headers.location, `/h/${pass.slug}?pass=${encodeURIComponent(pass.code)}#book`);
+      const dated = await get(port, `/h/${pass.slug}/seat/${encodeURIComponent(pass.code)}?date=2026-12-01&qty=2&utm=x`);
+      assert.strictEqual(dated.status, 301);
+      assert.strictEqual(dated.headers.location, `/h/${pass.slug}?pass=${encodeURIComponent(pass.code)}&date=2026-12-01&qty=2#book`);
     }
+    const unknownPass = await get(port, '/h/saltwater-terrace/seat/no-such-seat');
+    assert.strictEqual(unknownPass.status, 301);
+    assert.strictEqual(unknownPass.headers.location, '/h/saltwater-terrace#passes');
+    const unknownHotel = await get(port, '/h/not-a-hotel/seat/lounger');
+    assert.strictEqual(unknownHotel.status, 404);
 
-    const missingHotel = await get(port, '/h/not-a-hotel/seat/lounger');
-    assert.strictEqual(missingHotel.status, 404);
-    assert.ok(missingHotel.body.includes('Page not found'));
-    const missingCode = await get(port, '/h/saltwater-terrace/seat/no-such-seat');
-    assert.strictEqual(missingCode.status, 404);
-    assert.ok(missingCode.body.includes('Page not found'));
+    const landed = await get(port, '/h/saltwater-terrace?pass=daybed&qty=2');
+    assert.strictEqual(landed.status, 200);
+    assert.ok(/<input type="radio" name="pass" value="daybed"[^>]*\schecked>/.test(landed.body));
+    assert.ok(/id="d2-qty"[^>]* value="2"/.test(landed.body));
+    assert.ok(landed.body.includes('id="book"'));
 
-    const bare = await get(port, '/h/saltwater-terrace/seat/daybed');
-    assert.ok(bare.body.includes('Pick a date'));
-    assert.ok(bare.body.includes('id="seat-go" type="submit" disabled'));
-    assert.ok(bare.body.includes('href="/h/saltwater-terrace?qty=1#seating"'));
-    assert.strictEqual(bare.body.split('href="/h/saltwater-terrace?qty=1#seating"').length - 1, 2);
-    assert.ok(bare.body.includes('2 towels'));
-    assert.ok(!bare.body.includes('2 × Towels'));
-    assert.ok(bare.body.includes('Example photo (demo)'));
-    assert.ok(bare.body.includes('Example photo of a daybed (demo)'));
-    assert.ok(bare.body.includes('name="hotel" value="saltwater-terrace"'));
-    assert.ok(bare.body.includes('name="pass" value="daybed"'));
-    assert.ok(bare.body.includes('name="date"'));
-    assert.ok(bare.body.includes('name="qty"'));
-    assert.ok(bare.body.includes('for="seat-qty">Spots'));
-    assert.ok(bare.body.includes('Continue to booking'));
-    assert.ok(!bare.body.includes('Select · Continue to booking'));
-    assert.ok(bare.body.includes('>Check</button>'));
-    assert.ok(bare.body.includes('formaction="/h/saltwater-terrace/seat/daybed"'));
-    assert.ok(bare.body.includes('action="/checkout"'));
-    assert.ok(bare.body.includes('method="get"'));
-    assert.ok(bare.body.includes('<h1>Daybed</h1>'));
-    assert.ok(bare.body.includes('Daybed · The Saltwater Terrace (Demo)'));
-    assert.ok(bare.body.includes('Demo site: listings are examples, no real bookings or payments.'));
-    assert.ok(bare.body.includes('>←</span> Back to The Saltwater Terrace (Demo)'));
-    assert.strictEqual(bare.body.split('View all seating at The Saltwater Terrace (Demo) →').length - 1, 1);
-    assert.ok(bare.body.includes('1 spot = 2 guests'));
-    assert.ok(bare.body.includes('Fits 2'));
-    const dayList = bare.body.slice(bare.body.indexOf('<ul class="pass-inc-list'), bare.body.indexOf('</ul>', bare.body.indexOf('<ul class="pass-inc-list')));
-    assert.ok(!/\d+ × /.test(dayList));
-    assert.ok(!/towel/i.test(dayList));
-    const bad = await get(port, '/h/saltwater-terrace/seat/lounger?date=nope&qty=9');
-    assert.strictEqual(bad.status, 200);
-    assert.ok(bad.body.includes('Pick a date'));
-    assert.ok(bad.body.includes('href="/h/saltwater-terrace?qty=1#seating"'));
-    const past = await get(port, '/h/saltwater-terrace/seat/lounger?date=2020-01-01');
-    assert.ok(past.body.includes('Pick a date'));
-
-    const hotel = db.prepare("SELECT id, name FROM hotels WHERE slug='saltwater-terrace'").get();
-    const lounger = db.prepare("SELECT id, daily_cap FROM pass_types WHERE hotel_id=? AND code='lounger'").get(hotel.id);
-    let openDate = '';
-    for (let i = 1; i < 40 && !openDate; i++) {
-      const day = new Date();
-      day.setDate(day.getDate() + i);
-      const iso = ymd(day);
-      if (db.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?').get(hotel.id, iso)) continue;
-      openDate = iso;
-    }
-    assert.ok(openDate);
-    const used = db.prepare("SELECT COALESCE(SUM(qty),0) n FROM bookings WHERE pass_type_id=? AND date=? AND status!='cancelled'").get(lounger.id, openDate).n;
-    const left = lounger.daily_cap - used;
-    assert.ok(left > 0, 'expected loungers left on ' + openDate);
-    const open = await get(port, `/h/saltwater-terrace/seat/lounger?date=${openDate}&qty=2`);
-    assert.strictEqual(open.status, 200);
-    const label = SeatPage.dayLabel(openDate);
-    assert.ok(open.body.includes(`${left} left on ${label}`), open.body.slice(open.body.indexOf('id="avl"'), open.body.indexOf('id="avl"') + 180));
-    assert.ok(open.body.includes(`value="${openDate}"`));
-    assert.ok(open.body.includes('value="2" selected'));
-    assert.ok(open.body.includes(`href="/h/saltwater-terrace?date=${openDate}&amp;qty=2#seating"`));
-    assert.ok(open.body.includes('>Continue to booking</a>'));
-    assert.ok(!/id="seat-go"[^>]*disabled/.test(open.body));
-    assert.ok(open.body.includes('<link rel="canonical" href="https://www.hoteldayclub.com.au/h/saltwater-terrace/seat/lounger">'));
-
-    const blocked = db.prepare('SELECT date, reason FROM blocked_dates WHERE hotel_id=? ORDER BY date').get(hotel.id);
-    assert.ok(blocked);
-    const shut = await get(port, `/h/saltwater-terrace/seat/lounger?date=${blocked.date}&qty=1`);
-    assert.strictEqual(shut.status, 200);
-    assert.ok(shut.body.includes(`is closed on ${SeatPage.dayLabel(blocked.date)} (${blocked.reason}).`));
-    assert.ok(shut.body.includes('>Closed on this date</button>'));
-    assert.ok(/id="seat-go"[^>]*disabled/.test(shut.body));
-
-    const listing = await get(port, `/h/saltwater-terrace?pass=lounger&date=${openDate}`);
-    assert.strictEqual(listing.status, 200);
-    assert.ok(!listing.headers.location);
-    assert.ok(listing.body.includes('id="seating"'));
-    assert.ok(listing.body.includes('id="passes"'));
-    assert.ok(listing.body.includes('seatFromHash'));
-    assert.ok(listing.body.includes('location.replace'));
-    assert.ok(listing.body.includes('#pass-detail-'));
-    assert.ok(listing.body.includes(`href="/h/saltwater-terrace/seat/lounger?date=${openDate}&amp;qty=1"`));
-    assert.ok(listing.body.includes('class="pass-card is-sel" id="pass-card-lounger"'));
-    const kept = await get(port, '/h/saltwater-terrace?pass=daybed');
-    assert.strictEqual(kept.status, 200);
-    assert.ok(!kept.headers.location);
-    assert.ok(kept.body.includes('class="pass-card is-sel" id="pass-card-daybed"'));
-
-    const hotelRow = db.prepare('SELECT * FROM hotels WHERE slug=?').get('saltwater-terrace');
-    const startDay = HotelClock.today(hotelRow);
-    const bookingInside = "This booking is inside 24 hours of the start, so it can't be cancelled for free.";
-    const dateInside = 'This date starts within 24 hours, so a booking can&#39;t be cancelled for free.';
-    let insideDate = '';
-    let freeDate = '';
-    for (let i = 0; i < 21 && !(insideDate && freeDate); i++) {
-      const day = new Date(startDay + 'T12:00:00');
-      day.setDate(day.getDate() + i);
-      const iso = ymd(day);
-      if (db.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?').get(hotelRow.id, iso)) continue;
-      const note = cancelNote(db, hotelRow, iso);
-      if (!insideDate && note === bookingInside) insideDate = iso;
-      if (!freeDate && /^Free cancellation until /.test(note)) freeDate = iso;
-    }
-    assert.ok(insideDate, 'expected a date inside 24 hours');
-    assert.ok(freeDate, 'expected a later free-cancellation date');
-    assert.strictEqual(cancelNote(db, hotelRow, insideDate), bookingInside);
-    const insidePage = await get(port, `/h/saltwater-terrace/seat/lounger?date=${insideDate}&qty=1`);
-    assert.strictEqual(insidePage.status, 200);
-    assert.ok(insidePage.body.includes(`id="seat-cancel-text">${dateInside}</span>`));
-    assert.ok(!insidePage.body.includes('id="seat-cancel-text">This booking is inside'));
-    const insideList = await get(port, `/h/saltwater-terrace?date=${insideDate}`);
-    assert.ok(insideList.body.includes(bookingInside.replace("can't", 'can&#39;t')));
-    assert.ok(!insideList.body.includes('This date starts within 24 hours'));
-    const insideApi = await get(port, `/api/availability?hotel=saltwater-terrace&date=${insideDate}`);
-    assert.ok(insideApi.body.includes(bookingInside));
-    assert.ok(!insideApi.body.includes('This date starts within 24 hours'));
-    const freePage = await get(port, `/h/saltwater-terrace/seat/lounger?date=${freeDate}&qty=1`);
-    assert.ok(freePage.body.includes('id="seat-cancel-text">Free cancellation until'));
-    assert.ok(!freePage.body.includes(`id="seat-cancel-text">${dateInside}</span>`));
-
-    db.close();
-    const write = new Sqlite(dbPath);
-    write.prepare('UPDATE pass_types SET daily_cap=0 WHERE id=?').run(lounger.id);
-    write.close();
-    const sold = await get(port, `/h/saltwater-terrace/seat/lounger?date=${openDate}&qty=1`);
-    const soldText = sold.body.replace(/<[^>]+>/g, '');
-    assert.ok(soldText.includes('Sold out on this date. Try another date. This seat is still shown so you can compare.'));
-    assert.ok(sold.body.includes('>Sold out on this date</button>'));
-    assert.ok(/id="seat-go"[^>]*disabled/.test(sold.body));
-    assert.ok(sold.body.includes('>Change date</a>'));
-    assert.ok(sold.body.includes('>Sold out</b>'));
-
-    const chair = await get(port, '/h/palm-court/seat/chair');
-    assert.ok(chair.body.includes(`src="${seatPhoto('chair')}"`));
-    assert.ok(chair.body.includes('alt="Example photo of a pool chair (demo)"'));
-    assert.ok(!chair.body.includes('Photo not yet added'));
-
-    console.log('seat page checks passed');
+    const robots = await get(port, '/robots.txt');
+    assert.ok(!/\/seat\//.test(robots.body) || /Disallow/.test(robots.body));
+    const sitemap = await get(port, '/sitemap.xml');
+    assert.ok(!sitemap.body.includes('/seat/'), 'seat URLs are not in the sitemap');
   } finally {
-    child.kill();
+    child.kill('SIGTERM');
   }
-})().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+  console.log('seat page checks passed');
+})().catch(err => { console.error(err); process.exit(1); });

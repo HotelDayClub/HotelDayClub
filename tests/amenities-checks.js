@@ -249,28 +249,20 @@ function contrast(fg, bg) {
 
     const listing = await get(port, '/h/saltwater-terrace');
     assert.strictEqual(listing.status, 200);
-    assert.ok(listing.body.includes('id="am-h"'));
     assert.ok(listing.body.includes('Example amenities (demo)'));
     assert.ok(listing.body.includes('On site (not included)'));
     assert.ok(!textOf(listing.body).includes(SENTENCE));
     assert.ok(!group(listing.body, 'am-y').includes('Pool bar'));
-    assert.ok(group(listing.body, 'am-os').includes('>Pool bar</span>'));
+    assert.ok(/<li>(?:<svg[^>]*>.*?<\/svg>)?Pool bar<\/li>/.test(listing.body.slice(listing.body.indexOf('On site (not included)'))));
     assert.ok(!listing.body.includes('Pool access'));
     const foodLine = 'Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.';
-    const amenityAt = listing.body.indexOf('id="amenities"');
-    const inclusionsAt = listing.body.indexOf('id="inclusions"');
-    const hoursAt = listing.body.indexOf('id="hours"');
-    assert.ok(amenityAt >= 0 && amenityAt < inclusionsAt && inclusionsAt < hoursAt);
-    assert.ok(!listing.body.slice(inclusionsAt, hoursAt).includes('<li>' + foodLine + '</li>'));
+    const amenityAt = listing.body.indexOf('Included in your pass');
+    const hoursAt = listing.body.indexOf('<h3>Hours</h3>');
+    assert.ok(listing.body.indexOf('id="passes"') < amenityAt && amenityAt < hoursAt);
+    assert.ok(!listing.body.slice(amenityAt, hoursAt).includes('<li>' + foodLine + '</li>'));
     assert.strictEqual(listing.body.split(foodLine).length - 1, 1);
-    assert.ok(listing.body.indexOf('id="passes"') < amenityAt && amenityAt < inclusionsAt);
-    const seatPage = await get(port, '/h/saltwater-terrace/seat/lounger');
-    assert.ok(seatPage.body.includes('class="chips-c"'));
-    assert.ok(seatPage.body.includes('See all amenities'));
-    assert.ok(seatPage.body.includes('On site (not included)'));
-    assert.ok(!textOf(seatPage.body).includes(SENTENCE));
-    assert.ok(!seatPage.body.includes('Included in your pass'));
-    assert.strictEqual(seatPage.body.split('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.').length - 1, 1);
+    const seatMoved = await get(port, '/h/saltwater-terrace/seat/lounger');
+    assert.strictEqual(seatMoved.status, 301);
 
     const loggedOut = await post(port, '/hotel/amenities', { add: '1', new_cat: 'bar', new_name: 'Nope' });
     assert.strictEqual(loggedOut.status, 302);

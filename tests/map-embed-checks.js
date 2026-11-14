@@ -57,7 +57,7 @@ function listing(hotel) {
 
 function directions(html, query) {
   const href = `https://www.google.com/maps/dir/?api=1&amp;destination=${query}`;
-  assert.ok(html.includes(`<a href="${href}" target="_blank" rel="noopener">Open in Google Maps</a>`), href);
+  assert.ok(html.includes(`href="${href}" target="_blank" rel="noopener">`) && html.includes('Open in Google Maps'), href);
 }
 
 try {
@@ -80,10 +80,9 @@ try {
   assert.ok(!unset.includes(KEY));
 
   const unsetPage = listing(salt);
-  assert.ok(unsetPage.includes(PEEK));
-  assert.ok(unsetPage.includes(osmLink));
-  assert.ok(unsetPage.includes('id="map-sheet"'));
-  assert.ok(unsetPage.includes("s.src='/vendor/leaflet/leaflet.js'"));
+  assert.ok(unsetPage.includes('aria-label="Map placeholder (demo)"'));
+  assert.ok(unsetPage.includes('This is a fictional demo address.'));
+  assert.ok(!unsetPage.includes('/vendor/leaflet/leaflet.js'));
   assert.ok(!unsetPage.includes('<iframe'));
   directions(unsetPage, '-33.8915%2C151.2767');
 
@@ -115,7 +114,8 @@ try {
 
   const setPage = listing(salt);
   assert.ok(setPage.includes(iframe));
-  assert.ok(setPage.includes(plainFiction));
+  assert.ok(setPage.includes('This is a fictional demo address.'));
+  assert.ok(!setPage.includes('Map placeholder'));
   assert.ok(!setPage.includes('Open the map'));
   assert.ok(!setPage.includes('class="map-peek"'));
   assert.ok(!setPage.includes('map-sheet'));

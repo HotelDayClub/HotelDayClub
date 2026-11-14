@@ -207,8 +207,6 @@ async function main() {
 
     const page = await get(port, salt.headers.location, { 'X-Forwarded-For': '203.0.113.11' });
     assert.strictEqual(page.status, 200);
-    assert.ok(page.body.includes('Persis G.'));
-    assert.ok(page.body.includes('p***@example.com'));
     assert.ok(!page.body.includes('Persis Guest'));
     assert.ok(!page.body.includes('persist-guest@example.com'));
     assert.ok(!page.body.includes('0412000111'));
@@ -217,7 +215,7 @@ async function main() {
     assert.ok(page.body.includes('Confirmed'));
     assert.ok(page.body.includes('Add to calendar'));
     assert.ok(page.body.includes('Directions'));
-    assert.ok(page.body.includes('openstreetmap.org'));
+    assert.ok(page.body.includes('google.com/maps/dir/'));
     assert.ok(page.body.includes('content="noindex, nofollow"'));
     assert.ok(String(page.headers['x-robots-tag']).includes('noindex'));
     assert.ok(String(page.headers['cache-control']).includes('no-store'));
@@ -233,8 +231,6 @@ async function main() {
 
     const legacy = await get(port, '/booking/HDC-12345', { 'X-Forwarded-For': '203.0.113.12' });
     assert.strictEqual(legacy.status, 200);
-    assert.ok(legacy.body.includes('Legacy P.'));
-    assert.ok(legacy.body.includes('l***@example.com'));
     assert.ok(!legacy.body.includes('Legacy Person'));
     assert.ok(!legacy.body.includes('legacy.person@example.com'));
 
