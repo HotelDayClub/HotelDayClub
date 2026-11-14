@@ -1,10 +1,10 @@
 # Hotel Day Club: Customer Terms
-**Version 1.0 · Effective 12 November 2026**
+**Version 1.1 · Effective 15 November 2026**
 
 ## 1. Who we are and who supplies your pass
 1.1 Hotel Day Club is a registered business name (ABN {{ABN}}) ("**Hotel Day Club**", "**we**", "**us**"). Contact: {{CONTACT_EMAIL}}. We do not publish a home address.
 1.2 Hotel Day Club operates an online booking platform. The hotel named in your booking (the "**Hotel**") supplies the day pass, add-ons and facilities and is the supplier. Hotel Day Club takes bookings and payments for the Hotel through the platform. The Hotel owns and controls its venue, facilities, staff and safety. Your receipt names the Hotel and its ABN.
-1.3 By ticking the boxes at checkout and paying, you accept these Terms, our Cancellation & Refund Policy, the Hotel's rules for your booking, and our risk warning, and you consent to us sharing your booking details with the Hotel as described in clause 15.1. If you book for others, you confirm that you have their authority and will show them these Terms, the rules and the risk warning before the visit.
+1.3 By ticking the acceptance box at checkout and paying, you accept these Terms, our Cancellation & Refund Policy, the Hotel's rules for your booking, and our risk warning. If you book for others, you confirm that you have their authority and will show them these Terms, the rules and the risk warning before the visit.
 
 ## 2. Your Australian Consumer Law rights
 2.1 Our services and the Hotel's services come with guarantees that cannot be excluded under the Australian Consumer Law. **Nothing in these Terms excludes, restricts or modifies any right or remedy you have under the Australian Consumer Law or any other law that cannot lawfully be excluded.**
@@ -69,7 +69,7 @@
 14.3 Subject to clause 2 and to the extent permitted by law, we are not liable for loss caused by the Hotel's acts or omissions, or for indirect loss that was not reasonably foreseeable.
 
 ## 15. Privacy
-15.1 We collect your name, email, mobile and booking details to make and manage your booking. We share them with the Hotel so it can check you in and contact you about your booking (for example, late arrival, no-show or an incident). At checkout you give a separate, express consent to that disclosure. The marketing box is separate and is left unticked unless you choose it. We record those consents with the Privacy Policy version, the time and your IP address. The Hotel may use your details only for your booking, not for its own marketing. See our [Privacy Policy](/privacy).
+15.1 We collect your name, email, mobile and booking details to make and manage your booking. We share them with the Hotel so it can check you in and contact you about your booking (for example, late arrival, no-show or an incident). Sharing your details with the Hotel is part of making your booking, and we tell you about it at checkout. The marketing box is separate and is left unticked unless you choose it. We record your acceptance and any marketing opt-in with the version of each document shown, the time and your IP address. The Hotel may use your details only for your booking, not for its own marketing. See our [Privacy Policy](/privacy).
 15.2 Marketing emails and SMS from us are sent only if you opt in, and you can unsubscribe at any time. Joining a waitlist or notify-me list is consent to be told when day passes are available near you. It is not consent to hot-day alerts or other offers unless you separately opt in.
 
 ## 16. Reviews, photos and content

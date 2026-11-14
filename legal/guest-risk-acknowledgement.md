@@ -1,8 +1,8 @@
 # Risk warning and acknowledgement
-**Version 1.0 · Effective 12 November 2026**
+**Version 1.1 · Effective 15 November 2026**
 
 ## 1. How this warning is shown
-1.1 This warning is shown in full on the checkout page before payment (not hidden behind a link), repeated in the confirmation email, and on a sign at the pool entry if the hotel agrees.
+1.1 Before payment, the key points of this warning are shown on the checkout page directly above the acceptance box, and the full warning opens on the same page with one tap. The full warning is repeated in the confirmation email, and on a sign at the pool entry if the hotel agrees.
 
 ## 2. Risk warning
 2.1 Swimming and using pools, spas, plunge pools, saunas and steam rooms carry **risks of injury, illness and death**, including the risks in clauses 2.2 to 2.7.
@@ -32,14 +32,12 @@
 5.3 Nothing in this clause 5 excludes, restricts or modifies any right or remedy you have under the Australian Consumer Law or any other law that cannot lawfully be excluded.
 
 ## 6. Acknowledgement
-6.1 The following acknowledgements are separate tick-boxes. All are required before payment.
-6.2 ☐ **Risk warning.** I have read the risk warning above. I understand that swimming and using spa facilities involve risks of injury and death, and that unless the listing says otherwise, no lifeguard is on duty. I'll decide for myself whether I (and anyone in my care) am fit to take part, and I'll swim within my ability and not swim or use the spa or sauna after drinking alcohol.
-6.3 ☐ **Hotel rules.** I have read and will follow the hotel's rules (shown at checkout), including the age, ID, alcohol, glassware and conduct rules. I understand the hotel may refuse entry or ask me to leave if I break them, and that no refund is then payable unless the law requires it.
-6.4 ☐ **Group and children.** I am 18 or over. I have shown this risk warning and the rules to everyone on my booking. If children are on the booking, I am, or a named adult on this booking is, responsible for actively supervising each child at all times.
-6.5 ☐ **Terms.** I accept the Hotel Day Club [Customer Terms](/terms) and the [Cancellation & Refund Policy](/refunds), and I have read the [Privacy collection notice](/privacy). A separate checkout box records my consent to Hotel Day Club sharing my details with the hotel for this booking. Nothing in these limits my rights under the Australian Consumer Law.
+6.1 One required tick-box at checkout covers the acceptance below. It sits directly under the key points of this warning.
+6.2 ☐ I'm 18 or over. I accept the Hotel Day Club [Customer Terms](/terms), the [Cancellation & Refund Policy](/refunds), the hotel's rules and this risk warning. I'll show the rules and risk warning to everyone on my booking, and I or another adult on my booking will actively supervise any children at all times.
+6.3 Nothing in this acknowledgement limits your rights under the Australian Consumer Law.
 
 ## 7. Records
-7.1 The booking system records the booking ID, timestamp, IP address, and the version ID of the risk warning, rules, terms and Privacy Policy shown, including the sharing consent given at checkout.
+7.1 The booking system records the booking ID, timestamp, IP address, and the version ID of the risk warning, rules, terms and Privacy Policy shown, and any marketing opt-in.
 
 ## 8. Contact
 8.1 Contact: {{CONTACT_EMAIL}}. We do not publish a home address.

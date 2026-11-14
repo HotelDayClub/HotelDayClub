@@ -280,7 +280,8 @@ body.home #explore .sec-row{flex-wrap:nowrap;align-items:flex-end;gap:8px;min-wi
 body.home #explore .sec-row > div{min-width:0;flex:1 1 auto}
 body.home #explore .see-all{white-space:nowrap;flex:0 0 auto}
 body.home .day,body.home .assure ul{max-width:100%}
-body.home #explore .kicker{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.04em;line-height:1.2}
+body.home #explore .kicker{display:block;white-space:normal;overflow:visible;text-overflow:clip;letter-spacing:.02em;line-height:1.35}
+body.home #explore .see-all{min-height:44px;min-width:44px}
 body.home #explore .home-note{margin-top:2px;font-size:14px;line-height:1.3}
 @media (max-width:800px){
   body.home .hero{display:block;background:var(--hdc-deep)}

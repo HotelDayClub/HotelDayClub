@@ -345,6 +345,11 @@ function alts(html, where) {
     assert.ok(!faq.includes('gift card'));
     assert.ok(!faq.includes('A free date change may be available once, subject to availability.'));
     assert.ok(faq.includes('<h1 class="l-title">Hotel day pass questions</h1>'));
+    assert.ok(faq.includes('The key risk points are shown on the page, with the full risk warning, the hotel\'s rules and the group rules in a section you can open.'));
+    assert.ok(faq.includes('<a href="/terms">Customer Terms</a>'));
+    assert.ok(faq.includes('<a href="/refunds">Cancellation and Refund Policy</a>'));
+    assert.ok(faq.includes('Hot-day alerts by email are a separate box, left unticked, and are not required.'));
+    assert.ok(!faq.includes('\u2014'));
     const faqPage = ld(faq).find(n => n['@type'] === 'FAQPage');
     assert.ok(faqPage);
     const visibleQa = [...faq.matchAll(/<summary>([^<]*)<\/summary><p>([\s\S]*?)<\/p>/g)];

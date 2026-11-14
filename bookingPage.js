@@ -1,7 +1,8 @@
 const { esc, money, nice } = require('./util');
 const { ShortCode } = require('./shortCode');
 const { CheckoutFlow } = require('./checkout');
-const { spotLabel, swimNote, displayCancelNote, arrivalText, GuestCheckIn } = require('./offering');
+const { HotelClock, hotelZone } = require('./calendar');
+const { spotLabel, swimNote, displayCancelNote, arrivalText } = require('./offering');
 const { demoSite, operatorEmail, confirmationBlurb } = require('./siteMode');
 const { PASS_FOOD_LINE } = require('./inclusions');
 const seo = require('./seo');
@@ -36,14 +37,29 @@ function towelBring(lines) {
   return `<ul class="bk-bring">${items.map(item => `<li>${esc(item)}</li>`).join('')}</ul>`;
 }
 
-function ackHtml(b) {
-  const row = (label, on) => `<dt>${label}</dt><dd>${on ? 'Accepted' : '—'}</dd>`;
-  const rows = `<dl class="bk-facts">${row('Rules', b.rules_ack_at)}${row('Terms', b.terms_ack_at)}${row('Risk warning', b.risk_ack_at)}</dl>`;
-  if (b.rules_ack_at && b.terms_ack_at && b.risk_ack_at) {
-    return `<p>Pool rules, customer terms and risk warning: accepted at checkout.</p>${rows}`;
-  }
-  return rows;
+function consentStamp(b, hotel) {
+  const raw = b.consent_at || b.terms_ack_at || b.rules_ack_at || b.risk_ack_at || '';
+  const instant = HotelClock.parse(raw);
+  if (!instant) return '';
+  const parts = new Intl.DateTimeFormat('en-AU', {
+    timeZone: hotelZone(hotel || {}),
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).formatToParts(instant);
+  const date = `${HotelClock.part(parts, 'day')} ${HotelClock.part(parts, 'month')} ${HotelClock.part(parts, 'year')}`;
+  const time = HotelClock.clock(hotel || {}, instant);
+  if (!date.trim() || !time) return '';
+  return `${date}, ${time}`;
 }
+
+function ackHtml(b, hotel) {
+  const when = consentStamp(b, hotel);
+  if (!when) return '';
+  return `<p>${esc(`Terms, Cancellation & Refund Policy, hotel rules and risk warning: accepted at checkout ${when}.`)}</p>`;
+}
+
+const CHECK_IN_STEP = "Show your QR code or booking code at reception, with photo ID if the hotel asks. You'll get the hotel's pass or wristband. Return it when you leave. A day pass has no hotel room, and you can't charge anything to a room.";
 
 function gettingThere(hotel, cancelled, parkingHtml, mapHref) {
   if (cancelled || !hotel) return '';
@@ -77,15 +93,14 @@ function bookingPageBody(v) {
     : '';
   const next = cancelled ? '' : `<section class="bk-card" aria-labelledby="bk-next"><h2 id="bk-next">What happens next</h2>
 <ol class="bk-steps">
-<li><span><b>Bring</b> photo ID when the hotel asks for it, swimwear and sunscreen.</span></li>
 <li><span><b>Arrive</b> any time in the access hours${v.when ? ` (${esc(v.when)})` : ''}.</span></li>
-<li><span><b>Show</b> ${esc(GuestCheckIn.line().replace(/^Show /, ''))}</span></li>
+<li><span>${esc(CHECK_IN_STEP)}</span></li>
 </ol>
 <div class="bk-acts"><a class="btn btn-pri" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">Add to calendar</a>${v.googleCal ? `<a class="btn btn-line" href="${esc(v.googleCal)}" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>` : ''}</div>
 </section>
 <section class="bk-card" aria-labelledby="bk-bring"><h2 id="bk-bring">What to bring</h2>${towelBring(v.lines)}</section>`;
   const cancelForm = v.mayCancel
-    ? `<form method="post" action="/booking/${encodeURIComponent(b.code)}/cancel" class="bk-cancel-form"><button class="btn btn-rose" type="submit">Cancel this demo booking</button></form><p class="bk-muted">No payment was taken. Cancelling marks this demo booking refunded. Nothing is returned to a card.</p>`
+    ? `<form method="post" action="/booking/${encodeURIComponent(b.code)}/cancel" class="bk-cancel-form"><button class="btn btn-rose" type="submit">Cancel this demo booking</button></form><p class="bk-muted">Demo: nothing is charged or refunded.</p>`
     : '';
   const shownCode = v.shownCode || b.short_code || b.code;
   const qrBlock = cancelled
@@ -138,7 +153,7 @@ ${cancelForm}
 </section>
 <section class="bk-card bk-legal" aria-labelledby="bk-lg"><h2 id="bk-lg">Your details and the hotel</h2>
 <p>We share your name, email, mobile and booking details with ${esc(b.hotel)} so it can check you in and contact you about this booking.</p>
-${ackHtml(b)}
+${ackHtml(b, v.hotel)}
 <p><a href="/privacy">Privacy policy</a> · <a href="/terms">Customer terms</a> · <a href="/risk">Risk warning</a></p>
 <p>Questions: <a href="mailto:${contact}">${contact}</a></p>
 </section>

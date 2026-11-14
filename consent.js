@@ -1,14 +1,24 @@
 const crypto = require('crypto');
 const { esc } = require('./util');
 
-// Effective date of the legal pages served from legal/*.md (Version 1.0).
-// One shared config. New bookings store these values. Older rows keep the
-// versions written when they were booked.
+// One effective date for Legal Version 1.1 (terms, privacy, risk).
+// Refunds stay on Version 1.0. The legal pages print legalDateLabel of this date.
+const LEGAL_EFFECTIVE = '2026-11-15';
+const LEGAL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+function legalDateLabel(iso) {
+  const [year, month, day] = String(iso || '').split('-').map(Number);
+  const name = LEGAL_MONTHS[month - 1];
+  if (!year || !name || !day) return '';
+  return `${day} ${name} ${year}`;
+}
+
+// New bookings store these values. Older rows keep the versions written when they were booked.
 const LEGAL_VERSIONS = Object.freeze({
-  terms: '2026-11-12',
+  terms: LEGAL_EFFECTIVE,
   refunds: '2026-11-12',
-  privacy: '2026-11-12',
-  risk: '2026-11-12',
+  privacy: LEGAL_EFFECTIVE,
+  risk: LEGAL_EFFECTIVE,
 });
 
 class LegalVersions {
@@ -29,6 +39,55 @@ class CheckoutConsent {
 
   static marketingText() {
     return 'Send me hot-day alerts and offers by email/SMS. I can unsubscribe at any time.';
+  }
+
+  static checkoutMarketingText() {
+    return 'Send me hot-day alerts and offers by email. I can unsubscribe at any time.';
+  }
+
+  static detailsSummary() {
+    return 'Read the full risk warning, hotel rules and group rules';
+  }
+
+  static refusalText() {
+    return "If you break the hotel's rules, the hotel can refuse entry or ask you to leave, and no refund is payable unless the law requires it.";
+  }
+
+  static aclText() {
+    return 'Nothing in this limits your rights under the Australian Consumer Law.';
+  }
+
+  static lifeguardSentence(hotel) {
+    const { guardFacts } = require('./offering');
+    const guard = guardFacts(hotel || {});
+    if (Number(hotel && hotel.lifeguard) === 0) return 'No lifeguard is on duty at this pool.';
+    return guard.risk;
+  }
+
+  static keyPointsText(hotel) {
+    const guard = this.lifeguardSentence(hotel);
+    return `Risk warning: Swimming, spas, saunas and plunge pools carry risks of serious injury, illness and death, including drowning. ${guard} No diving unless the hotel's rules allow it. Don't swim or use the spa or sauna after drinking alcohol. Children must be actively supervised by an adult on your booking at all times.`;
+  }
+
+  static hazardLines(hotel) {
+    const { riskLines } = require('./offering');
+    const source = hotel || {};
+    return riskLines(source).slice(7).filter(line => {
+      if (line.startsWith('Lifeguard:')) return false;
+      if (line.startsWith('Pool:') && /\bNot set\b/.test(line)) return false;
+      if (line.startsWith('Children:') && !String(source.age_policy || '').trim() && !String(source.kids_hours || '').trim()) return false;
+      return true;
+    });
+  }
+
+  static keyPointsHtml(hotel) {
+    const hazards = this.hazardLines(hotel);
+    const list = hazards.length ? `<ul class="co-hazards">${hazards.map(line => `<li>${esc(line)}</li>`).join('')}</ul>` : '';
+    return `<div class="co-key" id="co-risk-points"><p>${esc(this.keyPointsText(hotel))}</p><p>${esc(this.refusalText())}</p>${list}</div>`;
+  }
+
+  static acceptHtml() {
+    return 'I\'m 18 or over. I accept the <a href="/terms">Customer Terms</a>, the <a href="/refunds">Cancellation &amp; Refund Policy</a>, the hotel\'s rules and the risk warning. I\'ll show the rules and risk warning to everyone on my booking, and I or another adult on my booking will actively supervise any children at all times.';
   }
 
   static riskHtml() {
@@ -53,6 +112,10 @@ class CheckoutConsent {
 
   static marketingHtml() {
     return esc(this.marketingText());
+  }
+
+  static checkoutMarketingHtml() {
+    return esc(this.checkoutMarketingText());
   }
 
   static noticeHtml(hotelName) {
@@ -101,18 +164,23 @@ class ConsentLog {
 
   static write(db, bookingId, { at, ip, marketing, rulesText }) {
     const versions = LegalVersions.current();
-    const rows = [
-      ['rules', this.rulesVersion(rulesText)],
-      ['risk', versions.risk],
-      ['group', versions.risk],
-      ['terms', versions.terms],
-      ['refunds', versions.refunds],
-      ['privacy', versions.privacy],
-      ['share', versions.privacy],
-    ];
-    if (marketing) rows.push(['marketing', versions.privacy]);
-    const ins = db.prepare('INSERT INTO consent_log(booking_id, kind, policy_version, consented_at, ip) VALUES (?,?,?,?,?)');
-    for (const [kind, version] of rows) ins.run(bookingId, kind, version, at, ip);
+    const rulesVersion = this.rulesVersion(rulesText);
+    db.prepare(`INSERT INTO consent_log(
+      booking_id, kind, policy_version, consented_at, ip,
+      terms_version, refunds_version, rules_version, risk_version, privacy_version, marketing
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(
+      bookingId,
+      'acceptance',
+      versions.terms,
+      at,
+      ip,
+      versions.terms,
+      versions.refunds,
+      rulesVersion,
+      versions.risk,
+      versions.privacy,
+      marketing ? 1 : 0,
+    );
   }
 
   static adminLine(booking) {
@@ -123,4 +191,4 @@ class ConsentLog {
   }
 }
 
-module.exports = { LEGAL_VERSIONS, LegalVersions, CheckoutConsent, ConsentLog };
+module.exports = { LEGAL_EFFECTIVE, legalDateLabel, LEGAL_VERSIONS, LegalVersions, CheckoutConsent, ConsentLog };

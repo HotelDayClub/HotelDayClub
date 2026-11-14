@@ -137,6 +137,16 @@ function cdp(WS, wsUrl) {
             text: el.textContent.trim(),
             clipped: el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 1,
           }));
+          const kicker = document.querySelector('#explore .kicker');
+          const see = document.querySelector('#explore .see-all').getBoundingClientRect();
+          const kickerBox = kicker.getBoundingClientRect();
+          const range = document.createRange();
+          range.selectNodeContents(kicker);
+          let kickerClipped = false;
+          for (const rect of range.getClientRects()) {
+            if (rect.width < 1 || rect.height < 1) continue;
+            if (rect.right > kickerBox.right + 1 || rect.bottom > kickerBox.bottom + 1 || rect.left < kickerBox.left - 1) kickerClipped = true;
+          }
           return {
             top: box.top,
             inner: window.innerHeight,
@@ -145,6 +155,9 @@ function cdp(WS, wsUrl) {
             button: Math.min(button.width, button.height),
             fields,
             helpers,
+            kicker: kicker.textContent.replace(/\\s+/g, ' ').trim(),
+            kickerClipped,
+            seeH: see.height,
           };
         })()`,
       });
@@ -155,6 +168,9 @@ function cdp(WS, wsUrl) {
       assert.ok(data.fields.some(field => field.text === 'All of Australia'), width + ' where');
       assert.ok(data.fields.some(field => field.text === 'Any day'), width + ' when');
       for (const helper of data.helpers) assert.ok(!helper.clipped, width + ' clipped helper ' + helper.text);
+      assert.strictEqual(data.kicker, 'Example listings · not real hotels');
+      assert.ok(!data.kickerClipped, width + ' kicker clipped');
+      assert.ok(data.seeH >= 44, width + ' see all ' + data.seeH);
       if (width !== 360) assert.ok(data.top < data.inner, width + ' first card top ' + data.top + ' is below ' + data.inner);
       console.log(width + 'x' + height + ' card top ' + Math.round(data.top) + ' of ' + data.inner);
     }

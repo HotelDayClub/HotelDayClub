@@ -839,12 +839,12 @@ assert.ok(!sevenPhotos.includes('class="left-badge"'));
     assert.ok(kept.body.includes('value="Alex Citizen"'));
     assert.ok(kept.body.includes('Enter a valid email.'));
     assert.ok(kept.body.includes('Enter a mobile number.'));
-    assert.ok(kept.body.includes('Tick the customer terms to continue.'));
+    assert.ok(kept.body.includes('Tick the box above to continue.'));
     const again = (kept.body.match(/name="book_token" value="([a-f0-9]+)"/) || [])[1];
     assert.strictEqual(again, token);
     const onceBody = {
       hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '1', book_token: again,
-      name: 'Alex Citizen', email: 'once@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1',
+      name: 'Alex Citizen', email: 'once@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
     };
     const once = await post(port, '/book', onceBody);
     const twice = await post(port, '/book', onceBody);
@@ -866,7 +866,7 @@ assert.ok(!sevenPhotos.includes('class="left-badge"'));
     assert.ok(!/\b\d+ a day\b/.test(checkout.body));
     const fields = new URLSearchParams({
       hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '2', price: '1',
-      name: 'Alex Citizen', email: 'alex-extra@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1',
+      name: 'Alex Citizen', email: 'alex-extra@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
     });
     fields.append('addon', 'gym');
     fields.append('addon', 'parking');
@@ -924,7 +924,7 @@ assert.ok(!sevenPhotos.includes('class="left-badge"'));
     assert.ok(ics.body.includes('18 Demo Terrace'));
     const unknown = await post(port, '/book', {
       hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '1', addon: 'not-a-real-extra',
-      name: 'Alex Citizen', email: 'alex-bad@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1',
+      name: 'Alex Citizen', email: 'alex-bad@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
     });
     assert.strictEqual(unknown.status, 409, unknown.body.slice(0, 300));
     assert.ok(/not available/i.test(unknown.body));
@@ -933,7 +933,7 @@ assert.ok(!sevenPhotos.includes('class="left-badge"'));
     live2.close();
     const book = await post(port, '/book', {
       hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '1', addon: 'parking',
-      name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1',
+      name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
     });
     assert.strictEqual(book.status, 409, book.body.slice(0, 300));
     assert.ok(/sold out/i.test(book.body), book.body.slice(0, 300));

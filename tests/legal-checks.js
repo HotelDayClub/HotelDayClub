@@ -16,6 +16,7 @@ delete process.env.ABN;
 delete process.env.CONTACT_EMAIL;
 
 const db = require('../db');
+const { legalDateLabel, LEGAL_EFFECTIVE } = require('../consent');
 const { seed, ensureSchedules, DEMO_INTROS } = require('../seed');
 const offering = require('../offering');
 const { zoneToUtc, hotelZone, HotelClock } = require('../calendar');
@@ -368,8 +369,19 @@ function start(port, extra = {}) {
       assert.strictEqual(doc.status, 200, pathName);
       assert.ok(!doc.body.includes('Draft terms for demo purposes, pending legal review.'), pathName);
       assert.ok(!doc.body.includes('(draft)'), pathName);
-      assert.ok(doc.body.includes('Version 1.0'), pathName);
-      assert.ok(doc.body.includes('Effective 12 November 2026'), pathName);
+      const publishedOn = legalDateLabel(LEGAL_EFFECTIVE);
+      assert.strictEqual(LEGAL_EFFECTIVE, '2026-11-15');
+      assert.strictEqual(publishedOn, '15 November 2026');
+      if (pathName === '/refunds') {
+        assert.ok(doc.body.includes('Version 1.0'), pathName);
+        assert.ok(doc.body.includes('Effective 12 November 2026'), pathName);
+        assert.ok(!doc.body.includes('Version 1.1'), pathName);
+      } else {
+        assert.ok(doc.body.includes('Version 1.1'), pathName);
+        assert.ok(doc.body.includes('Effective ' + publishedOn), pathName);
+        assert.ok(!doc.body.includes('Version 1.0'), pathName);
+        assert.ok(!doc.body.includes('[publish date]'), pathName);
+      }
       const docFooter = doc.body.slice(doc.body.indexOf('<footer'));
       assert.ok(docFooter.startsWith('<footer'), pathName);
       assert.ok(!docFooter.includes('ABN'), pathName);
@@ -423,7 +435,8 @@ function start(port, extra = {}) {
     assert.ok(terms.body.includes('operates an online booking platform'));
     assert.strictEqual((terms.body.match(/Stripe/g) || []).length, 1);
     assert.ok(terms.body.includes('Payment is taken by our payment provider Stripe when you book.'));
-    assert.ok(terms.body.includes('ticking the boxes'));
+    assert.ok(terms.body.includes('ticking the acceptance box'));
+    assert.ok(!terms.body.includes('ticking the boxes'));
     assert.ok(!terms.body.includes('A free date change may be available once, subject to availability.'));
     assert.ok(terms.body.includes('17. Complaints'));
     assert.ok(!terms.body.includes('Gift cards') && !terms.body.includes('food and drink credit'));
@@ -436,8 +449,9 @@ function start(port, extra = {}) {
     assert.ok(risk.body.includes('Look after your own belongings.'));
     const privacy = await get(port, '/privacy');
     assert.ok(privacy.body.includes('Hotel Day Club is a registered business name (ABN 98 227 458 028) (&quot;we&quot;, &quot;us&quot;).'));
-    assert.ok(privacy.body.includes('Last updated 11 November 2026'));
-    assert.ok(privacy.body.includes('Effective 12 November 2026'));
+    assert.ok(privacy.body.includes('Last updated 15 November 2026'));
+    assert.ok(privacy.body.includes('Effective 15 November 2026'));
+    assert.ok(!privacy.body.includes('Last updated 11 November 2026'));
     assert.ok(privacy.body.includes('online booking platform'));
     assert.ok(!/booking agent/i.test(privacy.body));
     assert.strictEqual((privacy.body.match(/Stripe/g) || []).length, 10);
@@ -569,21 +583,27 @@ function start(port, extra = {}) {
 
     const checkout = await get(port, `/checkout?hotel=skyline-rooftop&date=${freeSky.date}&pass=chair&qty=1`);
     assert.strictEqual(checkout.status, 200);
-    assert.ok(checkout.body.includes('name="terms"') && checkout.body.includes('href="/terms"'));
+    assert.ok(checkout.body.includes('name="accept"') && checkout.body.includes('href="/terms"'));
     assert.ok(checkout.body.includes('href="/refunds"') && checkout.body.includes('href="/privacy"'));
-    assert.ok(checkout.body.includes('Cancellation and Refund Policy'));
-    assert.ok(checkout.body.includes('name="risk"') && checkout.body.includes('Risk warning'));
-    assert.ok(checkout.body.includes('name="rules"'));
-    assert.ok(checkout.body.includes('name="group"') && checkout.body.includes('Group and children'));
-    assert.ok(checkout.body.includes('name="share"'));
-    assert.ok(checkout.body.includes('I agree to Hotel Day Club sharing my name, email, mobile and booking details with Skyline Rooftop Hotel (Demo) for this booking.'));
-    assert.ok(checkout.body.includes('Send me hot-day alerts and offers by email/SMS. I can unsubscribe at any time.'));
+    assert.ok(checkout.body.includes('Cancellation &amp; Refund Policy'));
+    assert.ok(checkout.body.includes('Risk warning'));
+    assert.ok(!checkout.body.includes('name="risk"'));
+    assert.ok(!checkout.body.includes('name="rules"'));
+    assert.ok(!checkout.body.includes('name="group"') && checkout.body.includes('Group and children'));
+    assert.ok(!checkout.body.includes('name="share"'));
+    assert.ok(checkout.body.includes('We share them, with your booking details, with Skyline Rooftop Hotel (Demo)'));
+    assert.ok(!checkout.body.includes('I agree to Hotel Day Club sharing'));
+    assert.ok(checkout.body.includes('Send me hot-day alerts and offers by email. I can unsubscribe at any time.'));
+    assert.ok(!checkout.body.includes('email/SMS'));
     assert.ok(!/name="marketing"[^>]*checked/.test(checkout.body));
     assert.ok(!checkout.body.includes('Card number') && !checkout.body.includes('4242'));
     assert.ok(!/stripe/i.test(checkout.body));
     assert.ok(!/fbq\(|facebook\.net|googleadservices|doubleclick|hotjar/i.test(checkout.body));
     assert.ok(!checkout.body.includes('(draft)'));
-    assert.ok(checkout.body.includes('>Risk warning</a>'));
+    assert.ok(checkout.body.includes('<summary>Read the full risk warning, hotel rules and group rules</summary>'));
+    const consentBlock = checkout.body.slice(checkout.body.indexOf('id="co-consent"'), checkout.body.indexOf('class="co-decide"'));
+    assert.ok(consentBlock.includes('<h3>Risk warning</h3>'));
+    assert.ok(!consentBlock.includes('>Risk warning</a>'));
     assert.ok(checkout.body.includes('No lifeguard is on duty'));
     assert.ok(!checkout.body.includes('hotel terms apply'));
     assert.ok(checkout.body.includes(data.cancel));
@@ -593,16 +613,16 @@ function start(port, extra = {}) {
 
     const missing = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1' });
     assert.strictEqual(missing.status, 409);
-    assert.ok(missing.body.includes('customer terms'));
+    assert.ok(missing.body.includes('Tick the box above to continue.'));
 
     const live = new Database(dbPath);
     live.prepare("UPDATE addons SET enabled=1 WHERE code='late' AND hotel_id IN (SELECT id FROM hotels WHERE slug IN ('saltwater-terrace','skyline-rooftop'))").run();
     live.close();
-    const lateBook = await post(port, '/book', { hotel: 'saltwater-terrace', date: salt.date, pass: 'lounger', qty: '1', addon: 'late', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1' });
+    const lateBook = await post(port, '/book', { hotel: 'saltwater-terrace', date: salt.date, pass: 'lounger', qty: '1', addon: 'late', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1' });
     assert.strictEqual(lateBook.status, 409);
     assert.ok(/closing time/.test(lateBook.body), lateBook.body.slice(0, 400));
 
-    const skyLate = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', addon: 'late', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1' });
+    const skyLate = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', addon: 'late', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1' });
     assert.strictEqual(skyLate.status, 409, skyLate.body.slice(0, 300));
     assert.ok(/room guests|closing time/.test(skyLate.body), skyLate.body.slice(0, 400));
 
@@ -638,7 +658,7 @@ function start(port, extra = {}) {
     assert.strictEqual(stillOff.prepare("SELECT enabled FROM addons WHERE id=?").get(lateAddon.id).enabled, 0);
     stillOff.close();
 
-    const booked = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1' });
+    const booked = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1' });
     assert.strictEqual(booked.status, 303, booked.body.slice(0, 300));
     const loc = booked.headers.location;
     const page = await get(port, loc);
@@ -648,7 +668,9 @@ function start(port, extra = {}) {
     assert.ok(!page.body.includes(', Sydney'));
     assert.ok(page.body.includes('Before you swim'));
     assert.ok(page.body.includes('Look after your own belongings.'));
-    assert.ok(page.body.includes('A day pass includes no hotel room, and you can&#39;t charge anything to a room.'));
+    assert.ok(page.body.includes('A day pass has no hotel room, and you can&#39;t charge anything to a room.'));
+    assert.ok(page.body.includes('Show your QR code or booking code at reception, with photo ID if the hotel asks.'));
+    assert.ok(/Terms, Cancellation &amp; Refund Policy, hotel rules and risk warning: accepted at checkout \d{1,2} \w+ \d{4}, \d{1,2}:\d{2} (am|pm)\./.test(page.body));
     assert.ok(page.body.includes('>Privacy policy</a>'));
     assert.ok(page.body.includes('>Customer terms</a>'));
     assert.ok(page.body.includes('>Risk warning</a>'));
@@ -657,7 +679,8 @@ function start(port, extra = {}) {
     assert.ok(page.body.includes('A confirmation email is sent to the address you gave.'));
     assert.ok(page.body.includes('This is a demo booking. No payment was taken and no real booking exists.'));
     assert.ok(!page.body.includes('No email is sent'));
-    assert.ok(page.body.includes('Terms') && page.body.includes('Accepted'));
+    assert.strictEqual((page.body.match(/accepted at checkout/g) || []).length, 1);
+    assert.ok(!page.body.includes('<dt>Rules</dt>'));
     const confirmFooter = page.body.slice(page.body.indexOf('<footer'));
     assert.ok(confirmFooter.startsWith('<footer'));
     assert.ok(!confirmFooter.includes('ABN') && !page.body.includes('00 000 000 000') && !page.body.includes('(sample)'));
@@ -667,10 +690,10 @@ function start(port, extra = {}) {
     const { LegalVersions, ConsentLog } = require('../consent');
     const versions = LegalVersions.current();
     assert.deepStrictEqual(versions, {
-      terms: '2026-11-12',
+      terms: '2026-11-15',
       refunds: '2026-11-12',
-      privacy: '2026-11-12',
-      risk: '2026-11-12',
+      privacy: '2026-11-15',
+      risk: '2026-11-15',
     });
     const code = String(loc || '').split('/').pop();
     const savedBook = new Database(dbPath, { readonly: true });
@@ -684,22 +707,19 @@ function start(port, extra = {}) {
     assert.ok(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(stored.consent_at), stored.consent_at);
     assert.ok(stored.consent_ip);
     assert.strictEqual(stored.marketing_opt_in, 0);
-    const logs = savedBook.prepare('SELECT kind, policy_version, consented_at, ip FROM consent_log WHERE booking_id=? ORDER BY kind').all(stored.id);
-    const byKind = Object.fromEntries(logs.map(row => [row.kind, row]));
-    for (const kind of ['group', 'privacy', 'refunds', 'risk', 'rules', 'share', 'terms']) assert.ok(byKind[kind], kind);
-    assert.ok(!byKind.marketing);
-    assert.strictEqual(byKind.terms.policy_version, versions.terms);
-    assert.strictEqual(byKind.refunds.policy_version, versions.refunds);
-    assert.strictEqual(byKind.privacy.policy_version, versions.privacy);
-    assert.strictEqual(byKind.risk.policy_version, versions.risk);
-    assert.strictEqual(byKind.group.policy_version, versions.risk);
-    assert.strictEqual(byKind.share.policy_version, versions.privacy);
-    assert.strictEqual(byKind.rules.policy_version, ConsentLog.rulesVersion(stored.rules_text));
-    for (const row of logs) {
-      assert.strictEqual(row.consented_at, stored.consent_at);
-      assert.strictEqual(row.ip, stored.consent_ip);
-      assert.ok(!row.consented_at.includes('localtime'));
-    }
+    const logs = savedBook.prepare('SELECT kind, policy_version, consented_at, ip, terms_version, refunds_version, rules_version, risk_version, privacy_version, marketing FROM consent_log WHERE booking_id=?').all(stored.id);
+    assert.strictEqual(logs.length, 1);
+    const event = logs[0];
+    assert.strictEqual(event.kind, 'acceptance');
+    assert.strictEqual(event.terms_version, versions.terms);
+    assert.strictEqual(event.refunds_version, versions.refunds);
+    assert.strictEqual(event.privacy_version, versions.privacy);
+    assert.strictEqual(event.risk_version, versions.risk);
+    assert.strictEqual(event.rules_version, ConsentLog.rulesVersion(stored.rules_text));
+    assert.strictEqual(event.marketing, 0);
+    assert.strictEqual(event.consented_at, stored.consent_at);
+    assert.strictEqual(event.ip, stored.consent_ip);
+    assert.ok(!event.consented_at.includes('localtime'));
     savedBook.close();
     const adminCookie = 'admin=' + encodeURIComponent('s:' + sign('jason', 'hdc-demo-secret'));
     const adminPage = await get(port, '/admin/bookings?q=' + encodeURIComponent('alex@example.com'), { Cookie: adminCookie });
@@ -785,7 +805,7 @@ function start(port, extra = {}) {
     const missing = await get(gaPort, '/booking/HDC-99999');
     assert.ok(!missing.body.includes('googletagmanager.com'));
     assert.ok(!missing.body.includes('G-9F5ZH1T4YN'));
-    const gaBooked = await post(gaPort, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', name: 'Alex Citizen', email: 'ga-guest@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1' });
+    const gaBooked = await post(gaPort, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', name: 'Alex Citizen', email: 'ga-guest@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1' });
     assert.strictEqual(gaBooked.status, 303, gaBooked.body.slice(0, 200));
     const gaConfirm = await get(gaPort, gaBooked.headers.location);
     assert.strictEqual(gaConfirm.status, 200);

@@ -323,7 +323,8 @@ function rulesLines(hotel, opts = {}) {
   const cutoff = hotel.cutoff_hours == null ? 2 : Number(hotel.cutoff_hours);
   lines.push(cutoff > 0 ? `Same-day bookings close ${cutoff} hour${cutoff === 1 ? '' : 's'} before close` : 'Same-day bookings until close');
   lines.push(FREE_CANCEL);
-  return lines;
+  if (!opts.checkout) return lines;
+  return lines.filter(line => line !== 'Towels included' && line !== FREE_CANCEL);
 }
 function hhmmFromMinutes(total) {
   return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
@@ -422,9 +423,10 @@ function riskLines(hotel) {
   ];
 }
 function riskText(hotel) { return riskLines(hotel).join(' '); }
-function riskCard(hotel) {
+function riskCard(hotel, opts = {}) {
   const lines = riskLines(hotel);
-  return `<div class="co-risk"><h3>Risk warning</h3><p>${esc(lines[0])}</p><ul class="co-facts">${lines.slice(1, 7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p><b>At this venue</b></p><ul class="co-facts">${lines.slice(7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p class="muted small">Shown in full before you confirm. <a href="/risk">Risk warning</a></p></div>`;
+  const foot = opts.link === false ? '' : '<p class="muted small">Shown in full before you confirm. <a href="/risk">Risk warning</a></p>';
+  return `<div class="co-risk"><h3>Risk warning</h3><p>${esc(lines[0])}</p><ul class="co-facts">${lines.slice(1, 7).map(l => `<li>${esc(l)}</li>`).join('')}</ul><p><b>At this venue</b></p><ul class="co-facts">${lines.slice(7).map(l => `<li>${esc(l)}</li>`).join('')}</ul>${foot}</div>`;
 }
 function riskTick(hotel) {
   const g = guardFacts(hotel);

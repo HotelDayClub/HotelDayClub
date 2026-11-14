@@ -1,5 +1,5 @@
 # Hotel Day Club Privacy Policy
-**Version 1.0 · Last updated 11 November 2026 · Effective 12 November 2026**
+**Version 1.1 · Last updated 15 November 2026 · Effective 15 November 2026**
 
 ## 1. Who we are
 1.1 Hotel Day Club is a registered business name (ABN {{ABN}}) ("we", "us").
@@ -10,7 +10,7 @@
 ## 2. What we collect
 2.1 **Booking details:** your name, email, mobile number, booking date, hotel, pass, add-ons, party size, arrival window if you give one, and whether you checked in.
 2.2 **Payment details:** handled by our payment provider, Stripe, when live payments are switched on. We see only limited details (for example, card type, last 4 digits, and payment status). We don't store full card numbers.
-2.3 **Acceptance and consent records:** when you accepted our Terms, the hotel's rules and the risk warning, when you consented to us sharing your details with the hotel for the booking, which version of this policy you saw, the time, and the IP address used.
+2.3 **Acceptance and consent records:** when you accepted our Terms, the hotel's rules and the risk warning, whether you opted in to marketing, which version of each document and of this policy you saw, the time, and the IP address used.
 2.4 **Communications:** emails, messages, complaints, reviews and survey answers you send us.
 2.5 **Incident notes:** if the hotel reports an incident or refused entry linked to your booking, we record that an incident was reported and the hotel's reference, rather than injury detail, where possible. This information is kept separate from ordinary booking data, with access limited to people who need it to handle the incident, a complaint, a claim or a legal requirement. A note may still include health information if that is needed for those purposes.
 2.6 **Marketing preferences:** whether you opted in to hot-day alerts and offers, and any unsubscribe.
@@ -36,7 +36,7 @@
 5.2 If children are included on a booking, we collect only a headcount or an age band for those children, not their names or other personal details.
 
 ## 6. Who we share it with
-6.1 **The hotel you booked:** your name, email address, mobile number, booking code, pass, party size, add-ons, arrival window and any notes you add, so it can check you in, run the day safely, and contact you about this booking (for example, if you're running late, don't arrive, or there's an incident). You give a separate, express consent to this disclosure when you book. The marketing opt-in is a different box and is left unticked unless you choose it. We record that consent with the version of this policy, the time and the IP address. The hotel handles information under its own privacy policy and our agreement with it, which lets it use your details only for your booking. We do not sell your information or give it to hotels for their marketing.
+6.1 **The hotel you booked:** your name, email address, mobile number, booking code, pass, party size, add-ons, arrival window and any notes you add, so it can check you in, run the day safely, and contact you about this booking (for example, if you're running late, don't arrive, or there's an incident). Sharing these details with the hotel is the main purpose of a booking, and we tell you about it at checkout. The marketing opt-in is a separate box and is left unticked unless you choose it. The hotel handles information under its own privacy policy and our agreement with it, which lets it use your details only for your booking. We do not sell your information or give it to hotels for their marketing.
 6.2 **Service providers** who help us run the business, and who may use the information only to provide services to us:
 6.2.1 payments: Stripe;
 6.2.2 website hosting and the booking application: Render, using an SQLite database on a persistent disk;
@@ -99,11 +99,9 @@
 
 ---
 ### Schedule A: Checkout collection notice
-*Short form, shown next to the "Pay" button. This schedule is labelled separately from the numbered policy clauses. The sharing consent is a required, separate box. The marketing box is optional and left unticked.*
+*Short form, shown next to the "Pay" button. This schedule is labelled separately from the numbered policy clauses. Sharing with the hotel is explained in this notice, not a tick-box. The marketing box is optional and left unticked.*
 
 > We collect your name, email and mobile to make and manage this booking. We share them, with your booking details, with the hotel you booked so it can check you in and contact you about this booking. Payment is processed by Stripe. Some providers may store data overseas. See our Privacy Policy for how to access or correct your information or make a complaint. We record your consents with the policy version, the time and your IP address.
->
-> ☐ *(required)* I agree to Hotel Day Club sharing my name, email, mobile and booking details with the hotel you booked for this booking.
 >
 > ☐ *(optional, unticked)* Send me hot-day alerts and offers by email/SMS. I can unsubscribe at any time.
 
