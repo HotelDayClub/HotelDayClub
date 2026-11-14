@@ -785,12 +785,17 @@ assert.ok(!sevenPhotos.includes('class="left-badge"'));
     const Database = require('better-sqlite3');
     const live = new Database(dbPath);
     const hotel = live.prepare("SELECT id FROM hotels WHERE slug='saltwater-terrace'").get();
+    const lounger = live.prepare("SELECT id, daily_cap FROM pass_types WHERE hotel_id=? AND code='lounger'").get(hotel.id);
+    const loungerUsed = live.prepare("SELECT COALESCE(SUM(qty),0) n FROM bookings WHERE pass_type_id=? AND date=? AND status!='cancelled'");
     let when = '';
-    for (let i = 1; i < 21 && !when; i++) {
+    for (let i = 1; i < 40 && !when; i++) {
       const d = new Date(); d.setDate(d.getDate() + i);
       const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      if (!live.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?').get(hotel.id, iso)) when = iso;
+      if (live.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?').get(hotel.id, iso)) continue;
+      if (lounger.daily_cap - loungerUsed.get(lounger.id, iso).n < 3) continue;
+      when = iso;
     }
+    assert.ok(when, 'need a date with loungers left');
     const noteHotel = live.prepare('SELECT * FROM hotels WHERE slug=?').get('saltwater-terrace');
     const expectedCancel = cancelNote(live, noteHotel, when).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     live.close();
