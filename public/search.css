@@ -149,3 +149,9 @@ body.lock{overflow:hidden}
 @media (prefers-reduced-motion:reduce){
   .drawer,.ssheet,.sheet-bd,.day-row,.ichip,.fbtn,.daypill,.apply,.cpill,.bigsearch{transition:none !important;animation:none !important;scroll-behavior:auto !important}
 }
+.search-page .kidchip{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;min-height:28px;margin:6px 0 0;padding:2px 10px;border-radius:999px;background:var(--hdc-soft);color:var(--hdc-deep);font:600 14px/20px Inter,system-ui,sans-serif}
+.search-page .kidchip svg{width:18px;height:18px;flex:0 0 auto;color:var(--hdc-primary)}
+.search-page .rhead{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+.search-page .rhead h1{flex:1 0 100%}
+.search-page .mclear{display:inline-flex;align-items:center;min-height:44px;padding:0 4px;color:var(--hdc-primary);font-weight:700;text-decoration:underline}
+.ichip.mood svg{width:18px;height:18px;flex:0 0 auto}

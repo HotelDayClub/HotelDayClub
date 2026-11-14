@@ -84,13 +84,6 @@ class ListingD2 {
     return kids;
   }
 
-  static kidsChip(hotel) {
-    const kids = ListingD2.childrenLine(hotel);
-    if (!kids) return '';
-    const m = /^(?:children welcome until|until)\s+(.+)$/i.exec(kids);
-    return m ? `Children until ${m[1]}` : kids;
-  }
-
   static hourGroups(rows) {
     const list = Array.isArray(rows) ? rows : [];
     const groups = [];

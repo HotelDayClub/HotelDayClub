@@ -15,6 +15,7 @@ const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hote
 const { HotelAmenities } = require('./hotelAmenities');
 const { listingHtml, reassureStrip, ListingPanel, dayStepLinks } = require('./listingView');
 const { ListingD2 } = require('./listingDir2');
+const { HomeQuick } = require('./homeQuick');
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
 const { adminPassword, verifyPassword, safeEqual, hashPassword, migrateHotelPasswords, maskName, maskEmail } = require('./passwords');
 const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
@@ -441,6 +442,13 @@ function exampleCard(h, date) {
   const href = `/h/${h.slug}${date ? '?date=' + encodeURIComponent(date) : ''}`;
   return `<a class="ex" href="${href}">${img}<span class="tag">Example</span><h3>${esc(h.name)}</h3><p class="ex-area">${esc(h.area)}</p>${facts.length ? `<p class="ex-amen">${esc(facts.join(' · '))}</p>` : ''}<p class="ex-price">From ${money(from)}</p>${limit}<p class="ex-note">Demo</p></a>`;
 }
+function homeQuickHtml() {
+  const hotels = getHotels();
+  const first = hotels[0];
+  const day = first ? today(first) : today();
+  const cutoff = hotels.length === 0 || hotels.every(h => Boolean(closureReason(db, h, today(h))));
+  return HomeQuick.html(day, { cutoff });
+}
 function whereOptions(selectedId) {
   return DESTINATIONS.map(d => `<option value="${esc(d.id)}" data-icon="${esc(d.icon)}"${d.id === selectedId ? ' selected' : ''}>${esc(d.name)}</option>`).join('');
 }
@@ -477,6 +485,7 @@ function homePage({ destination = '', joined = false, error = '', values = {} } 
 <h1 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h1>
 <p class="lead">A hotel pool, gym, daybed or spa for the day, minutes from home, no room needed.</p>
 <div class="times"><button type="button" data-i="0" class="on" aria-pressed="true">Swim &amp; gym</button><button type="button" data-i="1" aria-pressed="false">Spa afternoon</button><button type="button" data-i="2" aria-pressed="false">Golden hour</button></div>
+${homeQuickHtml()}
 <form class="search" action="/search" method="get">
 <div class="seg"><label for="w">Where</label><select id="w" class="hdc-pick" name="destination" aria-label="Where"><option value="" data-icon="pin">All of Australia</option>${whereOptions('')}</select></div>
 <div class="seg"><label for="d">When</label><input id="d" class="hdc-date" type="date" name="date" min="${today()}" max="${ymd(addDays(new Date(), 90))}" value=""></div>
@@ -542,6 +551,11 @@ function searchHidden(params, skip) {
   };
   add('destination', params.destination && params.destination.id);
   add('date', params.date);
+  if (!params.date && params.range) {
+    add('from', params.range.from);
+    add('to', params.range.to);
+  }
+  add('mood', params.mood);
   add('want', params.want);
   add('guests', params.guests);
   add('price', params.price);
@@ -631,7 +645,9 @@ function dayPillsHtml(hotel, selected, qty) {
   }).join('');
   return `<div class="days"><div class="day-row" role="group" aria-label="Days for ${esc(hotel.name)}">${items}</div><button type="button" class="day-more ibtn" aria-label="More days for ${esc(hotel.name)}" hidden>${MORE_ICON}</button></div>`;
 }
-function searchCard(hotel, params, index) {
+const TICK_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const FAMILY_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="7" cy="6" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="6" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 20v-4a4 4 0 0 1 8 0M13 20v-4a4 4 0 0 1 8 0M10 20v-1a2 2 0 0 1 4 0v1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+function searchCard(hotel, params, index, kidsChip) {
   const photo = (hotel.photos && hotel.photos[0]) || '';
   const alt = Number(hotel.is_demo) === 1
     ? 'Example photo of a hotel pool in ' + hotel.area + ', not a real hotel'
@@ -655,7 +671,7 @@ function searchCard(hotel, params, index) {
   const book = offer.sold
     ? `<a class="btn quiet" href="/h/${esc(hotel.slug)}#book">See other dates</a>`
     : `<a class="btn book" href="${esc(listing)}#book">Book<span class="vh"> ${esc(hotel.name)}</span></a>`;
-  return `<article class="ex${offer.sold ? ' is-sold' : ''}"><div class="ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></div><div class="bd"><h3><a href="${esc(listing)}">${esc(hotel.name)}</a></h3><p class="ex-area">${esc(area)}</p>${span ? `<p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p>` : ''}${price}${terms}${dayPillsHtml(hotel, params.date, qty)}<p class="ex-note">Demo</p><div class="act"><a class="tlink" href="${esc(listing)}">View details</a>${book}</div></div></article>`;
+  return `<article class="ex${offer.sold ? ' is-sold' : ''}"><div class="ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></div><div class="bd"><h3><a href="${esc(listing)}">${esc(hotel.name)}</a></h3><p class="ex-area">${esc(area)}</p>${kidsChip ? `<p class="kidchip">${FAMILY_ICON}<span>${esc(kidsChip)}</span></p>` : ''}${span ? `<p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p>` : ''}${price}${terms}${dayPillsHtml(hotel, params.date, qty)}<p class="ex-note">Demo</p><div class="act"><a class="tlink" href="${esc(listing)}">View details</a>${book}</div></div></article>`;
 }
 function radioGroup(name, options, current, klass) {
   const now = String(current || '');
@@ -668,23 +684,38 @@ function hiddenField(name, value) {
   if (value == null || value === '' || value === 0) return '';
   return `<input type="hidden" name="${name}" value="${esc(value)}">`;
 }
+function rangeDay(h, range) {
+  const start = today(h);
+  for (const day of SearchQuery.rangeDays(range.from, range.to)) {
+    if (day < start) continue;
+    if (!closureReason(db, h, day)) return day;
+  }
+  return '';
+}
 function loadSearch(query) {
   const hotels = getHotels();
   const parsed = SearchQuery.parse(query, DESTINATIONS);
-  const passesById = new Map(hotels.map(h => [h.id, searchPasses(h, parsed.date)]));
+  const dayById = new Map();
+  if (parsed.range) for (const h of hotels) dayById.set(h.id, rangeDay(h, parsed.range));
+  const dateOf = h => (parsed.range ? dayById.get(h.id) || '' : parsed.date);
+  const passesById = new Map(hotels.map(h => [h.id, searchPasses(h, dateOf(h))]));
   const closedById = new Map();
   const minutesById = new Map();
-  const remainingById = parsed.date ? new Map() : null;
+  const remainingById = parsed.date || parsed.range ? new Map() : null;
   for (const h of hotels) {
+    const on = dateOf(h);
     if (parsed.date) {
       closedById.set(h.id, Boolean(closureReason(db, h, parsed.date)));
       remainingById.set(h.id, spotsLeft(h, parsed.date));
+    } else if (parsed.range) {
+      closedById.set(h.id, !on);
+      remainingById.set(h.id, on ? spotsLeft(h, on) : 0);
     }
     const rows = db.prepare('SELECT weekday, open, opens, closes FROM hotel_hours WHERE hotel_id=?').all(h.id);
-    const plan = parsed.date ? dayPlan(db, h, parsed.date) : null;
-    minutesById.set(h.id, parsed.date ? SearchQuery.spanMinutes(plan) : SearchQuery.openMinutes(rows, h.room_only_from));
+    const plan = on ? dayPlan(db, h, on) : null;
+    minutesById.set(h.id, on ? SearchQuery.spanMinutes(plan) : SearchQuery.openMinutes(rows, h.room_only_from));
   }
-  return SearchQuery.run({
+  const result = SearchQuery.run({
     hotels,
     passesById,
     closedById,
@@ -694,6 +725,8 @@ function loadSearch(query) {
     destinations: DESTINATIONS,
     query,
   });
+  result.dateOf = dateOf;
+  return result;
 }
 function searchPage(query) {
   const result = loadSearch(query);
@@ -705,7 +738,7 @@ function searchPage(query) {
   const sortOptions = SearchQuery.SORTS.map(s => `<option value="${esc(s.id)}"${params.sort === s.id ? ' selected' : ''}>${esc(s.label)}</option>`).join('');
   const chips = result.chips.map(chip => `<a class="chip" href="${esc(chip.href)}" aria-label="${esc(chip.remove)}">${esc(chip.label)} <b aria-hidden="true">×</b></a>`).join('');
   const clear = result.showClear ? '<a class="clear" href="/search">Clear all</a>' : '';
-  const cards = result.list.map((h, i) => searchCard(h, params, i)).join('');
+  const cards = result.list.map((h, i) => searchCard(h, { ...params, date: result.dateOf(h) || params.date }, i, result.kidsChips.get(h.id))).join('');
   const otherCards = result.others.map(h => searchCard(h, { date: '', want: '' }, -1)).join('');
   let empty = '';
   if (result.empty === 'destination') {
@@ -722,11 +755,15 @@ function searchPage(query) {
   const resultClass = result.list.length === 1 ? 'list results is-single' : 'list results';
   const maxDate = ymd(addDays(new Date(), 90));
   const minDate = today();
-  const heroKeep = hiddenField('want', params.want) + hiddenField('price', params.price) + hiddenField('age', params.age) + hiddenField('sort', params.sort);
+  const heroKeep = hiddenField('mood', params.mood) + hiddenField('want', params.want) + hiddenField('price', params.price) + hiddenField('age', params.age) + hiddenField('sort', params.sort);
   const intent = result.intentChips.map(chip => {
     const on = SearchQuery.chipOn(params, chip);
     const href = SearchQuery.href(SearchQuery.toggle(params, chip));
     return `<a class="ichip" href="${esc(href)}" aria-pressed="${on ? 'true' : 'false'}" data-key="${esc(chip.key)}" data-value="${esc(chip.value)}">${esc(chip.label)}</a>`;
+  }).join('');
+  const mood = result.moods.map(m => {
+    const href = SearchQuery.href({ ...params, mood: m.on ? '' : m.id });
+    return `<a class="ichip mood" href="${esc(href)}" aria-pressed="${m.on ? 'true' : 'false'}" data-key="mood" data-value="${esc(m.id)}">${m.on ? TICK_ICON : ''}${esc(m.label)}</a>`;
   }).join('');
   const summary = SearchQuery.summary(params);
   const guestMax = SearchQuery.BOOKING_SPOTS;
@@ -759,10 +796,10 @@ ${keepSort}
 <label class="seg"><span id="guests-label">Guests</span><select id="guests-hero" class="hdc-pick" name="guests" aria-labelledby="guests-label">${guestOptions}</select></label>
 <button type="submit">${FIND_ICON}<span>Search</span></button>
 </form></div></div>
-<div class="toolrow"><div class="n9-bar"><button type="button" class="fbtn" id="filters-btn" aria-haspopup="dialog" aria-controls="filter-drawer" aria-expanded="false">${FILTER_ICON}<span>Filters</span>${badge}</button><div class="ichips" role="group" aria-label="Quick filters">${intent}</div></div>
+<div class="toolrow"><div class="n9-bar"><button type="button" class="fbtn" id="filters-btn" aria-haspopup="dialog" aria-controls="filter-drawer" aria-expanded="false">${FILTER_ICON}<span>Filters</span>${badge}</button><div class="ichips" role="group" aria-label="Quick filters">${mood}${intent}</div></div>
 <form class="sort-form" action="/search" method="get">${searchHidden(params, 'sort')}<label class="sort-label"><span class="sort-name">Sort</span><select class="hdc-pick" name="sort" aria-label="Sort listings" onchange="this.form.submit()">${sortOptions}</select></label><noscript><button type="submit">Sort</button></noscript></form></div>
 <div data-live><div class="rhead"><h1>${esc(result.heading)}</h1>
-<p class="count" role="status" aria-live="polite">${esc(result.count)}</p></div>
+<p class="count" role="status" aria-live="polite">${esc(result.count)}</p>${params.mood ? `<a class="mclear" href="${esc(SearchQuery.href({ ...params, mood: '' }))}">Clear</a>` : ''}</div>
 ${chips ? `<div class="chips" aria-label="Active filters">${chips}${clear}</div>` : ''}
 ${empty || `<div class="${resultClass}">${cards}</div>`}${others}
 <p class="note">Fictional example hotels. <a href="/guides">Read the day pass guides</a>.</p>
@@ -777,13 +814,14 @@ ${empty || `<div class="${resultClass}">${cards}</div>`}${others}
 <fieldset><legend>Age</legend><div class="rgrid">${ageRadios}</div></fieldset>
 <fieldset><legend>Guests</legend><div class="step" data-max="${guestMax}"><button class="ibtn" type="button" data-step="-1" aria-label="Fewer guests">&#8722;</button><output aria-live="polite">${esc(guestShown)}</output><button class="ibtn" type="button" data-step="1" aria-label="More guests">+</button><input type="hidden" name="guests" value="${params.guests ? esc(params.guests) : ''}"></div><p class="step-note">Up to ${guestMax} per booking.</p></fieldset>
 </div>
-<div class="df">${hiddenField('destination', selectedDest)}${hiddenField('date', params.date)}<p class="hint" id="filter-hint" role="status"${countN ? ' hidden' : ''}>No matches. Try fewer filters.</p><button class="apply" type="submit" data-count="${countN}" aria-live="polite"${countN ? '' : ' disabled aria-describedby="filter-hint"'}>Show ${countN} results</button></div>
+<div class="df">${hiddenField('destination', selectedDest)}${hiddenField('date', params.date)}${params.date || !params.range ? '' : hiddenField('from', params.range.from) + hiddenField('to', params.range.to)}${hiddenField('mood', params.mood)}<p class="hint" id="filter-hint" role="status"${countN ? ' hidden' : ''}>No matches. Try fewer filters.</p><button class="apply" type="submit" data-count="${countN}" aria-live="polite"${countN ? '' : ' disabled aria-describedby="filter-hint"'}>Show ${countN} results</button></div>
 </form>
 <div id="search-sheet" class="ssheet" role="dialog" aria-modal="true" aria-labelledby="ssheet-h" hidden>
 <div class="ssheet-bar"><h2 id="ssheet-h" tabindex="-1">Edit search</h2><button class="ibtn" type="button" data-close-sheet aria-label="Close search">Close</button></div>
 <div class="ssheet-body"></div>
 </div>
-</div>`;
+</div>
+<script>(function(){var c=document.querySelector('.ichips');var on=c&&c.querySelector('.mood[aria-pressed="true"]');if(on)c.scrollLeft=Math.max(0,on.offsetLeft-120)})();</script>`;
   return page(result.heading, body, {
     titleReady: true,
     documentTitle: result.title,
