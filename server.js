@@ -1434,7 +1434,7 @@ app.get('/booking/:code', async (req, res) => {
     status: cancelled ? 'Cancelled' : b.checked_in_at ? HotelClock.guestCheckedIn(hotel, b.checked_in_at) : 'Confirmed',
     mayCancel: BookingCancel.guestMay(db, hotel, b),
     parkingHtml: cancelled ? '' : parkingBlock(hotel, hasParking),
-  }), { analytics: false, index: false, canonical: false }));
+  }), { analytics: false, index: false, canonical: false, css: '/booking-ticket.css' }));
 });
 app.post('/booking/:code/cancel', async (req, res) => {
   if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);
