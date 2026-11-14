@@ -14,7 +14,7 @@ const { ensureArrival, saveArrival, arrivalForm, directionsHref } = require('./a
 const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hotelAreas, linkedIds } = require('./access');
 const { HotelAmenities } = require('./hotelAmenities');
 const { listingHtml, reassureStrip, ListingPanel, dayStepLinks } = require('./listingView');
-const { SeatPage } = require('./seatPage');
+const { ListingD2 } = require('./listingDir2');
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
 const { adminPassword, verifyPassword, safeEqual, hashPassword, migrateHotelPasswords, maskName, maskEmail } = require('./passwords');
 const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
@@ -837,40 +837,16 @@ app.post('/waitlist', async (req, res) => {
 app.get('/h/:slug/seat/:code', (req, res) => {
   const h = publicHotel(req.params.slug);
   if (!h) return sendNotFound(res);
-  const code = String(req.params.code || '');
-  const pass = getPasses(h.id).find(p => p.code === code);
-  if (!pass) return sendNotFound(res);
-  const startDay = today(h);
-  const maxDate = ymd(addDays(new Date(startDay + 'T12:00:00'), 90));
-  const date = chosenDate(req.query.date, h);
-  const qty = SeatPage.qty(req.query.qty);
-  const row = date ? availability(h.id, date).find(p => p.id === pass.id) : null;
-  const items = loadInclusions(db, h.id);
-  const areas = forPass(db, pass.id);
-  const closed = [];
-  const origin = new Date(startDay + 'T12:00:00');
-  for (let i = 0; i < 90; i++) {
-    const d = ymd(addDays(origin, i));
-    if (closureReason(db, h, d)) closed.push(d);
+  const slug = encodeURIComponent(h.slug);
+  const pass = getPasses(h.id).find(p => p.code === String(req.params.code || ''));
+  if (!pass) return res.redirect(301, `/h/${slug}#passes`);
+  const params = new URLSearchParams();
+  params.set('pass', pass.code);
+  for (const key of ['date', 'qty']) {
+    const val = String(req.query[key] || '').slice(0, 12);
+    if (val) params.set(key, val);
   }
-  const demo = Number(h.is_demo) === 1;
-  const photo = SeatPage.photoSrc(pass);
-  const alt = SeatPage.altText(pass, h);
-  const cancel = date ? cancelNote(db, h, date) : PICK_DATE_CANCEL;
-  const body = SeatPage.html({
-    hotel: h, pass, date, qty, row, items, areas, cancel,
-    minDate: startDay, maxDate, closed: closed.join(','),
-    amenitiesHtml: HotelAmenities.seatHtml(db, h, { people: Math.max(1, Number(pass.holds) || 1) }),
-  });
-  res.send(page(`${pass.name} · ${h.name}`, body, {
-    analytics: false,
-    index: demoSite() ? 'follow' : (demo ? 'follow' : true),
-    path: `/h/${h.slug}/seat/${pass.code}`,
-    description: SeatPage.description(pass, h),
-    image: seo.absolute(photo),
-    imageAlt: alt,
-    css: '/seat.css',
-  }));
+  res.redirect(301, `/h/${slug}?${params.toString()}#book`);
 });
 
 function listingHold(h, req, startDay) {
@@ -920,34 +896,26 @@ app.get('/h/:slug', (req, res) => {
   const from = passes.length ? Math.min(...passes.map(p => p.price)) : 0;
   const items = loadInclusions(db, h.id);
   const foodLine = guestFoodLine(db, h);
-  const closed = [];
+  const closed = {};
   const origin = new Date(startDay + 'T12:00:00');
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i <= 90; i++) {
     const d = ymd(addDays(origin, i));
-    if (closureReason(db, h, d)) closed.push(d);
+    const why = closureReason(db, h, d);
+    if (why) closed[d] = String(why);
   }
   const demo = Number(h.is_demo) === 1;
   const photo = h.photos[0] ? seo.absolute('/assets/photos/' + h.photos[0]) : seo.DEFAULT_IMAGE;
+  const late = d => cancelNote(db, h, d) === ListingD2.LATE_NOTE;
+  const passCode = String(req.query.pass || '').slice(0, 40);
   res.send(page(h.name, listingHtml({
-    h, date, minDate: startDay, maxDate, closed: closed.join(','), passes, av, from,
-    cancel: date ? cancelNote(db, h, date) : PICK_DATE_CANCEL,
-    know: date ? cancelNote(db, h, date) : FREE_CANCEL,
-    beats: beatsHtml(items),
+    h, date, minDate: startDay, maxDate, closed, passes, av, from, late,
     included: items,
-    accessByPass: byPass(db, h.id),
-    addonList: addonsHtml(items, getAddons(h.id, true)),
-    amenitiesHtml: HotelAmenities.listingHtml(db, h, { people: 1 }),
+    groups: HotelAmenities.groups(db, h.id, { people: 1 }),
+    addons: getAddons(h.id, true),
     hourRows: hoursLines(db, h),
-    todayWd: new Date(startDay + 'T12:00:00').getDay(),
-    foodLine,
-    policy: policyInner(h, foodLine),
-    passCode: String(req.query.pass || '').slice(0, 40),
+    passCode,
     qty: req.query.qty,
-    shareQty: req.query.qty ? String(req.query.qty).slice(0, 8) : '',
-    shareGuests: req.query.guests ? String(req.query.guests).slice(0, 8) : '',
-    upcomingClosed: db.prepare('SELECT date, reason FROM blocked_dates WHERE hotel_id=? AND date>=? ORDER BY date LIMIT 3').all(h.id, startDay),
     hold,
-    offer: listingOffer(h, date, req.query.qty, String(req.query.pass || '').slice(0, 40), date ? av : []),
   }), {
     analytics: true,
     index: demo ? 'follow' : true,
@@ -957,6 +925,7 @@ app.get('/h/:slug', (req, res) => {
     image: photo,
     imageAlt: demo ? 'Stock photo, not this hotel' : seo.shortName(h.name),
     jsonld: seo.listingJsonLd(h, { from, image: photo }),
+    css: '/listing-dir2.css',
   }));
 });
 
@@ -1088,7 +1057,7 @@ ${fieldError(errors, 'arrival')}</label>
   const tick = (name, html, required) => CheckoutConsent.box({ name, html, required, checked: on(name), invalid: !!errors[name] });
   const remaining = CheckoutFlow.requiredTicks().filter(name => !on(name)).length;
   const reasonText = CheckoutFlow.reason(remaining);
-  const seatHref = `/h/${encodeURIComponent(h.slug)}/seat/${encodeURIComponent(p.code)}?date=${encodeURIComponent(date)}&qty=${qty}`;
+  const seatHref = `/h/${encodeURIComponent(h.slug)}?date=${encodeURIComponent(date)}&pass=${encodeURIComponent(p.code)}&qty=${qty}#book`;
   const dateHref = `/h/${encodeURIComponent(h.slug)}?date=${encodeURIComponent(date)}#book`;
   const dateChange = CheckoutFlow.changeLink(dateHref, 'date');
   const passChange = CheckoutFlow.changeLink(seatHref, 'pass');

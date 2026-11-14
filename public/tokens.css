@@ -46,4 +46,13 @@
   --lagoon:var(--hdc-primary);
   --pool:var(--hdc-soft);
   --sun:var(--hdc-sun);
+  --cream:#FFF8EE;
+  --apricot:#F6A55F;
+  --field:#8A9A9F;
+  --teal:var(--hdc-primary);
+  --deep:var(--hdc-deep);
+  --tint:var(--hdc-tint);
+  --border:var(--hdc-border);
+  --text:var(--hdc-text);
+  --sec:var(--hdc-secondary);
 }
