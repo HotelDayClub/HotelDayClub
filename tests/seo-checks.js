@@ -102,7 +102,12 @@ function alts(html, where) {
     assert.ok(home.includes('<h1 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h1>'));
     assert.ok(home.includes('>Plan your day</span>'));
     assert.ok(home.includes('A hotel day, your way'));
-    assert.ok(home.includes('One example day. You book the day. The hotel sets the hours.'));
+    assert.ok(home.includes('One example day. The hotel sets the hours.'));
+    const planAt = home.indexOf('A hotel day, your way');
+    const exploreAt = home.indexOf('id="explore"');
+    const stepsAt = home.indexOf('class="steps"');
+    const destAt = home.indexOf('id="destinations"');
+    assert.ok(planAt < exploreAt && exploreAt < stepsAt && stepsAt < destAt);
     assert.ok(!home.includes('by the hour'));
     assert.ok(!/swim till six/i.test(home));
     assert.ok(home.includes('How a hotel day pass works'));

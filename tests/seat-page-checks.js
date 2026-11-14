@@ -85,7 +85,9 @@ function ymd(date) {
       assert.ok(!/towel/i.test(list), `${pass.slug}/${pass.code} towels stay off the shared list`);
       const buy = hotelAreas(db, pass.hotel_id).filter(area => Number(area.serves_food));
       if (buy.length) {
-        assert.ok(includedBlock.includes('Pay the venue directly. Menus, prices and opening hours are set by the venue.'), pass.slug);
+        assert.ok(includedBlock.includes('On site (not included)'), pass.slug);
+        assert.ok(!includedBlock.includes('Pay the venue directly. Menus, prices and opening hours are set by the venue.'), pass.slug);
+        assert.ok(!includedBlock.includes('Included in your pass'), pass.slug);
         assert.ok(includedBlock.includes('See all amenities'), pass.slug);
         for (const area of buy) assert.ok(includedBlock.includes(`>${esc(area.name)}</span>`), `${pass.slug} ${area.name}`);
       } else {
@@ -109,7 +111,7 @@ function ymd(date) {
     assert.ok(bare.body.includes('Pick a date'));
     assert.ok(bare.body.includes('id="seat-go" type="submit" disabled'));
     assert.ok(bare.body.includes('href="/h/saltwater-terrace?qty=1#seating"'));
-    assert.strictEqual(bare.body.split('href="/h/saltwater-terrace?qty=1#seating"').length - 1, 3);
+    assert.strictEqual(bare.body.split('href="/h/saltwater-terrace?qty=1#seating"').length - 1, 2);
     assert.ok(bare.body.includes('2 towels'));
     assert.ok(!bare.body.includes('2 × Towels'));
     assert.ok(bare.body.includes('Example photo (demo)'));
@@ -119,7 +121,8 @@ function ymd(date) {
     assert.ok(bare.body.includes('name="date"'));
     assert.ok(bare.body.includes('name="qty"'));
     assert.ok(bare.body.includes('for="seat-qty">Spots'));
-    assert.ok(bare.body.includes('Select · Continue to booking'));
+    assert.ok(bare.body.includes('Continue to booking'));
+    assert.ok(!bare.body.includes('Select · Continue to booking'));
     assert.ok(bare.body.includes('>Check</button>'));
     assert.ok(bare.body.includes('formaction="/h/saltwater-terrace/seat/daybed"'));
     assert.ok(bare.body.includes('action="/checkout"'));
@@ -128,7 +131,7 @@ function ymd(date) {
     assert.ok(bare.body.includes('Daybed · The Saltwater Terrace (Demo)'));
     assert.ok(bare.body.includes('Demo site: listings are examples, no real bookings or payments.'));
     assert.ok(bare.body.includes('>←</span> Back to The Saltwater Terrace (Demo)'));
-    assert.ok(bare.body.includes('View all seating at The Saltwater Terrace (Demo) →'));
+    assert.strictEqual(bare.body.split('View all seating at The Saltwater Terrace (Demo) →').length - 1, 1);
     assert.ok(bare.body.includes('1 spot = 2 guests'));
     assert.ok(bare.body.includes('Fits 2'));
     const dayList = bare.body.slice(bare.body.indexOf('<ul class="pass-inc-list'), bare.body.indexOf('</ul>', bare.body.indexOf('<ul class="pass-inc-list')));

@@ -64,7 +64,7 @@ class SeatPage {
   static state({ date, row, qty, hotelName }) {
     const q = SeatPage.qty(qty);
     if (!date || !row) {
-      return { kind: 'pick', canBook: false, text: 'Pick a date', button: 'Select · Continue to booking', qty: q };
+      return { kind: 'pick', canBook: false, text: 'Pick a date', button: 'Continue to booking', qty: q };
     }
     const when = SeatPage.dayLabel(date);
     if (row.blocked) {
@@ -92,7 +92,7 @@ class SeatPage {
       kind: 'open',
       canBook: true,
       text: `${left} left on ${when}`,
-      button: 'Select · Continue to booking',
+      button: 'Continue to booking',
       when,
       qty: q,
       left,
@@ -157,7 +157,7 @@ class SeatPage {
       ? `<ul class="pass-inc-list seat-inc">${lines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>`
       : '';
     const towelHtml = towel ? `<p class="seat-towels">${esc(ListingPanel.towelText(towel.qty))}</p>` : '';
-    const access = accessDetail(areas, { demo });
+    const access = accessDetail(areas, { demo, compact: true });
     const guest = holds === 1 ? 'guest' : 'guests';
     const amount = price * q;
     const line = `${money(price)} × ${q}`;
@@ -183,7 +183,6 @@ ${included}
 ${access}
 ${opts.amenitiesHtml || ''}
 <p class="seat-food">${esc(FOOD_RULE)}</p>
-<a class="seat-all seat-all-mob" href="${esc(back)}">View all seating at ${esc(hotel.name)} →</a>
 <h2>Cancellation</h2>
 <p class="seat-cancel" id="seat-cancel"><span id="seat-cancel-text">${esc(SeatPage.cancelCopy(cancel))}</span> <a href="/refunds">Cancellation and refund policy</a></p>
 </div>
@@ -289,7 +288,7 @@ function fromRow(date, row, cancel){
   var q=spots();
   var lineNote=seatCancel(cancel);
   if(!date||!row){
-    paint({kind:'pick', canBook:false, text:'Pick a date', button:'Select · Continue to booking', qty:q});
+    paint({kind:'pick', canBook:false, text:'Pick a date', button:'Continue to booking', qty:q});
     if(cancelText) cancelText.textContent=lineNote||'Pick a date to see your free-cancellation deadline.';
     return;
   }
@@ -301,7 +300,7 @@ function fromRow(date, row, cancel){
     var left=Math.max(0, +row.remaining||0);
     if(left<1) paint({kind:'sold', canBook:false, text:'', button:'Sold out on this date', when:when, qty:q, left:0});
     else if(left<q) paint({kind:'short', canBook:false, text:left+' left on '+when, button:'Only '+left+' left on this date', when:when, qty:q, left:left});
-    else paint({kind:'open', canBook:true, text:left+' left on '+when, button:'Select · Continue to booking', when:when, qty:q, left:left});
+    else paint({kind:'open', canBook:true, text:left+' left on '+when, button:'Continue to booking', when:when, qty:q, left:left});
   }
   if(cancelText) cancelText.textContent=lineNote;
 }
@@ -322,7 +321,7 @@ async function load(){
     apply(await r.json());
   }catch(err){
     if(avl) avl.textContent="We couldn't check availability. Try again.";
-    if(go){ go.disabled=true; go.textContent='Select · Continue to booking'; }
+    if(go){ go.disabled=true; go.textContent='Continue to booking'; }
   }
 }
 if(dateInput) dateInput.addEventListener('change', load);

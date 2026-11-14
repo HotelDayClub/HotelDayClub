@@ -46,7 +46,7 @@ const { GuestPrivacy } = require('./guestPrivacy');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
   hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST, dayPlan,
-  fmtTime, cancelNote, riskCard, riskText, swimNote, GuestCheckIn, FOOD_RULE, hotelLatePossible, lateWindow, amenitiesFrom,
+  fmtTime, cancelNote, riskCard, riskText, swimNote, GuestCheckIn, FOOD_RULE, FREE_CANCEL, hotelLatePossible, lateWindow, amenitiesFrom,
   venueMissing, PICK_DATE_CANCEL, arrivalOptions, normalizeArrival, arrivalText,
 } = require('./offering');
 const app = express();
@@ -290,7 +290,7 @@ ${this.column('ftr-dest', 'Destinations', destLinks, 'dest-links')}
 ${this.column('ftr-guides', 'Guides', guideLinks)}
 ${this.column('ftr-site', 'Site', siteLinks)}
 </div></div>
-<div class="ftr-bottom"><p>Demo only. Hotels shown are fictional example listings with stock photos. No payments are taken.</p><p>© ${this.year()} Hotel Day Club</p></div></div></footer>${this.script()}`;
+<div class="ftr-bottom"><p>Demo only. Fictional hotels, stock photos, no payments.</p><p>© ${this.year()} Hotel Day Club</p></div></div></footer>${this.script()}`;
   }
 
   static script() {
@@ -485,34 +485,34 @@ function homePage({ destination = '', joined = false, error = '', values = {} } 
 <div class="marquee" aria-label="Pool day, gym session, spa afternoon, daybed for two, cabana with friends, golden-hour swim"><div class="track" aria-hidden="true"><span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺<span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺</div></div>
 ${reassureStrip()}
 <section data-rv><span class="kicker sand">Plan your day</span><h2>A hotel day, your way</h2>
-<p class="home-note">One example day. You book the day. The hotel sets the hours.</p>
+<p class="home-note">One example day. The hotel sets the hours.</p>
 <div class="day">
 ${slot('gym-sm', 'Hotel gym with free weights', '8 am', 'Swim &amp; gym', 'A gym session, then laps before the city wakes up.')}
-${slot('4-sm', 'Hotel daybed beside a pool', '12 pm', 'Daybed by the pool', 'Buy food or a drink at the hotel if it sells them.')}
+${slot('4-sm', 'Hotel daybed beside a pool', '12 pm', 'Daybed by the pool', 'Stretch out in the shade.')}
 ${slot('3-sm', 'Spa treatment table', '3 pm', 'Spa afternoon', 'Steam, sauna, a treatment if the hotel offers one.')}
 ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
 </div></section>
+<section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings · not real hotels</span><h2>Example listings</h2></div><a class="see-all" href="/search">See all day passes</a></div>
+<p class="home-note">Fictional example hotels. <a href="/guides">Read the day pass guides</a>.</p>
+<div class="list">${exampleCards || '<p class="home-note">No example listings yet.</p>'}</div></section>
 <section class="steps" data-rv><div><span class="kicker">How it works</span><h2>How a hotel day pass works</h2></div>
-<ol><li><span>01</span><div><b>Find a hotel</b><p>Pools, gyms and spas: each listing shows hours, the pass and exactly what's included.</p></div></li>
+<ol><li><span>01</span><div><b>Find a hotel</b><p>Each listing shows hours, price and what's included.</p></div></li>
 <li><span>02</span><div><b>Pick a pass and a day</b><p>See the price before you confirm.</p></div></li>
 <li><span>03</span><div><b>Show up, switch off</b><p>Check in at the desk and the day is yours.</p></div></li></ol></section>
-<section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings · not real hotels</span><h2>Example listings</h2></div><a class="see-all" href="/search">See all day passes</a></div>
-<p class="home-note">Shown while the site is in demo mode. These hotels are fictional. No real bookings are taken. <a href="/guides">Read the day pass guides</a>.</p>
-<div class="list">${exampleCards || '<p class="home-note">No example listings yet.</p>'}</div></section>
 <section id="destinations" data-rv><span class="kicker sand">Explore by destination</span><h2>Destinations</h2>
-<p class="home-note">The number on a card counts fictional example listings in this demo for that area. It does not mean a hotel has signed up. No listings yet means there is nothing listed there yet.</p>
+<p class="home-note">Numbers count example listings only.</p>
 <ul class="dests">${destCards}</ul></section>
 <section class="faq" data-rv><div><span class="kicker sand">Good to know</span><h2>Questions about hotel day passes</h2></div>
-<div class="faq-list"><details><summary>Do I need to stay at the hotel?</summary><p>No. A day pass gives you the pool, gym or spa for set hours, no room booking needed.</p></details>
+<div class="faq-list"><details><summary>Do I need to stay at the hotel?</summary><p>No. A day pass covers the pool, gym or spa for set hours.</p></details>
 <details><summary>Is Hotel Day Club taking bookings?</summary><p>Not yet. Join the waitlist and we'll email you when passes open near you.</p></details>
-<details><summary>What's included?</summary><p>Each hotel sets its own inclusions (pool, gym, spa and towels), and every listing spells out what your pass covers. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.</p></details>
+<details><summary>What's included?</summary><p>Each hotel sets its own inclusions. Every listing shows what your pass covers. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.</p></details>
 <p class="faq-more"><a href="/faq">All questions</a></p></div></section>
-<div class="hotels" id="hotels"><div><span class="kicker">For hotels</span><h2>List a hotel pool</h2><p>List spare pool, gym and spa capacity for local day guests, on your terms. You choose the hours, the prices and how many guests you take.</p></div><a class="btn" href="/for-hotels">Talk to us</a></div>
+<div class="hotels" id="hotels"><div><span class="kicker">For hotels</span><h2>List a hotel pool</h2><p>List spare pool, gym and spa capacity. You set the hours, prices and guest numbers.</p></div><a class="btn" href="/for-hotels">Talk to us</a></div>
 <noscript><style>#waitlist{display:block;position:static;margin:24px auto 40px}</style></noscript>
 <dialog id="waitlist" aria-labelledby="wl-title" data-open="${openWait ? '1' : '0'}"><div class="wl-in">
 <button type="button" class="wl-x" data-close>Close</button>
 <h2 id="wl-title">Join the waitlist</h2>
-<p class="wl-lead">Hotel Day Club is not taking real bookings yet. Leave your email and we will write when day passes are available near you. If you run a hotel, talk to us on the <a href="/for-hotels">For hotels</a> page. No fee to join. We do not sell this list.</p>
+<p class="wl-lead">Not taking bookings yet. Leave your email and we'll tell you when passes open near you. Free to join. We never sell this list.</p>
 ${error ? `<div class="alert" role="alert">${esc(error)}</div>` : ''}
 ${joined ? `<div class="wl-ok" role="status"><h3>You're on the list</h3><p>Thanks. We'll email you when we have news about day passes near you. If you run a hotel, the <a href="/for-hotels">For hotels</a> page is the way to reach us.</p></div>${lead}` : ''}
 <form class="wl" method="post" action="/waitlist">
@@ -651,7 +651,7 @@ function searchCard(hotel, params, index) {
   const price = offer.sold
     ? `<p class="soldtxt">Sold out on ${esc(nice(params.date))}</p>`
     : `<p class="ex-price">From ${money(offer.price)} <small>(demo)</small>${offer.activity ? ' · ' + esc(offer.activity) : ''}</p>`;
-  const terms = offer.sold ? '' : `<ul class="terms" aria-label="Booking terms"><li>${CHECK_ICON}<span>Free until 24 hours before your access hours start</span></li></ul>`;
+  const terms = offer.sold ? '' : `<ul class="terms" aria-label="Booking terms"><li>${CHECK_ICON}<span>Free cancellation up to 24h before access starts</span></li></ul>`;
   const book = offer.sold
     ? `<a class="btn quiet" href="/h/${esc(hotel.slug)}#book">See other dates</a>`
     : `<a class="btn book" href="${esc(listing)}#book">Book<span class="vh"> ${esc(hotel.name)}</span></a>`;
@@ -765,7 +765,7 @@ ${keepSort}
 <p class="count" role="status" aria-live="polite">${esc(result.count)}</p></div>
 ${chips ? `<div class="chips" aria-label="Active filters">${chips}${clear}</div>` : ''}
 ${empty || `<div class="${resultClass}">${cards}</div>`}${others}
-<p class="note">Shown while the site is in demo mode. These hotels are fictional. No real bookings are taken. <a href="/guides">Read the day pass guides</a>.</p>
+<p class="note">Fictional example hotels. <a href="/guides">Read the day pass guides</a>.</p>
 </div>
 <div class="sheet-bd" data-close-drawer hidden></div>
 <form id="filter-drawer" class="drawer" action="/search" method="get" role="dialog" aria-modal="true" aria-labelledby="filters-h" hidden>
@@ -777,7 +777,7 @@ ${empty || `<div class="${resultClass}">${cards}</div>`}${others}
 <fieldset><legend>Age</legend><div class="rgrid">${ageRadios}</div></fieldset>
 <fieldset><legend>Guests</legend><div class="step" data-max="${guestMax}"><button class="ibtn" type="button" data-step="-1" aria-label="Fewer guests">&#8722;</button><output aria-live="polite">${esc(guestShown)}</output><button class="ibtn" type="button" data-step="1" aria-label="More guests">+</button><input type="hidden" name="guests" value="${params.guests ? esc(params.guests) : ''}"></div><p class="step-note">Up to ${guestMax} per booking.</p></fieldset>
 </div>
-<div class="df">${hiddenField('destination', selectedDest)}${hiddenField('date', params.date)}<p class="hint" id="filter-hint" role="status"${countN ? ' hidden' : ''}>No places match these filters. Try a higher price or Any age.</p><button class="apply" type="submit" data-count="${countN}" aria-live="polite"${countN ? '' : ' disabled aria-describedby="filter-hint"'}>Show ${countN} results</button></div>
+<div class="df">${hiddenField('destination', selectedDest)}${hiddenField('date', params.date)}<p class="hint" id="filter-hint" role="status"${countN ? ' hidden' : ''}>No matches. Try fewer filters.</p><button class="apply" type="submit" data-count="${countN}" aria-live="polite"${countN ? '' : ' disabled aria-describedby="filter-hint"'}>Show ${countN} results</button></div>
 </form>
 <div id="search-sheet" class="ssheet" role="dialog" aria-modal="true" aria-labelledby="ssheet-h" hidden>
 <div class="ssheet-bar"><h2 id="ssheet-h" tabindex="-1">Edit search</h2><button class="ibtn" type="button" data-close-sheet aria-label="Close search">Close</button></div>
@@ -931,7 +931,7 @@ app.get('/h/:slug', (req, res) => {
   res.send(page(h.name, listingHtml({
     h, date, minDate: startDay, maxDate, closed: closed.join(','), passes, av, from,
     cancel: date ? cancelNote(db, h, date) : PICK_DATE_CANCEL,
-    know: date ? cancelNote(db, h, date) : 'Free cancellation until 24 hours before access hours start.',
+    know: date ? cancelNote(db, h, date) : FREE_CANCEL,
     beats: beatsHtml(items),
     included: items,
     accessByPass: byPass(db, h.id),
@@ -2608,7 +2608,7 @@ ${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="
 <div class="wrap hiw-block" id="faq">
 <h2>Questions</h2>
 <div class="faq">
-<details open><summary>Cancellations</summary><p>Free cancellation until 24 hours before your access hours start. Checkout and your confirmation show that time for the date you chose. A booking made inside that window can't be cancelled for free. <a href="/refunds">Cancellation and refunds</a>.</p></details>
+<details open><summary>Cancellations</summary><p>${esc(FREE_CANCEL)} Checkout and your confirmation show that time for the date you chose. A booking made inside that window can't be cancelled for free. <a href="/refunds">Cancellation and refunds</a>.</p></details>
 <details><summary>What to bring</summary><p>Photo ID when the hotel asks for it, swimwear and sunscreen. The listing says whether a towel is included.</p></details>
 <details><summary>Age limits</summary><p>You need to be 18 or over to book. Each hotel sets its own age policy and kids' hours. They're on the listing, and in the risk warning, before you confirm.</p></details>
 <details><summary>Weather</summary><p>Rain on its own is not a closure. If the hotel closes the pool, you choose a full refund or a free rebooking. <a href="/faq">All questions</a>.</p></details>

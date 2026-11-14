@@ -1117,13 +1117,18 @@ form.check-code input,form.check-code .btn{width:100%}
   .wrap.listing .gallery.swipe img{flex:0 0 100%;scroll-snap-align:start;height:100%;width:100%;aspect-ratio:auto}
   .listing .view-all{display:none}
   .listing .gal-chip{display:block;position:absolute;right:12px;bottom:12px;background:var(--hdc-navy);color:#fff;font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px}
-  .listing .l-layout{display:flex;flex-direction:column;gap:0;padding-top:0}
+  .listing .l-layout{display:flex;flex-direction:column;gap:0;padding-top:0;align-items:stretch}
   .listing .l-main{display:contents}
+  .listing .l-main>section,.listing .book-slot,.listing .day-how{align-self:stretch;width:auto;min-width:0}
+  .listing #location summary,.listing #policies summary{gap:12px}
+  .listing .arrive-row{grid-template-columns:minmax(0,1fr)}
   .listing .listing-head{order:1;padding-top:20px}
   .listing .l-tabs{order:2;top:var(--listing-sticky,93px);align-self:stretch;margin:24px -16px 0;padding:0 16px}
-  .listing .l-tabs nav{gap:16px}
+  .listing .l-tabs nav{gap:16px;scroll-padding-inline:16px}
   .listing .l-tabs a{font-size:14px}
   .listing #seating{order:3;margin-top:32px}
+  .listing #amenities{order:4;margin-top:40px;margin-bottom:0}
+  .listing .day-how{order:4}
   .listing .book-slot{order:4;position:static}
   html:not(.js) .listing .book-slot{margin-top:40px}
   .listing .book-col{position:static}
@@ -1159,6 +1164,9 @@ form.check-code input,form.check-code .btn{width:100%}
   .seat-dialog .pass-actions{flex-direction:column;align-items:stretch}
   .seat-dialog .pass-select,.seat-dialog .pass-continue{flex:1 1 auto;width:100%}
   body.guest:has(.listing){padding-bottom:128px}
+}
+@media (max-width:380px){
+  .listing .l-tabs nav{gap:8px}
 }
 @media (min-width:761px){
   .listing dialog.book-sheet,.listing dialog.book-sheet:not([open]){display:block;position:static;inset:auto;width:auto;max-width:none;max-height:none;height:auto;margin:0;padding:0;border:0;background:transparent;color:inherit;overflow:visible;box-shadow:none}

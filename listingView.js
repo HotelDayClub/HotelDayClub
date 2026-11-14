@@ -1,6 +1,6 @@
 const { esc, money, nice, ymd, addDays } = require('./util');
 const { instantConfirmationText } = require('./siteMode');
-const { KINDS, supervisionNote, safePhoto, FOOD_RULE } = require('./offering');
+const { KINDS, supervisionNote, safePhoto, FOOD_RULE, FREE_CANCEL } = require('./offering');
 const { includedNote, amenityLines, includedLines } = require('./inclusions');
 const { arrivalInner } = require('./arrival');
 const { MapEmbed } = require('./mapEmbed');
@@ -901,7 +901,7 @@ function goodToKnowBand({ policy }) {
 <h2 id="gtk">Good to know</h2>
 <div class="gtk-cols">
 <div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9V5h4M15 5h4v4M19 15v4h-4M9 19H5v-4"/><path d="M10 10h1.6v1.6H10zM12.6 12.6H14V14h-1.4z"/></svg><h3>What happens when I get there?</h3><p>${esc(arrive)}</p><p><b>Instant confirmation.</b> <a href="/contact">Help when you need it</a>.</p></div>
-<div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3.5v3M16 3.5v3M4 10h16"/><path d="M8.8 15.2l2.1 2.1 4.6-4.8"/></svg><h3>Can I cancel if my plans change?</h3><p>You have 24 hours to cancel. Free until 24 hours before your access hours start. <a href="/refunds">Cancellation and refund policy</a>.</p></div>
+<div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3.5v3M16 3.5v3M4 10h16"/><path d="M8.8 15.2l2.1 2.1 4.6-4.8"/></svg><h3>Can I cancel if my plans change?</h3><p>${esc(FREE_CANCEL)} <a href="/refunds">Cancellation and refund policy</a>.</p></div>
 </div>
 <p class="gtk-more"><a href="#passes">What's included → see Passes</a></p>
 <p class="gtk-note">${policy.note}</p>
@@ -925,6 +925,12 @@ function dateAlert(hold) {
 }
 function listingQty(raw) {
   return ListingPanel.boundQty(raw);
+}
+function cancelFoldText(know) {
+  const text = String(know || '');
+  if (/^Free cancellation until .+\(hotel time\)\.$/.test(text)) return text;
+  if (text.includes("can't be cancelled for free")) return text;
+  return FREE_CANCEL;
 }
 function listingHtml(opts) {
   const { h, date, minDate, maxDate, closed, passes, av, from, cancel, know, included, addonList, hours, policy, accessByPass, foodLine } = opts;
@@ -972,7 +978,6 @@ function listingHtml(opts) {
     ? '<p class="towel-note">Towels are listed on each pass.</p>'
     : '';
   const parkFold = parkNote ? `<details class="fold" id="parking"><summary>Parking</summary><div class="acc-body"><p>${esc(parkNote)}</p></div></details>` : '';
-  const cancelCopy = esc(know || cancel);
   const shareUrl = ListingImprove.pageShareUrl(h.slug, {
     date: date || '',
     pass: opts.passCode || '',
@@ -996,7 +1001,6 @@ ${ListingImprove.whyHtml()}
 <p class="day-lead" id="overview-desc"><b>${esc(h.tagline)}.</b> ${esc(h.blurb)}</p>
 <button type="button" class="read-more" aria-expanded="false" aria-controls="overview-desc">Read more</button>
 ${watch ? `<p class="guard-note">${esc(watch)}</p>` : ''}
-${ListingImprove.stepsHtml()}
 </section>
 <div class="l-tabs"><nav aria-label="Sections"><a href="#overview" aria-current="true">Overview</a><a href="#passes">Passes</a><a href="#inclusions">Inclusions</a><a href="#location">Location</a><a href="#policies">Policies</a></nav></div>
 <section id="seating" aria-labelledby="seat-h"><div class="seat-head"><h2 class="day-kicker" id="seat-h">Choose your seating</h2><p class="seat-sub">Prices per spot, before add-ons. Pick a date to see what's left.</p></div>
@@ -1007,8 +1011,9 @@ ${offerLine(offer)}
 ${passSection(passes, av, h, date, opts.passCode, qty, items)}
 </div>
 </section>
-${addonList || ''}
 ${opts.amenitiesHtml || ''}
+${ListingImprove.stepsHtml()}
+${addonList || ''}
 <section id="inclusions"><h2>Inclusions</h2>
 <div class="incl">
 <div>
@@ -1028,7 +1033,6 @@ ${ListingImprove.rulesHtml(h)}
 <div class="l-acc">
 <details id="hours" open><summary>Opening hours</summary><div class="acc-body">${hoursHtml}</div></details>
 </div>
-${ListingImprove.seasonHtml(h, hourRows, opts.upcomingClosed)}
 </div>
 </section>
 <section id="location"><h2>Location</h2>
@@ -1040,7 +1044,7 @@ ${parkFold}
 <section id="policies"><h2>Policies</h2>
 <div class="l-acc">
 <details id="policy"><summary>Guest policy</summary><div class="acc-body">${policy.body}</div></details>
-<details id="cancel-fold"><summary>Cancellation</summary><div class="acc-body"><p>You have 24 hours to cancel. Free until 24 hours before your access hours start. ${cancelCopy} <a href="/refunds">Cancellation and refund policy</a>.</p></div></details>
+<details id="cancel-fold"><summary>Cancellation</summary><div class="acc-body"><p>${esc(cancelFoldText(know))} <a href="/refunds">Cancellation and refund policy</a>.</p></div></details>
 </div>
 </section>
 </div>
@@ -1080,18 +1084,18 @@ ${DetailsAlias.script()}
 const ASSURE = [
   {
     icon: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3.5v3M16 3.5v3M4 10h16"/><path d="M8.8 15.2l2.1 2.1 4.6-4.8"/>',
-    title: '24 hours to cancel',
-    text: 'Free until 24 hours before your access hours start.',
+    title: 'Free cancellation',
+    text: 'Up to 24 hours before your access hours start.',
   },
   {
     icon: '<circle cx="12" cy="12" r="3.2"/><path d="M12 4.2v2.2M12 17.6v2.2M4.2 12h2.2M17.6 12h2.2M6.5 6.5l1.6 1.6M15.9 15.9l1.6 1.6M17.5 6.5l-1.6 1.6M8.1 15.9l-1.6 1.6"/>',
     title: 'No room needed',
-    text: 'A pool, gym or spa for the day.',
+    text: '',
   },
   {
     icon: '<path d="M5 9V5h4M15 5h4v4M19 15v4h-4M9 19H5v-4"/><path d="M10 10h1.6v1.6H10zM12.6 12.6H14V14h-1.4z"/>',
-    title: 'Code at the desk',
-    text: 'Show your QR code at check-in.',
+    title: 'Show your QR code at the desk',
+    text: '',
   },
   {
     icon: '<path d="M7.2 8.2A5.2 5.2 0 1 1 6 13"/><path d="M5.2 5.4V9H9"/>',
@@ -1101,14 +1105,14 @@ const ASSURE = [
   {
     icon: '<path d="M4 7.5h16v10H4z"/><path d="M4 8l8 6 8-6"/>',
     title: 'Help when you need it',
-    text: "Questions about a booking, a change or a cancellation? Write to us and we'll reply by email.",
+    text: 'Questions? Email us.',
     href: '/contact',
   },
 ];
 
 function reassureStrip(lite) {
   const items = ASSURE.map(item => {
-    const inner = `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${item.icon}</svg><b>${item.title}</b><span>${item.text}</span>`;
+    const inner = `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${item.icon}</svg><b>${item.title}</b>${item.text ? `<span>${item.text}</span>` : ''}`;
     return item.href
       ? `<li><a class="assure-link" href="${item.href}">${inner}</a></li>`
       : `<li>${inner}</li>`;

@@ -185,7 +185,8 @@ function contrast(fg, bg) {
     assert.ok(optional.includes('Optional extra'));
     assert.ok(onsite.includes('Example restaurant'));
     assert.ok(onsite.includes('Pay the venue'));
-    assert.ok(textOf(onsite).includes(SENTENCE));
+    assert.ok(onsite.includes('On site (not included)'));
+    assert.ok(!textOf(onsite).includes(SENTENCE));
     assert.ok(!page.includes('<script>'));
     assert.ok(page.includes('&lt;script&gt;') === false);
     db.prepare(`UPDATE hotel_amenities SET label=? WHERE hotel_id=? AND category='bar'`).run('Bar <script>alert(1)</script>', lab);
@@ -208,7 +209,10 @@ function contrast(fg, bg) {
     const seat = HotelAmenities.seatHtml(db, { id: lab, slug: 'amenity-lab', name: 'Amenity Lab (Demo)', is_demo: 1 }, { people: 1 });
     assert.ok(seat.includes('class="chips-c"'));
     assert.ok(seat.includes('See all amenities'));
-    assert.ok(textOf(seat).includes(SENTENCE));
+    assert.ok(seat.includes('On site (not included)'));
+    assert.ok(!seat.includes('Included in your pass'));
+    assert.ok(seat.includes('Extras (paid):'));
+    assert.ok(!textOf(seat).includes(SENTENCE));
     assert.ok(seat.includes('href="/h/amenity-lab#am-h"'));
     const form = HotelAmenities.form(db, { id: lab, name: 'Amenity Lab (Demo)', is_demo: 1, timezone: 'Australia/Perth' });
     const select = form.slice(form.indexOf('name="new_cat"'), form.indexOf('</select>', form.indexOf('name="new_cat"')));
@@ -247,7 +251,8 @@ function contrast(fg, bg) {
     assert.strictEqual(listing.status, 200);
     assert.ok(listing.body.includes('id="am-h"'));
     assert.ok(listing.body.includes('Example amenities (demo)'));
-    assert.ok(textOf(listing.body).includes(SENTENCE));
+    assert.ok(listing.body.includes('On site (not included)'));
+    assert.ok(!textOf(listing.body).includes(SENTENCE));
     assert.ok(!group(listing.body, 'am-y').includes('Pool bar'));
     assert.ok(group(listing.body, 'am-os').includes('>Pool bar</span>'));
     assert.ok(!listing.body.includes('Pool access'));
@@ -256,11 +261,15 @@ function contrast(fg, bg) {
     const inclusionsAt = listing.body.indexOf('id="inclusions"');
     const hoursAt = listing.body.indexOf('id="hours"');
     assert.ok(amenityAt >= 0 && amenityAt < inclusionsAt && inclusionsAt < hoursAt);
-    assert.ok(listing.body.slice(inclusionsAt, hoursAt).includes('<li>' + foodLine + '</li>'));
+    assert.ok(!listing.body.slice(inclusionsAt, hoursAt).includes('<li>' + foodLine + '</li>'));
+    assert.strictEqual(listing.body.split(foodLine).length - 1, 1);
+    assert.ok(listing.body.indexOf('id="passes"') < amenityAt && amenityAt < inclusionsAt);
     const seatPage = await get(port, '/h/saltwater-terrace/seat/lounger');
     assert.ok(seatPage.body.includes('class="chips-c"'));
     assert.ok(seatPage.body.includes('See all amenities'));
-    assert.ok(textOf(seatPage.body).includes(SENTENCE));
+    assert.ok(seatPage.body.includes('On site (not included)'));
+    assert.ok(!textOf(seatPage.body).includes(SENTENCE));
+    assert.ok(!seatPage.body.includes('Included in your pass'));
     assert.strictEqual(seatPage.body.split('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.').length - 1, 1);
 
     const loggedOut = await post(port, '/hotel/amenities', { add: '1', new_cat: 'bar', new_name: 'Nope' });
