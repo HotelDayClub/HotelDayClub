@@ -370,8 +370,8 @@ function start(port, extra = {}) {
       assert.ok(!doc.body.includes('Draft terms for demo purposes, pending legal review.'), pathName);
       assert.ok(!doc.body.includes('(draft)'), pathName);
       const publishedOn = legalDateLabel(LEGAL_EFFECTIVE);
-      assert.strictEqual(LEGAL_EFFECTIVE, '2026-11-14');
-      assert.strictEqual(publishedOn, '14 November 2026');
+      assert.strictEqual(LEGAL_EFFECTIVE, '2026-11-15');
+      assert.strictEqual(publishedOn, '15 November 2026');
       if (pathName === '/refunds') {
         assert.ok(doc.body.includes('Version 1.0'), pathName);
         assert.ok(doc.body.includes('Effective 12 November 2026'), pathName);
@@ -449,8 +449,8 @@ function start(port, extra = {}) {
     assert.ok(risk.body.includes('Look after your own belongings.'));
     const privacy = await get(port, '/privacy');
     assert.ok(privacy.body.includes('Hotel Day Club is a registered business name (ABN 98 227 458 028) (&quot;we&quot;, &quot;us&quot;).'));
-    assert.ok(privacy.body.includes('Last updated 14 November 2026'));
-    assert.ok(privacy.body.includes('Effective 14 November 2026'));
+    assert.ok(privacy.body.includes('Last updated 15 November 2026'));
+    assert.ok(privacy.body.includes('Effective 15 November 2026'));
     assert.ok(!privacy.body.includes('Last updated 11 November 2026'));
     assert.ok(privacy.body.includes('online booking platform'));
     assert.ok(!/booking agent/i.test(privacy.body));
@@ -690,10 +690,10 @@ function start(port, extra = {}) {
     const { LegalVersions, ConsentLog } = require('../consent');
     const versions = LegalVersions.current();
     assert.deepStrictEqual(versions, {
-      terms: '2026-11-14',
+      terms: '2026-11-15',
       refunds: '2026-11-12',
-      privacy: '2026-11-14',
-      risk: '2026-11-14',
+      privacy: '2026-11-15',
+      risk: '2026-11-15',
     });
     const code = String(loc || '').split('/').pop();
     const savedBook = new Database(dbPath, { readonly: true });

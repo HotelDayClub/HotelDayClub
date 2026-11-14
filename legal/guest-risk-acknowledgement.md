@@ -1,5 +1,5 @@
 # Risk warning and acknowledgement
-**Version 1.1 · Effective 14 November 2026**
+**Version 1.1 · Effective 15 November 2026**
 
 ## 1. How this warning is shown
 1.1 Before payment, the key points of this warning are shown on the checkout page directly above the acceptance box, and the full warning opens on the same page with one tap. The full warning is repeated in the confirmation email, and on a sign at the pool entry if the hotel agrees.

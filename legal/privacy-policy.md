@@ -1,5 +1,5 @@
 # Hotel Day Club Privacy Policy
-**Version 1.1 · Last updated 14 November 2026 · Effective 14 November 2026**
+**Version 1.1 · Last updated 15 November 2026 · Effective 15 November 2026**
 
 ## 1. Who we are
 1.1 Hotel Day Club is a registered business name (ABN {{ABN}}) ("we", "us").

@@ -3,7 +3,7 @@ const { esc } = require('./util');
 
 // One effective date for Legal Version 1.1 (terms, privacy, risk).
 // Refunds stay on Version 1.0. The legal pages print legalDateLabel of this date.
-const LEGAL_EFFECTIVE = '2026-11-14';
+const LEGAL_EFFECTIVE = '2026-11-15';
 const LEGAL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 function legalDateLabel(iso) {

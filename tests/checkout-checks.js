@@ -365,7 +365,7 @@ function makeForm(opts = {}) {
     assert.ok(stored.consent_ip);
     assert.strictEqual(logs[0].marketing, 0);
     assert.strictEqual(stored.marketing_opt_in, 0);
-    assert.strictEqual(LEGAL_EFFECTIVE, '2026-11-14');
+    assert.strictEqual(LEGAL_EFFECTIVE, '2026-11-15');
     const kept = saved.prepare('SELECT kind, policy_version, consented_at, ip, terms_version, marketing FROM consent_log WHERE booking_id=? ORDER BY kind').all(oldBooking);
     assert.deepStrictEqual(kept, [
       { kind: 'share', policy_version: '2026-11-12', consented_at: oldAt, ip: '203.0.113.9', terms_version: null, marketing: null },

@@ -1,5 +1,5 @@
 # Hotel Day Club: Customer Terms
-**Version 1.1 · Effective 14 November 2026**
+**Version 1.1 · Effective 15 November 2026**
 
 ## 1. Who we are and who supplies your pass
 1.1 Hotel Day Club is a registered business name (ABN {{ABN}}) ("**Hotel Day Club**", "**we**", "**us**"). Contact: {{CONTACT_EMAIL}}. We do not publish a home address.
