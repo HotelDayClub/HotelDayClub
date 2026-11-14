@@ -313,7 +313,7 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
       parts.push(`<div class="am-grp am-x"><h3 id="am-x">Optional extras (not in the pass price)</h3><p class="am-intro">Add at checkout. The price is shown there.</p>${HotelAmenities.listHtml(groups.optional, 'optional')}</div>`);
     }
     if (groups.onsite.length) {
-      parts.push(`<div class="am-grp am-os"><h3>On site at this hotel</h3>${HotelAmenities.sentenceHtml()}${HotelAmenities.listHtml(groups.onsite, 'onsite')}</div>`);
+      parts.push(`<div class="am-grp am-os"><h3>On site (not included)</h3>${HotelAmenities.listHtml(groups.onsite, 'onsite')}</div>`);
     }
     return `<section class="lsec am" id="amenities" aria-labelledby="am-h"><h2 id="am-h">${esc(title)}</h2><p class="am-intro">${esc(intro)}</p><div class="am-cols">${parts.join('')}</div></section>`;
   }
@@ -326,10 +326,9 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
     const title = demo ? 'Example amenities (demo)' : 'Amenities';
     const chips = rows => `<ul class="chips-c">${rows.map(row => `<li class="am-row">${HotelAmenities.icon(row.icon)}<span>${esc(row.label)}</span></li>`).join('')}</ul>`;
     const parts = [];
-    if (groups.included.length) parts.push(`<p class="amc-row"><b>Included in your pass:</b></p>${chips(groups.included)}`);
-    if (groups.optional.length) parts.push(`<p class="amc-row"><b>Optional extras (not in the pass price):</b></p>${chips(groups.optional)}`);
+    if (groups.optional.length) parts.push(`<p class="amc-row"><b>Extras (paid):</b></p>${chips(groups.optional)}`);
     if (groups.onsite.length) {
-      parts.push(`<p class="amc-row"><b>On site at this hotel. Not included in your pass.</b> Pay the venue directly. Menus, prices and opening hours are set by the venue.</p><ul class="chips-c os">${groups.onsite.map(row => `<li class="am-row">${HotelAmenities.icon(row.icon)}<span>${esc(row.label)}</span></li>`).join('')}</ul>`);
+      parts.push(`<h3>On site (not included)</h3><ul class="chips-c os">${groups.onsite.map(row => `<li class="am-row">${HotelAmenities.icon(row.icon)}<span>${esc(row.label)}</span></li>`).join('')}</ul>`);
     }
     const href = `/h/${encodeURIComponent(hotel.slug)}#am-h`;
     return `<section class="am-c" aria-labelledby="amc-h"><h2 id="amc-h" class="h3">${esc(title)}</h2>${parts.join('')}<a class="tlink" href="${esc(href)}">See all amenities</a></section>`;
@@ -340,7 +339,7 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
     const groups = HotelAmenities.groups(db, hotelId, { people: 1 });
     if (!groups.onsite.length) return '';
     const rows = groups.onsite.map(row => `<li class="am-row">${HotelAmenities.icon(row.icon)}<span>${esc(row.label)}</span><b class="tago">Pay the venue</b></li>`).join('');
-    return `<div class="bk-venues">${HotelAmenities.sentenceHtml()}<ul class="am-list">${rows}</ul></div>`;
+    return `<div class="bk-venues"><h3>On site (not included)</h3><ul class="am-list">${rows}</ul></div>`;
   }
 
   static statusNote(category, items) {

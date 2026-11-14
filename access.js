@@ -74,10 +74,27 @@ function photoSrc(photo) {
   const file = safePhoto(photo);
   return file ? '/assets/photos/' + file : '';
 }
+function compactAccessLabel(area) {
+  const name = cleanLine(area.name, 60);
+  const blurb = guestBlurb(area);
+  const hours = cleanLine(area.hours, 80).replace(/^Daily\s+/i, '');
+  const heated = /\bheated\b/i.test(blurb) && !/\bheated\b/i.test(name);
+  const title = heated ? `${name}, heated` : name;
+  return hours ? `${title} · ${hours}` : title;
+}
 function accessList(areas, opts = {}) {
   const rows = areas || [];
   if (!rows.length) return '';
   const demo = !!opts.demo;
+  if (opts.compact) {
+    return `<ul class="access-list">${rows.map(area => {
+      const src = photoSrc(area.photo);
+      const name = cleanLine(area.name, 60);
+      const alt = demo ? `Example photo of ${name}, not this hotel` : name;
+      const img = src ? `<img src="${esc(src)}" alt="${esc(alt)}" width="480" height="360" loading="lazy" decoding="async">` : '';
+      return `<li class="access-item">${img}<div><b>${esc(compactAccessLabel(area))}</b></div></li>`;
+    }).join('')}</ul>`;
+  }
   return `<ul class="access-list">${rows.map(area => {
     const src = photoSrc(area.photo);
     const name = cleanLine(area.name, 60);

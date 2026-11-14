@@ -1,5 +1,7 @@
 /* One-row header. The 64px height includes the rose border. Below 700px the links move into the Menu sheet. */
 .hdr { overflow: visible; box-sizing: border-box; height: 64px; max-height: 64px; }
+.hdr .logo{min-height:44px;display:inline-flex;align-items:center}
+body:not(:has(.listing)) :is(h1, h2, h3),.seat-back{text-wrap:balance}
 .hdr .hdr-in { height: 100%; min-height: 0; max-height: none; box-sizing: border-box; }
 .hdr-nav a {
   min-height: 44px;
@@ -92,6 +94,15 @@
   .hdr .hdr-right .pill { display: none; }
   .hdr-m { display: flex; align-items: center; gap: 8px; margin-left: auto; flex: 0 0 auto; }
 }
+@media (max-width: 374px) {
+  .hdr .logo img { height: 28px; width: auto; }
+  .hdr-menu > summary {
+    padding: 12px;
+    min-width: 44px;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .hdr-menu .msheet,
   .ibtn,
@@ -119,7 +130,7 @@
   .app-ftr .ftr-in{padding:0 16px}
   .app-ftr .ftr-top,.app-ftr .ftr-cols{grid-template-columns:1fr;gap:0}
   .app-ftr .ftr-h{display:none}
-  .app-ftr .ftr-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;margin:0;padding:0;border:0;border-top:1px solid rgba(255,255,255,.28);background:transparent;color:#fff;font:700 11px/1.3 Inter,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;text-align:left;cursor:pointer}
+  .app-ftr .ftr-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;margin:0;padding:0;border:0;border-top:1px solid rgba(255,255,255,.28);background:transparent;color:#fff;font:700 13px/1.3 Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;text-align:left;cursor:pointer}
   .app-ftr .ftr-toggle::after{content:"";width:8px;height:8px;border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg);margin-top:-4px;flex:0 0 auto}
   .app-ftr .ftr-toggle[aria-expanded="true"]::after{transform:rotate(225deg);margin-top:4px}
   html.js .app-ftr .ftr-links{display:none}

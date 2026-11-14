@@ -10,6 +10,7 @@ const KINDS = [
 ];
 const KIND_NAME = Object.fromEntries(KINDS.map(k => [k.code, k.name]));
 const FOOD_RULE = 'Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.';
+const FREE_CANCEL = 'Free cancellation up to 24 hours before your access hours start.';
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -321,7 +322,7 @@ function rulesLines(hotel, opts = {}) {
   }
   const cutoff = hotel.cutoff_hours == null ? 2 : Number(hotel.cutoff_hours);
   lines.push(cutoff > 0 ? `Same-day bookings close ${cutoff} hour${cutoff === 1 ? '' : 's'} before close` : 'Same-day bookings until close');
-  lines.push('Free cancellation until 24 hours before access hours start');
+  lines.push(FREE_CANCEL);
   return lines;
 }
 function hhmmFromMinutes(total) {
@@ -439,7 +440,10 @@ function swimNote(hotel) {
   const g = guardFacts(hotel);
   return `Before you swim: ${g.swim}${g.on ? ' ' + g.watch : ''} Pools, spas and saunas carry risks of serious injury and drowning. No diving. No swimming after alcohol. Supervise children at all times. Follow staff directions and the hotel's rules. Look after your own belongings. In an emergency, alert staff and call 000.`;
 }
-function rulesText(hotel, opts) { return rulesLines(hotel, opts).join('. ') + '.'; }
+function rulesText(hotel, opts) {
+  const lines = rulesLines(hotel, opts).map(line => String(line).replace(/[.\s]+$/, ''));
+  return lines.join('. ') + '.';
+}
 function rulesCard(hotel, opts) {
   return `<div class="co-facts-block"><h3>Pool rules</h3><ul class="co-facts">${rulesLines(hotel, opts).map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`;
 }
@@ -882,7 +886,7 @@ function arrivalText(value, mode) {
 }
 
 module.exports = {
-  KINDS, PHOTOS, FOOD_RULE, fmtTime, parseTime, minutes, spotLabel, hoursSummary, dayPlan, dayClosure, closureReason,
+  KINDS, PHOTOS, FOOD_RULE, FREE_CANCEL, fmtTime, parseTime, minutes, spotLabel, hoursSummary, dayPlan, dayClosure, closureReason,
   rulesLines, rulesText, rulesCard, amenitiesFrom, slugify, hoursFor, blankJoin, readForm,
   policyFacts, guardFacts, supervisionNote, venueMissing, PICK_DATE_CANCEL,
   writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,

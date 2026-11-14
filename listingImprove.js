@@ -163,7 +163,9 @@ class ListingImprove {
   }
 
   static notIncludedHtml(items) {
-    const lines = ListingImprove.notIncludedLines(items).map(line => `<li>${esc(line)}</li>`).join('');
+    const lines = ListingImprove.notIncludedLines(items)
+      .filter(line => line !== FOOD_RULE)
+      .map(line => `<li>${esc(line)}</li>`).join('');
     return `<h3 class="sub">Not included</h3><ul class="not-inc">${lines}</ul>`;
   }
 
@@ -228,7 +230,7 @@ class ListingImprove {
   }
 
   static rulesHtml(hotel) {
-    const rows = ListingImprove.ruleRows(hotel).map(([label, text, example]) => {
+    const rows = ListingImprove.ruleRows(hotel).filter(([label]) => label !== 'Food rule').map(([label, text, example]) => {
       const chip = example ? ' <span class="ex">example data</span>' : '';
       return `<div><dt>${esc(label)}</dt><dd>${esc(text)}${chip}</dd></div>`;
     }).join('');
