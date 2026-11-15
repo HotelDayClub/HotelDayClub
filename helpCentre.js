@@ -1,6 +1,9 @@
 const { esc } = require('./util');
 const { GuestCheckIn, FOOD_RULE, FREE_CANCEL } = require('./offering');
+const { CheckoutConsent } = require('./consent');
 const seo = require('./seo');
+
+const CHECKOUT_MARKETING = CheckoutConsent.checkoutMarketingText();
 
 const ICONS = {
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
@@ -14,7 +17,7 @@ const ICONS = {
 
 const STEPS = [
   ['Browse', 'Search by neighbourhood, date and what you want: pool, gym or spa. Each listing shows what\'s included and the pool rules.'],
-  ['Book', `Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking or gym access if you want. ${FOOD_RULE} Before you confirm, you'll tick the risk warning, hotel rules, group and children, terms and sharing consent. Hot-day alerts are optional. The total updates before you confirm. This demo doesn't charge a card.`],
+  ['Book', `Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking or gym access if you want. ${FOOD_RULE} Tick one box to accept the terms. The full risk warning, hotel rules and group rules are in a dropdown above it. ${CHECKOUT_MARKETING} is optional in a separate box, left unticked. The total updates before you confirm. This demo doesn't charge a card.`],
   ['Show your QR code', `${GuestCheckIn.line()} The hours are on your confirmation.`],
   ['Enjoy', 'Your spot, for the hours that hotel has set. Add-ons stay optional.'],
 ];

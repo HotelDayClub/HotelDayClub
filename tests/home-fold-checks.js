@@ -190,9 +190,15 @@ function cdp(WS, wsUrl) {
           const helpRight = helpEl ? helpEl.getBoundingClientRect().right : 0;
           const exploreH2 = document.querySelector('#explore h2');
           const exploreH2Top = exploreH2 ? exploreH2.getBoundingClientRect().top : 1e9;
+          const freeCancelSub = document.querySelector('.assure li:first-child span');
+          const freeCancelVisible = !!(freeCancelSub
+            && getComputedStyle(freeCancelSub).display !== 'none'
+            && freeCancelSub.getBoundingClientRect().height > 0
+            && /24 hours before your access hours start/i.test(freeCancelSub.textContent));
           return {
             top: box.top,
             exploreH2Top,
+            freeCancelVisible,
             inner: window.innerHeight,
             scroll: document.documentElement.scrollWidth,
             width: window.innerWidth,
@@ -242,7 +248,11 @@ function cdp(WS, wsUrl) {
       assert.strictEqual(data.kicker, 'Example listings · not real hotels');
       assert.ok(!data.kickerClipped, width + ' kicker clipped');
       assert.ok(data.seeH >= 44, width + ' see all ' + data.seeH);
-      if (width === 360 || width === 390 || width === 1024) {
+      if (width === 360 || width === 390) {
+        assert.ok(data.exploreH2Top < data.inner * 1.2, width + ' explore h2 fold ' + data.exploreH2Top + ' vs ' + (data.inner * 1.2));
+        assert.ok(data.freeCancelVisible, width + ' free cancellation subline');
+      }
+      if (width === 1024) {
         assert.ok(data.exploreH2Top < data.inner, width + ' explore h2 below fold ' + data.exploreH2Top + ' vs ' + data.inner);
       }
       if (width >= 1280) {

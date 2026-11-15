@@ -101,8 +101,12 @@ async function main() {
     const a12 = esc(GuestCheckIn.line());
     const guests = hiw.body.slice(hiw.body.indexOf('id="guests"'), hiw.body.indexOf('Browse by topic'));
     assert.strictEqual(guests.split(a12).length - 1, 1);
-    assert.ok(guests.includes("Before you confirm, you&#39;ll tick the risk warning, hotel rules, group and children, terms and sharing consent."));
-    assert.ok(guests.includes('Hot-day alerts are optional.'));
+    assert.ok(guests.includes('Tick one box to accept the terms.'));
+    assert.ok(guests.includes('The full risk warning, hotel rules and group rules are in a dropdown above it.'));
+    assert.ok(guests.includes('Send me hot-day alerts and offers by email. I can unsubscribe at any time.'));
+    assert.ok(guests.includes('optional in a separate box, left unticked.'));
+    assert.ok(!/sharing consent/i.test(hiw.body));
+    assert.ok(!guests.includes('tick the risk warning, hotel rules, group and children'));
 
     for (const p of ['/', '/search', '/how-it-works', '/faq', '/h/saltwater-terrace']) {
       const page = p === '/how-it-works' ? hiw : await get(port, p);
