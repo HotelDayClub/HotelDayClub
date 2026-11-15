@@ -194,6 +194,8 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     const chips = sheet.match(/<(?:label class|button type="button" class)="d2-d[ "]/g) || [];
     assert.strictEqual(chips.length, 14, 'fourteen date chips');
     assert.ok(sheet.includes('More dates'));
+    assert.ok(sheet.includes('class="d2-mdb text-link"'), 'booking sheet inline links');
+    assert.ok(sheet.includes('class="d2-rm text-link"'), 'read more uses text-link');
     assert.ok(sheet.includes(`max="${max}"`), 'More dates and the no-JS date field stop at today plus 90');
     assert.ok(sheet.includes(`min="${today}"`));
     assert.ok(/<noscript><form class="d2-nojs"[^>]*method="get"/.test(sheet), 'no-JS other date form');

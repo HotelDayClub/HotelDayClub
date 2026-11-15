@@ -60,9 +60,9 @@ a.sec-action,a.sec-action:link,a.sec-action:visited{display:inline-flex;align-it
 a.sec-action:hover,a.sec-action:focus-visible{background:color-mix(in srgb,var(--hdc-deep) 8%,transparent)}
 a.sec-action:focus-visible{outline:3px solid var(--hdc-primary);outline-offset:2px}
 a.sec-action .sa-arr{font-size:16px;line-height:1}
-a.text-link,a.text-link:link,a.text-link:visited{color:var(--hdc-primary);font-weight:600;text-decoration:none;text-underline-offset:3px}
-a.text-link:hover,a.text-link:focus-visible{text-decoration:underline;text-decoration-thickness:1px}
-a.text-link:focus-visible{outline:3px solid var(--hdc-primary);outline-offset:2px;border-radius:4px}
+a.text-link,a.text-link:link,a.text-link:visited,button.text-link{color:var(--hdc-primary);font-weight:600;text-decoration:none;text-underline-offset:3px;background:none;border:0;font-family:inherit;cursor:pointer}
+a.text-link:hover,a.text-link:focus-visible,button.text-link:hover,button.text-link:focus-visible{text-decoration:underline;text-decoration-thickness:1px}
+a.text-link:focus-visible,button.text-link:focus-visible{outline:3px solid var(--hdc-primary);outline-offset:2px;border-radius:4px}
 @media(max-width:640px){
   a.sec-action{min-height:40px;padding:8px 14px;font-size:14px}
 }

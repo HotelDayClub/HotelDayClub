@@ -266,8 +266,8 @@ ${holdHtml(o.hold)}
 <div class="d2-pp" role="radiogroup" aria-labelledby="d2-pass-lab">${tiles}</div>
 <p class="d2-fit" id="d2-fit">${icon('people')}<span id="d2-fit-t">${esc(pick ? ListingD2.fitsLine(pick) : '')}</span></p>
 </div>
-<div class="d2-passrow" id="d2-passrow" hidden><span class="d2-lab">Pass <small id="d2-passrow-t"></small></span><button type="button" class="d2-mdb" id="d2-change">Change</button></div>
-<div class="d2-lab d2-labrow"><span>Date <small id="d2-hrs">${hours ? `${esc(hours)}, hotel time` : 'Hotel time'}</small></span><button type="button" class="d2-mdb" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
+<div class="d2-passrow" id="d2-passrow" hidden><span class="d2-lab">Pass <small id="d2-passrow-t"></small></span><button type="button" class="d2-mdb text-link" id="d2-change">Change</button></div>
+<div class="d2-lab d2-labrow"><span>Date <small id="d2-hrs">${hours ? `${esc(hours)}, hotel time` : 'Hotel time'}</small></span><button type="button" class="d2-mdb text-link" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
 <div class="d2-dates" id="d2-dates" role="group" aria-label="Date, next ${ListingD2.CHIPS} days">${days.map(chipHtml).join('')}${extra}</div>
 <div class="d2-cal" id="d2-calbox" hidden></div>
 <p class="d2-note" id="d2-closed" role="status" hidden></p>
@@ -402,7 +402,7 @@ ${galleryHtml(h)}
 <section class="d2-head" id="overview"><h1 class="d2-title">${esc(heading)}</h1>
 <p class="d2-loc">${esc(addressLine)}</p>
 ${demo ? '<span class="d2-tag">Fictional demo listing</span>' : ''}
-<p class="d2-desc" id="d2-desc">${desc}</p>${towelChip}<button type="button" class="d2-rm" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button></section>
+<p class="d2-desc" id="d2-desc">${desc}</p>${towelChip}<button type="button" class="d2-rm text-link" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button></section>
 <section class="d2-s" id="passes"><h2>Passes</h2><p class="d2-muted">Price per spot.${demo ? ' Example photos.' : ''}</p>
 ${sections}
 ${sheet}

@@ -139,7 +139,7 @@ function cookie(res) {
     assert.ok(home.body.includes('Each listing shows hours, price and what\'s included.'));
     assert.ok(home.body.includes('No. A day pass covers the pool, gym or spa for set hours.'));
     assert.ok(home.body.includes('Demo only. Fictional hotels, stock photos, no payments.'));
-    assert.ok(homeCss.includes('.assure span{font-size:14px;line-height:1.45;color:var(--hdc-deep)'));
+    assert.ok(homeCss.includes('.assure span:not(.ico-wrap){font-size:14px;line-height:1.45;color:var(--hdc-deep)'));
     assert.ok(homeCss.includes('repeat(5,minmax(0,1fr))'));
     assert.ok(!home.body.includes('live chat') && !home.body.includes('7-day support'));
     assert.ok(!home.body.includes('Flexible cancellation'));
