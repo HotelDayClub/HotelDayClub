@@ -84,8 +84,14 @@ function cdp(WS, wsUrl) {
   assert.ok(/body\.home \.slot img\{[^}]*aspect-ratio:3\/2/.test(homeCss), 'plan card image aspect ratio');
   assert.ok(/body\.home \.slot img\{[^}]*min-height:/.test(homeCss), 'plan card image min-height');
 
-  const WS = socketCtor();
-  const bin = chromeBin();
+const GUEST_D2_FOLD = {
+  1024: { headline: true, search: true, assure: false },
+  1280: { headline: true, search: true, assure: false },
+  1440: { headline: true, search: true, assure: true },
+};
+
+const WS = socketCtor();
+const bin = chromeBin();
   if (!WS || !bin) {
     console.log('skipped: no WebSocket/Chrome');
     return;
@@ -259,8 +265,16 @@ function cdp(WS, wsUrl) {
             return { top: r.top, h: r.height, svgH: sr.height, display: getComputedStyle(el).display };
           });
           const assureUlAlign = getComputedStyle(document.querySelector('.assure ul')).alignItems;
+          const headlineEl = document.querySelector('.hero-line');
+          const searchEl = document.querySelector('.hero .search') || document.querySelector('.search');
+          const headlineBottom = headlineEl ? headlineEl.getBoundingClientRect().bottom : 1e9;
+          const searchBottom = searchEl ? searchEl.getBoundingClientRect().bottom : 1e9;
+          const assureBottom = assureEl ? assureEl.getBoundingClientRect().bottom : 1e9;
           return {
             guestD2: document.body.classList.contains('guest-d2'),
+            headlineBottom,
+            searchBottom,
+            assureBottom,
             top: box.top,
             exploreH2Top,
             freeCancelVisible,
@@ -338,11 +352,18 @@ function cdp(WS, wsUrl) {
         }
         assert.strictEqual(data.assureUlAlign, 'start', width + ' assure ul align-items');
       }
-      if (width === 1024) {
-        assert.ok(data.exploreH2Top < data.inner, width + ' explore h2 fold ' + data.exploreH2Top + ' vs ' + data.inner);
-      }
-      if (width >= 1280) {
-        assert.ok(data.top < data.inner, width + ' first listing fold ' + data.top + ' vs ' + data.inner);
+      if (data.guestD2 && GUEST_D2_FOLD[width]) {
+        const fold = GUEST_D2_FOLD[width];
+        if (fold.headline) assert.ok(data.headlineBottom < data.inner, width + ' d2 headline fold ' + data.headlineBottom);
+        if (fold.search) assert.ok(data.searchBottom < data.inner, width + ' d2 search fold ' + data.searchBottom);
+        if (fold.assure) assert.ok(data.assureBottom < data.inner, width + ' d2 trust row fold ' + data.assureBottom);
+      } else {
+        if (width === 1024) {
+          assert.ok(data.exploreH2Top < data.inner, width + ' explore h2 fold ' + data.exploreH2Top + ' vs ' + data.inner);
+        }
+        if (width >= 1280) {
+          assert.ok(data.top < data.inner, width + ' first listing fold ' + data.top + ' vs ' + data.inner);
+        }
       }
       if (width === 1024 || width === 1100 || width === 1280 || width === 1440) {
         assert.ok(!data.searchOverlap, width + ' search overlaps what');
