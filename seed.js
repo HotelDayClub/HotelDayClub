@@ -63,7 +63,7 @@ const OFFERINGS = {
     id_required: 1, lifeguard: 1,
     spots: [
       { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger in the palm gardens, with a towel.', holds: 1, price: 35, daily_cap: 40, photo: 'tropical-resort.jpg', featured: 1 },
-      { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair by the shallow end.', holds: 1, price: 25, daily_cap: 30, photo: '' },
+      { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair by the shallow end.', holds: 1, price: 25, daily_cap: 30, photo: 'resort-palms.jpg' },
       { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A shaded daybed for two.', holds: 2, price: 70, daily_cap: 10, photo: 'thatched-umbrellas.jpg' },
     ],
   },
@@ -122,6 +122,7 @@ function ensureSchedules(db) {
     db.prepare("UPDATE pass_types SET kind='lounger' WHERE (kind IS NULL OR kind='') AND code='pool'").run();
     db.prepare("UPDATE pass_types SET kind='entry' WHERE (kind IS NULL OR kind='') AND code='spa'").run();
     db.prepare("UPDATE pass_types SET kind=code WHERE kind IS NULL OR kind=''").run();
+    db.prepare(`UPDATE pass_types SET photo='resort-palms.jpg' WHERE code='chair' AND hotel_id=(SELECT id FROM hotels WHERE slug='palm-court') AND COALESCE(photo,'')=''`).run();
     const demo = 'slug=? AND COALESCE(is_demo,0)=1';
     db.prepare(`UPDATE hotels SET blurb=REPLACE(blurb, 'right on the water line', 'steps from the beach') WHERE ${demo} AND blurb LIKE '%right on the water line%'`).run('manly-sands');
     db.prepare(`UPDATE hotels SET kids_hours='Children welcome until 2pm' WHERE ${demo} AND kids_hours='Until 2pm'`).run('manly-sands');

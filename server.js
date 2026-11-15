@@ -11,6 +11,7 @@ const {
   includedLines, includedNote, addonsHtml, inclusionsForm, beatsHtml, policyInner, guestFoodLine, PASS_FOOD_LINE, FOOD_DRINK,
 } = require('./inclusions');
 const { ensureArrival, saveArrival, arrivalForm, directionsHref } = require('./arrival');
+const { HotelExplore, load: loadExplore, saveExplore, ensureExplore } = require('./hotelExplore');
 const { ensureAccess, saveAccess, accessForm, accessBlock, forPass, byPass, hotelAreas, linkedIds } = require('./access');
 const { HotelAmenities } = require('./hotelAmenities');
 const { listingHtml, reassureStrip, ListingPanel, dayStepLinks } = require('./listingView');
@@ -127,10 +128,12 @@ app.get('/vendor/jsQR.js', (req, res) => {
   res.sendFile(require.resolve('jsqr'));
 });
 
+const clockNow = () => (process.env.HDC_NOW ? new Date(process.env.HDC_NOW) : new Date());
 const today = hotel => {
   const fix = process.env.HDC_DEMO_TODAY;
   if (fix && /^\d{4}-\d{2}-\d{2}$/.test(fix)) return fix;
-  return hotel ? HotelClock.today(hotel) : ymd(new Date());
+  const now = clockNow();
+  return hotel ? HotelClock.today(hotel, now) : ymd(now);
 };
 const hotelRow = h => {
   if (!h) return h;
@@ -394,7 +397,8 @@ function page(title, body, opts = {}) {
   const bodyExtra = [guestD2 ? 'guest-d2' : '', opts.bodyClassExtra || ''].filter(Boolean).join(' ');
   const bodyClass = [opts.bodyClass || (home ? 'home' : nav === 'guest' ? 'guest' : 'staff'), bodyExtra].filter(Boolean).join(' ');
   const deepHeader = !!(opts.logoOnDark || guestD2);
-  const header = `<header class="hdr" id="site-hdr"><div class="wrap hdr-in">${logoLink('light', { dualOnDark: deepHeader })}${chrome.nav}${headerExtra}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
+  const headerLogo = deepHeader ? logoLink('dark') : logoLink('light');
+  const header = `<header class="hdr" id="site-hdr"><div class="wrap hdr-in">${headerLogo}${chrome.nav}${headerExtra}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 ${demoSite() ? '<div class="demo-banner">Demo site: listings are examples, no real bookings or payments.</div>' : ''}
@@ -589,7 +593,7 @@ function hoursSpan(plan) {
   return fmtTime(plan.opens) + '\u2013' + fmtTime(plan.effective || plan.closes);
 }
 function hotelDays(hotel, selected) {
-  const start = new Date(today() + 'T12:00:00');
+  const start = new Date(today(hotel) + 'T12:00:00');
   const pills = [];
   let openCount = 0;
   for (let i = 0; i < 14; i++) {
@@ -971,7 +975,7 @@ app.get('/h/:slug', (req, res) => {
   }
   const demo = Number(h.is_demo) === 1;
   const photo = h.photos[0] ? seo.absolute('/assets/photos/' + h.photos[0]) : seo.DEFAULT_IMAGE;
-  const late = d => cancelNote(db, h, d) === ListingD2.LATE_NOTE;
+  const late = d => cancelNote(db, h, d, clockNow()) === ListingD2.LATE_NOTE;
   const passCode = String(req.query.pass || '').slice(0, 40);
   res.send(page(h.name, listingHtml({
     h, date, minDate: startDay, maxDate, closed, passes, av, from, late,
@@ -982,6 +986,7 @@ app.get('/h/:slug', (req, res) => {
     passCode,
     qty: req.query.qty,
     hold,
+    explore: loadExplore(db, h.id),
   }), {
     analytics: true,
     index: demo ? 'follow' : true,
@@ -1013,7 +1018,7 @@ app.get('/api/availability', (req, res) => {
   }
   const passes = availability(h.id, date);
   const offer = listingOffer(h, date, qty, passCode, passes);
-  res.json({ hotel: h.slug, date, passes, day_left: passes.day_left ?? null, addons: addonAvailability(h.id, date), cancel: cancelNote(db, h, date), offer, step });
+  res.json({ hotel: h.slug, date, passes, day_left: passes.day_left ?? null, addons: addonAvailability(h.id, date), cancel: cancelNote(db, h, date, clockNow()), offer, step });
 });
 
 function validate(q) {
@@ -1911,6 +1916,7 @@ ${offeringForm({ action: '/hotel/settings', hotel: row, spots: getPasses(row.id)
 ${inclusionsForm(loadInclusions(db, row.id))}
 ${HotelAmenities.form(db, row)}
 ${accessForm(hotelAreas(db, row.id), getPasses(row.id), linkedIds(db, row.id))}
+${HotelExplore.form(row, loadExplore(db, row.id))}
 ${arrivalForm(row)}`, { here: '/hotel/settings' }));
 });
 app.post('/hotel/settings', hotelAuth, (req, res) => {
@@ -2263,6 +2269,13 @@ app.post('/hotel/arrival', hotelAuth, (req, res) => {
   const result = saveArrival(db, req.hotel.id, req.body);
   if (result.err) return res.redirect('/hotel/settings?e=' + encodeURIComponent(result.err) + '#arrive-edit');
   res.redirect(303, '/hotel/settings?msg=' + encodeURIComponent('Saved getting there.') + '#arrive-edit');
+});
+app.post('/hotel/explore', hotelAuth, (req, res) => {
+  if (!ownForm(req, res)) return;
+  const result = saveExplore(db, req.hotel.id, req.body);
+  if (result.err) return res.redirect('/hotel/settings?e=' + encodeURIComponent(result.err) + '#explore-edit');
+  const msg = result.ok ? 'Updated Explore cards.' : 'Saved. Guests see this on the listing.';
+  res.redirect(303, '/hotel/settings?msg=' + encodeURIComponent(msg) + '#explore-edit');
 });
 app.post('/hotel/block', hotelAuth, async (req, res) => {
   if (!ownForm(req, res)) return;
@@ -2743,6 +2756,7 @@ ensureInclusions(db);
 ensureAccess(db);
 HotelAmenities.ensure(db);
 ensureArrival(db);
+ensureExplore(db);
 seedPerformance(db);
 syncHoursLabels(db);
 migrateHotelPasswords(db);

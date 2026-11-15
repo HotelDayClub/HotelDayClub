@@ -2,6 +2,7 @@ const assert = require('assert');
 const { DEMO_INTROS } = require('../seed');
 const { ListingPanel, listingHtml, DetailsAlias } = require('../listingView');
 const { hoursLines, cancelNote, FOOD_RULE } = require('../offering');
+const { ListingD2, LATE_NOTE } = require('../listingDir2');
 const { HotelClock } = require('../calendar');
 const { ymd, addDays, nice } = require('../util');
 const { DateHold } = require('../dateHold');
@@ -54,18 +55,30 @@ function leadAndMeta(body, slug, name, area) {
 }
 
 function venueRow(body, name) {
-  const at = body.indexOf('On site (not included)');
-  const end = body.indexOf('</ul>', at);
-  if (at < 0) return null;
-  const m = new RegExp('<li>(?:<svg[^>]*>.*?</svg>)?' + name + '</li>').exec(body.slice(at, end));
-  return m ? m[0] : null;
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const at = body.indexOf('class="d2-os"');
+  if (at >= 0) {
+    const end = body.indexOf('</ul>', at);
+    if (end > at) {
+      const m = new RegExp('<li>(?:<svg[^>]*>.*?</svg>)?(?:<a href="#explore">)?' + escaped + '(?:</a>)?</li>').exec(body.slice(at, end));
+      if (m) return m[0];
+    }
+  }
+  const exStart = body.indexOf('id="explore"');
+  if (exStart < 0) return null;
+  const exEnd = body.indexOf('id="d2-explore-sheet"', exStart);
+  const slice = body.slice(exStart, exEnd > exStart ? exEnd : exStart + 12000);
+  const h3 = new RegExp('<h3>' + escaped + '</h3>').exec(slice);
+  if (!h3) return null;
+  const artClose = slice.indexOf('</article>', h3.index);
+  return artClose > h3.index ? slice.slice(h3.index, artClose) : h3[0];
 }
 
-function start(port) {
+function start(port, extraEnv = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['server.js'], {
       cwd: path.join(__dirname, '..'),
-      env: { ...process.env, PORT: String(port), DB_PATH: dbPath, DATA_DIR: '', ADMIN_PASSWORD: 'list-admin', DEMO_HOTEL_PASSWORD: 'list-hotel' },
+      env: { ...process.env, PORT: String(port), DB_PATH: dbPath, DATA_DIR: '', ADMIN_PASSWORD: 'list-admin', DEMO_HOTEL_PASSWORD: 'list-hotel', ...extraEnv },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let log = '';
@@ -326,7 +339,14 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(!/[★☆]|\bstars?\b|\/\s*5\b|\d/.test(why));
     const notInc = salt.body.slice(salt.body.indexOf('<ul class="not-inc">'), salt.body.indexOf('</ul>', salt.body.indexOf('<ul class="not-inc">')));
     assert.ok(!notInc.includes(FOOD_RULE));
-    assert.strictEqual(salt.body.split(FOOD_RULE).length - 1, 1);
+    const goodToKnow = salt.body.slice(salt.body.indexOf('id="before"'));
+    assert.strictEqual(goodToKnow.split(FOOD_RULE).length - 1, 1, 'food rule once in good to know');
+    const exSheetEnd = salt.body.indexOf('</dialog>', salt.body.indexOf('id="d2-explore-sheet"'));
+    const exSheet = salt.body.slice(salt.body.indexOf('id="d2-explore-sheet"'), exSheetEnd > 0 ? exSheetEnd : undefined);
+    assert.strictEqual(exSheet.split(FOOD_RULE).length - 1, 1, 'food rule once in explore sheet');
+    const saltBand = salt.body.slice(salt.body.indexOf('class="d2-hours-band"'), salt.body.indexOf('class="d2-hb-park"'));
+    assert.ok(saltBand.includes('<dt>Mon to Sun</dt><dd>10am\u20134pm</dd>'), 'saltwater hours label and time');
+    assert.ok(saltBand.includes('10am\u20134pm'), saltBand.slice(0, 400));
     assert.ok(!salt.body.includes('id="season"'));
     assert.ok(!salt.body.includes('Season and closed dates'));
     assert.ok(salt.body.includes('Free cancellation up to 24 hours before your access hours start.'));
@@ -341,7 +361,14 @@ assert.ok(sevenPhotos.includes('1 / 7'));
       assert.strictEqual(page.status, 200, slug);
       assert.ok(!page.body.includes('Season and closed dates'), slug);
       assert.ok(!page.body.includes('id="season"'), slug);
-      assert.strictEqual(page.body.split(FOOD_RULE).length - 1, 1, slug + ' food rule once');
+      assert.ok(page.body.includes('id="before"'), slug + ' good to know section');
+      const gtkBlock = page.body.slice(page.body.indexOf('id="before"'));
+      assert.strictEqual(gtkBlock.split(FOOD_RULE).length - 1, 1, slug + ' food rule once in good to know');
+      if (page.body.includes('d2-ex-food')) {
+        const exEnd = page.body.indexOf('</dialog>', page.body.indexOf('id="d2-explore-sheet"'));
+        const ex = page.body.slice(page.body.indexOf('id="d2-explore-sheet"'), exEnd > 0 ? exEnd : undefined);
+        assert.strictEqual(ex.split(FOOD_RULE).length - 1, 1, slug + ' food rule once in explore sheet');
+      }
       const amenityAt = page.body.indexOf('id="amenities"');
       if (amenityAt >= 0) {
         assert.ok(page.body.indexOf('id="passes"') < amenityAt, slug + ' amenities after passes');
@@ -367,10 +394,13 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(salt.body.includes('Show your QR code at check-in.'));
     assert.ok(salt.body.includes('Help when you need it'));
     assert.ok(salt.body.includes('href="/contact"'));
-    const poolBar = [venueRow(salt.body, 'Pool bar')];
-    assert.ok(!poolBar[0].includes('From 11am'));
-    assert.ok(!poolBar[0].includes('Food and drink available to purchase'));
-    assert.ok(!/included/i.test(poolBar[0]));
+    assert.ok(salt.body.includes('href="#explore">Pool bar'), 'pool bar links to explore');
+    const poolBar = venueRow(salt.body, 'Pool bar');
+    assert.ok(poolBar, 'pool bar venue row or explore card');
+    assert.ok(!poolBar.includes('From 11am'));
+    assert.ok(!poolBar.includes('Food and drink available to purchase'));
+    assert.ok(!/included in your pass/i.test(poolBar));
+    assert.ok(poolBar.includes('On site (not included)') || poolBar.includes('Pool bar'), 'pool bar venue label');
     assert.ok(!seatLounger.body.includes('looking straight out to the Pacific'));
     assert.ok(seatLounger.body.includes('On site (not included)'));
     assert.ok(seatLounger.body.includes('/assets/photos/infinity-ocean.jpg'));
@@ -380,7 +410,8 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(!/>\s*Seat\s*</.test(salt.body));
     assert.ok(!salt.body.includes('quietest'));
     assert.ok(salt.body.includes('href="#passes"'));
-    assert.ok(salt.body.includes('id="overview"'));
+    assert.ok(salt.body.includes('id="explore"'));
+    assert.ok(!salt.body.includes('id="overview"'));
     assert.ok(salt.body.includes('hashchange'));
     assert.ok(!/id="day-prev"[^>]*href=/.test(salt.body));
     assert.ok(salt.body.includes('aria-live="polite"'));
@@ -488,11 +519,12 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(!/adults only after 2pm/i.test(manly.body));
     const manlySeat = await get(port, '/h/manly-sands');
     assert.strictEqual(manlySeat.status, 200);
-    const kiosk = [venueRow(manlySeat.body, 'Kiosk')];
-    assert.ok(kiosk[0], 'kiosk venue');
+    const kiosk = venueRow(manlySeat.body, 'Kiosk');
+    assert.ok(kiosk, 'kiosk venue or explore card');
     assert.ok(manlySeat.body.includes('On site (not included)'));
     assert.ok(!manlySeat.body.includes('Pay the venue directly. Menus, prices and opening hours are set by the venue.'));
-    assert.ok(!/included/i.test(kiosk[0]));
+    assert.ok(!kiosk.includes('From'));
+    assert.ok(!/included in your pass/i.test(kiosk));
 
     const palm = await get(port, '/h/palm-court');
     leadAndMeta(palm.body, 'palm-court', 'Palm Court Resort', 'Parramatta');
@@ -514,10 +546,10 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.strictEqual(palmSeat.status, 200);
     assert.ok(palmSeat.body.includes('On site (not included)'));
     assert.ok(!palmSeat.body.includes('Pay the venue directly. Menus, prices and opening hours are set by the venue.'));
-    const cafe = [venueRow(palmSeat.body, 'Café')];
-    assert.ok(cafe[0], 'café venue');
-    assert.ok(!/included/i.test(cafe[0]));
-    assert.ok(!cafe[0].includes('From'));
+    const cafe = venueRow(palmSeat.body, 'Café') || venueRow(palmSeat.body, 'Pool café');
+    assert.ok(cafe, 'café venue or explore card');
+    assert.ok(!/included in your pass/i.test(cafe));
+    assert.ok(!cafe.includes('From'));
     assert.ok(!palm.body.includes('Prepaid food and drink credit'));
     assert.ok(!palm.body.includes('Welcome drink'));
     assert.ok(!palm.body.includes('part of the visit'));
@@ -543,10 +575,10 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.strictEqual(skySeat.status, 200);
     assert.ok(!sky.body.includes('quietest'));
     assert.ok(!skySeat.body.includes('<b>Gym</b>'));
-    const skyBar = [venueRow(skySeat.body, 'Bar')];
-    assert.ok(skyBar[0], 'bar venue');
-    assert.ok(!skyBar[0].includes('From noon'));
-    assert.ok(!/included/i.test(skyBar[0]));
+    const skyBar = venueRow(skySeat.body, 'Rooftop bar') || venueRow(skySeat.body, 'Bar');
+    assert.ok(skyBar, 'bar venue or explore card');
+    assert.ok(!skyBar.includes('From noon'));
+    assert.ok(!/included in your pass/i.test(skyBar));
     assert.ok(!sky.body.includes('Wed ·'));
     assert.ok(sky.body.includes('Parking'));
     assert.ok(sky.body.includes('$40'));
@@ -733,6 +765,26 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     });
     assert.strictEqual(book.status, 409, book.body.slice(0, 300));
     assert.ok(/sold out/i.test(book.body), book.body.slice(0, 300));
+
+    const latePort = port + 3;
+    const lateChild = await start(latePort, { HDC_NOW: '2026-11-17T01:00:00.000Z' });
+    try {
+      const fixedToday = '2026-11-17';
+      const lateAvail = JSON.parse((await get(latePort, `/api/availability?hotel=saltwater-terrace&date=${fixedToday}`)).body);
+      assert.strictEqual(lateAvail.cancel, LATE_NOTE);
+      const lateListing = await get(latePort, `/h/saltwater-terrace?pass=lounger&date=${fixedToday}&qty=1`);
+      assert.ok(lateListing.body.includes('id="d2-late"'));
+      assert.ok(lateListing.body.includes('class="d2-note warn" id="d2-late"'));
+      assert.ok(lateListing.body.includes('can&#39;t be cancelled for free'));
+      const farDay = '2026-12-10';
+      const farAvail = JSON.parse((await get(latePort, `/api/availability?hotel=saltwater-terrace&date=${farDay}`)).body);
+      assert.ok(!/can't be cancelled for free/.test(farAvail.cancel), farAvail.cancel);
+      const farListing = await get(latePort, `/h/saltwater-terrace?pass=lounger&date=${farDay}&qty=1`);
+      const lateHidden = farListing.body.match(/id="d2-late"[^>]*hidden/);
+      assert.ok(lateHidden || !farListing.body.includes('can&#39;t be cancelled for free'), 'no late notice on far date');
+    } finally {
+      lateChild.kill('SIGTERM');
+    }
   } finally {
     child.kill('SIGTERM');
   }

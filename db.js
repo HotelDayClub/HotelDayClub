@@ -131,6 +131,18 @@ CREATE TABLE IF NOT EXISTS closure_alerts(
   summary TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS hotel_explore_areas(
+  id INTEGER PRIMARY KEY,
+  hotel_id INTEGER NOT NULL REFERENCES hotels(id) ON DELETE CASCADE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  name TEXT NOT NULL,
+  line TEXT NOT NULL DEFAULT '',
+  details TEXT NOT NULL DEFAULT '',
+  hours TEXT NOT NULL DEFAULT '',
+  photo TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT 'other'
+);
+CREATE INDEX IF NOT EXISTS idx_hotel_explore_hotel ON hotel_explore_areas(hotel_id);
 `);
 // Adds a column only when it is missing, so this is safe to run on every boot.
 function ensureCols(table, cols) {
@@ -149,6 +161,7 @@ ensureCols('hotels', [
   ['state', 'TEXT'], ['timezone', 'TEXT'],
   ['transit_note', 'TEXT'], ['parking_entrance', 'TEXT'], ['day_entrance', 'TEXT'],
   ['is_demo', 'INTEGER NOT NULL DEFAULT 0'],
+  ['about_intro', 'TEXT'],
 ]);
 ensureCols('pass_types', [['holds', 'INTEGER DEFAULT 1'], ['photo', 'TEXT'], ['kind', 'TEXT'], ['featured', 'INTEGER DEFAULT 0']]);
 ensureCols('bookings', [['rules_ack_at', 'TEXT'], ['rules_text', 'TEXT'], ['party', 'INTEGER'], ['marketing_opt_in', 'INTEGER DEFAULT 0'], ['terms_ack_at', 'TEXT'], ['risk_ack_at', 'TEXT'], ['risk_text', 'TEXT'], ['cancel_note', 'TEXT'], ['seeded', 'INTEGER NOT NULL DEFAULT 0'], ['refunded', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_tries', 'INTEGER NOT NULL DEFAULT 0'], ['guest_email_state', 'TEXT'], ['arrived_count', 'INTEGER'], ['expected_arrival', 'TEXT'], ['terms_version', 'TEXT'], ['refunds_version', 'TEXT'], ['privacy_version', 'TEXT'], ['risk_version', 'TEXT'], ['consent_at', 'TEXT'], ['consent_ip', 'TEXT'], ['short_code', 'TEXT']]);

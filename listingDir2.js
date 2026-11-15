@@ -8,6 +8,7 @@ const { SearchQuery } = require('./search');
 const { PhotoAssets } = require('./photoAssets');
 const { SPRITE, icon } = require('./d2Icons');
 const { ListingPanel } = require('./listingView');
+const { HotelExplore } = require('./hotelExplore');
 
 const WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -276,7 +277,8 @@ function sheetHtml(o) {
   const tiles = passes.map(p => {
     const on = pick && p.code === pick.code;
     const off = out(p);
-    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${PhotoAssets.imgTag(safePhoto(String(p.photo || '')), { alt: isDemo(h) ? 'Stock photo, not this hotel' : p.name, width: 120, height: 60, sizes: '120px', loading: 'lazy' })}<b>${esc(p.name)}</b><span>${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><i class="tk">${icon('tick')}</i></label>`;
+    const thumb = passThumb(p, isDemo(h) ? 'Stock photo, not this hotel' : p.name).replace('width="88" height="88"', 'width="120" height="60"');
+    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${thumb}<b>${esc(p.name)}</b><span>${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><i class="tk">${icon('tick')}</i></label>`;
   }).join('');
   const noJsDate = `<noscript><form class="d2-nojs" action="/h/${esc(encodeURIComponent(h.slug))}#book" method="get"><label>Another date<input type="date" name="date" min="${esc(o.today)}" max="${esc(maxDate)}" value="${esc(outside ? date : '')}"></label><input type="hidden" name="pass" value="${esc(pick ? pick.code : '')}"><input type="hidden" name="qty" value="${qty}"><button class="d2-btn out" type="submit">Use this date</button></form></noscript>`;
   return `<section class="d2-book" id="book" aria-labelledby="d2-book-h" tabindex="-1">
@@ -302,7 +304,6 @@ ${kids ? `<p class="d2-note kid" id="d2-kids"><b>Children</b> ${esc(kids)}</p>` 
 <div class="d2-step" role="group" aria-labelledby="d2-spots-lab"><button type="button" class="d2-sb" id="d2-qminus" aria-label="Fewer spots" hidden>${icon('minus')}</button><input class="d2-qty" id="d2-qty" name="qty" type="number" inputmode="numeric" min="1" max="${SearchQuery.BOOKING_SPOTS}" value="${qty}" aria-label="Spots"><button type="button" class="d2-sb" id="d2-qplus" aria-label="More spots" hidden>${icon('plus')}</button></div>
 <div class="d2-tot" aria-live="polite"><span id="d2-tot-l">${total}</span><b id="d2-tot-p">${totalPrice}</b></div>
 <button class="d2-btn d2-go" id="d2-go" type="submit"${disabled ? ' aria-disabled="true"' : ''}>Book</button>
-<p class="d2-demo">${isDemo(h) ? 'Demo: no charge.' : 'You will review the booking at checkout.'}</p>
 </form>
 ${noJsDate}
 </section>`;
@@ -382,8 +383,15 @@ function detailsHtml(o) {
     ? `<p class="d2-sub first">Included in your pass${demo ? ' <span class="ex">Example amenities (demo)</span>' : ''}</p><ul class="d2-inc">${incRows.map(row).join('')}</ul>`
     : `<p class="d2-muted">${esc(ListingImprove.includedEmptyCopy(false))}</p>`;
   const off = notIncludedChips(items);
+  const hasExplore = Boolean(o.hasExplore);
   const onsiteList = groups.onsite.length
-    ? `<ul class="d2-inc d2-os">${groups.onsite.map(r => `<li>${icon(AMENITY_ICON[r.icon] || 'pin')}${esc(r.label)}</li>`).join('')}</ul>`
+    ? `<ul class="d2-inc d2-os">${groups.onsite.map(r => {
+      const ico = icon(AMENITY_ICON[r.icon] || 'pin');
+      if (hasExplore && /^pool bar$/i.test(String(r.label || '').trim())) {
+        return `<li>${ico}<a href="#explore">${esc(r.label)}</a></li>`;
+      }
+      return `<li>${ico}${esc(r.label)}</li>`;
+    }).join('')}</ul>`
     : '';
   const offLine = off.length ? `<p class="d2-os-note">Not included: ${esc(off.join(' · '))}</p>` : '';
   const onsiteBlock = (groups.onsite.length || off.length)
@@ -446,21 +454,20 @@ function listingHtmlD2(opts) {
   const dateLabel = date ? ListingD2.label(date) : 'Any date';
   const fromHtml = `From <b>${esc(money(from))}</b>${demo ? ' <small>(demo)</small>' : ''}`;
   const addressLine = String(h.area || '').trim();
-  const overviewDesc = `${esc(String(h.tagline || '').trim())}. ${esc(String(h.blurb || '').trim())}`;
+  const exploreData = opts.explore || null;
+  const exploreBlock = HotelExplore.sectionHtml(h, exploreData);
+  const hasExplore = Boolean(HotelExplore.visible(exploreData));
   return `<div class="d2 listing" id="d2-root">${SPRITE}
 ${galleryHtml(h, { heading, area: addressLine, desc: heroDescHtml(h) })}
 ${bookBarHtml(fromHtml, dateLabel, qty)}
-<div class="d2-tabs" id="d2-tabs"><div class="in"><nav aria-label="On this page"><a href="#passes" aria-current="true">Passes</a><a href="#details">Details</a></nav><a class="d2-datebtn" href="#book" id="d2-pill" data-open="date">${icon('cal')}<span id="d2-pill-t">${esc(dateLabel)}</span></a></div></div>
+<div class="d2-tabs" id="d2-tabs"><div class="in"><nav aria-label="On this page"><a href="#passes" aria-current="true">Passes</a>${hasExplore ? '<a href="#explore">Explore</a>' : ''}<a href="#details">Details</a></nav><a class="d2-datebtn" href="#book" id="d2-pill" data-open="date">${icon('cal')}<span id="d2-pill-t">${esc(dateLabel)}</span></a></div></div>
 <div class="d2-layout"><div class="d2-col">
-<section class="d2-head" id="overview" hidden aria-hidden="true"><p class="d2-title">${esc(heading)}</p>
-<p class="d2-loc">${esc(addressLine)}</p>
-${demo ? '<span class="d2-tag">Fictional demo listing</span>' : ''}
-<p class="d2-desc">${overviewDesc}</p></section>
 <section class="d2-s" id="passes"><h2>Passes</h2><p class="d2-muted">Price per spot.${demo ? ' Example photos.' : ''}</p>
 <div class="d2-pass-groups">${sections}</div>
 ${sheet}
 </section>
-${detailsHtml({ ...opts, items })}
+${exploreBlock}
+${detailsHtml({ ...opts, items, hasExplore })}
 </div></div>
 ${hoursBandHtml(h, { ...opts, items })}
 ${policiesHtml(h)}
@@ -909,6 +916,43 @@ function alias(){
  history.replaceState(null,'',location.pathname+location.search+to);
 }
 window.addEventListener('hashchange',alias);alias();
+
+var exSheet=$('#d2-explore-sheet');
+if(exSheet){
+ var exFrom=null,exClose=$('#d2-explore-close');
+ function closeEx(){
+  if(exSheet.open) exSheet.close();
+  document.documentElement.classList.remove('d2-lock');
+  if(exFrom&&exFrom.focus) exFrom.focus();
+  exFrom=null;
+ }
+ function openEx(btn){
+  exFrom=btn;
+  if(!exSheet.open&&exSheet.showModal) exSheet.showModal();
+  document.documentElement.classList.add('d2-lock');
+  var h=$('#d2-explore-h');
+  if(h){h.setAttribute('tabindex','-1');h.focus()}
+ }
+ document.addEventListener('click',function(e){
+  var btn=e.target.closest('[data-open-explore]');
+  if(!btn) return;
+  e.preventDefault();
+  openEx(btn);
+ });
+ if(exClose) exClose.addEventListener('click',closeEx);
+ exSheet.addEventListener('close',closeEx);
+ exSheet.addEventListener('click',function(e){if(e.target===exSheet) closeEx()});
+ exSheet.addEventListener('keydown',function(e){
+  if(e.key!=='Tab') return;
+  var n=$$('a[href],button,input,select,textarea',exSheet).filter(function(el){
+   if(el.disabled||el.hidden||el.closest('[hidden]')) return false;
+   var b=el.getBoundingClientRect();return b.width>0||b.height>0;
+  });
+  if(!n.length) return;
+  if(e.shiftKey&&document.activeElement===n[0]){e.preventDefault();n[n.length-1].focus()}
+  else if(!e.shiftKey&&document.activeElement===n[n.length-1]){e.preventDefault();n[0].focus()}
+ });
+}
 })();
 </script>`;
 }
