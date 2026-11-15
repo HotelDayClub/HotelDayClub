@@ -86,7 +86,10 @@ class TicketView {
   }
 
   static safetyLine(hotel) {
-    return `Safety and your details: ${guardFacts(hotel || {}).swim} Supervise children at all times.`;
+    const { childrenAllowed } = require('./offering');
+    const swim = guardFacts(hotel || {}).swim;
+    const extra = childrenAllowed(hotel) ? ' Supervise children at all times.' : '';
+    return `Safety and your details: ${swim}${extra}`;
   }
 
   static isLate(note) {

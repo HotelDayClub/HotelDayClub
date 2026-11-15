@@ -11,10 +11,11 @@ class CheckoutFlow {
     return ['accept', 'marketing'];
   }
 
-  static reason(remaining) {
+  static reason(remaining, placement) {
     const n = Math.max(0, Math.floor(Number(remaining) || 0));
     if (n <= 0) return '';
-    if (n === 1) return 'Tick the box above to continue.';
+    const where = placement === 'aside' || placement === 'dock' ? 'terms box' : 'box above';
+    if (n === 1) return `Tick the ${where} to continue.`;
     return `Tick the ${n} boxes above to continue.`;
   }
 
@@ -87,9 +88,9 @@ function checkoutReason(n){
 }`;
   }
 
-  static confirmControl({ id, reasonId, label, remaining, full }) {
+  static confirmControl({ id, reasonId, label, remaining, full, placement }) {
     const left = Math.max(0, Math.floor(Number(remaining) || 0));
-    const reason = this.reason(left);
+    const reason = this.reason(left, placement || (String(id || '').includes('aside') ? 'aside' : String(id || '').includes('dock') ? 'dock' : 'form'));
     const gate = left > 0 ? ' aria-disabled="true"' : '';
     const described = left > 0 ? ` aria-describedby="${reasonId}"` : '';
     const hidden = left > 0 ? '' : ' hidden';

@@ -128,7 +128,7 @@ function cdp(WS, wsUrl) {
     await send('Page.enable');
     await send('Runtime.enable');
     await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
-    for (const [width, height] of [[360, 844], [390, 844], [1024, 800], [1280, 800], [1440, 900]]) {
+    for (const [width, height] of [[360, 844], [390, 844], [1024, 800], [1100, 800], [1280, 800], [1440, 900]]) {
       await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 800 });
       await send('Page.navigate', { url: `http://127.0.0.1:${port}/` });
       await new Promise(resolve => setTimeout(resolve, 900));
@@ -188,6 +188,50 @@ function cdp(WS, wsUrl) {
           } : null;
           const helpEl = [...document.querySelectorAll('.assure b')].find(n => /help when you need it/i.test(n.textContent));
           const helpRight = helpEl ? helpEl.getBoundingClientRect().right : 0;
+          const heroEl = document.querySelector('.hero');
+          const phEl = document.querySelector('.hero .ph');
+          const heroBox = rectOf(heroEl);
+          const phBox = rectOf(phEl);
+          const creditEl = document.querySelector('.hero .credit');
+          const clockEl = document.querySelector('.hero .clock');
+          const creditBox = rectOf(creditEl);
+          const clockBox = rectOf(clockEl);
+          const quickBtns = [...document.querySelectorAll('.copy .quick a.qb')].map(el => {
+            const st = getComputedStyle(el);
+            const bg = st.backgroundColor || '';
+            const alpha = /rgba?\(([^)]+)\)/.exec(bg);
+            let opaque = bg === 'transparent' || bg === '';
+            if (alpha) {
+              const bits = alpha[1].split(',').map(s => s.trim());
+              opaque = bits.length < 4 || Number(bits[3]) > 0.05;
+            } else if (/^#/.test(bg)) opaque = true;
+            return {
+              td: st.textDecorationLine,
+              display: st.display,
+              bg,
+              opaque,
+              h: el.getBoundingClientRect().height,
+            };
+          });
+          const whatSeg = document.querySelector('#p') && document.querySelector('#p').closest('.seg');
+          const whatPk = whatSeg && whatSeg.querySelector('.pk-btn');
+          const whatTxt = whatPk && whatPk.querySelector('.pk-txt');
+          const whatChev = whatPk && whatPk.querySelector('.pk-chev');
+          const submitBtn = document.querySelector('.search button[type="submit"]');
+          const overlaps = (a, b) => {
+            if (!a || !b) return false;
+            return !(a.right <= b.left + 1 || a.left >= b.right - 1 || a.bottom <= b.top + 1 || a.top >= b.bottom - 1);
+          };
+          const heroKickerEl = document.querySelector('.copy .kicker');
+          const heroKickerBox = rectOf(heroKickerEl);
+          const badgeKickerOverlap = overlaps(creditBox, heroKickerBox);
+          const creditLineCount = creditEl ? ((creditEl.scrollHeight > creditEl.clientHeight + 2) ? 2 : 1) : 0;
+          const whatBox = whatSeg ? rectOf(whatSeg) : null;
+          const whatPickBox = whatPk ? rectOf(whatPk) : null;
+          const submitBox = submitBtn ? rectOf(submitBtn) : null;
+          const chevBox = whatChev ? rectOf(whatChev) : null;
+          const whatTxtClip = whatTxt ? whatTxt.scrollWidth > whatTxt.clientWidth + 1 : false;
+          const searchOverlap = submitBox && (whatBox && overlaps(submitBox, whatBox) || whatPickBox && overlaps(submitBox, whatPickBox) || chevBox && overlaps(submitBox, chevBox));
           const exploreH2 = document.querySelector('#explore h2');
           const exploreH2Top = exploreH2 ? exploreH2.getBoundingClientRect().top : 1e9;
           const freeCancelSub = document.querySelector('.assure li:first-child span');
@@ -215,6 +259,15 @@ function cdp(WS, wsUrl) {
             planSecW,
             copyBox,
             helpRight,
+            heroBox,
+            phBox,
+            creditBox,
+            clockBox,
+            badgeKickerOverlap,
+            creditLines: creditLineCount,
+            quickBtns,
+            searchOverlap,
+            whatTxtClip,
           };
         })()`,
       });
@@ -257,6 +310,35 @@ function cdp(WS, wsUrl) {
       }
       if (width >= 1280) {
         assert.ok(data.top < data.inner, width + ' first listing below fold ' + data.top + ' vs ' + data.inner);
+      }
+      if (width === 1024 || width === 1100 || width === 1280 || width === 1440) {
+        assert.ok(!data.searchOverlap, width + ' search overlaps what');
+        assert.ok(!data.whatTxtClip, width + ' what field clipped');
+      }
+      if (width === 390 || width === 1280) {
+        assert.ok(data.heroBox && data.phBox, width + ' hero ph boxes');
+        assert.ok(Math.abs(data.phBox.height - data.heroBox.height) <= 2, width + ' hero ph fill ' + JSON.stringify({ hero: data.heroBox.height, ph: data.phBox.height }));
+      }
+      if (data.creditBox) {
+        assert.ok(data.creditBox.width >= 20 && data.creditBox.height >= 10, width + ' credit visible ' + JSON.stringify(data.creditBox));
+        assert.ok(data.creditBox.left >= -1 && data.creditBox.right <= data.width + 2, width + ' credit clipped');
+      }
+      if (width === 360 || width === 390) {
+        assert.ok(!data.badgeKickerOverlap, width + ' credit overlaps kicker');
+        assert.ok(data.creditLines <= 1, width + ' credit wraps ' + data.creditLines);
+      }
+      if (data.clockBox) {
+        assert.ok(data.clockBox.width >= 20 && data.clockBox.height >= 10, width + ' clock visible ' + JSON.stringify(data.clockBox));
+        assert.ok(data.clockBox.left >= -1 && data.clockBox.right <= data.width + 2, width + ' clock clipped');
+      }
+      if (data.quickBtns.length) {
+        assert.strictEqual(data.quickBtns.length, 2, width + ' quick buttons');
+        for (const qb of data.quickBtns) {
+          assert.strictEqual(qb.td, 'none', width + ' quick underline ' + JSON.stringify(qb));
+          assert.ok(qb.opaque, width + ' quick bg ' + qb.bg);
+          assert.strictEqual(qb.display, 'flex', width + ' quick display ' + qb.display);
+          assert.ok(qb.h >= 44, width + ' quick height ' + qb.h);
+        }
       }
       console.log(width + 'x' + height + ' card top ' + Math.round(data.top) + ' explore h2 ' + Math.round(data.exploreH2Top) + ' of ' + data.inner);
     }

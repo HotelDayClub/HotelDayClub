@@ -38,7 +38,7 @@ class CheckoutConsent {
   }
 
   static marketingText() {
-    return 'Send me hot-day alerts and offers by email/SMS. I can unsubscribe at any time.';
+    return 'Send me hot-day alerts and offers by email. I can unsubscribe at any time.';
   }
 
   static checkoutMarketingText() {
@@ -65,17 +65,22 @@ class CheckoutConsent {
   }
 
   static keyPointsText(hotel) {
+    const { childrenAllowed } = require('./offering');
     const guard = this.lifeguardSentence(hotel);
-    return `Risk warning: Swimming, spas, saunas and plunge pools carry risks of serious injury, illness and death, including drowning. ${guard} No diving unless the hotel's rules allow it. Don't swim or use the spa or sauna after drinking alcohol. Children must be actively supervised by an adult on your booking at all times.`;
+    const supervise = childrenAllowed(hotel || {})
+      ? ' Children must be actively supervised by an adult on your booking at all times.'
+      : '';
+    return `Risk warning: Swimming, spas, saunas and plunge pools carry risks of serious injury, illness and death, including drowning. ${guard} No diving unless the hotel's rules allow it. Don't swim or use the spa or sauna after drinking alcohol.${supervise}`;
   }
 
   static hazardLines(hotel) {
-    const { riskLines } = require('./offering');
+    const { riskLines, childrenAllowed } = require('./offering');
     const source = hotel || {};
     return riskLines(source).slice(7).filter(line => {
       if (line.startsWith('Lifeguard:')) return false;
       if (line.startsWith('Pool:') && /\bNot set\b/.test(line)) return false;
-      if (line.startsWith('Children:') && !String(source.age_policy || '').trim() && !String(source.kids_hours || '').trim()) return false;
+      if ((line.startsWith('Children:') || line.startsWith('Age:')) && !String(source.age_policy || '').trim() && !String(source.kids_hours || '').trim()) return false;
+      if (/actively supervised/i.test(line) && !childrenAllowed(source)) return false;
       return true;
     });
   }
@@ -86,8 +91,12 @@ class CheckoutConsent {
     return `<div class="co-key" id="co-risk-points"><p>${esc(this.keyPointsText(hotel))}</p><p>${esc(this.refusalText())}</p>${list}</div>`;
   }
 
-  static acceptHtml() {
-    return 'I\'m 18 or over. I accept the <a href="/terms">Customer Terms</a>, the <a href="/refunds">Cancellation &amp; Refund Policy</a>, the hotel\'s rules and the risk warning. I\'ll show the rules and risk warning to everyone on my booking, and I or another adult on my booking will actively supervise any children at all times.';
+  static acceptHtml(hotel) {
+    const { childrenAllowed } = require('./offering');
+    const tail = childrenAllowed(hotel || {})
+      ? ' I\'ll show the rules and risk warning to everyone on my booking, and I or another adult on my booking will actively supervise any children at all times.'
+      : ' I\'ll show the rules and risk warning to everyone on my booking.';
+    return `I'm 18 or over. I accept the <a href="/terms">Customer Terms</a>, the <a href="/refunds">Cancellation &amp; Refund Policy</a>, the hotel's rules and the risk warning.${tail}`;
   }
 
   static riskHtml() {

@@ -5,6 +5,7 @@ const { instantConfirmationText } = require('./siteMode');
 const { MapEmbed } = require('./mapEmbed');
 const { ListingImprove } = require('./listingImprove');
 const { SearchQuery } = require('./search');
+const { PhotoAssets } = require('./photoAssets');
 const { SPRITE, icon } = require('./d2Icons');
 const { ListingPanel } = require('./listingView');
 
@@ -144,7 +145,7 @@ class ListingD2 {
     const params = new URLSearchParams();
     params.set('pass', pass.code);
     if (date) params.set('date', date);
-    const n = SearchQuery.BOOKING_SPOTS;
+    const n = SearchQuery.maxUnits(pass.holds);
     const q = parseInt(qty, 10);
     if (Number.isFinite(q) && q > 1 && q <= n) params.set('qty', String(q));
     return `/h/${encodeURIComponent(slug)}?${params.toString()}#book`;
@@ -167,7 +168,20 @@ function priceHtml(h, n) {
 }
 function passPhoto(p) {
   const file = safePhoto(String(p.photo || ''));
-  return file ? `/assets/photos/${file}` : seatPhoto(p.kind || 'custom');
+  if (!file) return seatPhoto(p.kind || 'custom');
+  return PhotoAssets.jpgUrl(file);
+}
+function passThumb(p, alt) {
+  const file = safePhoto(String(p.photo || ''));
+  if (!file) return `<img src="${esc(seatPhoto(p.kind || 'custom'))}" alt="${esc(alt)}" width="88" height="88" loading="lazy" decoding="async">`;
+  return PhotoAssets.imgTag(file, { alt, width: 88, height: 88, sizes: '88px' });
+}
+function galleryPhoto(p, alt, i) {
+  const file = String(p || '').trim();
+  if (!file) return '';
+  const load = i === 0 ? 'eager' : 'lazy';
+  const fp = i === 0 ? 'high' : '';
+  return PhotoAssets.imgTag(file, { alt, width: 1200, height: 900, sizes: '(max-width:390px) 100vw, (max-width:800px) 50vw, 800px', loading: load, fetchpriority: fp });
 }
 function passAlt(p, h) {
   const kind = KIND_ALT[p.kind] || 'day pass';
@@ -179,12 +193,11 @@ function galleryHtml(h) {
   const n = photos.length;
   const demo = isDemo(h);
   const alt = demo ? 'Stock photo, not this hotel' : `Photo of ${shortName(h)}`;
-  const src = p => `/assets/photos/${esc(p)}`;
-  const strip = photos.map((p, i) => `<img src="${src(p)}" alt="${esc(alt)}" width="1200" height="900"${i === 0 ? ' fetchpriority="high"' : ' loading="lazy"'} decoding="async">`).join('');
+  const strip = photos.map((p, i) => galleryPhoto(p, alt, i)).join('');
   const dots = n > 1 ? `<span class="d2-dots" aria-hidden="true">${photos.map((p, i) => `<i${i === 0 ? ' class="on"' : ''}></i>`).join('')}</span>` : '';
   const count = n > 1 ? `<button type="button" class="d2-count" id="d2-count" aria-label="Photo 1 of ${n}, view all photos">${icon('photo')}<span>1 / ${n}</span></button>` : '';
   const credit = demo ? '<span class="d2-pill d2-lbl">Stock photos · not this hotel</span>' : '';
-  const thumbs = photos.slice(1, 4).map(p => `<img src="${src(p)}" alt="${esc(alt)}" width="600" height="450" loading="lazy" decoding="async">`).join('');
+  const thumbs = photos.slice(1, 4).map(p => PhotoAssets.imgTag(p, { alt, width: 600, height: 450, sizes: '200px', loading: 'lazy' })).join('');
   const all = n > 1 ? `<button type="button" class="d2-all" id="d2-all">${icon('photo')}View all ${n} photos</button>` : '';
   const grid = n > 1 ? `<div class="d2-thumbs d2-t${Math.min(n - 1, 4)}">${thumbs}${all}</div>` : '';
   const strong = n > 0 ? `<div class="d2-gw" id="d2-gw" role="group" aria-label="Photos, swipe for more" tabindex="0">${strip}</div>` : '';
@@ -195,7 +208,7 @@ function galleryHtml(h) {
 function passCard(p, h, items, opts) {
   const desc = String(p.description || '').trim();
   const href = ListingD2.cardHref(h.slug, p, { date: opts.date, qty: opts.qty });
-  return `<a class="d2-card" href="${esc(href)}" data-pass="${esc(p.code)}"><div><b class="n">${esc(p.name)}</b>${desc ? `<p>${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p, items))}</p><p class="pr">From ${priceHtml(h, p.price)}</p></div><img src="${esc(passPhoto(p))}" alt="${esc(passAlt(p, h))}" width="88" height="88" loading="lazy" decoding="async"><span class="go" aria-hidden="true">${icon('arrow')}</span></a>`;
+  return `<a class="d2-card" href="${esc(href)}" data-pass="${esc(p.code)}"><div><b class="n">${esc(p.name)}</b>${desc ? `<p>${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p, items))}</p><p class="pr">From ${priceHtml(h, p.price)}</p></div>${passThumb(p, passAlt(p, h))}<span class="go" aria-hidden="true">${icon('arrow')}</span></a>`;
 }
 
 function chipHtml(c) {
@@ -240,11 +253,11 @@ function sheetHtml(o) {
   const tiles = passes.map(p => {
     const on = pick && p.code === pick.code;
     const off = out(p);
-    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-fits="${esc(ListingD2.fitsLine(p, items))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}><img src="${esc(passPhoto(p))}" alt="${esc(isDemo(h) ? 'Stock photo, not this hotel' : p.name)}" width="120" height="60" loading="lazy" decoding="async"><b>${esc(p.name)}</b><span>${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><i class="tk">${icon('tick')}</i></label>`;
+    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p, items))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${PhotoAssets.imgTag(safePhoto(String(p.photo || '')), { alt: isDemo(h) ? 'Stock photo, not this hotel' : p.name, width: 120, height: 60, sizes: '120px', loading: 'lazy' })}<b>${esc(p.name)}</b><span>${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><i class="tk">${icon('tick')}</i></label>`;
   }).join('');
   const noJsDate = `<noscript><form class="d2-nojs" action="/h/${esc(encodeURIComponent(h.slug))}#book" method="get"><label>Another date<input type="date" name="date" min="${esc(o.today)}" max="${esc(maxDate)}" value="${esc(outside ? date : '')}"></label><input type="hidden" name="pass" value="${esc(pick ? pick.code : '')}"><input type="hidden" name="qty" value="${qty}"><button class="d2-btn out" type="submit">Use this date</button></form></noscript>`;
   return `<section class="d2-book" id="book" aria-labelledby="d2-book-h" tabindex="-1">
-<form class="d2-form" id="d2-form" action="/checkout" method="get" data-slug="${esc(h.slug)}" data-min="${esc(o.today)}" data-max="${esc(maxDate)}" data-date="${esc(date)}" data-qty="${qty}" data-demo="${isDemo(h) ? '1' : '0'}" data-closed="${esc(JSON.stringify(o.closed || {}))}" data-hours="${esc(JSON.stringify(ListingD2.hoursByWeekday(o.hourRows)))}" data-max-qty="${SearchQuery.BOOKING_SPOTS}">
+<form class="d2-form" id="d2-form" action="/checkout" method="get" data-slug="${esc(h.slug)}" data-min="${esc(o.today)}" data-max="${esc(maxDate)}" data-date="${esc(date)}" data-qty="${qty}" data-demo="${isDemo(h) ? '1' : '0'}" data-closed="${esc(JSON.stringify(o.closed || {}))}" data-hours="${esc(JSON.stringify(ListingD2.hoursByWeekday(o.hourRows)))}" data-max-people="${SearchQuery.BOOKING_SPOTS}">
 <input type="hidden" name="hotel" value="${esc(h.slug)}">
 <div class="d2-grab" aria-hidden="true"></div>
 <div class="d2-top"><h2 id="d2-book-h">Book a pass</h2><button type="button" class="d2-x" id="d2-close" aria-label="Close" hidden>${icon('x')}</button></div>
@@ -262,6 +275,7 @@ ${holdHtml(o.hold)}
 <p class="d2-note warn" id="d2-late" role="status"${o.lateNote ? '' : ' hidden'}>${esc(o.lateNote || '')}</p>
 ${kids ? `<p class="d2-note kid" id="d2-kids"><b>Children</b> ${esc(kids)}</p>` : ''}
 <span class="d2-lab" id="d2-spots-lab">Spots <small>up to ${SearchQuery.BOOKING_SPOTS} people</small></span>
+<p class="d2-note" id="d2-cap" role="status" hidden>Up to 6 people per booking.</p>
 <div class="d2-step" role="group" aria-labelledby="d2-spots-lab"><button type="button" class="d2-sb" id="d2-qminus" aria-label="Fewer spots" hidden>${icon('minus')}</button><input class="d2-qty" id="d2-qty" name="qty" type="number" inputmode="numeric" min="1" max="${SearchQuery.BOOKING_SPOTS}" value="${qty}" aria-label="Spots"><button type="button" class="d2-sb" id="d2-qplus" aria-label="More spots" hidden>${icon('plus')}</button></div>
 <div class="d2-tot" aria-live="polite"><span id="d2-tot-l">${total}</span><b id="d2-tot-p">${totalPrice}</b></div>
 <button class="d2-btn d2-go" id="d2-go" type="submit"${disabled ? ' aria-disabled="true"' : ''}>Book</button>
@@ -506,8 +520,9 @@ var form=$('#d2-form'),book=$('#book');
 if(!form||!book) return;
 var slug=${JSON.stringify(String(slug || ''))};
 var MIN=form.getAttribute('data-min'),MAX=form.getAttribute('data-max');
-var MAXQ=parseInt(form.getAttribute('data-max-qty'),10)||6;
+var PEOPLE=parseInt(form.getAttribute('data-max-people'),10)||6;
 var closed={},hoursBy={};
+var lastAvail=[];
 try{closed=JSON.parse(form.getAttribute('data-closed')||'{}')}catch(e){}
 try{hoursBy=JSON.parse(form.getAttribute('data-hours')||'{}')}catch(e){}
 var demo=form.getAttribute('data-demo')==='1';
@@ -530,11 +545,21 @@ var seq=0,soldAll=false,calOpen=false,viewY=0,viewM=0;
 var today=parse(MIN);viewY=today.y;viewM=today.m;
 $$('.d2-sb',form).forEach(function(b){b.hidden=false});
 var moreBtn=$('#d2-more');moreBtn.hidden=false;
-var x=$('#d2-close');x.hidden=false;
+var x=$('#d2-close');
 qtyEl.readOnly=true;
 
 function picked(){return tiles.filter(function(t){return t.checked})[0]||null}
-function qty(){var n=parseInt(qtyEl.value,10);return n>=1&&n<=MAXQ?n:1}
+function holdsOf(t){return Math.max(1,parseInt(t&&t.getAttribute('data-holds'),10)||1)}
+function unitCap(t){return Math.max(1,Math.floor(PEOPLE/holdsOf(t)))}
+function stockCap(){var p=picked();if(!p||!lastAvail.length)return PEOPLE;var r=lastAvail.filter(function(x){return x.code===p.value})[0];if(!r||r.remaining==null)return unitCap(p);return Math.max(0,Math.min(unitCap(p),Number(r.remaining)||0))||1}
+function maxQty(){var s=stockCap();return s<1?1:s}
+function qty(){var m=maxQty(),n=parseInt(qtyEl.value,10);if(!n||n<1)n=1;if(n>m)n=m;return n}
+function syncQtyCap(){
+ var m=maxQty();qtyEl.max=String(Math.max(m,1));
+ var q=qty();if(parseInt(qtyEl.value,10)!==q) qtyEl.value=q;
+ var cap=$('#d2-cap'),p0=picked();if(cap) cap.hidden=!(p0&&unitCap(p0)<PEOPLE);
+ var sq=$('#d2-side-qty');if(sq) sq.textContent=q+' (up to '+PEOPLE+' people)';
+}
 function note(el,text,show){el.textContent=text||'';el.hidden=!show}
 function resetTiles(){
  tiles.forEach(function(t){
@@ -574,21 +599,26 @@ function paint(){
  var pill=$('#d2-pill-t'),sd=$('#d2-side-date'),sq=$('#d2-side-qty');
  var dl=d?label(d):'Any date';
  if(pill) pill.textContent=dl; if(sd) sd.textContent=dl;
- if(sq) sq.textContent=q+' (up to '+MAXQ+' people)';
+ if(sq) sq.textContent=q+' (up to '+PEOPLE+' people)';
  var minus=$('#d2-qminus'),plus=$('#d2-qplus');
+ syncQtyCap();
+ q=qty();
  minus.setAttribute('aria-disabled',q<=1?'true':'false');
- plus.setAttribute('aria-disabled',q>=MAXQ?'true':'false');
+ plus.setAttribute('aria-disabled',q>=maxQty()?'true':'false');
 }
 function applyAvail(data,s){
  var rows=data.passes||[],q=qty(),any=false;
+ lastAvail=rows;
  soldAll=false;
  tiles.forEach(function(t){
   var r=rows.filter(function(x){return x.code===t.value})[0];
-  var off=!r||r.remaining<q;
+  var rem=r?Number(r.remaining):0;
+  var off=!r||rem<1;
+  var partial=!off&&rem<q;
   t.disabled=off;
   t.parentNode.classList.toggle('off',off);
   var sp=t.parentNode.querySelector('span');
-  if(sp) sp.textContent=off?'Sold out':t.getAttribute('data-label');
+  if(sp) sp.textContent=partial?('Only '+rem+' left'):(off?'Sold out':t.getAttribute('data-label'));
   if(!off) any=true;
  });
  var p=picked();
@@ -638,19 +668,17 @@ function ensureChip(s){
  chips.unshift(inp);bindChip(inp);
  inp.checked=(hidden.value===s);
 }
-$$('.d2-d.cl',form).forEach(function(b){b.addEventListener('click',function(){
- hidden.value='';chips.forEach(function(c){c.checked=false});
+$$('.d2-d.cl',form).forEach(function(b){b.addEventListener('click',function(e){
+ e.preventDefault();
  var s=b.getAttribute('data-date');
  showClosed(s);note(lateEl,'',false);
  $$('.d2-d.cl',form).forEach(function(o){o.classList.toggle('pk',o===b)});
- soldAll=false;paint();
- hidden.value='';
- go.setAttribute('aria-disabled','true');
+ paint();
 })});
-tiles.forEach(function(t){t.addEventListener('change',function(){paint();check()})});
+tiles.forEach(function(t){t.addEventListener('change',function(){syncQtyCap();paint();check()})});
 function stepQty(n){
- var q=Math.max(1,Math.min(MAXQ,qty()+n));
- qtyEl.value=q;paint();check();
+ var q=Math.max(1,Math.min(maxQty(),qty()+n));
+ qtyEl.value=q;syncQtyCap();paint();check();
 }
 $('#d2-qminus').addEventListener('click',function(){stepQty(-1)});
 $('#d2-qplus').addEventListener('click',function(){stepQty(1)});
@@ -687,9 +715,7 @@ cal.addEventListener('click',function(e){
  if(!b) return;
  var s=b.getAttribute('data-date');
  if(closed[s]){
-  hidden.value='';chips.forEach(function(c){c.checked=false});
-  showClosed(s);note(lateEl,'',false);soldAll=false;paint();renderCal();
-  go.setAttribute('aria-disabled','true');
+  showClosed(s);note(lateEl,'',false);paint();renderCal();
   var cb=$('.cd[data-date="'+s+'"]',cal);if(cb) cb.classList.add('pk');
   return;
  }
@@ -729,6 +755,7 @@ function ensureSheet(){
  root.appendChild(sheet);
  sheet.addEventListener('close',function(){
   document.documentElement.classList.remove('d2-lock');
+  if(x) x.hidden=true;
   if(opener&&opener.focus) opener.focus();
  });
  sheet.addEventListener('keydown',function(e){
@@ -758,11 +785,10 @@ function openSheet(o){
  if(!s.open&&s.showModal) s.showModal();
  document.documentElement.classList.add('d2-lock');
  book.scrollTop=0;s.scrollTop=0;
- var target=null;
- if(o.focus==='hold') target=$('#d2-hold');
- if(!target&&o.focus==='date') target=$('.d2-d input:checked',s)||$('.d2-d input',s)||moreBtn;
- if(!target) target=x;
- if(target&&target.focus) target.focus();
+ if(x) x.hidden=false;
+ var target=$('#d2-book-h');
+ if(o.focus==='hold') target=$('#d2-hold')||target;
+ if(target){target.setAttribute('tabindex','-1');target.focus()}
 }
 document.addEventListener('click',function(e){
  var a=e.target.closest('a[href*="#book"]');

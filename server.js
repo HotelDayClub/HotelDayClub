@@ -42,6 +42,8 @@ const { parseSignup, saveSignup, notifyWebhook, rateLimited, waitlistCsv } = req
 const { TOPICS, parseMessage, contactLimited, saveMessage, topicLabel, sameSitePost } = require('./contact');
 const paths = require('./paths');
 const backups = require('./backups');
+const { StaticAssets } = require('./staticAssets');
+const { PhotoAssets } = require('./photoAssets');
 const { bookingsCsv, hotelsCsv, hotelBookingsCsv } = require('./dataExport');
 const { GuestPrivacy } = require('./guestPrivacy');
 const {
@@ -302,7 +304,6 @@ ${this.column('ftr-site', 'Site', siteLinks)}
     return `<script>(function(){document.querySelectorAll('.ftr-toggle').forEach(function(btn){btn.addEventListener('click',function(){var open=btn.getAttribute('aria-expanded')==='true';btn.setAttribute('aria-expanded',open?'false':'true');});});})();</script>`;
   }
 }
-const FONT_LINKS = `<link rel="preload" href="/golden/fonts/f3.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/golden/fonts/f5.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/golden/fonts.css">`;
 const HOME_SCRIPT = `<script>
 (function(){
 var S=[["8:00","Swim & gym"],["15:00","Spa afternoon"],["18:00","Golden hour"]],media=[0,1,2],cur=0;
@@ -338,7 +339,7 @@ window.__set=set;
 </script>`;
 const FIND_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>';
 const MENU_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
-const MENU_SCRIPT = `<script>(function(){var d=document.querySelector('.hdr-menu');if(!d)return;var s=d.querySelector('summary');function sync(){if(s)s.setAttribute('aria-expanded',d.open?'true':'false');}d.addEventListener('toggle',sync);sync();})();</script>`;
+const MENU_SCRIPT = `<script>(function(){var d=document.querySelector('.hdr-menu');if(!d)return;var s=d.querySelector('summary');function sync(){if(s)s.setAttribute('aria-expanded',d.open?'true':'false');}d.addEventListener('toggle',sync);sync();document.querySelectorAll('.msheet a').forEach(function(a){a.addEventListener('click',function(){d.open=false;sync();});});})();</script>`;
 function guestChrome(currentPath, waitHref) {
   const onSearch = currentPath === '/search';
   const here = onSearch ? ' aria-current="page"' : '';
@@ -358,8 +359,8 @@ function page(title, body, opts = {}) {
     : nav === 'admin' ? '<a class="hotel-link show" href="/admin/logout">Log out</a>'
     : `<a class="pill" href="${waitHref}">Join the waitlist</a>`;
   const chrome = nav === 'guest' ? guestChrome(opts.path || '', waitHref) : { nav: '<nav class="hdr-nav" aria-label="Site"></nav>', sheet: '' };
-  const extraCss = opts.css ? `<link rel="stylesheet" href="${esc(opts.css)}">` : '';
-  const extraJs = opts.js ? `<script src="${esc(opts.js)}"></script>` : '';
+  const extraCss = opts.css ? StaticAssets.stylesheet(opts.css) : '';
+  const extraJs = opts.js ? StaticAssets.script(opts.js) : '';
   const headerExtra = opts.headerHtml || '';
   const tags = analytics && nav === 'guest' ? gaSnippet(analyticsPath) : '';
   const preconnect = tags ? '<link rel="preconnect" href="https://www.googletagmanager.com">' : '';
@@ -375,18 +376,18 @@ function page(title, body, opts = {}) {
     imageHeight: opts.image ? opts.imageHeight : 630,
     jsonld: opts.jsonld || null,
   });
-  const pickerCss = '<link rel="stylesheet" href="/pickers.css">';
-  const tokensCss = '<link rel="stylesheet" href="/tokens.css">';
+  const pickerCss = StaticAssets.stylesheet('/pickers.css');
+  const tokensCss = StaticAssets.stylesheet('/tokens.css');
   const css = home
-    ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}<link rel="stylesheet" href="/golden/home.css"><link rel="stylesheet" href="/header.css">`
-    : `${FONT_LINKS}${tokensCss}${pickerCss}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css"><link rel="stylesheet" href="/header.css">${extraCss}`;
+    ? `${StaticAssets.fontLinks()}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}${StaticAssets.stylesheet('/golden/home.css')}${StaticAssets.stylesheet('/header.css')}`
+    : `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${StaticAssets.stylesheet('/styles.css')}${StaticAssets.stylesheet('/app.css')}${StaticAssets.stylesheet('/golden/site.css')}${StaticAssets.stylesheet('/header.css')}${extraCss}`;
   const bodyClass = opts.bodyClass || (home ? 'home' : nav === 'guest' ? 'guest' : 'staff');
   const header = `<header class="hdr" id="site-hdr"><div class="wrap hdr-in">${logoLink('light')}${chrome.nav}${headerExtra}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 ${demoSite() ? '<div class="demo-banner">Demo site: listings are examples, no real bookings or payments.</div>' : ''}
 ${header}<main>${body}</main>
-${bare ? '' : SiteFooter.html()}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}${nav === 'guest' ? MENU_SCRIPT : ''}${extraJs}
+${bare ? '' : SiteFooter.html()}${StaticAssets.script('/pickers.js')}${home ? HOME_SCRIPT : ''}${nav === 'guest' ? MENU_SCRIPT : ''}${extraJs}
 </body></html>`;
 }
 const card = (h, date) => {
@@ -444,7 +445,7 @@ function exampleCard(h, date) {
   const facts = amenitiesFrom(h).filter(line => line !== h.age_policy).slice(0, 3);
   const limit = h.age_policy ? `<p class="ex-limit">${esc(h.age_policy)}</p>` : '';
   const href = `/h/${h.slug}${date ? '?date=' + encodeURIComponent(date) : ''}`;
-  return `<a class="ex" href="${href}">${img}<span class="tag">Example</span><h3>${esc(h.name)}</h3><p class="ex-area">${esc(h.area)}</p>${facts.length ? `<p class="ex-amen">${esc(facts.join(' · '))}</p>` : ''}<p class="ex-price">From ${money(from)}</p>${limit}<p class="ex-note">Demo</p></a>`;
+  return `<a class="ex" href="${href}">${img}<span class="tag">Example</span><h3>${esc(h.name)}</h3><p class="ex-area">${esc(h.area)}</p>${facts.length ? `<p class="ex-amen">${esc(facts.join(' · '))}</p>` : ''}<p class="ex-price">From ${money(from)}</p>${limit}</a>`;
 }
 function homeQuickHtml() {
   const hotels = getHotels();
@@ -624,11 +625,11 @@ function cardImage(photo, alt, index) {
   const loading = eager ? 'eager' : 'lazy';
   const base = String(photo).replace(/\.jpe?g$/i, '');
   const webpFile = path.join(__dirname, 'public', 'golden', 'img', 'cards', base + '.webp');
-  const jpg = `/assets/photos/${esc(photo)}`;
+  const jpg = StaticAssets.assetUrl(`/assets/photos/${esc(photo)}`);
   const attrs = `alt="${esc(alt)}" width="800" height="600" loading="${loading}" decoding="async"${priority}`;
   if (fs.existsSync(webpFile)) {
-    const webp = `/golden/img/cards/${esc(base)}.webp`;
-    return `<picture><source type="image/webp" srcset="${webp} 800w" sizes="(max-width:699px) 100vw, 360px"><img src="${jpg}" ${attrs}></picture>`;
+    const webp = StaticAssets.assetUrl(`/golden/img/cards/${esc(base)}.webp`);
+    return `<picture><source type="image/webp" srcset="${webp} 800w" sizes="(min-width:600px) and (max-width:800px) 50vw, (max-width:699px) 100vw, 360px"><img src="${jpg}" ${attrs}></picture>`;
   }
   return `<img src="${jpg}" ${attrs}>`;
 }
@@ -799,9 +800,10 @@ ${keepSort}
 <button type="submit">${FIND_ICON}<span>Search</span></button>
 </form></div></div>
 <button type="button" class="search-sum" aria-haspopup="dialog" aria-controls="search-sheet" aria-label="Edit search: ${esc(pillSub)}"><span class="t"><b>${esc(pillTitle)}</b><small>${esc(pillSub)}</small></span><span class="go" aria-hidden="true">${FIND_ICON}</span></button>
-<div class="toolrow"><div class="n9-bar"><button type="button" class="fbtn" id="filters-btn" aria-haspopup="dialog" aria-controls="filter-drawer" aria-expanded="false">${FILTER_ICON}<span>Filters</span>${badge}</button><div class="ichips" role="group" aria-label="Mood">${mood}</div></div>
+<div class="toolrow"><button type="button" class="fbtn" id="filters-btn" aria-haspopup="dialog" aria-controls="filter-drawer" aria-expanded="false">${FILTER_ICON}<span>Filters</span>${badge}</button><div class="ichips" role="group" aria-label="Mood">${mood}</div>
 <form class="sort-form" action="/search" method="get">${searchHidden(params, 'sort')}<label class="sort-label"><span class="sort-name">Sort</span><select class="hdc-pick" name="sort" aria-label="Sort listings" onchange="this.form.submit()">${sortOptions}</select></label><noscript><button type="submit">Sort</button></noscript></form></div>
 <div data-live><div class="rhead cnt"><h1 id="search-count" role="status" aria-live="polite">${esc(countHeading)}</h1>${params.mood ? `<a class="mclear" href="${esc(SearchQuery.href({ ...params, mood: '' }))}">Clear</a>` : ''}</div>
+${params.guestsCapped ? '<p class="cap-note" role="status">Up to 6 people per booking.</p>' : ''}
 ${chips ? `<div class="chips" aria-label="Active filters">${chips}${clear}</div>` : ''}
 ${empty || `<div class="${resultClass}">${cards}</div>`}${others}
 <p class="note">Fictional example hotels. <a href="/guides">Read the day pass guides</a>.</p>
@@ -895,7 +897,13 @@ function listingHold(h, req, startDay) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
   const pass = getPasses(h.id).find(p => p.code === String(req.query.pass || '').slice(0, 40));
   if (!pass) return null;
-  const qty = Math.max(1, Math.min(SearchQuery.BOOKING_SPOTS, parseInt(req.query.qty, 10) || 1));
+  const maxUnits = SearchQuery.maxUnits(pass.holds);
+  const qty = Math.max(1, Math.min(maxUnits, parseInt(req.query.qty, 10) || 1));
+  const maxBook = ymd(addDays(new Date(startDay + 'T12:00:00'), DateHold.lookAhead()));
+  if (raw > maxBook) {
+    const next = DateHold.nextOpen(availability, h.id, pass.id, qty, startDay, maxBook);
+    return DateHold.view({ hotel: h, pass, qty, date: raw, kind: 'closed', reason: 'Beyond booking window', next });
+  }
   const row = availability(h.id, raw).find(p => p.id === pass.id);
   const kind = DateHold.classify(row);
   if (!kind) return null;
@@ -974,8 +982,11 @@ app.get('/api/availability', (req, res) => {
   const rawDate = String(req.query.date || '');
   const startDay = today(h);
   const date = chosenDate(rawDate, h) || (/^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate < startDay ? rawDate : '');
-  const qty = Math.max(1, Math.min(SearchQuery.BOOKING_SPOTS, parseInt(req.query.qty, 10) || 1));
   const passCode = String(req.query.pass || '').slice(0, 40);
+  const passRow = passCode ? getPasses(h.id).find(x => x.code === passCode) : null;
+  const holds = Math.max(1, Number(passRow && passRow.holds) || 1);
+  const maxUnits = SearchQuery.maxUnits(holds);
+  const qty = Math.max(1, Math.min(maxUnits, parseInt(req.query.qty, 10) || 1));
   const step = listingStep(h, date, qty, passCode);
   if (!date) {
     const passes = openAvailability(h.id);
@@ -988,9 +999,32 @@ app.get('/api/availability', (req, res) => {
 
 function validate(q) {
   const h = publicHotel(q.hotel); if (!h) return { err: 'Hotel not found.' };
-  const date = String(q.date || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { err: 'Pick a date.', h };
-  const qty = Math.max(1, Math.min(SearchQuery.BOOKING_SPOTS, parseInt(q.qty, 10) || 1));
-  const p = getPasses(h.id).find(x => x.code === q.pass); if (!p) return { err: 'Pick a pass.', h };
+  const dateRaw = String(q.date || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) return { err: 'Pick a date.', h, kind: 'pickdate' };
+  const date = dateRaw;
+  const p = getPasses(h.id).find(x => x.code === q.pass);
+  if (!p) return { err: 'Pick a pass.', h, date, kind: 'pickpass' };
+  const holds = Math.max(1, Number(p.holds) || 1);
+  const maxUnits = SearchQuery.maxUnits(holds);
+  const rawQty = Math.max(1, parseInt(q.qty, 10) || 1);
+  const startDay = today(h);
+  const maxBook = ymd(addDays(new Date(startDay + 'T12:00:00'), 90));
+  if (date > maxBook) {
+    return { err: 'You can book up to 90 days ahead.', h, p, date, qty: Math.min(rawQty, maxUnits), kind: 'closed', reason: 'Beyond booking window' };
+  }
+  if (rawQty > maxUnits || SearchQuery.bookingPeople(rawQty, holds) > SearchQuery.BOOKING_SPOTS) {
+    return {
+      err: 'Up to 6 people per booking.',
+      h,
+      p,
+      date,
+      qty: maxUnits,
+      kind: 'people',
+      reason: 'Up to 6 people per booking',
+    };
+  }
+  const qty = rawQty;
+  const people = SearchQuery.bookingPeople(qty, holds);
   const a = availability(h.id, date).find(x => x.id === p.id);
   if (a.past) return { err: 'That date has passed.', h, p, date, qty, kind: 'past' };
   if (a.blocked) {
@@ -999,21 +1033,35 @@ function validate(q) {
   }
   if (a.remaining < qty) {
     if (a.remaining === 0) return { err: `${spotLabel(p)} is sold out on ${nice(date)}.`, h, p, date, qty, kind: 'soldout' };
-    return { err: `Only ${a.remaining} ${spotLabel(p)} left on ${nice(date)}.`, h };
+    return {
+      err: `Only ${a.remaining} ${spotLabel(p)} left on ${nice(date)}.`,
+      h,
+      p,
+      date,
+      qty,
+      kind: 'partial',
+      remaining: a.remaining,
+      clampQty: a.remaining,
+    };
   }
-  const people = qty * (Number(p.holds) || 1);
   const add = chosenAddons(h.id, date, people, q);
   if (add.err) return { err: add.err, h };
   return { h, p, date, qty, people, a, addons: add.addons, addonTotal: add.addonTotal };
 }
 const errPage = (v, res) => res.status(409).send(page('Not available', `<div class="wrap sec narrow"><div class="alert">${esc(v.err)}</div>${v.h ? `<a class="btn btn-navy" href="/h/${v.h.slug}">Back to ${esc(v.h.name)}</a>` : ''}</div>`, { analytics: false, index: false, canonical: false }));
 function holdReply(v, res) {
-  if (!v || !v.kind || !v.h || !v.p || !v.date) return false;
+  if (!v || !v.h) return false;
+  if (v.kind === 'pickdate' || v.kind === 'pickpass') {
+    res.redirect(303, `/h/${encodeURIComponent(v.h.slug)}#book`);
+    return true;
+  }
+  if (!v.kind || !v.p || !v.date) return false;
   const params = new URLSearchParams();
   params.set('date', v.date);
   params.set('pass', v.p.code);
-  params.set('qty', String(v.qty || 1));
-  params.set('notice', '1');
+  const clamp = v.clampQty != null ? v.clampQty : v.qty;
+  params.set('qty', String(clamp || 1));
+  if (['partial', 'people', 'closed', 'past', 'soldout'].includes(v.kind)) params.set('notice', '1');
   res.redirect(303, `/h/${encodeURIComponent(v.h.slug)}?${params.toString()}#book`);
   return true;
 }
@@ -1103,9 +1151,9 @@ ${fieldError(errors, 'arrival')}</label>
   const passChange = CheckoutFlow.changeLink(seatHref, 'pass');
   const extraText = CheckoutFlow.extraHtml(v.addons);
   const extrasRow = hasExtras ? `<dt>Extras</dt><dd class="co-fact"><span class="co-fact-val" id="co-extras-val">${extraText}</span>${CheckoutFlow.changeLink('#extras', 'extras')}</dd>` : '';
-  const asideBtn = CheckoutFlow.confirmControl({ id: 'co-btn', reasonId: 'co-reason-aside', label: confirmLabel, remaining, full: true });
-  const formBtn = CheckoutFlow.confirmControl({ id: 'co-btn-form', reasonId: 'co-reason-form', label: confirmLabel, remaining, full: true });
-  const dockBtn = CheckoutFlow.confirmControl({ id: 'co-btn-dock', reasonId: 'co-reason-dock', label: confirmLabel, remaining, full: false });
+  const asideBtn = CheckoutFlow.confirmControl({ id: 'co-btn', reasonId: 'co-reason-aside', label: confirmLabel, remaining, full: true, placement: 'aside' });
+  const formBtn = CheckoutFlow.confirmControl({ id: 'co-btn-form', reasonId: 'co-reason-form', label: confirmLabel, remaining, full: true, placement: 'form' });
+  const dockBtn = CheckoutFlow.confirmControl({ id: 'co-btn-dock', reasonId: 'co-reason-dock', label: confirmLabel, remaining, full: false, placement: 'dock' });
   const paymentCard = `<section class="co-card co-pay" id="co-pay"><h2><span class="co-step">${steps.payment}</span> Payment</h2><div class="demo-pay"><p>Demo site. No card is collected and nothing is charged.</p></div></section>`;
   res.status(extra.status || 200).send(page('Checkout', `<div class="wrap sec checkout">
 <a class="link small" href="/h/${h.slug}?date=${date}">← Back to listing</a><h1 class="l-title">Book your day (demo)</h1>
@@ -1113,7 +1161,7 @@ ${fieldError(errors, 'arrival')}</label>
 <aside class="co-sum" id="co-sum">
 <button type="button" class="co-sum-bar" id="co-sum-bar" aria-expanded="false" aria-controls="co-sum-body"><span>${esc(passLabel)}</span><b class="co-total">${money(grand)}</b></button>
 <div class="co-sum-body" id="co-sum-body">
-<img src="/assets/photos/${h.photos[0]}" alt="${esc(demo ? 'Stock photo, not this hotel' : 'Photo of ' + seo.shortName(h.name))}" width="640" height="360">
+${PhotoAssets.imgTag(h.photos[0], { alt: demo ? 'Stock photo, not this hotel' : 'Photo of ' + seo.shortName(h.name), width: 640, height: 360, sizes: '640px' })}
 <div class="pad">
 <h2>${esc(hotelLabel)}</h2>
 <p class="muted small">${esc(h.area)}</p>
@@ -1145,7 +1193,7 @@ ${rulesCard(h, rulesOpts)}
 </details>
 <p class="privacy-note">${CheckoutConsent.noticeHtml(hotelLabel)}</p>
 <p class="cancel-note">${esc(cancel)} <a href="/refunds">Cancellation and refunds</a></p>
-${tick('accept', CheckoutConsent.acceptHtml(), true)}${fieldError(errors, 'accept')}
+${tick('accept', CheckoutConsent.acceptHtml(h), true)}${fieldError(errors, 'accept')}
 <p class="co-acl">${esc(CheckoutConsent.aclText())}</p>
 ${tick('marketing', CheckoutConsent.checkoutMarketingHtml(), false)}
 <div class="co-decide">${formBtn}</div>
@@ -1821,7 +1869,7 @@ ${info ? checkinCard(info, h) : ''}
 ${results}
 ${todaySection(h, { big: true, live: '/hotel/today-list?view=checkin', day: hotelToday(h) })}
 </div>
-<script src="/checkin-parse.js"></script><script src="/vendor/jsQR.js"></script><script src="/checkin.js"></script>`, { here: '/hotel/checkin', live: true }));
+${StaticAssets.script('/checkin-parse.js')}${StaticAssets.script('/vendor/jsQR.js')}${StaticAssets.script('/checkin.js')}`, { here: '/hotel/checkin', live: true }));
 }
 app.get('/hotel/checkin', (req, res, next) => {
   const id = req.signedCookies.hotel;
@@ -1944,7 +1992,7 @@ ${addonsAll.map(a => {
 <input type="hidden" name="dates" id="block-cal-dates" value="">
 <div class="cal-actions"><button type="button" class="btn btn-line" id="block-cal-cancel">Cancel</button><button class="btn btn-navy" type="submit">Save</button></div>
 </form></dialog>
-<script src="/block-cal.js"></script></section>`, { live: true }));
+${StaticAssets.script('/block-cal.js')}</section>`, { live: true }));
 });
 app.post('/hotel/checkin', hotelAuth, (req, res) => {
   if (!sameSitePost(req)) return res.status(403).type('text/plain; charset=utf-8').send('Use the check-in form on this site.');
@@ -2822,7 +2870,7 @@ function destinationPage(d) {
   }).join('');
   const body = hotels.length
     ? `<div class="fh-grid">${cards}</div>`
-    : `<p>Coming soon. No listings here yet.</p><p><a class="btn btn-coral" href="/?destination=${encodeURIComponent(d.id)}#waitlist">Join the waitlist</a></p>`;
+    : `<p>No day passes in ${esc(d.name)} yet. Join the waitlist and we'll email you when one opens.</p><p><a class="btn btn-coral" href="/?destination=${encodeURIComponent(d.id)}#waitlist">Join the waitlist</a></p>`;
   return `<div class="wrap sec"><h1 class="l-title">${esc(d.title)}</h1><p class="lead">${esc(d.intro)}</p>${body}</div>`;
 }
 app.get('/destinations/:slug', (req, res) => {

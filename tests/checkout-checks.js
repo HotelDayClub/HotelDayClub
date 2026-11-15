@@ -126,6 +126,8 @@ function makeForm(opts = {}) {
   assert.ok(CheckoutConsent.hazardLines({ kids_hours: 'All open hours, shallow end', age_policy: 'All ages', heated: 0, setting: 'outdoor' }).some(line => line.includes('shallow end')));
   assert.deepStrictEqual(CheckoutConsent.hazardLines({}), []);
   assert.ok(CheckoutConsent.acceptHtml().includes('href="/terms"') && CheckoutConsent.acceptHtml().includes('href="/refunds"'));
+  assert.ok(!CheckoutConsent.keyPointsText({ age_policy: '18+', kids_hours: 'No children' }).includes('actively supervised'));
+  assert.ok(!CheckoutConsent.acceptHtml({ age_policy: '18+', kids_hours: 'No children' }).includes('actively supervise any children'));
   assert.ok(CheckoutConsent.checkoutMarketingText().includes('by email'));
   assert.ok(!CheckoutConsent.checkoutMarketingText().includes('SMS'));
   assert.strictEqual(CheckoutFlow.extraValue([]), 'None');
@@ -203,7 +205,8 @@ function makeForm(opts = {}) {
     assert.ok(body.includes('class="co-decide"'));
     assert.ok(body.includes('class="co-dock"'));
     assert.ok(body.includes('id="co-reason-live" aria-live="polite"'));
-    assert.ok(body.split('Tick the box above to continue.').length - 1 >= 4);
+    const tickHints = (body.match(/Tick the (?:box above|terms box) to continue\./g) || []).length;
+    assert.ok(tickHints >= 4, 'disabled confirm hints ' + tickHints);
     assert.ok(!body.includes('Tick the 5 boxes'));
     assert.ok(body.includes('<span class="co-fact-val co-pass-line">Sun lounger × 1 · $45 (demo)</span>'));
     assert.ok(body.includes(`href="/h/saltwater-terrace?date=${when}&amp;pass=lounger&amp;qty=1#book"`));
