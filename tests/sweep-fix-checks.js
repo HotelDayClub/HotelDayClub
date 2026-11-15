@@ -63,10 +63,18 @@ function get(port, urlPath) {
     assert.ok([302, 303].includes(checkout.status), 'checkout beyond 90 days redirects');
     const loc = checkout.headers.location || '';
     assert.ok(loc.includes('skyline-rooftop'), loc);
+    const beyondListing = await get(port, loc.split('#')[0]);
+    assert.ok(beyondListing.body.includes('You can book up to 90 days ahead.'), beyondListing.body.slice(0, 400));
+    assert.ok(beyondListing.body.includes('id="d2-hold"'));
 
     const noDate = await get(port, '/checkout?hotel=skyline-rooftop');
     assert.ok([302, 303].includes(noDate.status), 'missing date redirects to listing');
     assert.ok((noDate.headers.location || '').includes('#book'));
+
+    const coPage = await get(port, '/checkout?hotel=skyline-rooftop&date=2026-11-22&pass=chair&qty=1');
+    assert.ok(coPage.body.includes('Age: 18+'));
+    assert.ok(!coPage.body.includes('actively supervise any children'));
+    assert.ok(!coPage.body.includes('Children must be actively supervised'));
 
     const listing = await get(port, '/h/skyline-rooftop');
     assert.ok(listing.body.includes('data-max-people'));

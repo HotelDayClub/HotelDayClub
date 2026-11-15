@@ -899,6 +899,11 @@ function listingHold(h, req, startDay) {
   if (!pass) return null;
   const maxUnits = SearchQuery.maxUnits(pass.holds);
   const qty = Math.max(1, Math.min(maxUnits, parseInt(req.query.qty, 10) || 1));
+  const maxBook = ymd(addDays(new Date(startDay + 'T12:00:00'), DateHold.lookAhead()));
+  if (raw > maxBook) {
+    const next = DateHold.nextOpen(availability, h.id, pass.id, qty, startDay, maxBook);
+    return DateHold.view({ hotel: h, pass, qty, date: raw, kind: 'closed', reason: 'Beyond booking window', next });
+  }
   const row = availability(h.id, raw).find(p => p.id === pass.id);
   const kind = DateHold.classify(row);
   if (!kind) return null;
@@ -1188,7 +1193,7 @@ ${rulesCard(h, rulesOpts)}
 </details>
 <p class="privacy-note">${CheckoutConsent.noticeHtml(hotelLabel)}</p>
 <p class="cancel-note">${esc(cancel)} <a href="/refunds">Cancellation and refunds</a></p>
-${tick('accept', CheckoutConsent.acceptHtml(), true)}${fieldError(errors, 'accept')}
+${tick('accept', CheckoutConsent.acceptHtml(h), true)}${fieldError(errors, 'accept')}
 <p class="co-acl">${esc(CheckoutConsent.aclText())}</p>
 ${tick('marketing', CheckoutConsent.checkoutMarketingHtml(), false)}
 <div class="co-decide">${formBtn}</div>

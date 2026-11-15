@@ -126,6 +126,8 @@ function makeForm(opts = {}) {
   assert.ok(CheckoutConsent.hazardLines({ kids_hours: 'All open hours, shallow end', age_policy: 'All ages', heated: 0, setting: 'outdoor' }).some(line => line.includes('shallow end')));
   assert.deepStrictEqual(CheckoutConsent.hazardLines({}), []);
   assert.ok(CheckoutConsent.acceptHtml().includes('href="/terms"') && CheckoutConsent.acceptHtml().includes('href="/refunds"'));
+  assert.ok(!CheckoutConsent.keyPointsText({ age_policy: '18+', kids_hours: 'No children' }).includes('actively supervised'));
+  assert.ok(!CheckoutConsent.acceptHtml({ age_policy: '18+', kids_hours: 'No children' }).includes('actively supervise any children'));
   assert.ok(CheckoutConsent.checkoutMarketingText().includes('by email'));
   assert.ok(!CheckoutConsent.checkoutMarketingText().includes('SMS'));
   assert.strictEqual(CheckoutFlow.extraValue([]), 'None');

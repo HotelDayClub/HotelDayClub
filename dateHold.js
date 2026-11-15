@@ -80,6 +80,14 @@ class DateHold {
         status: `Sold out on ${when}. Pick another date.`,
       };
     }
+    if (/beyond booking window/i.test(reason || '')) {
+      return {
+        before: 'You can book up to 90 days ahead.',
+        when: '',
+        detail: '',
+        status: 'You can book up to 90 days ahead. Pick another date.',
+      };
+    }
     if (/same-day|closed for today/i.test(reason || '')) {
       const line = String(reason || 'Closed').replace(/\.$/, '');
       return {
