@@ -400,7 +400,7 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(!poolBar.includes('From 11am'));
     assert.ok(!poolBar.includes('Food and drink available to purchase'));
     assert.ok(!/included in your pass/i.test(poolBar));
-    assert.ok(poolBar.includes('On site (not included)') || poolBar.includes('Pool bar'), 'pool bar venue label');
+    assert.match(poolBar, /class="d2-ex-tag">On site \(not included\)<\/span>/, 'pool bar on-site tag on explore card');
     assert.ok(!seatLounger.body.includes('looking straight out to the Pacific'));
     assert.ok(seatLounger.body.includes('On site (not included)'));
     assert.ok(seatLounger.body.includes('/assets/photos/infinity-ocean.jpg'));

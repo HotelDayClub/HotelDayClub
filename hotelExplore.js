@@ -139,10 +139,9 @@ ${note}
 </div>
 </article>`;
     }).join('');
-    const intro = vis.intro ? `<p class="d2-ex-intro">${esc(vis.intro)}</p>` : '';
     const tag = demo ? '<span class="ex">Example hotel details (demo)</span>' : '';
     const stock = demo ? '<p class="d2-ex-stock">Stock photos · not this hotel</p>' : '';
-    return `<section class="d2-s" id="explore"><h2>Explore the hotel</h2>${tag}${intro}${stock}
+    return `<section class="d2-s" id="explore"><h2>Explore the hotel</h2>${tag}${stock}
 <div class="d2-ex-wrap" tabindex="0" aria-label="Hotel areas"><div class="d2-ex-row">${cards}</div></div>
 ${HotelExplore.sheetHtml(hotel, vis.areas)}
 </section>`;

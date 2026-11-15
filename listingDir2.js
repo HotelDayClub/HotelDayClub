@@ -237,7 +237,7 @@ function passCard(p, h, items, opts) {
 
 function chipHtml(c) {
   if (c.closed) {
-    return `<button type="button" class="d2-d cl${c.on ? ' pk' : ''}" aria-disabled="true" aria-label="${esc(c.label)}, closed" data-date="${esc(c.date)}" data-reason="${esc(c.reason)}"><span class="w">${esc(c.wd)}</span><b>${c.day}</b><i>Closed</i></button>`;
+    return `<button type="button" class="d2-d cl${c.on ? ' pk' : ''}" aria-disabled="true" aria-label="${esc(c.label)}, closed" data-date="${esc(c.date)}" data-reason="${esc(c.reason)}"><span class="w">${esc(c.wd)}</span><b>${c.day}</b></button>`;
   }
   return `<label class="d2-d${c.on ? ' on' : ''}"><input type="radio" name="date" value="${esc(c.date)}" aria-label="${esc(c.label)}${c.today ? ' (today)' : ''}"${c.on ? ' checked' : ''}${c.late ? ' data-late="1"' : ''} required><span class="w">${esc(c.wd)}</span><b>${c.day}</b>${c.today ? '<i>Today</i>' : ''}</label>`;
 }
@@ -258,16 +258,12 @@ function sheetHtml(o) {
   const pick = o.pick;
   const date = o.date;
   const qty = o.qty;
-  const hours = ListingD2.hoursFor(o.hourRows, date);
   const maxDate = o.maxDate;
   const kids = ListingD2.childrenLine(h);
   const chosen = days.find(c => c.on) || null;
   const outside = Boolean(date && !chosen && ListingD2.parts(date) && date >= o.today && date <= maxDate && !(o.closed && o.closed[date]));
   const extra = outside ? chipHtml({ date, wd: WEEK[ListingD2.parts(date).wd], day: ListingD2.parts(date).d, label: ListingD2.label(date), today: false, closed: false, late: Boolean(o.lateNote), on: true }) : '';
-  const total = pick
-    ? `${esc(pick.name)}${qty > 1 ? ` × ${qty}` : ''}${date ? ` · ${esc(ListingD2.label(date))}` : ''}`
-    : '';
-  const totalPrice = pick && date ? esc(ListingD2.priceText(h, pick.price * qty)) : 'Pick a date';
+  const bookBtn = pick ? `Book · ${esc(ListingD2.priceText(h, pick.price * qty))}` : 'Book';
   const disabled = !pick || !date;
   const out = p => {
     if (!date || (o.closed && o.closed[date])) return false;
@@ -278,7 +274,7 @@ function sheetHtml(o) {
     const on = pick && p.code === pick.code;
     const off = out(p);
     const thumb = passThumb(p, isDemo(h) ? 'Stock photo, not this hotel' : p.name).replace('width="88" height="88"', 'width="120" height="60"');
-    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${thumb}<b>${esc(p.name)}</b><span>${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><i class="tk">${icon('tick')}</i></label>`;
+    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${thumb}<b>${esc(p.name)}</b><span class="d2-pt-price">${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><span class="d2-pt-fits">${esc(ListingD2.fitsLine(p))}</span><i class="tk">${icon('tick')}</i></label>`;
   }).join('');
   const noJsDate = `<noscript><form class="d2-nojs" action="/h/${esc(encodeURIComponent(h.slug))}#book" method="get"><label>Another date<input type="date" name="date" min="${esc(o.today)}" max="${esc(maxDate)}" value="${esc(outside ? date : '')}"></label><input type="hidden" name="pass" value="${esc(pick ? pick.code : '')}"><input type="hidden" name="qty" value="${qty}"><button class="d2-btn out" type="submit">Use this date</button></form></noscript>`;
   return `<section class="d2-book" id="book" aria-labelledby="d2-book-h" tabindex="-1">
@@ -290,10 +286,9 @@ ${holdHtml(o.hold)}
 <div class="d2-passblock" id="d2-passblock">
 <span class="d2-lab" id="d2-pass-lab">Pass</span>
 <div class="d2-pp" role="radiogroup" aria-labelledby="d2-pass-lab">${tiles}</div>
-<p class="d2-fit" id="d2-fit">${icon('people')}<span id="d2-fit-t">${esc(pick ? ListingD2.fitsLine(pick) : '')}</span></p>
 </div>
 <div class="d2-passrow" id="d2-passrow" hidden><span class="d2-lab">Pass <small id="d2-passrow-t"></small></span><button type="button" class="d2-mdb text-link" id="d2-change">Change</button></div>
-<div class="d2-lab d2-labrow"><span>Date <small id="d2-hrs">${hours ? `${esc(hours)}, hotel time` : 'Hotel time'}</small></span><button type="button" class="d2-mdb text-link" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
+<div class="d2-lab d2-labrow"><span>Date</span><button type="button" class="d2-mdb text-link" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
 <div class="d2-dates" id="d2-dates" role="group" aria-label="Date, next ${ListingD2.CHIPS} days">${days.map(chipHtml).join('')}${extra}</div>
 <div class="d2-cal" id="d2-calbox" hidden></div>
 <p class="d2-note" id="d2-closed" role="status" hidden></p>
@@ -302,8 +297,7 @@ ${kids ? `<p class="d2-note kid" id="d2-kids"><b>Children</b> ${esc(kids)}</p>` 
 <span class="d2-lab" id="d2-spots-lab">Spots <small>up to ${SearchQuery.BOOKING_SPOTS} people</small></span>
 <p class="d2-note" id="d2-cap" role="status" hidden>Up to 6 people per booking.</p>
 <div class="d2-step" role="group" aria-labelledby="d2-spots-lab"><button type="button" class="d2-sb" id="d2-qminus" aria-label="Fewer spots" hidden>${icon('minus')}</button><input class="d2-qty" id="d2-qty" name="qty" type="number" inputmode="numeric" min="1" max="${SearchQuery.BOOKING_SPOTS}" value="${qty}" aria-label="Spots"><button type="button" class="d2-sb" id="d2-qplus" aria-label="More spots" hidden>${icon('plus')}</button></div>
-<div class="d2-tot" aria-live="polite"><span id="d2-tot-l">${total}</span><b id="d2-tot-p">${totalPrice}</b></div>
-<button class="d2-btn d2-go" id="d2-go" type="submit"${disabled ? ' aria-disabled="true"' : ''}>Book</button>
+<button class="d2-btn d2-go" id="d2-go" type="submit"${disabled ? ' aria-disabled="true"' : ''}>${bookBtn}</button>
 </form>
 ${noJsDate}
 </section>`;
@@ -640,7 +634,7 @@ function note(el,text,show){el.textContent=text||'';el.hidden=!show}
 function resetTiles(){
  tiles.forEach(function(t){
   t.disabled=false;t.parentNode.classList.remove('off');
-  var sp=t.parentNode.querySelector('span');if(sp) sp.textContent=t.getAttribute('data-label');
+  var sp=t.parentNode.querySelector('.d2-pt-price');if(sp) sp.textContent=t.getAttribute('data-label');
  });
  soldAll=false;
 }
@@ -656,20 +650,11 @@ function paint(){
  chips.forEach(function(c){c.parentNode.classList.toggle('on',c.checked)});
  $$('.d2-d.cl',form).forEach(function(b){b.classList.remove('pk')});
  if(d&&closed[d]){var ck=$('.d2-d.cl[data-date="'+d+'"]',form);if(ck) ck.classList.add('pk')}
- var fit=$('#d2-fit-t');if(fit&&p) fit.textContent=p.getAttribute('data-fits')||'';
  var pr=$('#d2-passrow-t');if(pr&&p) pr.textContent=p.getAttribute('data-name')+' · '+p.getAttribute('data-label');
- var l=$('#d2-tot-l'),v=$('#d2-tot-p');
  if(p){
-  l.textContent=p.getAttribute('data-name')+(q>1?' × '+q:'')+(d?' · '+label(d):'');
   var price=parseFloat(p.getAttribute('data-price'))*q;
-  v.textContent=d?(soldAll?'Sold out':money(price)+(demo?' (demo)':'')):'Pick a date';
- }
- var hrs=$('#d2-hrs');
- if(hrs){
-  var t=d&&hoursBy[wdOf(d)];
-  if(!t){var vals=[];for(var k in hoursBy){if(vals.indexOf(hoursBy[k])<0) vals.push(hoursBy[k])}t=vals.length===1?vals[0]:''}
-  hrs.textContent=t?t+', hotel time':'Hotel time';
- }
+  go.textContent=soldAll?'Book':('Book · '+money(price)+(demo?' (demo)':''));
+ }else go.textContent='Book';
  var ready=!!(p&&d&&!closed[d]&&!soldAll);
  if(ready) go.removeAttribute('aria-disabled'); else go.setAttribute('aria-disabled','true');
  var pill=$('#d2-pill-t'),sd=$('#d2-side-date'),sq=$('#d2-side-qty');
@@ -693,7 +678,7 @@ function applyAvail(data,s){
   var partial=!off&&rem<q;
   t.disabled=off;
   t.parentNode.classList.toggle('off',off);
-  var sp=t.parentNode.querySelector('span');
+  var sp=t.parentNode.querySelector('.d2-pt-price');
   if(sp) sp.textContent=partial?('Only '+rem+' left'):(off?'Sold out':t.getAttribute('data-label'));
   if(!off) any=true;
  });

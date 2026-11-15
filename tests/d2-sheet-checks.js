@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
+const { ymd, addDays } = require('../util');
 
 const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'listing-dir2.css'), 'utf8');
 
@@ -177,6 +178,107 @@ function cdp(WS, wsUrl) {
       assert.ok(d.dates >= 7, width + ' date chips ' + JSON.stringify(d));
       console.log(width + ' booking sheet form ' + Math.round(d.bookH) + 'px');
     }
+
+    const when = ymd(addDays(new Date(), 14));
+    await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await send('Page.navigate', { url: `http://127.0.0.1:${port}/h/saltwater-terrace?pass=lounger&date=${when}&qty=1#book` });
+    await new Promise(r => setTimeout(r, 1400));
+    await send('Runtime.evaluate', {
+      expression: `(() => {
+        const sheet = document.getElementById('d2-sheet');
+        if (sheet && !sheet.open) {
+          const btn = [...document.querySelectorAll('.d2-bar-btn, .d2-bookbar .d2-btn')].find(el => el.getBoundingClientRect().height > 0);
+          if (btn) btn.click();
+        }
+      })()`,
+    });
+    await new Promise(r => setTimeout(r, 700));
+    const trim = await send('Runtime.evaluate', {
+      returnByValue: true,
+      expression: `(() => {
+        const passes = [...document.querySelectorAll('#d2-form .d2-pt')];
+        const dateRow = document.querySelector('.d2-labrow > span');
+        const go = document.getElementById('d2-go');
+        return {
+          fitLine: !!document.getElementById('d2-fit'),
+          summary: !!document.querySelector('.d2-tot'),
+          dateText: dateRow ? dateRow.textContent.trim() : '',
+          dateHasHours: dateRow ? /hotel time|\\d+am|\\d+pm/i.test(dateRow.textContent) : true,
+          fitsOnCards: passes.length >= 3 && passes.every(el => /Fits \\d+/.test(el.textContent)),
+          passCount: passes.length,
+          bookLabel: go ? go.textContent.trim() : '',
+        };
+      })()`,
+    });
+    const t = trim.result.value;
+    assert.ok(!t.fitLine, 'no Fits line under pass cards');
+    assert.ok(!t.summary, 'no summary above Book');
+    assert.strictEqual(t.dateText, 'Date', 'Date label without hours ' + t.dateText);
+    assert.ok(!t.dateHasHours, 'no hours next to Date');
+    assert.ok(t.fitsOnCards, 'Fits N on every pass card: ' + t.passCount);
+    assert.match(t.bookLabel, /^Book · \$[\d,.]+ \(demo\)$/, 'Book label shows pass total');
+
+  const bookLive = await send('Runtime.evaluate', {
+      awaitPromise: true,
+      returnByValue: true,
+      expression: `(async () => {
+        const go = document.getElementById('d2-go');
+        const lounger = document.querySelector('input[name="pass"][value="lounger"]');
+        const daybed = document.querySelector('input[name="pass"][value="daybed"]');
+        const plus = document.getElementById('d2-qplus');
+        if (lounger) {
+          lounger.click();
+          lounger.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        await new Promise(r => setTimeout(r, 250));
+        const one = go ? go.textContent.trim() : '';
+        if (plus) {
+          plus.click();
+          await new Promise(r => setTimeout(r, 250));
+        }
+        const two = go ? go.textContent.trim() : '';
+        if (daybed) {
+          daybed.click();
+          daybed.dispatchEvent(new Event('change', { bubbles: true }));
+          await new Promise(r => setTimeout(r, 250));
+        }
+        const other = go ? go.textContent.trim() : '';
+        return { one, two, other };
+      })()`,
+    });
+    const live = bookLive.result.value;
+    assert.match(live.one, /^Book · \$/, 'Book label with one spot');
+    assert.match(live.two, /^Book · \$/, 'Book label with two spots');
+    assert.notStrictEqual(live.one, live.two, 'Book label updates when spots change');
+    if (live.other) assert.notStrictEqual(live.one, live.other, 'Book label updates when pass changes');
+
+    await send('Page.navigate', { url: `http://127.0.0.1:${port}/h/skyline-rooftop` });
+    await new Promise(r => setTimeout(r, 1200));
+    await send('Runtime.evaluate', {
+      expression: `(() => {
+        const btn = [...document.querySelectorAll('.d2-bar-btn, .d2-bookbar .d2-btn')].find(el => el.getBoundingClientRect().height > 0);
+        if (btn) btn.click();
+      })()`,
+    });
+    await new Promise(r => setTimeout(r, 700));
+    const closedRes = await send('Runtime.evaluate', {
+      returnByValue: true,
+      expression: `(() => {
+        return [...document.querySelectorAll('#d2-form .d2-d.cl, #d2-sheet .d2-d.cl')].map(el => ({
+          disabled: el.getAttribute('aria-disabled') === 'true',
+          label: el.getAttribute('aria-label') || '',
+          visibleClosed: /\\bClosed\\b/.test(el.textContent.trim()),
+        }));
+      })()`,
+    });
+    const closedChips = closedRes.result.value || [];
+    assert.ok(closedChips.length > 0, 'skyline has closed day chips');
+    for (const chip of closedChips) {
+      assert.ok(chip.disabled, 'closed chip disabled');
+      assert.ok(/, closed$/i.test(chip.label), 'closed chip aria-label: ' + chip.label);
+      assert.ok(!chip.visibleClosed, 'no visible Closed text on chip');
+    }
+
     console.log('d2 sheet checks passed');
   } finally {
     if (session) session.ws.close();
