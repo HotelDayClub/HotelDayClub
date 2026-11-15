@@ -435,7 +435,7 @@ function riskTick(hotel) {
 }
 class GuestCheckIn {
   static line() {
-    return "Show the QR code or booking code at reception. Reception checks your booking and ID and gives you the hotel's pool access pass or wristband, which you return when you leave. A day pass includes no hotel room, and you can't charge anything to a room.";
+    return "Show the QR code or booking code at reception. Reception checks your booking and ID and gives you the hotel's pool access pass or wristband, which you return when you leave. A day pass has no hotel room, and you can't charge anything to a room.";
   }
 }
 function swimNote(hotel) {

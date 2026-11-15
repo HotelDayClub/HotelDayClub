@@ -185,8 +185,8 @@ function recorder(decide) {
   assert.ok(direct.html.includes('supported-color-schemes'));
   assert.ok(direct.html.includes('<v:roundrect'));
   assert.ok(direct.html.includes('Show booking code HDC-ABC at reception.'));
-  assert.ok(direct.html.includes('A day pass includes no hotel room, and you can&#39;t charge anything to a room.'));
-  assert.ok(direct.text.includes("A day pass includes no hotel room, and you can't charge anything to a room."));
+  assert.ok(direct.html.includes('A day pass has no hotel room, and you can&#39;t charge anything to a room.'));
+  assert.ok(direct.text.includes("A day pass has no hotel room, and you can't charge anything to a room."));
   assert.ok(direct.html.includes('Gym × 2: $20'));
   assert.ok(direct.text.includes('Gym × 2: $20'));
   assert.ok(direct.html.includes('>Privacy policy</a>'));
@@ -323,8 +323,8 @@ function recorder(decide) {
   assert.ok(booked.html.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
   assert.ok(booked.html.includes('Look after your own belongings.'));
   assert.ok(booked.text.includes('Look after your own belongings.'));
-  assert.ok(booked.html.includes('A day pass includes no hotel room, and you can&#39;t charge anything to a room.'));
-  assert.ok(booked.text.includes("A day pass includes no hotel room, and you can't charge anything to a room."));
+  assert.ok(booked.html.includes('A day pass has no hotel room, and you can&#39;t charge anything to a room.'));
+  assert.ok(booked.text.includes("A day pass has no hotel room, and you can't charge anything to a room."));
   assert.ok(!booked.html.includes('(draft)') && !booked.html.includes('\u2014'));
   assert.ok(booked.html.includes('Pool bar &lt;script&gt;'));
   assert.ok(booked.html.includes('Food and drink available to purchase'));

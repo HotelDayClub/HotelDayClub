@@ -533,7 +533,7 @@ function start(port, extra = {}) {
     assert.strictEqual(how.status, 200);
     assert.ok(how.body.includes('Seating and add-on sales are paid out once a month. Your share is set out in your hotel agreement.'));
     assert.ok(!how.body.includes('A free date change may be available once, subject to availability.'));
-    assert.ok(how.body.includes('A day pass includes no hotel room, and you can&#39;t charge anything to a room.'));
+    assert.ok(how.body.includes('A day pass has no hotel room, and you can&#39;t charge anything to a room.'));
     assert.ok(how.body.includes('pool access pass or wristband'));
     assert.ok(!/75%|25%/.test(how.body));
     const join = await get(port, '/hotel/join');
@@ -651,7 +651,7 @@ function start(port, extra = {}) {
     assert.ok(page.body.includes('Before you swim'));
     assert.ok(page.body.includes('Look after your own belongings.'));
     assert.ok(page.body.includes(offering.GuestCheckIn.line().replace(/'/g, '&#39;')));
-    assert.ok(page.body.includes('you can&#39;t charge anything to a room.'));
+    assert.ok(page.body.includes('A day pass has no hotel room, and you can&#39;t charge anything to a room.'));
     assert.ok(/Terms, Cancellation &amp; Refund Policy, hotel rules and risk warning: accepted at checkout \d{1,2} \w+ \d{4}, \d{1,2}:\d{2} (am|pm)\./.test(page.body));
     assert.ok(page.body.includes('>Privacy policy</a>'));
     assert.ok(page.body.includes('>Customer terms</a>'));

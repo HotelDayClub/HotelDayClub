@@ -231,6 +231,12 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.deepStrictEqual(cardNames(beach.body).sort(), ['manly-sands', 'saltwater-terrace']);
     assert.ok(!(await get(port, '/search')).body.includes('class="kidchip"'));
     assert.ok(family.body.includes('data-key="mood" data-value="rooftop"'));
+    assert.ok(family.body.includes('class="search-sum"'));
+    assert.ok(family.body.includes('Anywhere in Australia · Any guests'));
+    assert.strictEqual((family.body.match(/class="ichip mood"/g) || []).length, 4);
+    assert.ok(!/class="chip"[^>]*>Family friendly/.test(family.body));
+    const moodRow = family.body.match(/aria-label="Mood">([\s\S]*?)<\/div>/);
+    assert.ok(moodRow && !/>Spa</.test(moodRow[1]));
 
     const from = ymd(addDays(new Date(today + 'T12:00:00'), 6));
     const to = ymd(addDays(new Date(today + 'T12:00:00'), 7));
@@ -244,7 +250,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
 
     // A13: ticket.
     const fields = {
-      hotel: 'saltwater-terrace', date: far, pass: 'daybed', qty: '2', name: 'Alex Citizen', email: 'ticket@example.com', phone: '0412345678',
+      hotel: 'saltwater-terrace', date: far, pass: 'daybed', qty: '1', name: 'Alex Citizen', email: 'ticket@example.com', phone: '0412345678',
       rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
     };
     const params = new URLSearchParams(fields);
@@ -259,12 +265,12 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(t.includes('class="tk-ticket"'));
     assert.ok(/<span class="tk-ok">Confirmed<\/span>/.test(t));
     assert.ok(t.includes('id="tk-code"'));
-    assert.ok(t.includes('<dt>Pass</dt><dd>Daybed \u00d7 2</dd>'));
-    assert.ok(t.includes('<dt>Guests</dt><dd>4</dd>'));
-    assert.ok(/Fitness centre access \u00d7 4/.test(tt), tt);
+    assert.ok(t.includes('<dt>Pass</dt><dd>Daybed</dd>'));
+    assert.ok(t.includes('<dt>Guests</dt><dd>2</dd>'));
+    assert.ok(/Fitness centre access \u00d7 2/.test(tt), tt);
     assert.ok(/<span>Parking<\/span>/.test(t));
     assert.ok(!/Parking \u00d7 1/.test(tt));
-    assert.ok(t.includes('Towels: 4 provided'));
+    assert.ok(t.includes('Towels: 2 provided'));
     assert.strictEqual(count(tt, FOOD_RULE), 1);
     assert.ok(tt.includes('Free cancellation until'));
     assert.strictEqual(count(t, 'class="tk-btn"'), 1, 'one filled button');
@@ -272,6 +278,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(tt.includes('Demo: nothing is charged or refunded.'));
     assert.ok(tt.includes('No payment was taken and no real booking exists.'));
     assert.ok(t.includes(GuestCheckIn.line().replace(/'/g, '&#39;')));
+    assert.ok(t.includes('you can&#39;t charge anything to a room.'));
     assert.ok(tt.includes('accepted at checkout'));
     assert.ok(!tt.includes('Alex Citizen') && !tt.includes('ticket@example.com'));
     assert.ok(!tt.includes('\u2014'));

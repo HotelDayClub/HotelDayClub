@@ -380,11 +380,29 @@ class SearchQuery {
     return text ? '/search?' + text : '/search';
   }
 
+  static pillWhen(params) {
+    if (params.range) {
+      const { HomeQuick } = require('./homeQuick');
+      const w = HomeQuick.weekend(params.range.from);
+      if (w && w.from === params.range.from && w.to === params.range.to) return w.label;
+      return params.rangeLabel || 'Date range';
+    }
+    if (params.date) return params.dateLabel;
+    return 'Any date';
+  }
+
+  static pillSub(params) {
+    const where = params.destination ? params.destination.name : 'Anywhere in Australia';
+    const guests = params.guests
+      ? (params.guests === 1 ? '1 guest' : `${params.guests} guests`)
+      : 'Any guests';
+    return `${where} · ${guests}`;
+  }
+
   static chips(params) {
     const items = [];
     if (params.destination) items.push({ key: 'destination', label: params.destination.name });
     if (params.date || params.range) items.push({ key: 'date', label: params.dateLabel });
-    if (params.mood) items.push({ key: 'mood', label: params.moodLabel });
     if (params.want) items.push({ key: 'want', label: params.wantLabel });
     if (params.guests) items.push({ key: 'guests', label: params.guests === 1 ? '1 guest' : params.guests + ' guests' });
     if (params.price) items.push({ key: 'price', label: 'Under $' + params.price });
@@ -408,15 +426,8 @@ class SearchQuery {
     return params.destination ? 'Hotel day passes in ' + params.destination.name : 'Hotel day passes';
   }
 
-  static countLine(n, params) {
-    const place = params.destination ? 'in ' + params.destination.name : 'around Australia';
-    const noun = n === 1 ? 'place' : 'places';
-    let line = n + ' ' + noun + ' ' + place;
-    if (params.wantLabel) line += ' · ' + params.wantLabel;
-    if (params.moodLabel) line += ' · ' + params.moodLabel;
-    if (params.date) line += ' on ' + params.dateLabel;
-    else if (params.range) line += ' · ' + params.dateLabel;
-    return line;
+  static countLine(n) {
+    return `${n} ${n === 1 ? 'place' : 'places'}`;
   }
 
   static nearest(hotels, destination, fromPrice, regionByArea) {
@@ -496,7 +507,7 @@ class SearchQuery {
       drawerCount: SearchQuery.drawerCount(params),
       heading: SearchQuery.heading(params),
       title: SearchQuery.documentTitle(params),
-      count: SearchQuery.countLine(pool.length, params),
+      count: SearchQuery.countLine(pool.length),
       moods: SearchQuery.MOODS.map(m => ({ ...m, on: params.mood === m.id })),
       kidsChips: params.mood === 'family' ? new Map(pool.map(h => [h.id, SearchQuery.kidsChip(h)]).filter(row => row[1])) : new Map(),
     };

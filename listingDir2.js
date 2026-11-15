@@ -787,13 +787,20 @@ form.addEventListener('submit',function(e){
  chips.forEach(function(c){c.disabled=true});
 });
 form.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target===qtyEl) e.preventDefault()});
+var urlPass=new URL(location.href).searchParams.get('pass')||'';
+chips.forEach(function(c){
+ if(c.value===hidden.value) c.checked=true;
+ else if(!hidden.value&&c.checked) hidden.value=c.value;
+});
 if(hidden.value&&closed[hidden.value]&&!$('#d2-hold')){var cd=hidden.value;hidden.value='';chips.forEach(function(c){c.checked=false});showClosed(cd)}
+if(urlPass) selectPass(urlPass);
 paint();
 if(hidden.value&&!closed[hidden.value]) check();
 function autoOpen(){
  if(location.hash!=='#book'&&!$('#d2-hold')) return;
- opener=$('#d2-pill')||null;
- openSheet({pass:'',focus:$('#d2-hold')?'hold':''});
+ opener=$('#d2-pill')||document.querySelector('a[href*="#book"]')||null;
+ var pass=new URL(location.href).searchParams.get('pass')||'';
+ openSheet({pass:pass,focus:$('#d2-hold')?'hold':''});
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){setTimeout(autoOpen,0)});
 else setTimeout(autoOpen,0);

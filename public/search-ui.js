@@ -86,7 +86,7 @@
   function openSheet() {
     if (!sheet) return;
     if (drawer && !drawer.hidden) closeDrawer(true);
-    sheetOpener = document.querySelector('.cpill');
+    sheetOpener = document.querySelector('.search-sum') || document.querySelector('.cpill');
     sheet.hidden = false;
     if (backdrop) backdrop.hidden = false;
     if (sheetOpener) sheetOpener.setAttribute('aria-expanded', 'true');
@@ -201,7 +201,7 @@
     if (guest && out && guest.type === 'hidden') out.textContent = guest.value ? guest.value : 'Any';
   }
   function liveLoad(url, focusValue) {
-    var count = document.querySelector('.count');
+    var count = document.getElementById('search-count') || document.querySelector('.count');
     if (count) count.setAttribute('aria-busy', 'true');
     fetch(url, { headers: { Accept: 'text/html' } })
       .then(function (res) { return res.text(); })
@@ -224,12 +224,21 @@
         if (nextDrawer && drawer) copyControl(nextDrawer, drawer);
         var nextApply = nextDrawer && nextDrawer.querySelector('.apply');
         if (nextApply) paintCount(Number(nextApply.getAttribute('data-count')) || 0);
+        var nextSum = doc.querySelector('.search-sum');
+        var sumBtn = document.querySelector('.search-sum');
+        if (nextSum && sumBtn) {
+          sumBtn.innerHTML = nextSum.innerHTML;
+          sumBtn.setAttribute('aria-label', nextSum.getAttribute('aria-label') || '');
+        }
         var nextLabel = doc.querySelector('.cpill');
         var pillBtn = document.querySelector('.cpill');
         if (nextLabel && pillBtn) {
           pillBtn.innerHTML = nextLabel.innerHTML;
           pillBtn.setAttribute('aria-label', nextLabel.getAttribute('aria-label') || '');
         }
+        var nextHead = doc.getElementById('search-count');
+        var head = document.getElementById('search-count');
+        if (nextHead && head) head.textContent = nextHead.textContent;
         document.title = doc.title;
         history.pushState({}, '', url);
         syncMore(live);
@@ -252,7 +261,7 @@
     }
     if (node.closest('#filters-btn')) { event.preventDefault(); openDrawer(); return; }
     if (node.closest('[data-close-drawer]')) { event.preventDefault(); closeDrawer(); return; }
-    if (node.closest('.cpill')) { event.preventDefault(); openSheet(); return; }
+    if (node.closest('.search-sum') || node.closest('.cpill')) { event.preventDefault(); openSheet(); return; }
     if (node.closest('[data-close-sheet]')) { event.preventDefault(); closeSheet(); return; }
     var stepBtn = node.closest('[data-step]');
     if (stepBtn && drawer && drawer.contains(stepBtn)) {
