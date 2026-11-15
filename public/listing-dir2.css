@@ -15,7 +15,13 @@
 .d2 :focus-visible,.d2-sheet :focus-visible,.d2-lb :focus-visible{outline:3px solid var(--deep);outline-offset:2px}
 body:has(.d2){background:var(--cream);padding-bottom:84px}
 body:has(.d2) main{padding-top:0}
+body:has(.d2) .d2.listing{padding:0;margin:0}
 body:has(.d2) .d2-photos{margin-top:0}
+@media (max-width:1023px){
+ body:has(.d2) .d2-photos,
+ body:has(.d2) .d2-hero,
+ body:has(.d2) .d2-gw{margin-top:0;margin-bottom:0;padding-top:0;padding-bottom:0;border-radius:0}
+}
 body:has(.d2) .hdr{background:var(--deep);border-bottom:0;position:sticky;top:0;z-index:40;max-width:none;width:100%}
 body:has(.d2) .hdr .wrap{max-width:none;padding-inline:16px}
 body:has(.d2) .hdr img.logo-light{display:none}

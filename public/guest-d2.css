@@ -35,7 +35,7 @@ body.home.guest-d2 .qb small{font-family:Fraunces,Georgia,serif;font-weight:600}
 
 /* Search mood cards */
 body.guest-d2 .search-page .ex{border-radius:16px;background:#fff}
-body.guest-d2 .search-page .ex .tag{position:absolute;top:12px;left:12px;background:transparent;border:1px solid #8A9A9F;color:var(--hdc-text);text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;padding:4px 8px;border-radius:6px}
+body.guest-d2 .search-page .ex .tag{position:absolute;top:12px;left:12px;background:#FFF1E4;border:0;color:#8A3B12;text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;padding:4px 10px;border-radius:6px}
 body.guest-d2 .search-page .ex .bd h3{font-family:Fraunces,Georgia,serif;font-size:20px;line-height:1.2}
 body.guest-d2 .search-page .ex-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;flex-wrap:wrap}
 body.guest-d2 .search-page .ex-row .hrs{margin:0;font-size:14px;color:var(--hdc-secondary);font-weight:600;display:inline-flex;align-items:center;gap:6px}

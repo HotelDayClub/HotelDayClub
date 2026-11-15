@@ -173,8 +173,25 @@ const OPEN_SHEET = `new Promise(function(done){
   const closedPrep = OPEN_SHEET + `;new Promise(function(r){var chip=document.querySelector('.d2-d.cl[data-date],button.cd.cl[data-date]');if(chip) chip.click();var n=0;(function t(){var el=document.getElementById('d2-closed');if(el&&!el.hidden&&/closed/i.test(el.textContent)){${SHEET_PAINT};r(1);}else if(++n>60)setTimeout(function(){${SHEET_PAINT};r(0)},0);else setTimeout(t,150)})()})`;
   await shot(ws, { url: `${base}/h/skyline-rooftop?qty=1`, width: 390, height: 844, name: 'd2-sheet-closed-390.png', prep: closedPrep, awaitMs: 2200 });
 
-  const latePrep = OPEN_SHEET + `;new Promise(function(r){var n=0;(function t(){var el=document.getElementById('d2-late');if(el&&!el.hidden&&/can't be cancelled/i.test(el.textContent)){el.scrollIntoView({block:'center'});${SHEET_PAINT};r(1);}else if(++n<55)setTimeout(t,200);else{r(0)}})()})`;
-  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${today}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-late-390.png', prep: latePrep, awaitMs: 2400 });
+  const latePrep = OPEN_SHEET + `;new Promise(function(r){
+ var d='${today}';
+ var chip=document.querySelector('.d2-d input[value="'+d+'"]');
+ if(chip&&!chip.checked){chip.checked=true;chip.dispatchEvent(new Event('change',{bubbles:true}));}
+ var pass=document.querySelector('input[name="pass"][value="lounger"]');
+ if(pass&&!pass.checked){pass.checked=true;pass.dispatchEvent(new Event('change',{bubbles:true}));}
+ var n=0;(function t(){
+  var late=document.getElementById('d2-late');
+  var hid=document.querySelector('#book input[type="hidden"][name="date"]');
+  var tot=document.getElementById('d2-tot-p');
+  if(late&&!late.hidden&&/can't be cancelled for free/i.test(late.textContent)&&hid&&hid.value===d&&tot&&/\\$/.test(tot.textContent)){
+   late.scrollIntoView({block:'center'});
+   ${SHEET_PAINT};
+   r(1);
+  }else if(++n<80)setTimeout(t,200);
+  else r(0);
+ })();
+})`;
+  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${today}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-late-390.png', prep: latePrep, awaitMs: 2800 });
 
   const morePrep = OPEN_SHEET + `;var m=document.getElementById('d2-more');if(m){m.hidden=false;m.click();}${SHEET_PAINT}`;
   await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-more-390.png', prep: morePrep, awaitMs: 2000 });
