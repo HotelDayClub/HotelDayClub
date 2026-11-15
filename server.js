@@ -42,6 +42,7 @@ const { parseSignup, saveSignup, notifyWebhook, rateLimited, waitlistCsv } = req
 const { TOPICS, parseMessage, contactLimited, saveMessage, topicLabel, sameSitePost } = require('./contact');
 const paths = require('./paths');
 const backups = require('./backups');
+const { StaticAssets } = require('./staticAssets');
 const { bookingsCsv, hotelsCsv, hotelBookingsCsv } = require('./dataExport');
 const { GuestPrivacy } = require('./guestPrivacy');
 const {
@@ -302,7 +303,6 @@ ${this.column('ftr-site', 'Site', siteLinks)}
     return `<script>(function(){document.querySelectorAll('.ftr-toggle').forEach(function(btn){btn.addEventListener('click',function(){var open=btn.getAttribute('aria-expanded')==='true';btn.setAttribute('aria-expanded',open?'false':'true');});});})();</script>`;
   }
 }
-const FONT_LINKS = `<link rel="preload" href="/golden/fonts/f3.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/golden/fonts/f5.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/golden/fonts.css">`;
 const HOME_SCRIPT = `<script>
 (function(){
 var S=[["8:00","Swim & gym"],["15:00","Spa afternoon"],["18:00","Golden hour"]],media=[0,1,2],cur=0;
@@ -358,8 +358,8 @@ function page(title, body, opts = {}) {
     : nav === 'admin' ? '<a class="hotel-link show" href="/admin/logout">Log out</a>'
     : `<a class="pill" href="${waitHref}">Join the waitlist</a>`;
   const chrome = nav === 'guest' ? guestChrome(opts.path || '', waitHref) : { nav: '<nav class="hdr-nav" aria-label="Site"></nav>', sheet: '' };
-  const extraCss = opts.css ? `<link rel="stylesheet" href="${esc(opts.css)}">` : '';
-  const extraJs = opts.js ? `<script src="${esc(opts.js)}"></script>` : '';
+  const extraCss = opts.css ? StaticAssets.stylesheet(opts.css) : '';
+  const extraJs = opts.js ? StaticAssets.script(opts.js) : '';
   const headerExtra = opts.headerHtml || '';
   const tags = analytics && nav === 'guest' ? gaSnippet(analyticsPath) : '';
   const preconnect = tags ? '<link rel="preconnect" href="https://www.googletagmanager.com">' : '';
@@ -375,18 +375,18 @@ function page(title, body, opts = {}) {
     imageHeight: opts.image ? opts.imageHeight : 630,
     jsonld: opts.jsonld || null,
   });
-  const pickerCss = '<link rel="stylesheet" href="/pickers.css">';
-  const tokensCss = '<link rel="stylesheet" href="/tokens.css">';
+  const pickerCss = StaticAssets.stylesheet('/pickers.css');
+  const tokensCss = StaticAssets.stylesheet('/tokens.css');
   const css = home
-    ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}<link rel="stylesheet" href="/golden/home.css"><link rel="stylesheet" href="/header.css">`
-    : `${FONT_LINKS}${tokensCss}${pickerCss}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css"><link rel="stylesheet" href="/header.css">${extraCss}`;
+    ? `${StaticAssets.fontLinks()}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}${StaticAssets.stylesheet('/golden/home.css')}${StaticAssets.stylesheet('/header.css')}`
+    : `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${StaticAssets.stylesheet('/styles.css')}${StaticAssets.stylesheet('/app.css')}${StaticAssets.stylesheet('/golden/site.css')}${StaticAssets.stylesheet('/header.css')}${extraCss}`;
   const bodyClass = opts.bodyClass || (home ? 'home' : nav === 'guest' ? 'guest' : 'staff');
   const header = `<header class="hdr" id="site-hdr"><div class="wrap hdr-in">${logoLink('light')}${chrome.nav}${headerExtra}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 ${demoSite() ? '<div class="demo-banner">Demo site: listings are examples, no real bookings or payments.</div>' : ''}
 ${header}<main>${body}</main>
-${bare ? '' : SiteFooter.html()}<script src="/pickers.js"></script>${home ? HOME_SCRIPT : ''}${nav === 'guest' ? MENU_SCRIPT : ''}${extraJs}
+${bare ? '' : SiteFooter.html()}${StaticAssets.script('/pickers.js')}${home ? HOME_SCRIPT : ''}${nav === 'guest' ? MENU_SCRIPT : ''}${extraJs}
 </body></html>`;
 }
 const card = (h, date) => {
@@ -1821,7 +1821,7 @@ ${info ? checkinCard(info, h) : ''}
 ${results}
 ${todaySection(h, { big: true, live: '/hotel/today-list?view=checkin', day: hotelToday(h) })}
 </div>
-<script src="/checkin-parse.js"></script><script src="/vendor/jsQR.js"></script><script src="/checkin.js"></script>`, { here: '/hotel/checkin', live: true }));
+${StaticAssets.script('/checkin-parse.js')}${StaticAssets.script('/vendor/jsQR.js')}${StaticAssets.script('/checkin.js')}`, { here: '/hotel/checkin', live: true }));
 }
 app.get('/hotel/checkin', (req, res, next) => {
   const id = req.signedCookies.hotel;
@@ -1944,7 +1944,7 @@ ${addonsAll.map(a => {
 <input type="hidden" name="dates" id="block-cal-dates" value="">
 <div class="cal-actions"><button type="button" class="btn btn-line" id="block-cal-cancel">Cancel</button><button class="btn btn-navy" type="submit">Save</button></div>
 </form></dialog>
-<script src="/block-cal.js"></script></section>`, { live: true }));
+${StaticAssets.script('/block-cal.js')}</section>`, { live: true }));
 });
 app.post('/hotel/checkin', hotelAuth, (req, res) => {
   if (!sameSitePost(req)) return res.status(403).type('text/plain; charset=utf-8').send('Use the check-in form on this site.');

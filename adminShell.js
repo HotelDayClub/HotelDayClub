@@ -1,9 +1,8 @@
 const seo = require('./seo');
 const { demoSite } = require('./siteMode');
 const { esc, money, nice } = require('./util');
+const { StaticAssets } = require('./staticAssets');
 const { HOTEL_SHARE, hotelPct, feePct } = require('./commission');
-
-const FONT_LINKS = `<link rel="preload" href="/golden/fonts/f3.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/golden/fonts/f5.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/golden/fonts.css">`;
 
 const TABS = [
   ['/admin', 'Overview'],
@@ -154,7 +153,7 @@ class AdminShell {
       canonicalUrl: '',
       image: '',
     });
-    const css = `${FONT_LINKS}<link rel="stylesheet" href="/tokens.css"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css">`;
+    const css = `${StaticAssets.fontLinks()}${StaticAssets.stylesheet('/tokens.css')}${StaticAssets.stylesheet('/styles.css')}${StaticAssets.stylesheet('/app.css')}${StaticAssets.stylesheet('/golden/site.css')}`;
     const banner = demoSite() ? '<div class="demo-banner">Demo site: listings are examples, no real bookings or payments.</div>' : '';
     return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${meta}${css}</head><body class="adm">
