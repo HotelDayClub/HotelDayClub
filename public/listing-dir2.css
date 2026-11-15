@@ -3,6 +3,7 @@
 .d2 *,.d2 *::before,.d2 *::after{box-sizing:border-box}
 .d2 [hidden]{display:none!important}
 .d2 h1,.d2 h2,.d2 h3{margin:0;text-wrap:balance;letter-spacing:0}
+.d2 .d2-hero-copy h1.d2-hero-title,.d2-hero-title{color:#FFF8EE!important}
 .d2 p{margin:0}
 .d2 dl{display:block;margin:0}
 .d2 dt{color:inherit;font-size:inherit;text-transform:none;letter-spacing:0}
@@ -43,6 +44,13 @@ body:has(.d2) main{overflow-x:hidden}
 .d2-hero-tag{display:inline-flex;align-items:center;min-height:28px;margin-top:12px;padding:2px 10px;border-radius:999px;font-size:14px;line-height:20px;font-weight:600;background:transparent;border:1px solid var(--d2-soft);color:#FFF8EE}
 .d2-hero-copy .d2-desc{color:var(--d2-soft);margin:8px 0 0;font-size:16px;line-height:24px}
 .d2-hero-copy .d2-rm{color:#FFF8EE}
+.d2-towel-chip{list-style:none;margin:12px 0 0;padding:0;display:inline-flex}
+.d2-towel-chip li{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:4px 12px;border-radius:999px;border:1px solid var(--d2-soft);background:rgba(255,248,238,.12);color:#FFF8EE;font-size:14px;line-height:20px;font-weight:600}
+.d2-towel-chip .d2ic{color:#FFF8EE}
+.d2-hb-schedule{margin:12px 0 0;display:grid;gap:8px 16px;font-size:15px;line-height:22px;color:var(--d2-soft)}
+.d2-hb-schedule div{display:grid;grid-template-columns:120px 1fr;gap:8px;align-items:baseline}
+.d2-hb-schedule dt{font-weight:700;color:#FFF8EE;margin:0}
+.d2-hb-schedule dd{margin:0;color:var(--d2-soft)}
 .d2-bookbar{display:none}
 .d2-thumbs{display:none}
 

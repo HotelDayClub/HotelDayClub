@@ -1,9 +1,10 @@
 const crypto = require('crypto');
 const { esc } = require('./util');
 
-// One effective date for Legal Version 1.1 (terms, privacy, risk).
-// Refunds stay on Version 1.0. The legal pages print legalDateLabel of this date.
+// Effective date for privacy and risk (Version 1.1). Customer terms use CUSTOMER_TERMS_EFFECTIVE and v1.2 at checkout.
+// Refunds stay on Version 1.0. Privacy and risk pages print legalDateLabel of LEGAL_EFFECTIVE.
 const LEGAL_EFFECTIVE = '2026-11-15';
+const CUSTOMER_TERMS_EFFECTIVE = '2026-11-15';
 const LEGAL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 function legalDateLabel(iso) {
@@ -15,7 +16,7 @@ function legalDateLabel(iso) {
 
 // New bookings store these values. Older rows keep the versions written when they were booked.
 const LEGAL_VERSIONS = Object.freeze({
-  terms: LEGAL_EFFECTIVE,
+  terms: '1.2',
   refunds: '2026-11-12',
   privacy: LEGAL_EFFECTIVE,
   risk: LEGAL_EFFECTIVE,
@@ -197,4 +198,4 @@ class ConsentLog {
   }
 }
 
-module.exports = { LEGAL_EFFECTIVE, legalDateLabel, LEGAL_VERSIONS, LegalVersions, CheckoutConsent, ConsentLog };
+module.exports = { LEGAL_EFFECTIVE, CUSTOMER_TERMS_EFFECTIVE, legalDateLabel, LEGAL_VERSIONS, LegalVersions, CheckoutConsent, ConsentLog };

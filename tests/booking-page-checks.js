@@ -20,8 +20,8 @@ delete process.env.MAIL_FROM;
 const db = require('../db');
 const { hashPassword } = require('../passwords');
 const later = ymd(addDays(new Date(), 40));
-const hotelId = db.prepare(`INSERT INTO hotels (slug, name, area, login, password, status, is_demo, timezone, state, address, photos, day_entrance, transit_note, lat, lng)
-  VALUES ('page-pool', 'Harbour Hotel (Demo)', 'Brisbane', 'page-pool', ?, 'active', 1, 'Australia/Brisbane', 'QLD', '1 Demo St, Brisbane QLD 4000', '["hero-loungers.jpg"]', 'Use the pool door.', 'The station is a short walk.', -27.47, 153.02)`).run(hashPassword('booking-page-hotel')).lastInsertRowid;
+const hotelId = db.prepare(`INSERT INTO hotels (slug, name, area, login, password, status, is_demo, timezone, state, address, photos, day_entrance, transit_note, lat, lng, towels)
+  VALUES ('page-pool', 'Harbour Hotel (Demo)', 'Brisbane', 'page-pool', ?, 'active', 1, 'Australia/Brisbane', 'QLD', '1 Demo St, Brisbane QLD 4000', '["hero-loungers.jpg"]', 'Use the pool door.', 'The station is a short walk.', -27.47, 153.02, 1)`).run(hashPassword('booking-page-hotel')).lastInsertRowid;
 for (let weekday = 0; weekday < 7; weekday++) {
   db.prepare('INSERT INTO hotel_hours (hotel_id, weekday, open, opens, closes) VALUES (?, ?, 1, ?, ?)').run(hotelId, weekday, '09:00', '17:00');
 }
@@ -98,7 +98,8 @@ function mainText(html) {
     assert.ok(body.includes('>Add to calendar<') || body.includes('Add to calendar</a>'));
     assert.ok(body.includes('Swimwear') && body.includes('Sunscreen and hat'));
     assert.ok(!body.includes('Photo ID<'), 'Photo ID chip only when the hotel requires it');
-    assert.ok(body.includes('Towels: 2 provided'));
+    assert.ok(body.includes('Towels included'));
+    assert.ok(!body.includes('Towels: 2 provided'));
     assert.strictEqual(body.split(FOOD_RULE).length - 1, 1);
     assert.ok(/<p class="tk-cx">Free cancellation until \d{1,2} am, .+\(hotel time\)\.<\/p>/.test(body));
     assert.ok(body.includes('Manage or cancel'));
@@ -145,10 +146,10 @@ function mainText(html) {
     assert.strictEqual(TicketView.addonName({ name: 'Parking', qty: 1 }), 'Parking');
     assert.strictEqual(TicketView.addonName({ name: 'Fitness centre access', qty: 2 }), 'Fitness centre access \u00d7 2');
     assert.strictEqual(TicketView.addonPrice({ total: 50 }, true), '$50 (demo)');
-    assert.strictEqual(TicketView.towelChip([{ name: 'Towels', qty: 2 }]), 'Towels: 2 provided');
-    assert.strictEqual(TicketView.towelChip([]), '');
-    assert.deepStrictEqual(TicketView.bringChips({ id_required: 0 }, []).map(c => c.text), ['Swimwear', 'Sunscreen and hat']);
-    assert.deepStrictEqual(TicketView.bringChips({ id_required: 1 }, []).map(c => c.text), ['Photo ID', 'Swimwear', 'Sunscreen and hat']);
+    assert.strictEqual(TicketView.towelChip({ towels: 1 }), 'Towels included');
+    assert.strictEqual(TicketView.towelChip({ towels: 0 }), 'Bring your own towel');
+    assert.deepStrictEqual(TicketView.bringChips({ id_required: 0, towels: 1 }).map(c => c.text), ['Swimwear', 'Sunscreen and hat', 'Towels included']);
+    assert.deepStrictEqual(TicketView.bringChips({ id_required: 1, towels: 0 }).map(c => c.text), ['Photo ID', 'Swimwear', 'Sunscreen and hat', 'Bring your own towel']);
     assert.strictEqual(TicketView.isLate("This booking is inside 24 hours of the start, so it can't be cancelled for free."), true);
     assert.strictEqual(TicketView.isLate('Free cancellation until 10 am, Sat 14 Nov (hotel time).'), false);
     console.log('booking page checks passed');

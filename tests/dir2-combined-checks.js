@@ -106,6 +106,11 @@ assert.strictEqual(sunLate.second.label, 'Next weekend');
 assert.strictEqual(HomeQuick.build('nope'), null);
 assert.ok(!/\u2014/.test(HomeQuick.html('2026-11-11')));
 
+const d2css = fs.readFileSync(path.join(root, 'public/listing-dir2.css'), 'utf8');
+assert.ok(/\.d2-hero-title\{[^}]*color:\s*#FFF8EE/i.test(d2css), 'hero title on deep band');
+assert.ok(/\.d2-hours-band\{[^}]*color:\s*#FFF8EE/i.test(d2css), 'hours band text');
+assert.ok(/\.d2-bookbar\{[^}]*color:\s*#fff/i.test(d2css), 'desktop book bar text');
+
 // A3: moods.
 assert.deepStrictEqual(SearchQuery.MOODS.map(m => m.label), ['Rooftop', 'Beachside', 'Quiet', 'Family friendly']);
 assert.strictEqual(SearchQuery.kidsChip({ kids_hours: 'Children welcome until 2pm' }), 'Children until 2pm');
@@ -151,16 +156,32 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
       assert.ok(body.includes('Open in Google Maps') || body.includes('Map placeholder (demo)'), slug);
     }
 
-    // A5: included amenities, no inclusion quantities (towel chips only).
+    // A5: included amenities omit per-guest towel counts; towel chip is on the listing header.
     const saltText = visibleText(pages['saltwater-terrace']);
     const incAt = pages['saltwater-terrace'].indexOf('class="d2-inc"');
     const incEnd = pages['saltwater-terrace'].indexOf('</ul>', incAt);
     const incRows = [...pages['saltwater-terrace'].slice(incAt, incEnd).matchAll(/<li>(.*?)<\/li>/g)].map(m => m[1].replace(/<[^>]+>/g, ''));
     assert.strictEqual(incRows.length, 6, incRows.join('|'));
-    assert.strictEqual(incRows.filter(r => /\d/.test(r)).length, 0, 'no inclusion quantities');
-    assert.ok(incRows.some(r => r === 'Towels included'));
+    assert.strictEqual(incRows.filter(r => /\d/.test(r)).length, 0, 'no quantity labels in included list');
+    assert.ok(!incRows.some(r => /^Towels/.test(r)));
+    assert.ok(pages['saltwater-terrace'].includes('d2-towel-chip'));
+    assert.ok(pages['saltwater-terrace'].includes('Towels included'));
     assert.ok(!incRows.some(r => /Pool access/.test(r)));
     assert.ok(saltText.includes('Example amenities (demo)'));
+    const saltDetails = pages['saltwater-terrace'].slice(pages['saltwater-terrace'].indexOf('id="details"'));
+    assert.ok(saltDetails.includes('<h3>Extras</h3>'), 'extras heading');
+    assert.ok(!saltDetails.includes('Extras (paid)'), 'no legacy extras label');
+    assert.ok(saltDetails.includes('class="d2-extra-list"'), 'extras card list');
+    assert.ok(saltDetails.includes('class="d2-extra"'), 'extra row/card');
+    assert.ok(/class="d2-extra-pr">.*\(demo\)/.test(saltDetails), 'demo price label on extras');
+    assert.ok(saltDetails.includes('<h3>On site (not included)</h3>'), 'on site heading');
+    const onIdx = saltDetails.indexOf('<h3>On site (not included)</h3>');
+    const extrasIdx = saltDetails.indexOf('<h3>Extras</h3>');
+    const hoursIdx = saltDetails.indexOf('<h3>Hours</h3>');
+    assert.ok(onIdx > -1 && extrasIdx > onIdx && hoursIdx > extrasIdx, 'section order');
+    const onSlice = saltDetails.slice(onIdx, extrasIdx > onIdx ? extrasIdx : hoursIdx);
+    assert.ok(onSlice.includes('class="d2-os-note"'), 'muted not-included line in on site block');
+    assert.ok(!onSlice.includes('class="d2-muted">Not included:'), 'not-included not outside on site');
 
     // A6: seat URLs redirect and a pass link preselects.
     const seat = await get(port, '/h/saltwater-terrace/seat/daybed?date=' + today + '&qty=2');
@@ -178,6 +199,8 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     const chips = sheet.match(/<(?:label class|button type="button" class)="d2-d[ "]/g) || [];
     assert.strictEqual(chips.length, 14, 'fourteen date chips');
     assert.ok(sheet.includes('More dates'));
+    assert.ok(sheet.includes('class="d2-mdb text-link"'), 'booking sheet inline links');
+    assert.ok(sheet.includes('class="d2-rm text-link"'), 'read more uses text-link');
     assert.ok(sheet.includes(`max="${max}"`), 'More dates and the no-JS date field stop at today plus 90');
     assert.ok(sheet.includes(`min="${today}"`));
     assert.ok(/<noscript><form class="d2-nojs"[^>]*method="get"/.test(sheet), 'no-JS other date form');
@@ -276,7 +299,8 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(/Fitness centre access \u00d7 2/.test(tt), tt);
     assert.ok(/<span>Parking<\/span>/.test(t));
     assert.ok(!/Parking \u00d7 1/.test(tt));
-    assert.ok(t.includes('Towels: 2 provided'));
+    assert.ok(t.includes('Towels included'));
+    assert.ok(!t.includes('Towels: 2 provided'));
     assert.strictEqual(count(tt, FOOD_RULE), 1);
     assert.ok(tt.includes('Free cancellation until'));
     assert.strictEqual(count(t, 'class="tk-btn"'), 1, 'one filled button');

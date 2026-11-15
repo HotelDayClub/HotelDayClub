@@ -14,7 +14,6 @@ class ListingPanel {
   static towelText(qty) {
     const n = Math.max(0, Number(qty) || 0);
     if (n < 1) return '';
-    if (n === 1) return 'Towels included';
     return 'Towels included';
   }
 
@@ -142,20 +141,20 @@ const ASSURE = [
   {
     icon: '<circle cx="12" cy="12" r="3.2"/><path d="M12 4.2v2.2M12 17.6v2.2M4.2 12h2.2M17.6 12h2.2M6.5 6.5l1.6 1.6M15.9 15.9l1.6 1.6M17.5 6.5l-1.6 1.6M8.1 15.9l-1.6 1.6"/>',
     title: 'No room needed',
-    text: '',
+    text: 'Just the pool, gym or spa.',
   },
   {
     icon: '<path d="M5 9V5h4M15 5h4v4M19 15v4h-4M9 19H5v-4"/><path d="M10 10h1.6v1.6H10zM12.6 12.6H14V14h-1.4z"/>',
     title: 'Show your QR code at the desk',
-    text: '',
+    text: 'No printing needed.',
   },
   {
     icon: '<path d="M7.2 8.2A5.2 5.2 0 1 1 6 13"/><path d="M5.2 5.4V9H9"/>',
     title: 'If the pool closes',
-    text: 'You choose a full refund or a free rebooking.',
+    text: 'Full refund or free rebooking.',
   },
   {
-    icon: '<path d="M4 7.5h16v10H4z"/><path d="M4 8l8 6 8-6"/>',
+    icon: '<rect x="4" y="7" width="16" height="11" rx="1.5"/><path d="M4.5 7.5 12 13l7.5-5.5"/>',
     title: 'Help when you need it',
     text: 'Questions? Email us.',
     href: '/contact',
@@ -164,7 +163,7 @@ const ASSURE = [
 
 function reassureStrip(lite) {
   const items = ASSURE.map(item => {
-    const inner = `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${item.icon}</svg><b>${item.title}</b>${item.text ? `<span>${item.text}</span>` : ''}`;
+    const inner = `<span class="ico-wrap" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24">${item.icon}</svg></span><b>${item.title}</b>${item.text ? `<span>${item.text}</span>` : ''}`;
     return item.href
       ? `<li><a class="assure-link" href="${item.href}">${inner}</a></li>`
       : `<li>${inner}</li>`;

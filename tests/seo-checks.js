@@ -82,7 +82,6 @@ function oneH1(html, where) {
 }
 function alts(html, where) {
   for (const tag of html.match(/<img\b[^>]*>/g) || []) {
-    if (/\baria-hidden="true"/.test(tag)) continue;
     const alt = tag.match(/\balt="([^"]*)"/);
     assert.ok(alt && alt[1].trim(), where + ' ' + tag);
   }
@@ -101,6 +100,8 @@ function alts(html, where) {
     const homeDesc = 'Book a hotel pool, spa or gym for the day in Australia, no room needed. We&#39;re launching soon, so join the waitlist.';
     assert.ok(home.includes('<p class="kicker">Hotel day passes in Australia</p>'));
     assert.ok(home.includes('<h1 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h1>'));
+    assert.ok(!home.includes('minutes from home, no room needed.'));
+    assert.ok(!home.includes('class="lead">A hotel pool'));
     assert.ok(home.includes('>Plan your day</span>'));
     assert.ok(home.includes('A hotel day, your way'));
     assert.ok(home.includes('One example day. The hotel sets the hours.'));
@@ -132,7 +133,7 @@ function alts(html, where) {
     const homeHeader = home.slice(home.indexOf('<header class="hdr"'), home.indexOf('<main>'));
     const homeFooter = home.slice(home.indexOf('<footer'));
     assert.ok(homeHeader.includes('src="/assets/hdc-lockup-light.svg"'));
-    assert.ok(!homeHeader.includes('logo-dark') || homeHeader.includes('aria-hidden="true"'), 'dark lockup in header is decorative only');
+    assert.ok(!homeHeader.includes('hdc-lockup-dark.svg'), 'home header uses light lockup only');
     assert.ok(homeFooter.includes('src="/assets/hdc-lockup-dark.svg"'));
     assert.ok(home.includes('src="/assets/hdc-lockup-light.svg"'));
     assert.ok(home.includes('alt="Hotel Day Club"'));

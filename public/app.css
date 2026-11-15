@@ -1,4 +1,7 @@
 /* App layer on top of the brand styles. Fonts are self-hosted in /golden/fonts.css. */
+.hdr .logo-dark{display:none}
+body:has(.d2) .hdr .logo-light{display:none}
+body:has(.d2) .hdr .logo-dark{display:block}
 .hotel-link.show{display:inline-flex}
 @media(max-width:560px){.hide-sm{display:none!important}.hotel-link.show{padding:8px 10px;font-size:.85rem}.logo{font-size:1.1rem}}
 .small{font-size:.85rem}.center{text-align:center}.mt{margin-top:28px}

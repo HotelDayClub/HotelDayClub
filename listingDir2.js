@@ -129,10 +129,9 @@ class ListingD2 {
     return '';
   }
 
-  static fitsLine(pass, items, hotel) {
+  static fitsLine(pass) {
     const holds = Number(pass && pass.holds) || 1;
-    const towel = ListingD2.towelChip(items, hotel);
-    return towel ? `Fits ${holds} · ${towel}` : `Fits ${holds}`;
+    return `Fits ${holds}`;
   }
 
   static passGroups(passes) {
@@ -196,13 +195,19 @@ function passAlt(p, h) {
   return isDemo(h) ? `Example photo of a ${kind}, not this hotel` : `${kind} at ${shortName(h)}`;
 }
 
+function heroTowelChip(h) {
+  const bring = h && (h.towels == null || Number(h.towels) === 0);
+  const label = bring ? 'Bring your own towel' : 'Towels included';
+  return `<ul class="d2-towel-chip" aria-label="Towels"><li>${icon('towel')}<span>${esc(label)}</span></li></ul>`;
+}
+
 function heroCopyHtml(h, heading, area, desc) {
   const demo = isDemo(h);
   return `<div class="d2-hero-copy" id="d2-hero-copy"><div class="d2-hero-in">
 <p class="d2-hero-loc">${esc(area)}</p>
 <h1 class="d2-hero-title">${esc(heading)}</h1>
 ${demo ? '<span class="d2-hero-tag">Fictional demo listing</span>' : ''}
-<p class="d2-desc" id="d2-desc">${desc}</p><button type="button" class="d2-rm" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button>
+<p class="d2-desc" id="d2-desc">${desc}</p>${heroTowelChip(h)}<button type="button" class="d2-rm" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button>
 </div></div>`;
 }
 
@@ -224,7 +229,7 @@ function galleryHtml(h, hero) {
 function passCard(p, h, items, opts) {
   const desc = String(p.description || '').trim();
   const href = ListingD2.cardHref(h.slug, p, { date: opts.date, qty: opts.qty });
-  return `<a class="d2-card d2-row" href="${esc(href)}" data-pass="${esc(p.code)}">${passThumb(p, passAlt(p, h))}<div class="d2-card-body"><div class="d2-card-top"><b class="n">${esc(p.name)}</b><p class="pr">From ${priceHtml(h, p.price)}</p></div>${desc ? `<p>${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p, items, h))}</p></div></a>`;
+  return `<a class="d2-card d2-row" href="${esc(href)}" data-pass="${esc(p.code)}">${passThumb(p, passAlt(p, h))}<div class="d2-card-body"><div class="d2-card-top"><b class="n">${esc(p.name)}</b><p class="pr">From ${priceHtml(h, p.price)}</p></div>${desc ? `<p>${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p))}</p></div></a>`;
 }
 
 function chipHtml(c) {
@@ -269,7 +274,7 @@ function sheetHtml(o) {
   const tiles = passes.map(p => {
     const on = pick && p.code === pick.code;
     const off = out(p);
-    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p, items, h))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${PhotoAssets.imgTag(safePhoto(String(p.photo || '')), { alt: isDemo(h) ? 'Stock photo, not this hotel' : p.name, width: 120, height: 60, sizes: '120px', loading: 'lazy' })}<b>${esc(p.name)}</b><span>${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><i class="tk">${icon('tick')}</i></label>`;
+    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${PhotoAssets.imgTag(safePhoto(String(p.photo || '')), { alt: isDemo(h) ? 'Stock photo, not this hotel' : p.name, width: 120, height: 60, sizes: '120px', loading: 'lazy' })}<b>${esc(p.name)}</b><span>${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><i class="tk">${icon('tick')}</i></label>`;
   }).join('');
   const noJsDate = `<noscript><form class="d2-nojs" action="/h/${esc(encodeURIComponent(h.slug))}#book" method="get"><label>Another date<input type="date" name="date" min="${esc(o.today)}" max="${esc(maxDate)}" value="${esc(outside ? date : '')}"></label><input type="hidden" name="pass" value="${esc(pick ? pick.code : '')}"><input type="hidden" name="qty" value="${qty}"><button class="d2-btn out" type="submit">Use this date</button></form></noscript>`;
   return `<section class="d2-book" id="book" aria-labelledby="d2-book-h" tabindex="-1">
@@ -281,7 +286,7 @@ ${holdHtml(o.hold)}
 <div class="d2-passblock" id="d2-passblock">
 <span class="d2-lab" id="d2-pass-lab">Pass</span>
 <div class="d2-pp" role="radiogroup" aria-labelledby="d2-pass-lab">${tiles}</div>
-<p class="d2-fit" id="d2-fit">${icon('towel')}<span id="d2-fit-t">${esc(pick ? ListingD2.fitsLine(pick, items, h) : '')}</span></p>
+<p class="d2-fit" id="d2-fit">${icon('people')}<span id="d2-fit-t">${esc(pick ? ListingD2.fitsLine(pick) : '')}</span></p>
 </div>
 <div class="d2-passrow" id="d2-passrow" hidden><span class="d2-lab">Pass <small id="d2-passrow-t"></small></span><button type="button" class="d2-mdb" id="d2-change">Change</button></div>
 <div class="d2-lab d2-labrow"><span>Date <small id="d2-hrs">${hours ? `${esc(hours)}, hotel time` : 'Hotel time'}</small></span><button type="button" class="d2-mdb" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
@@ -310,8 +315,9 @@ function hoursBandHtml(h, o) {
   const items = o.items || o.included || [];
   const groups = ListingD2.hourGroups(o.hourRows || []);
   const open = groups.filter(g => g.time && g.time !== 'Closed');
-  const uniform = open.length === 1;
-  const time = uniform ? open[0].time : open.map(g => `${g.label}: ${g.time}`).join('; ');
+  const uniform = open.length === 1 && groups.length === 1;
+  const time = open.length === 1 ? open[0].time : '';
+  const schedule = groups.map(g => `<div><dt>${esc(g.label)}</dt><dd>${esc(g.time)}</dd></div>`).join('');
   const rows = o.hourRows || [];
   const openDays = rows.filter(r => r.time && r.time !== 'Closed').map(r => r.day);
   const when = openDays.length === 7 ? 'Monday to Sunday. Hotel local time.' : 'Hotel local time.';
@@ -323,8 +329,8 @@ function hoursBandHtml(h, o) {
   } else if (parkAddon) {
     parkBlock = `<div class="d2-hb-park"><h3>Parking</h3><p class="d2-park-line"><span>Paid extra, added at checkout</span><span class="r">${esc(ListingD2.priceText(h, parkAddon.price))}</span></p></div>`;
   }
-  if (!time && !parkBlock) return '';
-  return `<div class="d2-hours-band"><div class="d2-hours-in">${time ? `<div class="d2-hb-hours"><h3>Hours</h3><p class="d2-time">${esc(time)}</p><p class="d2-when">${esc(when)}</p></div>` : ''}${parkBlock}</div></div>`;
+  if (!groups.length && !parkBlock) return '';
+  return `<div class="d2-hours-band"><div class="d2-hours-in">${groups.length ? `<div class="d2-hb-hours"><h3>Hours</h3>${time ? `<p class="d2-time">${esc(time)}</p>` : ''}${schedule ? `<dl class="d2-hb-schedule">${schedule}</dl>` : ''}<p class="d2-when">${esc(when)}</p></div>` : ''}${parkBlock}</div></div>`;
 }
 
 function policiesHtml(h) {

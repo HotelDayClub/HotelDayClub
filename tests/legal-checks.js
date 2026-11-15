@@ -407,6 +407,11 @@ function start(port, extra = {}) {
         assert.ok(doc.body.includes('Version 1.0'), pathName);
         assert.ok(doc.body.includes('Effective 12 November 2026'), pathName);
         assert.ok(!doc.body.includes('Version 1.1'), pathName);
+      } else if (pathName === '/terms') {
+        assert.ok(doc.body.includes('Version 1.2'), pathName);
+        assert.ok(doc.body.includes('Effective ' + publishedOn), pathName);
+        assert.ok(doc.body.includes('A clean pool towel is included for each guest unless the listing says &quot;Bring your own towel&quot;.'), pathName);
+        assert.ok(!doc.body.includes('Version 1.0'), pathName);
       } else {
         assert.ok(doc.body.includes('Version 1.1'), pathName);
         assert.ok(doc.body.includes('Effective ' + publishedOn), pathName);
@@ -579,9 +584,9 @@ function start(port, extra = {}) {
 
     const factsDb = new Database(dbPath, { readonly: true });
     const listing = await get(port, `/h/skyline-rooftop?date=${freeSky.date}`);
-    const skyBand = listing.body.slice(listing.body.indexOf('class="d2-hours-band"'), listing.body.indexOf('</div>', listing.body.indexOf('class="d2-hb-park"')));
-    assert.ok(skyBand.includes('class="d2-time"'), skyBand);
-    assert.ok(/Sat.*Thu|11am/.test(skyBand) || listing.body.includes('11am\u20134pm'), skyBand.slice(0, 200));
+    const skyBand = listing.body.slice(listing.body.indexOf('class="d2-hours-band"'), listing.body.indexOf('</div>', listing.body.lastIndexOf('class="d2-hours-in"')));
+    assert.ok(skyBand.includes('<dt>Sat to Thu</dt><dd>11am\u20134pm</dd>'), skyBand);
+    assert.ok(skyBand.includes('<dt>Fri</dt><dd>Closed</dd>'), skyBand);
     assert.ok(!listing.body.includes('Wed ·'));
     const saltListing = await get(port, `/h/saltwater-terrace?date=${salt.date}`);
     const saltBand = saltListing.body.slice(saltListing.body.indexOf('class="d2-hours-band"'), saltListing.body.indexOf('</div>', saltListing.body.indexOf('class="d2-hb-park"')));
@@ -713,7 +718,7 @@ function start(port, extra = {}) {
     const { LegalVersions, ConsentLog } = require('../consent');
     const versions = LegalVersions.current();
     assert.deepStrictEqual(versions, {
-      terms: '2026-11-15',
+      terms: '1.2',
       refunds: '2026-11-12',
       privacy: '2026-11-15',
       risk: '2026-11-15',

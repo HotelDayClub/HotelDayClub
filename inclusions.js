@@ -220,7 +220,7 @@ function syncAddonEdit(db, hotelId, code, enabled, price, cap) {
 }
 
 function includedRows(items) {
-  return (items || []).filter(i => i.mode === 'included' && !FOOD_DRINK.has(i.code));
+  return (items || []).filter(i => i.mode === 'included' && !FOOD_DRINK.has(i.code) && i.code !== 'towels');
 }
 function includedQty(item, people) {
   const guests = Math.max(1, Number(people) || 1);

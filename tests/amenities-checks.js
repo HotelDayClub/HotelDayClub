@@ -178,6 +178,8 @@ function contrast(fg, bg) {
     const onsite = group(page, 'am-os');
     assert.ok(included.includes('Example pool'));
     assert.ok(included.includes('Towels included'));
+    assert.ok(!included.includes('2 towels'));
+    assert.ok(!included.includes('Towels: 1 per person'));
     assert.ok(!included.includes('Example restaurant'));
     assert.ok(!included.includes('alert(1)Example bar'));
     assert.ok(!/\d+\s*×/.test(included));
