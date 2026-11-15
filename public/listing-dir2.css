@@ -263,6 +263,7 @@ body:has(.d2) main{overflow-x:hidden}
 .d2-sheet{position:fixed;inset:auto 0 0 0;margin:0 auto;width:100%;max-width:600px;max-height:calc(100dvh - 40px);overflow-y:auto;border:0;background:#fff;color:var(--text);padding:8px 0 0;border-radius:20px 20px 0 0}
 .d2-sheet::backdrop{background:rgba(10,79,85,.55)}
 .d2-sheet .d2-book{margin:0;border:0;border-radius:0;padding:0 16px calc(16px + env(safe-area-inset-bottom))}
+dialog.d2-sheet[open] .d2-book,.js dialog.d2-sheet[open] .d2-book{display:block}
 .d2-sheet .d2-grab{display:block;width:40px;height:4px;border-radius:2px;background:var(--field);margin:4px auto 8px}
 .d2-sheet .d2-nojs{display:none}
 
@@ -312,6 +313,7 @@ body:has(.d2) main{overflow-x:hidden}
  .d2-bookbar-price{margin:0;font:600 28px/34px var(--d2-disp);color:#fff;white-space:nowrap}
  .d2-bookbar-price small{font-size:15px;font-family:var(--d2-body);font-weight:600;color:var(--d2-soft)}
  .d2-bookbar .d2-fake{width:auto;min-width:200px;background:#fff;color:var(--text)!important;border:1px solid #fff;flex:0 1 220px}
+ .d2-bookbar .d2-btn{background:#fff;color:var(--deep)!important;border-color:#fff;min-width:148px}
  .d2-tabs .d2-datebtn{display:none}
  .d2-tabs .in{max-width:800px;padding:0 24px;margin:0 auto;justify-content:flex-start}
  .d2-layout,.d2-col{padding-inline:24px;max-width:800px}
@@ -331,8 +333,6 @@ body:has(.d2) main{overflow-x:hidden}
  .d2-qa p{font-size:22px;line-height:30px}
  .d2-fake{display:inline-flex;align-items:center;justify-content:space-between;min-height:48px;border:1px solid var(--field);border-radius:12px;padding:0 14px;background:#fff;font:500 16px var(--d2-body);color:var(--text)!important;text-decoration:none;gap:8px}
  .d2-sheet{inset:50% auto auto 50%;transform:translate(-50%,-50%);width:480px;max-width:480px;border-radius:20px;padding:20px 0 0}
- .d2-sheet .d2-book{display:block}
- .js .d2-sheet .d2-book{display:block}
  .d2-sheet .d2-book{padding:0 24px 24px}
  .d2-sheet .d2-grab{display:none}
  .d2-dates{margin:0;padding:6px 4px;overflow:visible;flex-wrap:wrap}
