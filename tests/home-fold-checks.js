@@ -188,6 +188,14 @@ function cdp(WS, wsUrl) {
           } : null;
           const helpEl = [...document.querySelectorAll('.assure b')].find(n => /help when you need it/i.test(n.textContent));
           const helpRight = helpEl ? helpEl.getBoundingClientRect().right : 0;
+          const heroEl = document.querySelector('.hero');
+          const phEl = document.querySelector('.hero .ph');
+          const heroBox = rectOf(heroEl);
+          const phBox = rectOf(phEl);
+          const creditEl = document.querySelector('.hero .credit');
+          const clockEl = document.querySelector('.hero .clock');
+          const creditBox = rectOf(creditEl);
+          const clockBox = rectOf(clockEl);
           const exploreH2 = document.querySelector('#explore h2');
           const exploreH2Top = exploreH2 ? exploreH2.getBoundingClientRect().top : 1e9;
           const freeCancelSub = document.querySelector('.assure li:first-child span');
@@ -215,6 +223,10 @@ function cdp(WS, wsUrl) {
             planSecW,
             copyBox,
             helpRight,
+            heroBox,
+            phBox,
+            creditBox,
+            clockBox,
           };
         })()`,
       });
@@ -257,6 +269,18 @@ function cdp(WS, wsUrl) {
       }
       if (width >= 1280) {
         assert.ok(data.top < data.inner, width + ' first listing below fold ' + data.top + ' vs ' + data.inner);
+      }
+      if (width === 390 || width === 1280) {
+        assert.ok(data.heroBox && data.phBox, width + ' hero ph boxes');
+        assert.ok(Math.abs(data.phBox.height - data.heroBox.height) <= 2, width + ' hero ph fill ' + JSON.stringify({ hero: data.heroBox.height, ph: data.phBox.height }));
+      }
+      if (data.creditBox) {
+        assert.ok(data.creditBox.width >= 20 && data.creditBox.height >= 10, width + ' credit visible ' + JSON.stringify(data.creditBox));
+        assert.ok(data.creditBox.left >= -1 && data.creditBox.right <= data.width + 2, width + ' credit clipped');
+      }
+      if (data.clockBox) {
+        assert.ok(data.clockBox.width >= 20 && data.clockBox.height >= 10, width + ' clock visible ' + JSON.stringify(data.clockBox));
+        assert.ok(data.clockBox.left >= -1 && data.clockBox.right <= data.width + 2, width + ' clock clipped');
       }
       console.log(width + 'x' + height + ' card top ' + Math.round(data.top) + ' explore h2 ' + Math.round(data.exploreH2Top) + ' of ' + data.inner);
     }
