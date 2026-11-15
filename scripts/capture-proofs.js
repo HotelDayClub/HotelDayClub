@@ -193,6 +193,21 @@ const OPEN_SHEET = `new Promise(function(done){
   await shot(ws, { url: `${base}/`, width: 390, height: 844, name: 'p2a-home-quick-390.png', prep: rv + scrollTop });
   await shot(ws, { url: `${base}/search?mood=family`, width: 390, height: 844, name: 'p2b-search-mood-family-390.png', prep: scrollTop });
 
+  const exploreScroll = `window.scrollTo(0,document.getElementById('explore').offsetTop-80);`;
+  for (const [w, h, hotel] of [[360, 844, listing], [390, 844, listing], [1024, 800, listing], [1440, 900, listing], [390, 844, 'harbourside-lido'], [1440, 900, 'harbourside-lido']]) {
+    await shot(ws, { url: `${base}/h/${hotel}`, width: w, height: h, name: `d2-explore-section-${w}-${hotel === listing ? 'saltwater' : 'harbourside'}.png`, prep: exploreScroll, awaitMs: 1600 });
+  }
+  const exploreOpen = `new Promise(function(r){var b=document.querySelector('[data-open-explore]');if(b)b.click();setTimeout(r,500)})`;
+  await shot(ws, { url: `${base}/h/${listing}`, width: 390, height: 844, name: 'd2-sheet-explore-390.png', prep: exploreOpen, awaitMs: 1800 });
+  await shot(ws, { url: `${base}/h/${listing}`, width: 1280, height: 800, name: 'd2-sheet-explore-1280.png', prep: exploreOpen, awaitMs: 1800 });
+
+  const palmOpen = OPEN_SHEET;
+  await shot(ws, { url: `${base}/h/palm-court?pass=chair&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-palm-chair-390.png', prep: palmOpen, awaitMs: 2000 });
+
+  const loginPrep = `fetch('/hotel/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'login=demo-saltwater&password=proof-hotel',credentials:'include'}).then(function(){location.href='/hotel/settings#explore-edit'})`;
+  await shot(ws, { url: `${base}/hotel/login`, width: 390, height: 844, name: 'd2-explore-admin-390.png', prep: loginPrep, awaitMs: 2600 });
+  await shot(ws, { url: `${base}/hotel/login`, width: 1440, height: 900, name: 'd2-explore-admin-1440.png', prep: loginPrep, awaitMs: 2600 });
+
   const bookFields = new URLSearchParams({
     hotel: listing, date: when, pass: 'daybed', qty: '1', name: 'Proof Guest', email: 'proof@example.com', phone: '0412345678',
     rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',

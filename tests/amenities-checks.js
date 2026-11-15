@@ -255,14 +255,17 @@ function contrast(fg, bg) {
     assert.ok(listing.body.includes('On site (not included)'));
     assert.ok(!textOf(listing.body).includes(SENTENCE));
     assert.ok(!group(listing.body, 'am-y').includes('Pool bar'));
-    assert.ok(/<li>(?:<svg[^>]*>.*?<\/svg>)?Pool bar<\/li>/.test(listing.body.slice(listing.body.indexOf('On site (not included)'))));
+    assert.ok(/<li>(?:<svg[^>]*>.*?<\/svg>)?(?:<a href="#explore">)?Pool bar(?:<\/a>)?<\/li>/.test(listing.body.slice(listing.body.indexOf('On site (not included)'))));
     assert.ok(!listing.body.includes('Pool access'));
     const foodLine = 'Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.';
     const amenityAt = listing.body.indexOf('Included in your pass');
     const hoursAt = listing.body.indexOf('<h3>Hours</h3>');
     assert.ok(listing.body.indexOf('id="passes"') < amenityAt && amenityAt < hoursAt);
     assert.ok(!listing.body.slice(amenityAt, hoursAt).includes('<li>' + foodLine + '</li>'));
-    assert.strictEqual(listing.body.split(foodLine).length - 1, 1);
+    const gtk = listing.body.slice(listing.body.indexOf('id="before"'));
+    assert.strictEqual(gtk.split(foodLine).length - 1, 1, 'food rule once in good to know');
+    const ex = listing.body.slice(listing.body.indexOf('id="d2-explore-sheet"'));
+    assert.ok(ex.includes(foodLine), 'food rule in explore sheet');
     const seatMoved = await get(port, '/h/saltwater-terrace/seat/lounger');
     assert.strictEqual(seatMoved.status, 301);
 

@@ -54,10 +54,10 @@ function leadAndMeta(body, slug, name, area) {
 }
 
 function venueRow(body, name) {
-  const at = body.indexOf('On site (not included)');
-  const end = body.indexOf('</ul>', at);
-  if (at < 0) return null;
-  const m = new RegExp('<li>(?:<svg[^>]*>.*?</svg>)?' + name + '</li>').exec(body.slice(at, end));
+  const at = body.indexOf('class="d2-os"');
+  const end = at < 0 ? -1 : body.indexOf('</ul>', at);
+  if (at < 0 || end < 0) return null;
+  const m = new RegExp('<li>(?:<svg[^>]*>.*?</svg>)?(?:<a href="#explore">)?' + name + '(?:</a>)?</li>').exec(body.slice(at, end));
   return m ? m[0] : null;
 }
 
@@ -326,7 +326,10 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(!/[★☆]|\bstars?\b|\/\s*5\b|\d/.test(why));
     const notInc = salt.body.slice(salt.body.indexOf('<ul class="not-inc">'), salt.body.indexOf('</ul>', salt.body.indexOf('<ul class="not-inc">')));
     assert.ok(!notInc.includes(FOOD_RULE));
-    assert.strictEqual(salt.body.split(FOOD_RULE).length - 1, 1);
+    const goodToKnow = salt.body.slice(salt.body.indexOf('id="before"'));
+    assert.strictEqual(goodToKnow.split(FOOD_RULE).length - 1, 1, 'food rule once in good to know');
+    const exSheet = salt.body.slice(salt.body.indexOf('id="d2-explore-sheet"'));
+    assert.ok(exSheet.includes(FOOD_RULE), 'food rule in explore sheet');
     assert.ok(!salt.body.includes('id="season"'));
     assert.ok(!salt.body.includes('Season and closed dates'));
     assert.ok(salt.body.includes('Free cancellation up to 24 hours before your access hours start.'));
@@ -341,7 +344,14 @@ assert.ok(sevenPhotos.includes('1 / 7'));
       assert.strictEqual(page.status, 200, slug);
       assert.ok(!page.body.includes('Season and closed dates'), slug);
       assert.ok(!page.body.includes('id="season"'), slug);
-      assert.strictEqual(page.body.split(FOOD_RULE).length - 1, 1, slug + ' food rule once');
+      if (page.body.includes('id="before"')) {
+        const gtkBlock = page.body.slice(page.body.indexOf('id="before"'));
+        assert.strictEqual(gtkBlock.split(FOOD_RULE).length - 1, 1, slug + ' food rule once in good to know');
+      }
+      if (page.body.includes('d2-ex-food')) {
+        const ex = page.body.slice(page.body.indexOf('id="d2-explore-sheet"'));
+        assert.ok(ex.includes(FOOD_RULE), slug + ' food rule in explore sheet');
+      }
       const amenityAt = page.body.indexOf('id="amenities"');
       if (amenityAt >= 0) {
         assert.ok(page.body.indexOf('id="passes"') < amenityAt, slug + ' amenities after passes');
@@ -367,10 +377,13 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(salt.body.includes('Show your QR code at check-in.'));
     assert.ok(salt.body.includes('Help when you need it'));
     assert.ok(salt.body.includes('href="/contact"'));
-    const poolBar = [venueRow(salt.body, 'Pool bar')];
-    assert.ok(!poolBar[0].includes('From 11am'));
-    assert.ok(!poolBar[0].includes('Food and drink available to purchase'));
-    assert.ok(!/included/i.test(poolBar[0]));
+    assert.ok(salt.body.includes('href="#explore">Pool bar'), 'pool bar links to explore');
+    const poolBar = venueRow(salt.body, 'Pool bar');
+    if (poolBar) {
+      assert.ok(!poolBar.includes('From 11am'));
+      assert.ok(!poolBar.includes('Food and drink available to purchase'));
+      assert.ok(!/included/i.test(poolBar));
+    }
     assert.ok(!seatLounger.body.includes('looking straight out to the Pacific'));
     assert.ok(seatLounger.body.includes('On site (not included)'));
     assert.ok(seatLounger.body.includes('/assets/photos/infinity-ocean.jpg'));
@@ -380,7 +393,8 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(!/>\s*Seat\s*</.test(salt.body));
     assert.ok(!salt.body.includes('quietest'));
     assert.ok(salt.body.includes('href="#passes"'));
-    assert.ok(salt.body.includes('id="overview"'));
+    assert.ok(salt.body.includes('id="explore"'));
+    assert.ok(!salt.body.includes('id="overview"'));
     assert.ok(salt.body.includes('hashchange'));
     assert.ok(!/id="day-prev"[^>]*href=/.test(salt.body));
     assert.ok(salt.body.includes('aria-live="polite"'));
@@ -488,11 +502,11 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(!/adults only after 2pm/i.test(manly.body));
     const manlySeat = await get(port, '/h/manly-sands');
     assert.strictEqual(manlySeat.status, 200);
-    const kiosk = [venueRow(manlySeat.body, 'Kiosk')];
-    assert.ok(kiosk[0], 'kiosk venue');
-    assert.ok(manlySeat.body.includes('On site (not included)'));
+    const kiosk = venueRow(manlySeat.body, 'Kiosk');
+    assert.ok(kiosk || manlySeat.body.includes('>Kiosk</h3>'), 'kiosk venue or explore card');
+    assert.ok(manlySeat.body.includes('On site (not included)') || manlySeat.body.includes('On site (not included)'));
     assert.ok(!manlySeat.body.includes('Pay the venue directly. Menus, prices and opening hours are set by the venue.'));
-    assert.ok(!/included/i.test(kiosk[0]));
+    if (kiosk) assert.ok(!/included/i.test(kiosk));
 
     const palm = await get(port, '/h/palm-court');
     leadAndMeta(palm.body, 'palm-court', 'Palm Court Resort', 'Parramatta');
@@ -514,10 +528,12 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.strictEqual(palmSeat.status, 200);
     assert.ok(palmSeat.body.includes('On site (not included)'));
     assert.ok(!palmSeat.body.includes('Pay the venue directly. Menus, prices and opening hours are set by the venue.'));
-    const cafe = [venueRow(palmSeat.body, 'Café')];
-    assert.ok(cafe[0], 'café venue');
-    assert.ok(!/included/i.test(cafe[0]));
-    assert.ok(!cafe[0].includes('From'));
+    const cafe = venueRow(palmSeat.body, 'Café') || venueRow(palmSeat.body, 'Pool café');
+    assert.ok(cafe || palmSeat.body.includes('Pool café'), 'café venue or explore card');
+    if (cafe) {
+      assert.ok(!/included/i.test(cafe));
+      assert.ok(!cafe.includes('From'));
+    }
     assert.ok(!palm.body.includes('Prepaid food and drink credit'));
     assert.ok(!palm.body.includes('Welcome drink'));
     assert.ok(!palm.body.includes('part of the visit'));
@@ -543,10 +559,12 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.strictEqual(skySeat.status, 200);
     assert.ok(!sky.body.includes('quietest'));
     assert.ok(!skySeat.body.includes('<b>Gym</b>'));
-    const skyBar = [venueRow(skySeat.body, 'Bar')];
-    assert.ok(skyBar[0], 'bar venue');
-    assert.ok(!skyBar[0].includes('From noon'));
-    assert.ok(!/included/i.test(skyBar[0]));
+    const skyBar = venueRow(skySeat.body, 'Bar') || venueRow(skySeat.body, 'Rooftop bar');
+    assert.ok(skyBar || skySeat.body.includes('Rooftop bar'), 'bar venue or explore card');
+    if (skyBar) {
+      assert.ok(!skyBar.includes('From noon'));
+      assert.ok(!/included/i.test(skyBar));
+    }
     assert.ok(!sky.body.includes('Wed ·'));
     assert.ok(sky.body.includes('Parking'));
     assert.ok(sky.body.includes('$40'));

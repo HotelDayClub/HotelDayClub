@@ -166,7 +166,12 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
       pages[slug] = res.body;
       const body = res.body;
       const text = visibleText(body);
-      assert.strictEqual(count(text, FOOD_RULE), 1, slug + ' food rule once');
+      const gtkSlice = body.slice(body.indexOf('id="before"'));
+      assert.strictEqual(count(visibleText(gtkSlice), FOOD_RULE), 1, slug + ' food rule once in good to know');
+      if (body.includes('d2-ex-food')) {
+        const exSlice = body.slice(body.indexOf('id="d2-explore-sheet"'), body.indexOf('</dialog>', body.indexOf('id="d2-explore-sheet"')));
+        assert.ok(exSlice.includes(FOOD_RULE.replace(/'/g, '&#39;')) || exSlice.includes(FOOD_RULE), slug + ' food rule in explore sheet');
+      }
       assert.strictEqual(count(text, FREE_CANCEL), 1, slug + ' free cancellation once');
       assert.strictEqual(count(body, 'Photo ID at check-in'), 1, slug + ' ID line once');
       assert.ok(!text.includes('\u2014'), slug + ' no em-dashes');
@@ -176,8 +181,9 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
       assert.ok(text.includes('Fictional demo listing'), slug);
       assert.ok(!text.includes('Pay later') && !text.includes('Best price'), slug);
       assert.ok(body.includes('<dialog'), slug + ' booking sheet is a dialog');
-      assert.ok(body.includes('id="book"') && body.includes('id="passes"') && body.includes('id="details"'), slug);
-      assert.ok(body.indexOf('id="passes"') < body.indexOf('id="book"') && body.indexOf('id="book"') < body.indexOf('id="details"'), slug);
+      assert.ok(body.includes('id="book"') && body.includes('id="passes"') && body.includes('id="explore"') && body.includes('id="details"'), slug);
+      assert.ok(body.indexOf('id="passes"') < body.indexOf('id="explore"') && body.indexOf('id="explore"') < body.indexOf('id="details"'), slug + ' section order');
+      assert.ok(body.indexOf('id="passes"') < body.indexOf('id="book"'), slug + ' book in passes');
       assert.ok(/href="\/refunds"/.test(body), slug);
       assert.ok(body.includes('Open in Google Maps') || body.includes('Map placeholder (demo)'), slug);
     }
@@ -360,9 +366,18 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
       if (/listing-dir2|booking-ticket/.test(file)) assert.ok(!/font-size:\s*(1[0-3]|[0-9])px/.test(source), file + ' text floor is 14px');
     }
 
-    // A15: the listing stylesheet and token additions exist.
+    // A15: Explore the hotel section and tokens.
     const tokens = fs.readFileSync(path.join(root, 'public/tokens.css'), 'utf8');
     assert.ok(/--cream:\s*#FFF8EE/i.test(tokens) && /--apricot:\s*#F6A55F/i.test(tokens) && /--field:\s*#8A9A9F/i.test(tokens));
+    const saltExplore = pages['saltwater-terrace'];
+    assert.ok(saltExplore.includes('href="#explore">Pool bar'), 'pool bar links to explore');
+    assert.ok(saltExplore.includes('During pass hours, 10am\u20134pm'), 'pool bar hours on explore card');
+    const exSheet = saltExplore.slice(saltExplore.indexOf('id="d2-explore-sheet"'));
+    assert.ok(exSheet.includes(FOOD_RULE.replace(/'/g, '&#39;')) || exSheet.includes(FOOD_RULE), 'FOOD_RULE in explore sheet');
+    assert.ok(!saltExplore.includes('id="overview"'), 'no duplicate overview block');
+    assert.ok(!saltExplore.includes('Demo: no charge.'), 'no demo charge line in booking sheet');
+    const saltHdr = saltExplore.slice(saltExplore.indexOf('<header'), saltExplore.indexOf('<main>'));
+    assert.strictEqual((saltHdr.match(/<img[^>]+alt="Hotel Day Club"/g) || []).length, 1, 'one header logo');
   } finally {
     child.kill('SIGTERM');
   }

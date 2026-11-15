@@ -595,7 +595,9 @@ function start(port, extra = {}) {
     assert.ok(saltBand.includes('10am\u20134pm'), saltBand);
     assert.ok(saltBand.includes('Monday to Sunday'), saltBand);
     const palmListing = await get(port, '/h/palm-court');
-    assert.ok(palmListing.body.includes("Lifeguards don&#39;t replace adult supervision: an adult on the booking must actively supervise each child at all times."));
+    const palmPol = palmListing.body.slice(palmListing.body.indexOf('class="d2-pol"'), palmListing.body.indexOf('id="before"'));
+    const lifeguardRow = palmPol.match(/<dt>Lifeguard<\/dt><dd>([\s\S]*?)<\/dd>/);
+    assert.ok(lifeguardRow && lifeguardRow[1].includes('replace adult supervision'), 'palm supervision in Lifeguard row');
     const skylineListing = await get(port, '/h/skyline-rooftop');
     assert.ok(!skylineListing.body.includes('replace adult supervision'));
     factsDb.close();
