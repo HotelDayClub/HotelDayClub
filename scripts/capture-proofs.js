@@ -49,16 +49,40 @@ function wsSend(ws, obj) {
   });
 }
 
-async function shot(ws, { url, width, height, name, prep }) {
-  await wsSend(ws, { method: 'Emulation.setDeviceMetricsOverride', params: { width, height, deviceScaleFactor: 1, mobile: width < 800 } });
+async function shot(ws, { url, width, height, name, prep, full }) {
+  let h = height;
+  if (full) h = Math.max(height, 1200);
+  await wsSend(ws, { method: 'Emulation.setDeviceMetricsOverride', params: { width, height: h, deviceScaleFactor: 1, mobile: width < 800 } });
   await wsSend(ws, { method: 'Emulation.setEmulatedMedia', params: { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] } });
   await wsSend(ws, { method: 'Page.navigate', params: { url } });
-  await new Promise(r => setTimeout(r, 1200));
-  if (prep) await wsSend(ws, { method: 'Runtime.evaluate', params: { expression: prep } });
-  await new Promise(r => setTimeout(r, 400));
-  const cap = await wsSend(ws, { method: 'Page.captureScreenshot', params: { format: 'png', fromSurface: true } });
+  await new Promise(r => setTimeout(r, 1400));
+  if (prep) await wsSend(ws, { method: 'Runtime.evaluate', params: { expression: prep, awaitPromise: true } });
+  if (full) {
+    const layout = await wsSend(ws, { method: 'Page.getLayoutMetrics' });
+    h = Math.min(Math.ceil(layout.contentSize.height) + 20, 14000);
+    await wsSend(ws, { method: 'Emulation.setDeviceMetricsOverride', params: { width, height: h, deviceScaleFactor: 1, mobile: width < 800 } });
+    await new Promise(r => setTimeout(r, 300));
+  }
+  const cap = await wsSend(ws, { method: 'Page.captureScreenshot', params: { format: 'png', fromSurface: true, captureBeyondViewport: !!full } });
   fs.writeFileSync(path.join(outDir, name), Buffer.from(cap.data, 'base64'));
   console.log('wrote', name);
+}
+
+function httpPost(port, postPath, fields) {
+  const body = new URLSearchParams(fields).toString();
+  return new Promise((resolve, reject) => {
+    const req = http.request({
+      hostname: '127.0.0.1', port, path: postPath, method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) },
+    }, res => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString() }));
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
 }
 
 (async () => {
@@ -98,10 +122,64 @@ async function shot(ws, { url, width, height, name, prep }) {
     { url: `http://127.0.0.1:${port}/how-it-works#cant-find-booking-email`, width: 390, height: 844, name: 'help-booking-email-390.png' },
     { url: `http://127.0.0.1:${port}/terms`, width: 390, height: 844, name: 'terms-41-390.png', prep: "var a=document.querySelector('article');if(a){var p=[...a.querySelectorAll('p')].find(x=>x.textContent.includes('4.1'));if(p)p.scrollIntoView();}" },
   ];
-  for (const s of shots) await shot(ws, { ...s, url: s.url });
+  for (const s of shots) await shot(ws, s);
 
   const { ymd, addDays } = require('../util');
   const when = ymd(addDays(new Date(), 14));
+  const today = ymd(new Date());
+  const fri = (() => {
+    const d = new Date(today + 'T12:00:00');
+    while (d.getDay() !== 5) d.setDate(d.getDate() + 1);
+    return ymd(d);
+  })();
+  const scrollTop = 'window.scrollTo(0,0);';
+  const rv = "document.querySelectorAll('[data-rv]').forEach(el=>el.classList.add('in'));";
+  const listing = 'saltwater-terrace';
+  const base = `http://127.0.0.1:${port}`;
+  const firstHeights = { 360: 844, 390: 844, 1024: 800, 1280: 800, 1440: 900 };
+  for (const [w, h] of Object.entries(firstHeights)) {
+    await shot(ws, { url: `${base}/h/${listing}`, width: +w, height: h, name: `d2-listing-first-${w}.png`, prep: scrollTop });
+    await shot(ws, { url: `${base}/h/${listing}`, width: +w, height: h, name: `d2-listing-full-${w}.png`, prep: scrollTop, full: true });
+  }
+  const sheetBase = `${base}/h/${listing}`;
+  const openSheet = scrollTop + "var b=document.getElementById('book');if(b)b.scrollIntoView({block:'start'});";
+  await shot(ws, { url: `${sheetBase}?qty=1#book`, width: 390, height: 844, name: 'd2-sheet-pick-390.png', prep: openSheet });
+  await shot(ws, { url: `${sheetBase}?pass=lounger&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-ready-390.png', prep: openSheet });
+  await shot(ws, { url: `${sheetBase}?pass=lounger&date=${when}&qty=1#book`, width: 360, height: 844, name: 'd2-sheet-ready-360.png', prep: openSheet });
+  await shot(ws, { url: `${sheetBase}?pass=lounger&date=${when}&qty=1#book`, width: 1280, height: 800, name: 'd2-sheet-ready-1280.png', prep: openSheet });
+  await shot(ws, { url: `${base}/h/skyline-rooftop?date=${fri}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-closed-390.png', prep: openSheet });
+  await shot(ws, { url: `${sheetBase}?pass=lounger&date=${today}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-late-390.png', prep: openSheet });
+  await shot(ws, { url: `${sheetBase}?pass=lounger&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-more-390.png', prep: openSheet + "var m=document.getElementById('d2-more');if(m){m.hidden=false;m.click();}" });
+  await shot(ws, { url: `${base}/h/manly-sands?pass=daybed&date=${when}&qty=2#book`, width: 390, height: 844, name: 'd2-sheet-kids-390.png', prep: openSheet });
+  await shot(ws, { url: `${base}/h/skyline-rooftop?pass=chair&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-adults-390.png', prep: openSheet });
+  await shot(ws, { url: `${base}/`, width: 390, height: 844, name: 'p2a-home-quick-390.png', prep: rv + scrollTop });
+  await shot(ws, { url: `${base}/search?mood=family`, width: 390, height: 844, name: 'p2b-search-mood-family-390.png', prep: scrollTop });
+  const bookFields = new URLSearchParams({
+    hotel: listing, date: when, pass: 'daybed', qty: '1', name: 'Proof Guest', email: 'proof@example.com', phone: '0412345678',
+    rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
+  });
+  bookFields.append('addon', 'gym');
+  bookFields.append('addon', 'parking');
+  const booked = await new Promise((resolve, reject) => {
+    const body = bookFields.toString();
+    const req = http.request({
+      hostname: '127.0.0.1', port, path: '/book', method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) },
+    }, res => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers }));
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+  const ticketPath = (booked.headers.location || '').replace(/^https?:\/\/[^/]+/, '') || `/booking/HDC-DEMO`;
+  if (booked.status === 303 && ticketPath) {
+    await shot(ws, { url: `${base}${ticketPath}`, width: 390, height: 844, name: 'p1-ticket-390.png', prep: scrollTop });
+    await shot(ws, { url: `${base}${ticketPath}`, width: 1280, height: 900, name: 'p1-ticket-1280.png', prep: scrollTop });
+  }
+  await shot(ws, { url: `${base}/h/${listing}`, width: 390, height: 844, name: 'd2-saltwater-hero.png', prep: scrollTop });
   const checkout = await new Promise((resolve, reject) => {
     http.get(`http://127.0.0.1:${port}/checkout?hotel=saltwater-terrace&date=${when}&pass=lounger&qty=1`, res => {
       const chunks = [];

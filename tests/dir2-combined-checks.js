@@ -161,7 +161,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     const incAt = pages['saltwater-terrace'].indexOf('class="d2-inc"');
     const incEnd = pages['saltwater-terrace'].indexOf('</ul>', incAt);
     const incRows = [...pages['saltwater-terrace'].slice(incAt, incEnd).matchAll(/<li>(.*?)<\/li>/g)].map(m => m[1].replace(/<[^>]+>/g, ''));
-    assert.strictEqual(incRows.length, 6, incRows.join('|'));
+    assert.strictEqual(incRows.length, 5, incRows.join('|'));
     assert.strictEqual(incRows.filter(r => /\d/.test(r)).length, 0, 'no quantity labels in included list');
     assert.ok(!incRows.some(r => /^Towels/.test(r)));
     assert.ok(pages['saltwater-terrace'].includes('d2-towel-chip'));
@@ -177,9 +177,10 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(saltDetails.includes('<h3>On site (not included)</h3>'), 'on site heading');
     const onIdx = saltDetails.indexOf('<h3>On site (not included)</h3>');
     const extrasIdx = saltDetails.indexOf('<h3>Extras</h3>');
-    const hoursIdx = saltDetails.indexOf('<h3>Hours</h3>');
-    assert.ok(onIdx > -1 && extrasIdx > onIdx && hoursIdx > extrasIdx, 'section order');
-    const onSlice = saltDetails.slice(onIdx, extrasIdx > onIdx ? extrasIdx : hoursIdx);
+    const detailsClose = pages['saltwater-terrace'].indexOf('</section>', pages['saltwater-terrace'].indexOf('id="details"'));
+    const hoursBandIdx = pages['saltwater-terrace'].indexOf('class="d2-hours-band"');
+    assert.ok(onIdx > -1 && extrasIdx > onIdx && hoursBandIdx > detailsClose, 'section order');
+    const onSlice = saltDetails.slice(onIdx, extrasIdx);
     assert.ok(onSlice.includes('class="d2-os-note"'), 'muted not-included line in on site block');
     assert.ok(!onSlice.includes('class="d2-muted">Not included:'), 'not-included not outside on site');
 

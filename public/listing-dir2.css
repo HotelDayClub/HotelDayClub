@@ -115,8 +115,10 @@ body:has(.d2) main{overflow-x:hidden}
 .d2-labrow{align-items:center;margin:12px 0 4px}
 .d2-passrow{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
 .d2-passrow .d2-lab{margin:0}
-.d2-mdb{display:inline-flex;align-items:center;gap:6px;min-height:44px;min-width:44px;padding:0 4px;background:none;border:0;color:var(--teal);font:700 15px var(--d2-body);text-decoration:underline;cursor:pointer;white-space:nowrap}
-.d2-mdb .d2ic{width:18px;height:18px}
+.d2-mdb{display:inline-flex;align-items:center;gap:6px;min-height:44px;min-width:44px;padding:0 4px;background:none;border:0;color:var(--teal);font:700 15px var(--d2-body);text-decoration:none;cursor:pointer;white-space:nowrap}
+.d2-mdb.text-link{display:inline-flex;align-items:center;gap:6px;min-height:44px;min-width:44px;padding:0 4px;font-size:15px;white-space:nowrap;text-decoration:underline;text-underline-offset:3px}
+.d2-mdb .d2ic{width:18px;height:18px;color:currentColor}
+.d2-rm.text-link{padding:0 4px;min-height:44px;min-width:44px;font-size:16px}
 
 .d2-pp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .d2-pt{position:relative;display:flex;flex-direction:column;text-align:left;padding:0 0 8px;border:1px solid var(--border);border-radius:14px;background:#fff;overflow:hidden;color:var(--text);cursor:pointer;min-height:44px}
@@ -194,6 +196,16 @@ body:has(.d2) main{overflow-x:hidden}
 .d2-inc{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;list-style:none;margin:0;padding:0}
 .d2-inc li{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border:0;font:600 16px/22px var(--d2-body);color:var(--text)}
 .d2-inc .d2ic{width:28px;height:28px;color:var(--teal);flex:none;margin-top:0}
+.d2-inc.d2-os{grid-template-columns:1fr;margin-top:8px}
+.d2-os-note{margin:12px 0 8px;font-size:14px;line-height:20px;color:var(--sec)}
+.d2-os-note:first-child{margin-top:0}
+.d2-extra-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.d2-extra{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:12px;min-height:48px;padding:10px 12px;background:var(--tint);border:1px solid var(--border);border-radius:12px}
+.d2-extra-ico{display:flex;align-items:center;justify-content:center;color:var(--teal)}
+.d2-extra-ico .d2ic{width:22px;height:22px}
+.d2-extra-name{font-weight:600;font-size:15px;line-height:22px;color:var(--text)}
+.d2-extra-pr{font-weight:700;font-size:15px;line-height:22px;text-align:right;white-space:nowrap;color:var(--text)}
+.d2-extra-pr small{font-size:14px;color:var(--sec);font-weight:600}
 .d2-chips{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0}
 .d2-chips li{display:inline-flex;align-items:center;padding:8px 14px;border-radius:999px;background:var(--tint);border:1px solid var(--border);color:var(--sec);font:600 15px/20px var(--d2-body);min-height:44px;box-sizing:border-box}
 .d2-prices{list-style:none;margin:0;padding:0}

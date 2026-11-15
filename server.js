@@ -239,11 +239,14 @@ const ICON = {
   check: '<svg class="ico sm" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>',
   lock: '<svg class="ico sm" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
 };
-function logoLink(tone) {
+function logoLink(tone, opts = {}) {
   const light = tone === 'light';
   const src = light ? '/assets/hdc-lockup-light.svg' : '/assets/hdc-lockup-dark.svg';
-  if (light) {
+  if (light && opts.dualOnDark) {
     return `<a class="logo" href="/"><img class="logo-light" src="${src}" alt="Hotel Day Club" width="187" height="32"><img class="logo-dark" src="/assets/hdc-lockup-dark.svg" alt="Hotel Day Club" width="187" height="32"></a>`;
+  }
+  if (light) {
+    return `<a class="logo" href="/"><img src="${src}" alt="Hotel Day Club" width="187" height="32"></a>`;
   }
   return `<a class="logo" href="/"><img src="${src}" alt="Hotel Day Club" width="187" height="32"></a>`;
 }
@@ -386,7 +389,7 @@ function page(title, body, opts = {}) {
     ? `${StaticAssets.fontLinks()}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}${StaticAssets.stylesheet('/golden/home.css')}${StaticAssets.stylesheet('/header.css')}`
     : `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${StaticAssets.stylesheet('/styles.css')}${StaticAssets.stylesheet('/app.css')}${StaticAssets.stylesheet('/golden/site.css')}${StaticAssets.stylesheet('/header.css')}${extraCss}`;
   const bodyClass = opts.bodyClass || (home ? 'home' : nav === 'guest' ? 'guest' : 'staff');
-  const header = `<header class="hdr" id="site-hdr"><div class="wrap hdr-in">${logoLink('light')}${chrome.nav}${headerExtra}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
+  const header = `<header class="hdr" id="site-hdr"><div class="wrap hdr-in">${logoLink('light', { dualOnDark: !!opts.logoOnDark })}${chrome.nav}${headerExtra}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 ${demoSite() ? '<div class="demo-banner">Demo site: listings are examples, no real bookings or payments.</div>' : ''}
@@ -977,6 +980,7 @@ app.get('/h/:slug', (req, res) => {
     imageAlt: demo ? 'Stock photo, not this hotel' : seo.shortName(h.name),
     jsonld: seo.listingJsonLd(h, { from, image: photo }),
     css: '/listing-dir2.css',
+    logoOnDark: true,
   }));
 });
 

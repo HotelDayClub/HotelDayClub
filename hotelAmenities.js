@@ -242,7 +242,6 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
     for (const item of items) {
       if (item.mode !== 'included' && item.mode !== 'addon') continue;
       if (FOOD_DRINK.has(item.code)) continue;
-      if (item.code === 'towels') continue;
       const cats = CODE_CATS[item.code];
       const bucket = item.mode === 'included' ? included : optional;
       if (cats) {

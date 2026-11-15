@@ -207,7 +207,7 @@ function heroCopyHtml(h, heading, area, desc) {
 <p class="d2-hero-loc">${esc(area)}</p>
 <h1 class="d2-hero-title">${esc(heading)}</h1>
 ${demo ? '<span class="d2-hero-tag">Fictional demo listing</span>' : ''}
-<p class="d2-desc" id="d2-desc">${desc}</p>${heroTowelChip(h)}<button type="button" class="d2-rm" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button>
+<p class="d2-desc" id="d2-desc">${desc}</p>${heroTowelChip(h)}<button type="button" class="d2-rm text-link" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button>
 </div></div>`;
 }
 
@@ -288,8 +288,8 @@ ${holdHtml(o.hold)}
 <div class="d2-pp" role="radiogroup" aria-labelledby="d2-pass-lab">${tiles}</div>
 <p class="d2-fit" id="d2-fit">${icon('people')}<span id="d2-fit-t">${esc(pick ? ListingD2.fitsLine(pick) : '')}</span></p>
 </div>
-<div class="d2-passrow" id="d2-passrow" hidden><span class="d2-lab">Pass <small id="d2-passrow-t"></small></span><button type="button" class="d2-mdb" id="d2-change">Change</button></div>
-<div class="d2-lab d2-labrow"><span>Date <small id="d2-hrs">${hours ? `${esc(hours)}, hotel time` : 'Hotel time'}</small></span><button type="button" class="d2-mdb" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
+<div class="d2-passrow" id="d2-passrow" hidden><span class="d2-lab">Pass <small id="d2-passrow-t"></small></span><button type="button" class="d2-mdb text-link" id="d2-change">Change</button></div>
+<div class="d2-lab d2-labrow"><span>Date <small id="d2-hrs">${hours ? `${esc(hours)}, hotel time` : 'Hotel time'}</small></span><button type="button" class="d2-mdb text-link" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
 <div class="d2-dates" id="d2-dates" role="group" aria-label="Date, next ${ListingD2.CHIPS} days">${days.map(chipHtml).join('')}${extra}</div>
 <div class="d2-cal" id="d2-calbox" hidden></div>
 <p class="d2-note" id="d2-closed" role="status" hidden></p>
@@ -374,22 +374,31 @@ function detailsHtml(o) {
   const location = `<div class="d2-block"><h3>Location</h3>${addr}${embed ? `<div class="d2-map d2-embed">${embed}</div>` : placeholder}${mapsHref ? `<a class="d2-btn out block" href="${esc(mapsHref)}" target="_blank" rel="noopener">${icon('nav')}Open in Google Maps</a>` : ''}</div>`;
 
   const groups = o.groups || { included: [], onsite: [] };
+  const incRows = groups.included.filter(r => !/^towels?\b/i.test(String(r.label || '')));
   const row = r => `<li>${icon(AMENITY_ICON[r.icon] || 'check')}${esc(r.label)}</li>`;
-  const included = groups.included.length
-    ? `<h4 class="d2-sub first">Included in your pass${demo ? ' <span class="ex">Example amenities (demo)</span>' : ''}</h4><ul class="d2-inc">${groups.included.map(row).join('')}</ul>`
+  const included = incRows.length
+    ? `<p class="d2-sub first">Included in your pass${demo ? ' <span class="ex">Example amenities (demo)</span>' : ''}</p><ul class="d2-inc">${incRows.map(row).join('')}</ul>`
     : `<p class="d2-muted">${esc(ListingImprove.includedEmptyCopy(false))}</p>`;
-  const onsite = groups.onsite.length
-    ? `<h4 class="d2-sub">On site (not included)</h4><ul class="d2-chips">${groups.onsite.map(r => `<li>${esc(r.label)}</li>`).join('')}</ul>`
-    : '';
   const off = notIncludedChips(items);
-  const offChips = off.length ? `<h4 class="d2-sub">Not included</h4><ul class="d2-chips">${off.map(line => `<li>${esc(line)}</li>`).join('')}</ul>` : '';
-  const extras = (o.addons || []).filter(a => a.code !== 'parking' && Number(a.price) > 0 && a.code !== 'late');
-  const extraRows = extras.length
-    ? `<div class="d2-block"><h3>Extras (paid)</h3><ul class="d2-prices">${extras.map(a => `<li><span>${esc(a.name)}</span><span class="r">${esc(ListingD2.priceText(h, a.price))}</span></li>`).join('')}</ul></div>`
+  const onsiteList = groups.onsite.length
+    ? `<ul class="d2-inc d2-os">${groups.onsite.map(r => `<li>${icon(AMENITY_ICON[r.icon] || 'pin')}${esc(r.label)}</li>`).join('')}</ul>`
     : '';
-  const included3 = `<div class="d2-block"><h3>What's included</h3>${included}${onsite}${offChips}</div>`;
+  const offLine = off.length ? `<p class="d2-os-note">Not included: ${esc(off.join(' · '))}</p>` : '';
+  const onsiteBlock = (groups.onsite.length || off.length)
+    ? `<h3>On site (not included)</h3>${onsiteList}${offLine}`
+    : '';
+  const extras = (o.addons || []).filter(a => a.code !== 'parking' && Number(a.price) > 0 && a.code !== 'late');
+  const extraAddonIcon = code => {
+    if (code === 'gym') return 'people';
+    if (code === 'parking') return 'car';
+    return 'plus';
+  };
+  const extraRows = extras.length
+    ? `<h3>Extras</h3><ul class="d2-extra-list">${extras.map(a => `<li class="d2-extra"><span class="d2-extra-ico" aria-hidden="true">${icon(extraAddonIcon(a.code))}</span><span class="d2-extra-name">${esc(a.name)}</span><span class="d2-extra-pr">${priceHtml(h, a.price)}</span></li>`).join('')}</ul>`
+    : '';
+  const included3 = `<h3>What's included</h3>${included}${onsiteBlock}${extraRows}`;
 
-  return `<section class="d2-s" id="details"><h2>Details</h2>${location}${included3}${extraRows}</section>`;
+  return `<section class="d2-s" id="details"><h2>Details</h2>${location}${included3}</section>`;
 }
 
 function bookBarHtml(fromHtml, dateLabel, qty) {
@@ -779,7 +788,8 @@ function toggleCal(on){
  moreBtn.querySelector('span').textContent=on?'Next 14 days':'More dates';
  if(!on) ensureChip(hidden.value);
  if(on){
-  var p=parse(hidden.value)||parse(MIN);
+  var p=parse(hidden.value);
+  if(!p||hidden.value<MIN||hidden.value>MAX) p=parse(MIN);
   viewY=p.y;viewM=p.m;
   renderCal();
  }

@@ -584,7 +584,9 @@ function start(port, extra = {}) {
 
     const factsDb = new Database(dbPath, { readonly: true });
     const listing = await get(port, `/h/skyline-rooftop?date=${freeSky.date}`);
-    const skyBand = listing.body.slice(listing.body.indexOf('class="d2-hours-band"'), listing.body.indexOf('</div>', listing.body.lastIndexOf('class="d2-hours-in"')));
+    const skyStart = listing.body.indexOf('class="d2-hours-band"');
+    const skyEnd = listing.body.indexOf('class="d2-hb-park"', skyStart);
+    const skyBand = skyEnd > skyStart ? listing.body.slice(skyStart, skyEnd) : listing.body.slice(skyStart, skyStart + 2500);
     assert.ok(skyBand.includes('<dt>Sat to Thu</dt><dd>11am\u20134pm</dd>'), skyBand);
     assert.ok(skyBand.includes('<dt>Fri</dt><dd>Closed</dd>'), skyBand);
     assert.ok(!listing.body.includes('Wed ·'));
