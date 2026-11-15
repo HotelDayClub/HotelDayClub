@@ -104,12 +104,11 @@ function start(port) {
     assert.ok((faqMain.match(/<details\b/g) || []).length > 1);
 
     const listing = text(await get(port, '/h/saltwater-terrace'));
-    assert.ok(listing.includes("location.hash!=='#details'"));
-    assert.ok(listing.includes("getElementById('inclusions')"));
+    assert.ok(listing.includes('id="details"'));
+    assert.ok(listing.includes('id="passes"'));
     assert.ok(listing.includes('hashchange'));
     assert.ok(listing.includes('replaceState'));
-    assert.ok(listing.includes('id="inclusions"'));
-    assert.ok(!listing.includes('id="details"'));
+    assert.ok(!listing.includes('id="inclusions"'));
     const listingFooter = listing.slice(listing.indexOf('<footer'));
     assert.ok(listingFooter.includes(`© ${year} Hotel Day Club`));
     assert.ok(!/\bABN\b/i.test(listingFooter));

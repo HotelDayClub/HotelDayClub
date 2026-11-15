@@ -55,7 +55,7 @@ function get(port, urlPath) {
   });
 }
 function datesOf(html) {
-  return [...html.matchAll(/class="date-alt" href="([^"]+)"/g)].map(match => new URL(match[1], 'http://127.0.0.1').searchParams.get('date'));
+  return [...html.matchAll(/class="d2-alt" href="([^"]+)"/g)].map(match => new URL(match[1], 'http://127.0.0.1').searchParams.get('date'));
 }
 async function follow(port, urlPath) {
   const first = await get(port, urlPath);
@@ -90,7 +90,7 @@ function expectDays(html, days) {
     assert.ok(closedPage.location.includes('notice=1'));
     assert.ok(closedPage.page.body.includes('Harbour Hold (Demo) is closed on'));
     assert.ok(closedPage.page.body.includes('Private event'));
-    assert.ok(closedPage.page.body.includes('id="date-alert"'));
+    assert.ok(closedPage.page.body.includes('id="d2-hold"'));
     const closedNext = [1, 2, 3].map(n => ymd(addDays(new Date(closed + 'T12:00:00'), n)));
     expectDays(closedPage.page.body, closedNext);
     assert.ok(!datesOf(closedPage.page.body).includes(closed));

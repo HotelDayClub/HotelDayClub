@@ -5,7 +5,9 @@ const { minutes } = require('./offering');
 // "Nearest" is same region first, then the cheapest from-price. There are no map pins.
 const SYDNEY = new Set(['sydney-cbd', 'bondi', 'manly', 'north-sydney', 'eastern-suburbs', 'parramatta']);
 const PRICE_CAPS = [50, 100, 150];
-const HOME_KEYS = ['where', 'dest', 'date', 'want', 'guests', 'price', 'age', 'sort'];
+const HOME_KEYS = ['where', 'dest', 'date', 'from', 'to', 'mood', 'want', 'guests', 'price', 'age', 'sort'];
+const WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MAX_RANGE_DAYS = 14;
 
 class SearchQuery {
   static WANTS = [
@@ -22,6 +24,21 @@ class SearchQuery {
     { id: 'price-desc', label: 'Price: high to low' },
     { id: 'hours', label: 'Longest hours' },
   ];
+
+  // Mood chips. Only places whose live listing text supports the mood are listed.
+  // family is derived from the hotel's own age and children's hours instead of a list.
+  static MOODS = [
+    { id: 'rooftop', label: 'Rooftop' },
+    { id: 'beachside', label: 'Beachside' },
+    { id: 'quiet', label: 'Quiet' },
+    { id: 'family', label: 'Family friendly' },
+  ];
+
+  static MOOD_MAPPING = {
+    rooftop: ['skyline-rooftop'],
+    beachside: ['saltwater-terrace', 'manly-sands'],
+    quiet: ['bayview-spa'],
+  };
 
   static first(query, key) {
     if (!query || typeof query !== 'object') return '';
@@ -78,9 +95,63 @@ class SearchQuery {
     return '/search?' + params.toString();
   }
 
+  static isoParts(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    if (!m) return null;
+    const dt = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+    if (dt.getUTCMonth() !== Number(m[2]) - 1) return null;
+    return { d: dt.getUTCDate(), wd: dt.getUTCDay(), t: dt.getTime() };
+  }
+
+  static rangeDays(from, to) {
+    const a = SearchQuery.isoParts(from);
+    const b = SearchQuery.isoParts(to);
+    if (!a || !b) return [];
+    const out = [];
+    for (let t = a.t; t <= b.t && out.length < MAX_RANGE_DAYS; t += 86400000) {
+      out.push(new Date(t).toISOString().slice(0, 10));
+    }
+    return out;
+  }
+
+  static rangeLabel(from, to) {
+    const a = SearchQuery.isoParts(from);
+    const b = SearchQuery.isoParts(to);
+    if (!a || !b) return '';
+    if (from === to) return `${WEEK[a.wd]} ${a.d}`;
+    return `${WEEK[a.wd]} ${a.d}\u2013${WEEK[b.wd]} ${b.d}`;
+  }
+
+  static isFamily(hotel) {
+    const kids = String((hotel && hotel.kids_hours) || '').trim();
+    return SearchQuery.kidsWelcome(hotel && hotel.age_policy) && kids !== '' && !/^no children/i.test(kids);
+  }
+
+  static moodMatch(hotel, mood) {
+    if (!mood) return true;
+    if (mood === 'family') return SearchQuery.isFamily(hotel);
+    return (SearchQuery.MOOD_MAPPING[mood] || []).includes(hotel && hotel.slug);
+  }
+
+  // Part-day hotels only. "Children welcome until 2pm" and "Until 2pm" become "Children until 2pm".
+  static kidsChip(hotel) {
+    const kids = String((hotel && hotel.kids_hours) || '').trim();
+    if (!kids || /^all open hours/i.test(kids) || /^no children/i.test(kids)) return '';
+    const m = /^(?:children welcome until|until)\s+(.+)$/i.exec(kids);
+    return m ? `Children until ${m[1]}` : kids;
+  }
+
   static parse(query, destinations) {
     const dateRaw = SearchQuery.first(query, 'date');
     const date = /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : '';
+    const fromRaw = SearchQuery.first(query, 'from');
+    const toRaw = SearchQuery.first(query, 'to');
+    const rangeOk = !date && SearchQuery.isoParts(fromRaw) && SearchQuery.isoParts(toRaw) && fromRaw <= toRaw;
+    const range = rangeOk ? { from: fromRaw, to: toRaw } : null;
+    const rangeLabel = range ? SearchQuery.rangeLabel(range.from, range.to) : '';
+    const moodRaw = SearchQuery.first(query, 'mood');
+    const mood = SearchQuery.MOODS.some(m => m.id === moodRaw) ? moodRaw : '';
+    const moodLabel = mood ? SearchQuery.MOODS.find(m => m.id === mood).label : '';
     const wantRaw = SearchQuery.first(query, 'want');
     const want = SearchQuery.WANTS.some(w => w.id && w.id === wantRaw) ? wantRaw : '';
     const guestsRaw = parseInt(SearchQuery.first(query, 'guests'), 10);
@@ -94,7 +165,7 @@ class SearchQuery {
     const destination = SearchQuery.findDestination(query, destinations);
     const wantLabel = want ? (SearchQuery.WANTS.find(w => w.id === want) || {}).label || '' : '';
     const ageLabel = age === 'kids' ? 'Kids welcome' : age === '18' ? 'Adults only (18+)' : '';
-    return { destination, date, dateLabel: date ? nice(date) : '', want, wantLabel, guests, price, age, ageLabel, sort };
+    return { destination, date, dateLabel: date ? nice(date) : rangeLabel, range, rangeLabel, mood, moodLabel, want, wantLabel, guests, price, age, ageLabel, sort };
   }
 
   static kidsWelcome(policy) {
@@ -225,6 +296,8 @@ class SearchQuery {
     const next = {
       destination: params.destination,
       date: params.date,
+      range: params.range,
+      mood: params.mood,
       want: params.want,
       guests: params.guests,
       price: params.price,
@@ -245,9 +318,10 @@ class SearchQuery {
     const when = params.dateLabel || 'Any date';
     const guests = params.guests ? String(params.guests) : 'Any';
     let face = 'Search';
-    if (params.destination || params.date || params.guests) {
+    if (params.destination || params.date || params.range || params.guests) {
       let day = 'Any day';
-      if (params.date) {
+      if (params.range) day = params.rangeLabel;
+      else if (params.date) {
         const parsed = new Date(params.date + 'T00:00:00');
         day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][parsed.getDay()] + ' ' + parsed.getDate();
       }
@@ -292,6 +366,11 @@ class SearchQuery {
     };
     add('destination', params.destination && params.destination.id);
     add('date', params.date);
+    if (!params.date && params.range && omit !== 'date') {
+      add('from', params.range.from);
+      add('to', params.range.to);
+    }
+    add('mood', params.mood);
     add('want', params.want);
     add('guests', params.guests);
     add('price', params.price);
@@ -301,10 +380,29 @@ class SearchQuery {
     return text ? '/search?' + text : '/search';
   }
 
+  static pillWhen(params) {
+    if (params.range) {
+      const { HomeQuick } = require('./homeQuick');
+      const w = HomeQuick.weekend(params.range.from);
+      if (w && w.from === params.range.from && w.to === params.range.to) return w.label;
+      return params.rangeLabel || 'Date range';
+    }
+    if (params.date) return params.dateLabel;
+    return 'Any date';
+  }
+
+  static pillSub(params) {
+    const where = params.destination ? params.destination.name : 'Anywhere in Australia';
+    const guests = params.guests
+      ? (params.guests === 1 ? '1 guest' : `${params.guests} guests`)
+      : 'Any guests';
+    return `${where} · ${guests}`;
+  }
+
   static chips(params) {
     const items = [];
     if (params.destination) items.push({ key: 'destination', label: params.destination.name });
-    if (params.date) items.push({ key: 'date', label: params.dateLabel });
+    if (params.date || params.range) items.push({ key: 'date', label: params.dateLabel });
     if (params.want) items.push({ key: 'want', label: params.wantLabel });
     if (params.guests) items.push({ key: 'guests', label: params.guests === 1 ? '1 guest' : params.guests + ' guests' });
     if (params.price) items.push({ key: 'price', label: 'Under $' + params.price });
@@ -320,7 +418,7 @@ class SearchQuery {
   static documentTitle(params) {
     const parts = ['Day passes'];
     if (params.destination) parts.push(params.destination.name);
-    if (params.date) parts.push(params.dateLabel);
+    if (params.date || params.range) parts.push(params.dateLabel);
     return parts.join(' · ') + ' | Hotel Day Club';
   }
 
@@ -328,13 +426,8 @@ class SearchQuery {
     return params.destination ? 'Hotel day passes in ' + params.destination.name : 'Hotel day passes';
   }
 
-  static countLine(n, params) {
-    const place = params.destination ? 'in ' + params.destination.name : 'around Australia';
-    const noun = n === 1 ? 'place' : 'places';
-    let line = n + ' ' + noun + ' ' + place;
-    if (params.wantLabel) line += ' · ' + params.wantLabel;
-    if (params.date) line += ' on ' + params.dateLabel;
-    return line;
+  static countLine(n) {
+    return `${n} ${n === 1 ? 'place' : 'places'}`;
   }
 
   static nearest(hotels, destination, fromPrice, regionByArea) {
@@ -365,12 +458,13 @@ class SearchQuery {
     const catalogInDestination = params.destination
       ? list.filter(h => params.destination.areas.includes(h.area)).length
       : list.length;
+    if (params.mood) pool = pool.filter(h => SearchQuery.moodMatch(h, params.mood));
     if (params.want) pool = pool.filter(h => offers(h, params.want));
     if (params.guests) pool = pool.filter(h => SearchQuery.partyFits(passesOf(h), params.guests));
     if (params.price) pool = pool.filter(h => priceOf(h) < params.price);
     if (params.age) pool = pool.filter(h => SearchQuery.ageMatch(h.age_policy, params.age));
     const beforeDate = pool.slice();
-    if (params.date) {
+    if (params.date || params.range) {
       pool = pool.filter(h => !(closedById && closedById.get(h.id)));
       if (params.guests) pool = pool.filter(h => SearchQuery.coversGuests(passesOf(h), params.guests));
     }
@@ -391,11 +485,11 @@ class SearchQuery {
       }
       return (order.get(a.id) || 0) - (order.get(b.id) || 0);
     });
-    const filtered = Boolean(params.destination || params.date || params.want || params.guests || params.price || params.age);
+    const filtered = Boolean(params.destination || params.date || params.range || params.mood || params.want || params.guests || params.price || params.age);
     let empty = '';
     if (!pool.length && (filtered || !list.length)) {
       if (params.destination && catalogInDestination === 0) empty = 'destination';
-      else if (params.date && beforeDate.length > 0 && beforeDate.every(h => closedById && closedById.get(h.id))) empty = 'closed';
+      else if ((params.date || params.range) && beforeDate.length > 0 && beforeDate.every(h => closedById && closedById.get(h.id))) empty = 'closed';
       else empty = 'nomatch';
     }
     const chips = SearchQuery.chips(params);
@@ -413,7 +507,9 @@ class SearchQuery {
       drawerCount: SearchQuery.drawerCount(params),
       heading: SearchQuery.heading(params),
       title: SearchQuery.documentTitle(params),
-      count: SearchQuery.countLine(pool.length, params),
+      count: SearchQuery.countLine(pool.length),
+      moods: SearchQuery.MOODS.map(m => ({ ...m, on: params.mood === m.id })),
+      kidsChips: params.mood === 'family' ? new Map(pool.map(h => [h.id, SearchQuery.kidsChip(h)]).filter(row => row[1])) : new Map(),
     };
   }
 }

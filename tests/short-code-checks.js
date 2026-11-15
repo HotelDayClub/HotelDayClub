@@ -127,7 +127,7 @@ assert.ok(!codes.includes(taken));
     const real = await get('/booking/HDC-LONGCODE00000000000000000001');
     assert.strictEqual(real.status, 200);
     assert.ok(real.body.includes('HDC-7Q4K-2M9X'));
-    assert.ok(real.body.includes('id="bk-code"'));
+    assert.ok(real.body.includes('id="tk-code"'));
     const ics = await get('/booking/HDC-7Q4K-2M9X/calendar.ics');
     assert.strictEqual(ics.status, 404);
 

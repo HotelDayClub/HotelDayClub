@@ -243,8 +243,8 @@ function cookie(res) {
     const city = await get(port, '/search?destination=sydney-cbd');
     assert.strictEqual(city.status, 200);
     assert.ok(city.body.includes('Harbourside Lido'));
-    assert.ok(city.body.includes('Hotel day passes in Sydney CBD'));
-    assert.ok(city.body.includes('1 place in Sydney CBD'));
+    assert.ok(city.body.includes('<h1 id="search-count"'));
+    assert.ok(city.body.includes('>1 place<'));
     assert.ok(!city.body.includes('Manly Sands'));
     assert.ok(!city.body.includes('Saltwater Terrace'));
 

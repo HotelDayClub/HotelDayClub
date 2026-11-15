@@ -7,6 +7,7 @@ const vm = require('vm');
 const { spawn } = require('child_process');
 const { CheckoutFlow } = require('../checkout');
 const { CheckoutConsent, ConsentLog, LEGAL_EFFECTIVE, LEGAL_VERSIONS } = require('../consent');
+const { GuestCheckIn } = require('../offering');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-checkout-'));
 const dbPath = path.join(dir, 'daypass.db');
@@ -205,7 +206,7 @@ function makeForm(opts = {}) {
     assert.ok(body.split('Tick the box above to continue.').length - 1 >= 4);
     assert.ok(!body.includes('Tick the 5 boxes'));
     assert.ok(body.includes('<span class="co-fact-val co-pass-line">Sun lounger × 1 · $45 (demo)</span>'));
-    assert.ok(body.includes(`href="/h/saltwater-terrace/seat/lounger?date=${when}&amp;qty=1"`));
+    assert.ok(body.includes(`href="/h/saltwater-terrace?date=${when}&amp;pass=lounger&amp;qty=1#book"`));
     assert.ok(body.includes(`href="/h/saltwater-terrace?date=${when}#book"`));
     assert.ok(body.includes('href="#extras"'));
     assert.ok(body.includes('aria-label="Change date"'));
@@ -345,7 +346,7 @@ function makeForm(opts = {}) {
     assert.ok(done.body.includes('clearCheckoutMemory();'));
     assert.ok(/Terms, Cancellation &amp; Refund Policy, hotel rules and risk warning: accepted at checkout \d{1,2} \w+ \d{4}, \d{1,2}:\d{2} (am|pm)\./.test(done.body));
     assert.strictEqual((done.body.match(/accepted at checkout/g) || []).length, 1);
-    assert.ok(done.body.includes('Show your QR code or booking code at reception, with photo ID if the hotel asks.'));
+    assert.ok(done.body.includes(GuestCheckIn.line().replace(/'/g, '&#39;')));
     assert.ok(!done.body.includes('<b>Bring</b>'));
     assert.ok(done.body.includes('Before you swim'));
     assert.ok(done.body.includes('Demo: nothing is charged or refunded.'));

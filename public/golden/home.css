@@ -36,6 +36,13 @@ picture.layer img{width:100%;height:100%;object-fit:cover;display:block}
 .times{display:flex;gap:8px;margin:34px 0 18px;flex-wrap:wrap}
 .times button{font:600 15px Inter,sans-serif;border:1.5px solid color-mix(in srgb,var(--white) 50%,transparent);background:transparent;color:var(--white);padding:11px 15px;border-radius:99px;cursor:pointer;transition:background .3s,color .3s,border-color .3s}
 .times button.on{background:var(--white);border-color:var(--white);color:var(--hdc-deep)}
+.quick{display:flex;gap:8px;margin:0 0 12px;max-width:440px}
+.qb{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:10px;min-height:56px;padding:6px 12px;background:var(--white);color:var(--hdc-text);border:1px solid var(--hdc-border);border-radius:12px;text-decoration:none}
+.qb .qi{flex:none;color:var(--hdc-primary)}
+.qb span{display:block;min-width:0}
+.qb b{display:block;font:700 16px/20px Inter,system-ui,sans-serif}
+.qb small{display:block;font:600 14px/18px Inter,system-ui,sans-serif;color:var(--hdc-secondary)}
+.qb:focus-visible{outline:3px solid var(--hdc-sun);outline-offset:2px}
 .search{display:flex;background:var(--white);border-radius:16px;padding:6px;max-width:560px;color:var(--hdc-text);align-items:stretch}
 .search .seg{flex:1.2 1 0;min-width:0;padding:8px 14px;border-right:1px solid var(--hdc-border);display:flex;flex-direction:column;justify-content:center}
 .search .seg:first-child{flex:1.6 1 0;min-width:11.5rem}
@@ -312,3 +319,5 @@ body.home #explore .home-note{margin-top:2px;font-size:14px;line-height:1.3}
   body.home .assure + section .day{grid-column:2;grid-row:1 / span 4;margin-top:0}
   body.home .credit{left:16px;top:16px;right:auto;transform:none}
 }
+@media(max-width:1023px){.copy .times{display:none}.copy .quick{margin-top:18px}}
+@media(max-width:600px){.copy .quick{margin-top:0}}
