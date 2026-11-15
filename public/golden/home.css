@@ -36,12 +36,13 @@ picture.layer img{width:100%;height:100%;object-fit:cover;display:block}
 .times{display:flex;gap:8px;margin:34px 0 18px;flex-wrap:wrap}
 .times button{font:600 15px Inter,sans-serif;border:1.5px solid color-mix(in srgb,var(--white) 50%,transparent);background:transparent;color:var(--white);padding:11px 15px;border-radius:99px;cursor:pointer;transition:background .3s,color .3s,border-color .3s}
 .times button.on{background:var(--white);border-color:var(--white);color:var(--hdc-deep)}
-.quick{display:flex;gap:8px;margin:0 0 12px;max-width:440px}
-.qb{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:10px;min-height:56px;padding:6px 12px;background:var(--white);color:var(--hdc-text);border:1px solid var(--hdc-border);border-radius:12px;text-decoration:none}
+.quick{display:flex;gap:8px;margin:0 0 12px;max-width:440px;width:100%;box-sizing:border-box}
+.copy .quick a.qb,.quick a.qb{box-sizing:border-box;flex:1 1 0%;min-width:0;display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 12px;background-color:var(--white);color:var(--hdc-text);border:1px solid var(--hdc-border);border-radius:12px;text-decoration:none;-webkit-tap-highlight-color:transparent}
+.copy .quick a.qb:link,.copy .quick a.qb:visited,.quick a.qb:link,.quick a.qb:visited{text-decoration:none;color:var(--hdc-text)}
 .qb .qi{flex:none;color:var(--hdc-primary)}
 .qb span{display:block;min-width:0}
-.qb b{display:block;font:700 16px/20px Inter,system-ui,sans-serif}
-.qb small{display:block;font:600 14px/18px Inter,system-ui,sans-serif;color:var(--hdc-secondary)}
+.qb b{display:block;font-weight:700;font-size:16px;line-height:1.25;font-family:Inter,system-ui,sans-serif}
+.qb small{display:block;font-weight:600;font-size:14px;line-height:1.3;font-family:Inter,system-ui,sans-serif;color:var(--hdc-secondary)}
 .qb:focus-visible{outline:3px solid var(--hdc-sun);outline-offset:2px}
 .search{display:flex;background:var(--white);border-radius:16px;padding:6px;max-width:560px;color:var(--hdc-text);align-items:stretch}
 .search .seg{flex:1.2 1 0;min-width:0;padding:8px 14px;border-right:1px solid var(--hdc-border);display:flex;flex-direction:column;justify-content:center}
@@ -303,11 +304,11 @@ body.home #explore .home-note{margin-top:2px;font-size:14px;line-height:1.3}
   body.home .assure li:first-child span{display:block;font-size:13px;line-height:1.35}
   body.home .assure b{font-size:14px;line-height:1.25}
   body.home .assure .ico{width:22px;height:22px}
-  body.home .copy .quick{display:flex;gap:6px;margin:0 0 6px;max-width:100%;min-width:0}
-  body.home .copy .qb{min-height:44px;max-height:44px;padding:4px 8px;align-items:center;flex:1 1 0;min-width:0}
+  body.home .copy .quick{display:flex;flex-direction:row;gap:6px;margin:0 0 6px;max-width:100%;min-width:0;width:100%}
+  body.home .copy a.qb{display:flex;min-height:44px;padding:4px 8px;align-items:center;flex:1 1 0%;min-width:0;text-decoration:none;background-color:var(--white);color:var(--hdc-text);border:1px solid var(--hdc-border);border-radius:12px;box-sizing:border-box}
   body.home .copy .qb .qi{width:18px;height:18px;flex:none}
-  body.home .copy .qb b{font-size:14px;line-height:1.15;font-weight:700}
-  body.home .copy .qb small{font-size:14px;line-height:1.15;color:var(--hdc-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  body.home .copy .qb b{display:block;font-size:14px;line-height:1.15;font-weight:700}
+  body.home .copy .qb small{display:block;font-size:14px;line-height:1.15;color:var(--hdc-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   body.home .credit{top:6px;left:12px;max-width:calc(50% - 20px);font-size:12px;line-height:1.25}
   body.home .clock{display:block;left:auto;right:12px;top:6px;bottom:auto;font-size:22px;padding:4px 10px}
   body.home .clock small{display:none}
@@ -346,7 +347,7 @@ body.home #explore .home-note{margin-top:2px;font-size:14px;line-height:1.3}
   body.home .copy{padding:8px 5vw 10px}
   body.home .assure{padding:6px 16px}
   body.home .copy .quick{display:flex;gap:8px;margin:0 0 8px;max-width:min(36rem,100%);width:100%}
-  body.home .copy .qb{min-height:44px;flex:1 1 0;min-width:0;padding:6px 10px;align-items:center}
+  body.home .copy a.qb{min-height:44px;flex:1 1 0%;min-width:0;padding:6px 10px;display:flex;align-items:center;text-decoration:none;background-color:var(--white)}
   body.home .copy .qb b{font-size:14px;line-height:1.2}
   body.home .copy .qb small{font-size:14px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }

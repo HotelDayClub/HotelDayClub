@@ -196,6 +196,23 @@ function cdp(WS, wsUrl) {
           const clockEl = document.querySelector('.hero .clock');
           const creditBox = rectOf(creditEl);
           const clockBox = rectOf(clockEl);
+          const quickBtns = [...document.querySelectorAll('.copy .quick a.qb')].map(el => {
+            const st = getComputedStyle(el);
+            const bg = st.backgroundColor || '';
+            const alpha = /rgba?\(([^)]+)\)/.exec(bg);
+            let opaque = bg === 'transparent' || bg === '';
+            if (alpha) {
+              const bits = alpha[1].split(',').map(s => s.trim());
+              opaque = bits.length < 4 || Number(bits[3]) > 0.05;
+            } else if (/^#/.test(bg)) opaque = true;
+            return {
+              td: st.textDecorationLine,
+              display: st.display,
+              bg,
+              opaque,
+              h: el.getBoundingClientRect().height,
+            };
+          });
           const exploreH2 = document.querySelector('#explore h2');
           const exploreH2Top = exploreH2 ? exploreH2.getBoundingClientRect().top : 1e9;
           const freeCancelSub = document.querySelector('.assure li:first-child span');
@@ -227,6 +244,7 @@ function cdp(WS, wsUrl) {
             phBox,
             creditBox,
             clockBox,
+            quickBtns,
           };
         })()`,
       });
@@ -281,6 +299,15 @@ function cdp(WS, wsUrl) {
       if (data.clockBox) {
         assert.ok(data.clockBox.width >= 20 && data.clockBox.height >= 10, width + ' clock visible ' + JSON.stringify(data.clockBox));
         assert.ok(data.clockBox.left >= -1 && data.clockBox.right <= data.width + 2, width + ' clock clipped');
+      }
+      if (data.quickBtns.length) {
+        assert.strictEqual(data.quickBtns.length, 2, width + ' quick buttons');
+        for (const qb of data.quickBtns) {
+          assert.strictEqual(qb.td, 'none', width + ' quick underline ' + JSON.stringify(qb));
+          assert.ok(qb.opaque, width + ' quick bg ' + qb.bg);
+          assert.strictEqual(qb.display, 'flex', width + ' quick display ' + qb.display);
+          assert.ok(qb.h >= 44, width + ' quick height ' + qb.h);
+        }
       }
       console.log(width + 'x' + height + ' card top ' + Math.round(data.top) + ' explore h2 ' + Math.round(data.exploreH2Top) + ' of ' + data.inner);
     }
