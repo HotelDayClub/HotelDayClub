@@ -303,16 +303,24 @@ function detailsHtml(o) {
   const included = groups.included.length
     ? `<p class="d2-sub first">Included in your pass${demo ? ' <span class="ex">Example amenities (demo)</span>' : ''}</p><ul class="d2-ir">${groups.included.map(row).join('')}</ul>`
     : `<p class="d2-muted">${esc(ListingImprove.includedEmptyCopy(false))}</p>`;
-  const onsite = groups.onsite.length
-    ? `<p class="d2-sub">On site (not included)</p><ul class="d2-ir">${groups.onsite.map(r => `<li>${icon('pin')}${esc(r.label)}</li>`).join('')}</ul>`
-    : '';
   const off = ListingImprove.notIncludedLines(items).filter(line => line !== FOOD_RULE && !/available as an add-on/.test(line));
-  const offLine = off.length ? `<p class="d2-muted">Not included: ${esc(off.join(' · '))}</p>` : '';
-  const extras = (o.addons || []).filter(a => a.code !== 'parking' && Number(a.price) > 0 && a.code !== 'late');
-  const extraRows = extras.length
-    ? `<p class="d2-sub">Extras (paid)</p><ul class="d2-ir">${extras.map(a => `<li>${icon('plus')}${esc(a.name)}<span class="r">${esc(ListingD2.priceText(h, a.price))}</span></li>`).join('')}</ul>`
+  const onsiteList = groups.onsite.length
+    ? `<ul class="d2-ir d2-os">${groups.onsite.map(r => `<li>${icon(AMENITY_ICON[r.icon] || 'pin')}${esc(r.label)}</li>`).join('')}</ul>`
     : '';
-  const included3 = `<h3>What's included</h3>${included}${onsite}${offLine}${extraRows}`;
+  const offLine = off.length ? `<p class="d2-os-note">Not included: ${esc(off.join(' · '))}</p>` : '';
+  const onsiteBlock = (groups.onsite.length || off.length)
+    ? `<h3>On site (not included)</h3>${onsiteList}${offLine}`
+    : '';
+  const extras = (o.addons || []).filter(a => a.code !== 'parking' && Number(a.price) > 0 && a.code !== 'late');
+  const extraAddonIcon = code => {
+    if (code === 'gym') return 'people';
+    if (code === 'parking') return 'car';
+    return 'plus';
+  };
+  const extraRows = extras.length
+    ? `<h3>Extras</h3><ul class="d2-extra-list">${extras.map(a => `<li class="d2-extra"><span class="d2-extra-ico" aria-hidden="true">${icon(extraAddonIcon(a.code))}</span><span class="d2-extra-name">${esc(a.name)}</span><span class="d2-extra-pr">${priceHtml(h, a.price)}</span></li>`).join('')}</ul>`
+    : '';
+  const included3 = `<h3>What's included</h3>${included}${onsiteBlock}${extraRows}`;
 
   const hours = ListingD2.hourGroups(o.hourRows);
   const hoursHtml = hours.length

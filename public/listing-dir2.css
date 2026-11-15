@@ -159,6 +159,16 @@ body:has(.d2){background:var(--cream);padding-bottom:84px}
 .d2-ir li{display:flex;gap:12px;align-items:center;min-height:40px;padding:4px 0}
 .d2-ir .d2ic{width:20px;height:20px;color:var(--teal)}
 .d2-ir .r{margin-left:auto;font-weight:600;white-space:nowrap}
+.d2-os{margin:0 0 4px}
+.d2-os-note{margin:12px 0 8px;font-size:14px;line-height:20px;color:var(--sec)}
+.d2-os-note:first-child{margin-top:0}
+.d2-extra-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.d2-extra{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:12px;min-height:48px;padding:10px 12px;background:var(--tint);border:1px solid var(--border);border-radius:12px}
+.d2-extra-ico{display:flex;align-items:center;justify-content:center;color:var(--teal)}
+.d2-extra-ico .d2ic{width:22px;height:22px}
+.d2-extra-name{font-weight:600;font-size:15px;line-height:22px;color:var(--text)}
+.d2-extra-pr{font-weight:700;font-size:15px;line-height:22px;text-align:right;white-space:nowrap;color:var(--text)}
+.d2-extra-pr small{font-size:14px;color:var(--sec);font-weight:600}
 .d2-hours{margin:0}
 .d2-hours div{display:flex;justify-content:space-between;gap:12px;padding:6px 0}
 .d2-hours dt{font-weight:700}

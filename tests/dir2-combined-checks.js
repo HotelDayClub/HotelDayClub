@@ -163,6 +163,20 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(pages['saltwater-terrace'].includes('Towels included'));
     assert.ok(!incRows.some(r => /Pool access/.test(r)));
     assert.ok(saltText.includes('Example amenities (demo)'));
+    const saltDetails = pages['saltwater-terrace'].slice(pages['saltwater-terrace'].indexOf('id="details"'));
+    assert.ok(saltDetails.includes('<h3>Extras</h3>'), 'extras heading');
+    assert.ok(!saltDetails.includes('Extras (paid)'), 'no legacy extras label');
+    assert.ok(saltDetails.includes('class="d2-extra-list"'), 'extras card list');
+    assert.ok(saltDetails.includes('class="d2-extra"'), 'extra row/card');
+    assert.ok(/class="d2-extra-pr">.*\(demo\)/.test(saltDetails), 'demo price label on extras');
+    assert.ok(saltDetails.includes('<h3>On site (not included)</h3>'), 'on site heading');
+    const onIdx = saltDetails.indexOf('<h3>On site (not included)</h3>');
+    const extrasIdx = saltDetails.indexOf('<h3>Extras</h3>');
+    const hoursIdx = saltDetails.indexOf('<h3>Hours</h3>');
+    assert.ok(onIdx > -1 && extrasIdx > onIdx && hoursIdx > extrasIdx, 'section order');
+    const onSlice = saltDetails.slice(onIdx, extrasIdx > onIdx ? extrasIdx : hoursIdx);
+    assert.ok(onSlice.includes('class="d2-os-note"'), 'muted not-included line in on site block');
+    assert.ok(!onSlice.includes('class="d2-muted">Not included:'), 'not-included not outside on site');
 
     // A6: seat URLs redirect and a pass link preselects.
     const seat = await get(port, '/h/saltwater-terrace/seat/daybed?date=' + today + '&qty=2');
