@@ -587,6 +587,10 @@ function start(port, extra = {}) {
     const saltBand = saltListing.body.slice(saltListing.body.indexOf('class="d2-hours-band"'), saltListing.body.indexOf('</div>', saltListing.body.indexOf('class="d2-hb-park"')));
     assert.ok(saltBand.includes('10am\u20134pm'), saltBand);
     assert.ok(saltBand.includes('Monday to Sunday'), saltBand);
+    const palmListing = await get(port, '/h/palm-court');
+    assert.ok(palmListing.body.includes("Lifeguards don&#39;t replace adult supervision: an adult on the booking must actively supervise each child at all times."));
+    const skylineListing = await get(port, '/h/skyline-rooftop');
+    assert.ok(!skylineListing.body.includes('replace adult supervision'));
     factsDb.close();
 
     const avail = await get(port, `/api/availability?hotel=skyline-rooftop&date=${freeSky.date}`);

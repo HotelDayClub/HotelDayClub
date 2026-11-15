@@ -330,6 +330,8 @@ function hoursBandHtml(h, o) {
 function policiesHtml(h) {
   const demo = isDemo(h);
   const facts = policyFacts(h);
+  const watch = supervisionNote(h);
+  const lifeguard = watch ? `${facts.lifeguard}. ${watch}` : facts.lifeguard;
   const age = String(h.age_policy || '').trim() || 'See the hotel';
   const kids = String(h.kids_hours || '').trim() || 'See the age line';
   const kidsVal = demo && /^all open hours/i.test(kids) ? `${esc(kids)} <span class="ex">example data</span>` : esc(kids);
@@ -338,7 +340,7 @@ function policiesHtml(h) {
     : (demo ? 'Photo ID is not required in this demo.' : 'Photo ID is not required.');
   const dress = String(h.dress_code || '').trim() || 'Swimwear at the pool.';
   const policies = [
-    ['Lifeguard', facts.lifeguard],
+    ['Lifeguard', lifeguard],
     ['Pool', facts.pool],
     ['Heated', facts.heated],
     ['Ages', age],

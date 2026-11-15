@@ -473,7 +473,7 @@ assert.ok(sevenPhotos.includes('1 / 7'));
 
     const palm = await get(port, '/h/palm-court');
     leadAndMeta(palm.body, 'palm-court', 'Palm Court Resort', 'Parramatta');
-    assert.ok(palm.body.includes('>Lifeguard</dt><dd>On duty</dd>') || palm.body.includes('>Lifeguard</dt><dd>On duty '));
+    assert.ok(palm.body.includes("Lifeguards don&#39;t replace adult supervision: an adult on the booking must actively supervise each child at all times."));
     assert.ok(!palm.body.includes('during day-pass hours'));
     assert.ok(palm.body.includes('>Heated</dt><dd>No</dd>'));
     assert.ok(!palm.body.includes('kids-float.jpg'));
