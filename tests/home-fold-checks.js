@@ -128,7 +128,7 @@ function cdp(WS, wsUrl) {
     await send('Page.enable');
     await send('Runtime.enable');
     await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
-    for (const [width, height] of [[360, 844], [390, 844], [1024, 800], [1280, 800], [1440, 900]]) {
+    for (const [width, height] of [[360, 844], [390, 844], [1024, 800], [1100, 800], [1280, 800], [1440, 900]]) {
       await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 800 });
       await send('Page.navigate', { url: `http://127.0.0.1:${port}/` });
       await new Promise(resolve => setTimeout(resolve, 900));
@@ -213,6 +213,21 @@ function cdp(WS, wsUrl) {
               h: el.getBoundingClientRect().height,
             };
           });
+          const whatSeg = document.querySelector('#p') && document.querySelector('#p').closest('.seg');
+          const whatPk = whatSeg && whatSeg.querySelector('.pk-btn');
+          const whatTxt = whatPk && whatPk.querySelector('.pk-txt');
+          const whatChev = whatPk && whatPk.querySelector('.pk-chev');
+          const submitBtn = document.querySelector('.search button[type="submit"]');
+          const overlaps = (a, b) => {
+            if (!a || !b) return false;
+            return !(a.right <= b.left + 1 || a.left >= b.right - 1 || a.bottom <= b.top + 1 || a.top >= b.bottom - 1);
+          };
+          const whatBox = whatSeg ? rectOf(whatSeg) : null;
+          const whatPickBox = whatPk ? rectOf(whatPk) : null;
+          const submitBox = submitBtn ? rectOf(submitBtn) : null;
+          const chevBox = whatChev ? rectOf(whatChev) : null;
+          const whatTxtClip = whatTxt ? whatTxt.scrollWidth > whatTxt.clientWidth + 1 : false;
+          const searchOverlap = submitBox && (whatBox && overlaps(submitBox, whatBox) || whatPickBox && overlaps(submitBox, whatPickBox) || chevBox && overlaps(submitBox, chevBox));
           const exploreH2 = document.querySelector('#explore h2');
           const exploreH2Top = exploreH2 ? exploreH2.getBoundingClientRect().top : 1e9;
           const freeCancelSub = document.querySelector('.assure li:first-child span');
@@ -245,6 +260,8 @@ function cdp(WS, wsUrl) {
             creditBox,
             clockBox,
             quickBtns,
+            searchOverlap,
+            whatTxtClip,
           };
         })()`,
       });
@@ -287,6 +304,10 @@ function cdp(WS, wsUrl) {
       }
       if (width >= 1280) {
         assert.ok(data.top < data.inner, width + ' first listing below fold ' + data.top + ' vs ' + data.inner);
+      }
+      if (width === 1024 || width === 1100 || width === 1280 || width === 1440) {
+        assert.ok(!data.searchOverlap, width + ' search overlaps what');
+        assert.ok(!data.whatTxtClip, width + ' what field clipped');
       }
       if (width === 390 || width === 1280) {
         assert.ok(data.heroBox && data.phBox, width + ' hero ph boxes');
