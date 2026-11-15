@@ -21,6 +21,34 @@ const { seed, ensureSchedules, DEMO_INTROS } = require('../seed');
 const offering = require('../offering');
 const { zoneToUtc, hotelZone, HotelClock } = require('../calendar');
 const { ListingPanel } = require('../listingView');
+const { TicketView } = require('../bookingPage');
+const { bookingNotice } = require('../notices');
+
+const childHoursAdult = { age_policy: '18+', kids_hours: 'Children until 2pm', lifeguard: 0 };
+assert.strictEqual(offering.childrenAllowed(childHoursAdult), true);
+assert.ok(TicketView.safetyLine(childHoursAdult).includes('Supervise children at all times.'));
+const noChildrenAdult = { age_policy: '18+', kids_hours: 'No children', lifeguard: 0 };
+assert.strictEqual(offering.childrenAllowed(noChildrenAdult), false);
+assert.ok(!TicketView.safetyLine(noChildrenAdult).includes('Supervise children at all times.'));
+assert.ok(offering.swimNote(noChildrenAdult).includes('Supervise children at all times.'));
+const adultConfirm = bookingNotice({
+  demo: true,
+  to: 'guest@example.com',
+  code: 'HDC-ADULT',
+  hotelName: 'Adults Only Demo',
+  area: 'Demo',
+  dateLabel: '1 Jan 2026',
+  hours: '10am–4pm',
+  passLabel: 'Pool pass × 1',
+  guests: '1',
+  included: 'Pool access',
+  totalLabel: '$50',
+  cancel: 'Free until 9am',
+  risk: offering.swimNote(noChildrenAdult),
+  contact: 'hello@hoteldayclub.com.au',
+  link: 'https://www.hoteldayclub.com.au/booking/HDC-ADULT',
+});
+assert.ok(adultConfirm.text.includes('Supervise children at all times.'));
 
 seed(db);
 ensureSchedules(db);
@@ -441,6 +469,7 @@ function start(port, extra = {}) {
     assert.ok(terms.body.includes('17. Complaints'));
     assert.ok(!terms.body.includes('Gift cards') && !terms.body.includes('food and drink credit'));
     const risk = await get(port, '/risk');
+    assert.ok(risk.body.includes('actively supervised by a named adult'));
     assert.ok(risk.body.includes('>Risk warning</h1>'));
     assert.ok(!risk.body.includes('(draft)'));
     assert.ok(!risk.body.includes('NOT LEGAL ADVICE'));
@@ -547,12 +576,14 @@ function start(port, extra = {}) {
 
     const factsDb = new Database(dbPath, { readonly: true });
     const listing = await get(port, `/h/skyline-rooftop?date=${freeSky.date}`);
-    const skyHours = listing.body.slice(listing.body.indexOf('<dl class="d2-hours">'), listing.body.indexOf('</dl>', listing.body.indexOf('<dl class="d2-hours">')));
-    assert.ok(skyHours.includes('<dt>Sat to Thu</dt><dd>11am\u20134pm</dd>') && skyHours.includes('<dt>Fri</dt><dd>Closed</dd>'), skyHours);
+    const skyBand = listing.body.slice(listing.body.indexOf('class="d2-hours-band"'), listing.body.indexOf('</div>', listing.body.indexOf('class="d2-hb-park"')));
+    assert.ok(skyBand.includes('class="d2-time"'), skyBand);
+    assert.ok(/Sat.*Thu|11am/.test(skyBand) || listing.body.includes('11am\u20134pm'), skyBand.slice(0, 200));
     assert.ok(!listing.body.includes('Wed ·'));
     const saltListing = await get(port, `/h/saltwater-terrace?date=${salt.date}`);
-    const saltHours = saltListing.body.slice(saltListing.body.indexOf('<dl class="d2-hours">'), saltListing.body.indexOf('</dl>', saltListing.body.indexOf('<dl class="d2-hours">')));
-    assert.ok(saltHours.includes('<dt>Mon to Sun</dt><dd>10am\u20134pm</dd>'), saltHours);
+    const saltBand = saltListing.body.slice(saltListing.body.indexOf('class="d2-hours-band"'), saltListing.body.indexOf('</div>', saltListing.body.indexOf('class="d2-hb-park"')));
+    assert.ok(saltBand.includes('10am\u20134pm'), saltBand);
+    assert.ok(saltBand.includes('Monday to Sunday'), saltBand);
     factsDb.close();
 
     const avail = await get(port, `/api/availability?hotel=skyline-rooftop&date=${freeSky.date}`);

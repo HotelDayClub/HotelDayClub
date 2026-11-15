@@ -241,6 +241,9 @@ const ICON = {
 function logoLink(tone) {
   const light = tone === 'light';
   const src = light ? '/assets/hdc-lockup-light.svg' : '/assets/hdc-lockup-dark.svg';
+  if (light) {
+    return `<a class="logo" href="/"><img class="logo-light" src="${src}" alt="Hotel Day Club" width="187" height="32"><img class="logo-dark" src="/assets/hdc-lockup-dark.svg" alt="" width="187" height="32" aria-hidden="true"></a>`;
+  }
   return `<a class="logo" href="/"><img src="${src}" alt="Hotel Day Club" width="187" height="32"></a>`;
 }
 function contactEmail() {

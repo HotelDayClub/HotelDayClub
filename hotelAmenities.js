@@ -211,9 +211,8 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
   static inclusionLabel(item, people) {
     if (item.code === 'wifi') return 'Wi-Fi';
     if (item.code === 'towels') {
-      const qty = item.per === 'booking' ? 1 : Math.max(1, Number(people) || 1);
-      if (qty === 1) return 'Towels: 1 per person';
-      return `${qty} towels`;
+      if (item.mode === 'off') return 'Bring your own towel';
+      return 'Towels included';
     }
     return item.name;
   }

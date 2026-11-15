@@ -240,9 +240,11 @@ function heatWord(heated) {
 const SUPERVISION = "Lifeguards don't replace adult supervision: an adult on the booking must actively supervise each child at all times.";
 const DAY_NAMES = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
 function childrenAllowed(hotel) {
-  if (/18\s*\+/.test(String(hotel && hotel.age_policy || ''))) return false;
   const kids = String((hotel && hotel.kids_hours) || '').trim();
   if (/^no children/i.test(kids)) return false;
+  if (/children(\s+welcome)?\s+until/i.test(kids)) return true;
+  if (/^all open hours/i.test(kids)) return true;
+  if (/18\s*\+/.test(String((hotel && hotel.age_policy) || ''))) return false;
   return true;
 }
 function guardFacts(hotel) {

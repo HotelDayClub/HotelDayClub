@@ -121,9 +121,17 @@ class ListingD2 {
     return times.length === 1 ? times[0] : '';
   }
 
-  static fitsLine(pass, items) {
+  static towelChip(items, hotel) {
+    const towel = (items || []).find(i => i.code === 'towels');
+    if (towel && towel.mode === 'included') return 'Towels included';
+    if (towel && towel.mode === 'off') return 'Bring your own towel';
+    if (hotel && hotel.towels) return 'Towels included';
+    return '';
+  }
+
+  static fitsLine(pass, items, hotel) {
     const holds = Number(pass && pass.holds) || 1;
-    const towel = ListingPanel.towelFor(items, holds);
+    const towel = ListingD2.towelChip(items, hotel);
     return towel ? `Fits ${holds} · ${towel}` : `Fits ${holds}`;
   }
 
@@ -188,7 +196,17 @@ function passAlt(p, h) {
   return isDemo(h) ? `Example photo of a ${kind}, not this hotel` : `${kind} at ${shortName(h)}`;
 }
 
-function galleryHtml(h) {
+function heroCopyHtml(h, heading, area, desc) {
+  const demo = isDemo(h);
+  return `<div class="d2-hero-copy" id="d2-hero-copy"><div class="d2-hero-in">
+<p class="d2-hero-loc">${esc(area)}</p>
+<h1 class="d2-hero-title">${esc(heading)}</h1>
+${demo ? '<span class="d2-hero-tag">Fictional demo listing</span>' : ''}
+<p class="d2-desc" id="d2-desc">${desc}</p><button type="button" class="d2-rm" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button>
+</div></div>`;
+}
+
+function galleryHtml(h, hero) {
   const photos = Array.isArray(h.photos) ? h.photos : [];
   const n = photos.length;
   const demo = isDemo(h);
@@ -197,18 +215,16 @@ function galleryHtml(h) {
   const dots = n > 1 ? `<span class="d2-dots" aria-hidden="true">${photos.map((p, i) => `<i${i === 0 ? ' class="on"' : ''}></i>`).join('')}</span>` : '';
   const count = n > 1 ? `<button type="button" class="d2-count" id="d2-count" aria-label="Photo 1 of ${n}, view all photos">${icon('photo')}<span>1 / ${n}</span></button>` : '';
   const credit = demo ? '<span class="d2-pill d2-lbl">Stock photos · not this hotel</span>' : '';
-  const thumbs = photos.slice(1, 4).map(p => PhotoAssets.imgTag(p, { alt, width: 600, height: 450, sizes: '200px', loading: 'lazy' })).join('');
-  const all = n > 1 ? `<button type="button" class="d2-all" id="d2-all">${icon('photo')}View all ${n} photos</button>` : '';
-  const grid = n > 1 ? `<div class="d2-thumbs d2-t${Math.min(n - 1, 4)}">${thumbs}${all}</div>` : '';
   const strong = n > 0 ? `<div class="d2-gw" id="d2-gw" role="group" aria-label="Photos, swipe for more" tabindex="0">${strip}</div>` : '';
-  return `<div class="d2-photos${n < 2 ? ' d2-solo' : ''}"><div class="d2-hero">${strong}${credit}${dots}${count}</div>${grid}</div>
+  const copy = hero ? heroCopyHtml(h, hero.heading, hero.area, hero.desc) : '';
+  return `<div class="d2-photos${n < 2 ? ' d2-solo' : ''}"><div class="d2-hero">${strong}${credit}${dots}${count}${copy}</div></div>
 <dialog class="d2-lb" id="d2-lb" aria-label="Photos"><div class="d2-lb-bar"><p id="d2-lb-count" aria-live="polite">1 / ${n || 1}</p><button type="button" class="d2-lb-close" aria-label="Close photos">${icon('x')}</button></div><div class="d2-lb-stage"><button type="button" class="d2-lb-prev" aria-label="Previous photo">${icon('arrow', 'flip')}</button><img alt="${esc(alt)}" width="1200" height="900"><button type="button" class="d2-lb-next" aria-label="Next photo">${icon('arrow')}</button></div></dialog>`;
 }
 
 function passCard(p, h, items, opts) {
   const desc = String(p.description || '').trim();
   const href = ListingD2.cardHref(h.slug, p, { date: opts.date, qty: opts.qty });
-  return `<a class="d2-card" href="${esc(href)}" data-pass="${esc(p.code)}"><div><b class="n">${esc(p.name)}</b>${desc ? `<p>${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p, items))}</p><p class="pr">From ${priceHtml(h, p.price)}</p></div>${passThumb(p, passAlt(p, h))}<span class="go" aria-hidden="true">${icon('arrow')}</span></a>`;
+  return `<a class="d2-card d2-row" href="${esc(href)}" data-pass="${esc(p.code)}">${passThumb(p, passAlt(p, h))}<div class="d2-card-body"><div class="d2-card-top"><b class="n">${esc(p.name)}</b><p class="pr">From ${priceHtml(h, p.price)}</p></div>${desc ? `<p>${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p, items, h))}</p></div></a>`;
 }
 
 function chipHtml(c) {
@@ -253,7 +269,7 @@ function sheetHtml(o) {
   const tiles = passes.map(p => {
     const on = pick && p.code === pick.code;
     const off = out(p);
-    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p, items))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${PhotoAssets.imgTag(safePhoto(String(p.photo || '')), { alt: isDemo(h) ? 'Stock photo, not this hotel' : p.name, width: 120, height: 60, sizes: '120px', loading: 'lazy' })}<b>${esc(p.name)}</b><span>${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><i class="tk">${icon('tick')}</i></label>`;
+    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p, items, h))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${PhotoAssets.imgTag(safePhoto(String(p.photo || '')), { alt: isDemo(h) ? 'Stock photo, not this hotel' : p.name, width: 120, height: 60, sizes: '120px', loading: 'lazy' })}<b>${esc(p.name)}</b><span>${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><i class="tk">${icon('tick')}</i></label>`;
   }).join('');
   const noJsDate = `<noscript><form class="d2-nojs" action="/h/${esc(encodeURIComponent(h.slug))}#book" method="get"><label>Another date<input type="date" name="date" min="${esc(o.today)}" max="${esc(maxDate)}" value="${esc(outside ? date : '')}"></label><input type="hidden" name="pass" value="${esc(pick ? pick.code : '')}"><input type="hidden" name="qty" value="${qty}"><button class="d2-btn out" type="submit">Use this date</button></form></noscript>`;
   return `<section class="d2-book" id="book" aria-labelledby="d2-book-h" tabindex="-1">
@@ -265,7 +281,7 @@ ${holdHtml(o.hold)}
 <div class="d2-passblock" id="d2-passblock">
 <span class="d2-lab" id="d2-pass-lab">Pass</span>
 <div class="d2-pp" role="radiogroup" aria-labelledby="d2-pass-lab">${tiles}</div>
-<p class="d2-fit" id="d2-fit">${icon('towel')}<span id="d2-fit-t">${esc(pick ? ListingD2.fitsLine(pick, items) : '')}</span></p>
+<p class="d2-fit" id="d2-fit">${icon('towel')}<span id="d2-fit-t">${esc(pick ? ListingD2.fitsLine(pick, items, h) : '')}</span></p>
 </div>
 <div class="d2-passrow" id="d2-passrow" hidden><span class="d2-lab">Pass <small id="d2-passrow-t"></small></span><button type="button" class="d2-mdb" id="d2-change">Change</button></div>
 <div class="d2-lab d2-labrow"><span>Date <small id="d2-hrs">${hours ? `${esc(hours)}, hotel time` : 'Hotel time'}</small></span><button type="button" class="d2-mdb" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
@@ -285,6 +301,56 @@ ${noJsDate}
 </section>`;
 }
 
+function notIncludedChips(items) {
+  return ListingImprove.notIncludedLines(items)
+    .filter(line => line !== FOOD_RULE && !/available as an add-on/i.test(line));
+}
+
+function hoursBandHtml(h, o) {
+  const items = o.items || o.included || [];
+  const groups = ListingD2.hourGroups(o.hourRows || []);
+  const open = groups.filter(g => g.time && g.time !== 'Closed');
+  const uniform = open.length === 1;
+  const time = uniform ? open[0].time : open.map(g => `${g.label}: ${g.time}`).join('; ');
+  const rows = o.hourRows || [];
+  const openDays = rows.filter(r => r.time && r.time !== 'Closed').map(r => r.day);
+  const when = openDays.length === 7 ? 'Monday to Sunday. Hotel local time.' : 'Hotel local time.';
+  const park = (items || []).find(i => i.code === 'parking' && i.mode !== 'off');
+  const parkAddon = (o.addons || []).find(a => a.code === 'parking');
+  let parkBlock = '';
+  if (park && park.mode === 'included') {
+    parkBlock = `<div class="d2-hb-park"><h3>Parking</h3><p class="d2-park-line"><span>${esc(String(park.note || '').trim() || 'Included with your pass')}</span></p></div>`;
+  } else if (parkAddon) {
+    parkBlock = `<div class="d2-hb-park"><h3>Parking</h3><p class="d2-park-line"><span>Paid extra, added at checkout</span><span class="r">${esc(ListingD2.priceText(h, parkAddon.price))}</span></p></div>`;
+  }
+  if (!time && !parkBlock) return '';
+  return `<div class="d2-hours-band"><div class="d2-hours-in">${time ? `<div class="d2-hb-hours"><h3>Hours</h3><p class="d2-time">${esc(time)}</p><p class="d2-when">${esc(when)}</p></div>` : ''}${parkBlock}</div></div>`;
+}
+
+function policiesHtml(h) {
+  const demo = isDemo(h);
+  const facts = policyFacts(h);
+  const age = String(h.age_policy || '').trim() || 'See the hotel';
+  const kids = String(h.kids_hours || '').trim() || 'See the age line';
+  const kidsVal = demo && /^all open hours/i.test(kids) ? `${esc(kids)} <span class="ex">example data</span>` : esc(kids);
+  const id = Number(h.id_required) === 1
+    ? 'Photo ID at check-in. The booking name must match a guest in your group.'
+    : (demo ? 'Photo ID is not required in this demo.' : 'Photo ID is not required.');
+  const dress = String(h.dress_code || '').trim() || 'Swimwear at the pool.';
+  const policies = [
+    ['Lifeguard', facts.lifeguard],
+    ['Pool', facts.pool],
+    ['Heated', facts.heated],
+    ['Ages', age],
+    ['Children', kidsVal],
+    ['ID', id],
+    ['Dress', dress],
+    ['Glass', 'Ask the hotel'],
+  ];
+  const kv = `<dl class="d2-kv">${policies.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${k === 'Children' ? kidsVal : esc(v)}</dd></div>`).join('')}</dl><div class="d2-links"><a href="/risk">${icon('warn')}Read the pool risk warning</a></div>`;
+  return `<section class="d2-pol" aria-labelledby="d2-pol-h"><div class="d2-col d2-narrow"><h2 id="d2-pol-h">Guest policies</h2>${kv}</div></section>`;
+}
+
 function detailsHtml(o) {
   const { h, items } = o;
   const demo = isDemo(h);
@@ -297,57 +363,34 @@ function detailsHtml(o) {
   const addr = address
     ? `<p class="d2-addr">${icon('pin')}<span>${esc(address)}${demo ? '<span class="d2-muted blk">This is a fictional demo address.</span>' : ''}</span></p>`
     : '';
-  const location = `<h3>Location</h3>${addr}${embed ? `<div class="d2-map d2-embed">${embed}</div>` : placeholder}${mapsHref ? `<a class="d2-btn out block" href="${esc(mapsHref)}" target="_blank" rel="noopener">${icon('nav')}Open in Google Maps</a>` : ''}`;
+  const location = `<div class="d2-block"><h3>Location</h3>${addr}${embed ? `<div class="d2-map d2-embed">${embed}</div>` : placeholder}${mapsHref ? `<a class="d2-btn out block" href="${esc(mapsHref)}" target="_blank" rel="noopener">${icon('nav')}Open in Google Maps</a>` : ''}</div>`;
 
   const groups = o.groups || { included: [], onsite: [] };
   const row = r => `<li>${icon(AMENITY_ICON[r.icon] || 'check')}${esc(r.label)}</li>`;
   const included = groups.included.length
-    ? `<p class="d2-sub first">Included in your pass${demo ? ' <span class="ex">Example amenities (demo)</span>' : ''}</p><ul class="d2-ir">${groups.included.map(row).join('')}</ul>`
+    ? `<h4 class="d2-sub first">Included in your pass${demo ? ' <span class="ex">Example amenities (demo)</span>' : ''}</h4><ul class="d2-inc">${groups.included.map(row).join('')}</ul>`
     : `<p class="d2-muted">${esc(ListingImprove.includedEmptyCopy(false))}</p>`;
   const onsite = groups.onsite.length
-    ? `<p class="d2-sub">On site (not included)</p><ul class="d2-ir">${groups.onsite.map(r => `<li>${icon('pin')}${esc(r.label)}</li>`).join('')}</ul>`
+    ? `<h4 class="d2-sub">On site (not included)</h4><ul class="d2-chips">${groups.onsite.map(r => `<li>${esc(r.label)}</li>`).join('')}</ul>`
     : '';
-  const off = ListingImprove.notIncludedLines(items).filter(line => line !== FOOD_RULE && !/available as an add-on/.test(line));
-  const offLine = off.length ? `<p class="d2-muted">Not included: ${esc(off.join(' · '))}</p>` : '';
+  const off = notIncludedChips(items);
+  const offChips = off.length ? `<h4 class="d2-sub">Not included</h4><ul class="d2-chips">${off.map(line => `<li>${esc(line)}</li>`).join('')}</ul>` : '';
   const extras = (o.addons || []).filter(a => a.code !== 'parking' && Number(a.price) > 0 && a.code !== 'late');
   const extraRows = extras.length
-    ? `<p class="d2-sub">Extras (paid)</p><ul class="d2-ir">${extras.map(a => `<li>${icon('plus')}${esc(a.name)}<span class="r">${esc(ListingD2.priceText(h, a.price))}</span></li>`).join('')}</ul>`
+    ? `<div class="d2-block"><h3>Extras (paid)</h3><ul class="d2-prices">${extras.map(a => `<li><span>${esc(a.name)}</span><span class="r">${esc(ListingD2.priceText(h, a.price))}</span></li>`).join('')}</ul></div>`
     : '';
-  const included3 = `<h3>What's included</h3>${included}${onsite}${offLine}${extraRows}`;
+  const included3 = `<div class="d2-block"><h3>What's included</h3>${included}${onsite}${offChips}</div>`;
 
-  const hours = ListingD2.hourGroups(o.hourRows);
-  const hoursHtml = hours.length
-    ? `<h3>Hours</h3><dl class="d2-hours">${hours.map(g => `<div><dt>${esc(g.label)}</dt><dd>${esc(g.time)}</dd></div>`).join('')}</dl><p class="d2-muted">Hotel local time.</p>`
-    : '';
+  return `<section class="d2-s" id="details"><h2>Details</h2>${location}${included3}${extraRows}</section>`;
+}
 
-  const park = (items || []).find(i => i.code === 'parking' && i.mode !== 'off');
-  const parkAddon = (o.addons || []).find(a => a.code === 'parking');
-  let parking = '';
-  if (park && park.mode === 'included') {
-    parking = `<h3>Parking</h3><ul class="d2-ir"><li>${icon('car')}${esc(String(park.note || '').trim() || 'Included with your pass')}</li></ul>`;
-  } else if (parkAddon) {
-    parking = `<h3>Parking</h3><ul class="d2-ir"><li>${icon('car')}Paid extra, added at checkout<span class="r">${esc(ListingD2.priceText(h, parkAddon.price))}</span></li></ul>`;
-  }
-
-  const facts = policyFacts(h);
-  const watch = supervisionNote(h);
-  const age = String(h.age_policy || '').trim() || 'See the hotel';
-  const kids = String(h.kids_hours || '').trim();
-  const id = Number(h.id_required) === 1
-    ? 'Photo ID at check-in. The booking name must match a guest in your group.'
-    : (demo ? 'Photo ID is not required in this demo.' : 'Photo ID is not required.');
-  const policies = [
-    ['Lifeguard', watch ? `${facts.lifeguard}. ${watch}` : facts.lifeguard],
-    ['Pool', facts.pool],
-    ['Heated', facts.heated],
-    ['Age', age],
-    ['Children', kids || 'See the age line'],
-    ['ID at check-in', id],
-    ['Dress', String(h.dress_code || '').trim() || 'Swimwear at the pool.'],
-  ];
-  const kv = `<dl class="d2-kv">${policies.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><div class="d2-links"><a href="/risk">${icon('warn')}Read the pool risk warning</a></div>`;
-
-  return `<section class="d2-s" id="details"><h2>Details</h2>${location}${included3}${hoursHtml}${parking}<h3>Guest policies</h3>${kv}</section>`;
+function bookBarHtml(fromHtml, dateLabel, qty) {
+  return `<div class="d2-bookbar" role="region" aria-label="Book"><div class="d2-bookbar-in">
+<p class="d2-bookbar-price">${fromHtml}</p>
+<a class="d2-fake" href="#book" data-open="date"><span id="d2-bar-date">${esc(dateLabel)}</span>${icon('cal')}</a>
+<a class="d2-fake" href="#book" data-open="spots"><span id="d2-bar-qty">${qty} (up to ${SearchQuery.BOOKING_SPOTS} people)</span>${icon('down')}</a>
+<a class="d2-btn" href="#book" data-open="date">Check dates</a>
+</div></div>`;
 }
 
 function goodToKnow(h) {
@@ -355,9 +398,9 @@ function goodToKnow(h) {
   const demo = isDemo(h);
   return `<section class="d2-band" id="before" aria-labelledby="d2-gtk"><div class="d2-col">
 <h2 id="d2-gtk">Good to know</h2>
-<div class="d2-qa">${icon('qr')}<div><b>What happens when I arrive?</b><p>${esc(arrive)}</p><a href="/contact">Help when you need it</a></div></div>
-<div class="d2-qa">${icon('check')}<div><b>What's included?</b><p>Everything listed under Included in your pass.</p><p>${esc(FOOD_RULE)}</p></div></div>
-<div class="d2-qa">${icon('cal')}<div><b>Can I cancel?</b><p>${esc(FREE_CANCEL)}</p><a href="/refunds">Cancellation and refund policy</a></div></div>
+<div class="d2-qa"><div><b>What happens when I arrive?</b><p>${esc(arrive)}</p><a href="/contact">Help when you need it</a></div></div>
+<div class="d2-qa"><div><b>What's included?</b><p>Everything listed under Included in your pass.</p><p>${esc(FOOD_RULE)}</p></div></div>
+<div class="d2-qa"><div><b>Can I cancel?</b><p>${esc(FREE_CANCEL)}</p><a href="/refunds">Cancellation and refund policy</a></div></div>
 ${demo ? '<p class="d2-contract">Example information for a fictional hotel. It is not a contract.</p>' : ''}
 </div></section>`;
 }
@@ -379,33 +422,31 @@ function listingHtmlD2(opts) {
   const lateNote = date && typeof opts.late === 'function' && opts.late(date) ? (opts.lateNote || ListingD2.LATE_NOTE) : '';
   const from = passes.length ? Math.min(...passes.map(p => Number(p.price))) : 0;
   const cardOpts = { date, qty };
-  const sections = ListingD2.passGroups(passes).map(g => `<h3>${esc(g.title)}</h3><div class="d2-cards">${g.passes.map(p => passCard(p, h, items, cardOpts)).join('')}</div>`).join('');
+  const sections = ListingD2.passGroups(passes).map(g => `<h3 class="d2-group">${esc(g.title)}</h3><div class="d2-cards">${g.passes.map(p => passCard(p, h, items, cardOpts)).join('')}</div>`).join('');
   const sheet = sheetHtml({ ...opts, items, passes, days, pick, date, qty, today, maxDate, closed, lateNote });
   const dateLabel = date ? ListingD2.label(date) : 'Any date';
   const fromHtml = `From <b>${esc(money(from))}</b>${demo ? ' <small>(demo)</small>' : ''}`;
   const addressLine = String(h.area || '').trim();
   const desc = `<b>${esc(h.tagline)}.</b> ${esc(h.blurb)}`;
-  return `<div class="d2" id="d2-root">${SPRITE}
-${galleryHtml(h)}
+  return `<div class="d2 listing" id="d2-root">${SPRITE}
+${galleryHtml(h, { heading, area: addressLine, desc })}
+${bookBarHtml(fromHtml, dateLabel, qty)}
 <div class="d2-tabs" id="d2-tabs"><div class="in"><nav aria-label="On this page"><a href="#passes" aria-current="true">Passes</a><a href="#details">Details</a></nav><a class="d2-datebtn" href="#book" id="d2-pill" data-open="date">${icon('cal')}<span id="d2-pill-t">${esc(dateLabel)}</span></a></div></div>
-<div class="d2-grid"><div class="d2-col">
-<section class="d2-head" id="overview"><h1 class="d2-title">${esc(heading)}</h1>
+<div class="d2-layout"><div class="d2-col">
+<section class="d2-head" id="overview" hidden aria-hidden="true"><p class="d2-title">${esc(heading)}</p>
 <p class="d2-loc">${esc(addressLine)}</p>
 ${demo ? '<span class="d2-tag">Fictional demo listing</span>' : ''}
-<p class="d2-desc" id="d2-desc">${desc}</p><button type="button" class="d2-rm" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button></section>
+<p class="d2-desc">${desc}</p></section>
 <section class="d2-s" id="passes"><h2>Passes</h2><p class="d2-muted">Price per spot.${demo ? ' Example photos.' : ''}</p>
-${sections}
+<div class="d2-pass-groups">${sections}</div>
 ${sheet}
 </section>
 ${detailsHtml({ ...opts, items })}
-</div>
-<aside class="d2-side" aria-label="Book"><p class="d2-from">${fromHtml}</p>
-<span class="d2-slab">Date</span><a class="d2-fake" href="#book" data-open="date"><span id="d2-side-date">${esc(dateLabel)}</span>${icon('cal')}</a>
-<span class="d2-slab">Spots</span><a class="d2-fake" href="#book" data-open="spots"><span id="d2-side-qty">${qty} (up to ${SearchQuery.BOOKING_SPOTS} people)</span>${icon('down')}</a>
-<a class="d2-btn block" href="#book" data-open="date">Check dates</a>
-<p class="d2-demo">${demo ? 'Demo: no charge.' : 'You will review the booking at checkout.'}</p></aside></div>
+</div></div>
+${hoursBandHtml(h, { ...opts, items })}
+${policiesHtml(h)}
 ${goodToKnow(h)}
-<div class="d2-bar" role="region" aria-label="Book"><p>${fromHtml}</p><a class="d2-btn" href="#book" data-open="date">Check dates</a></div>
+<div class="d2-bar" role="region" aria-label="Book"><p>${fromHtml}</p><a class="d2-btn d2-bar-btn" href="#book" data-open="date">Check dates</a></div>
 </div>
 ${listingScriptD2(h.slug)}`;
 }
@@ -442,10 +483,8 @@ if(gw&&lb){
   if(!lb.open&&lb.showModal) lb.showModal();
   var c=$('.d2-lb-close',lb); if(c) c.focus();
  };
- imgs.forEach(function(img,i){img.addEventListener('click',function(){openLb(i,img)})});
- $$('.d2-thumbs img').forEach(function(img,i){img.addEventListener('click',function(){openLb(i+1,img)})});
- if(countBtn) countBtn.addEventListener('click',function(){openLb(0,countBtn)});
- var all=$('#d2-all'); if(all) all.addEventListener('click',function(){openLb(0,all)});
+  imgs.forEach(function(img,i){img.addEventListener('click',function(){openLb(i,img)})});
+  if(countBtn) countBtn.addEventListener('click',function(){openLb(0,countBtn)});
  $('.d2-lb-prev',lb).addEventListener('click',function(){show(idx-1)});
  $('.d2-lb-next',lb).addEventListener('click',function(){show(idx+1)});
  $('.d2-lb-close',lb).addEventListener('click',function(){lb.close()});

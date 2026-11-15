@@ -14,13 +14,15 @@ class ListingPanel {
   static towelText(qty) {
     const n = Math.max(0, Number(qty) || 0);
     if (n < 1) return '';
-    if (n === 1) return 'Towels: 1 per person';
-    return `${n} towels`;
+    if (n === 1) return 'Towels included';
+    return 'Towels included';
   }
 
   static towelFor(items, people) {
-    const towel = includedLines(items, people).find(line => /towel/i.test(line.name || ''));
-    return towel ? ListingPanel.towelText(towel.qty) : '';
+    const towel = (items || []).find(i => i.code === 'towels');
+    if (towel && towel.mode === 'included') return 'Towels included';
+    if (towel && towel.mode === 'off') return 'Bring your own towel';
+    return '';
   }
 
   static sharedLines(passes, items, accessByPass) {

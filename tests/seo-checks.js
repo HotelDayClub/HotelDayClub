@@ -82,6 +82,7 @@ function oneH1(html, where) {
 }
 function alts(html, where) {
   for (const tag of html.match(/<img\b[^>]*>/g) || []) {
+    if (/\baria-hidden="true"/.test(tag)) continue;
     const alt = tag.match(/\balt="([^"]*)"/);
     assert.ok(alt && alt[1].trim(), where + ' ' + tag);
   }
@@ -131,7 +132,7 @@ function alts(html, where) {
     const homeHeader = home.slice(home.indexOf('<header class="hdr"'), home.indexOf('<main>'));
     const homeFooter = home.slice(home.indexOf('<footer'));
     assert.ok(homeHeader.includes('src="/assets/hdc-lockup-light.svg"'));
-    assert.ok(!homeHeader.includes('hdc-lockup-dark.svg'));
+    assert.ok(!homeHeader.includes('logo-dark') || homeHeader.includes('aria-hidden="true"'), 'dark lockup in header is decorative only');
     assert.ok(homeFooter.includes('src="/assets/hdc-lockup-dark.svg"'));
     assert.ok(home.includes('src="/assets/hdc-lockup-light.svg"'));
     assert.ok(home.includes('alt="Hotel Day Club"'));
