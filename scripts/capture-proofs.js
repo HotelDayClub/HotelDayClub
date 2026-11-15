@@ -76,26 +76,11 @@ const SHEET_PAINT = `(function(){
  if(!s) return;
  if(!s.open&&s.showModal) s.showModal();
  document.documentElement.classList.add('d2-lock');
- if(!document.getElementById('proof-sheet-style')){
-  var st=document.createElement('style');
-  st.id='proof-sheet-style';
-  st.textContent='dialog.d2-sheet[open]{display:block!important;position:fixed!important;inset:auto 0 0 0!important;margin:0 auto!important;width:100%!important;max-width:600px!important;max-height:calc(100dvh - 40px)!important;overflow-y:auto!important;background:#fff!important;z-index:100000!important;border-radius:20px 20px 0 0!important;padding:8px 0 0!important;border:0!important;transform:none!important}dialog.d2-sheet[open] .d2-book{display:block!important;margin:0!important}';
-  document.head.appendChild(st);
- }
- if(!document.querySelector('.proof-backdrop')){
-  var bd=document.createElement('div');
-  bd.className='proof-backdrop';
-  bd.style.cssText='position:fixed;inset:0;background:rgba(10,79,85,.55);z-index:99999;pointer-events:none';
-  document.body.appendChild(bd);
- }
 })()`;
 
 const CLOSE_SHEET = `(function(){
  var s=document.getElementById('d2-sheet');
  if(s&&s.open) s.close();
- document.querySelectorAll('.proof-backdrop').forEach(function(el){el.remove()});
- var st=document.getElementById('proof-sheet-style');
- if(st) st.remove();
  document.documentElement.classList.remove('d2-lock');
  if(location.hash) history.replaceState(null,'',location.pathname+location.search);
 })()`;
