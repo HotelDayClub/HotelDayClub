@@ -1,5 +1,5 @@
 # Hotel Day Club: Customer Terms
-**Version 1.1 · Effective 15 November 2026**
+**Version 1.2 · Effective 15 November 2026**
 
 ## 1. Who we are and who supplies your pass
 1.1 Hotel Day Club is a registered business name (ABN {{ABN}}) ("**Hotel Day Club**", "**we**", "**us**"). Contact: {{CONTACT_EMAIL}}. We do not publish a home address.
@@ -18,7 +18,7 @@
 3.5 If you use a discount, promo or referral code shown at checkout, the terms displayed with that code apply.
 
 ## 4. What your pass includes
-4.1 Your pass includes only what the listing says (for example, pool access, a lounger, a towel, change rooms) for the date and hours shown. Treatments and other items are not included unless listed. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.
+4.1 Your pass includes only what the listing says (for example, pool access, a lounger, change rooms) for the date and hours shown. A clean pool towel is included for each guest unless the listing says "Bring your own towel". Treatments and other items are not included unless listed. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.
 4.2 "Per person", "per daybed" and "per cabana" mean what the listing says, including how many people that seating fits. Each person entering must be on a booking.
 4.3 Facilities can occasionally be limited on the day (for example, a sauna under maintenance). If something you paid for isn't available, see our Cancellation & Refund Policy. You may be entitled to a refund or partial refund.
 

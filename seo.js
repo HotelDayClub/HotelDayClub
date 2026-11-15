@@ -438,7 +438,7 @@ function guideHtml(guide) {
 <h1 class="l-title">${esc(guide.h1)}</h1>
 ${lead}
 ${table}${body}${tail}
-<p class="gd-foot"><a class="see-all" href="/how-it-works">How day passes work</a> · <a class="see-all" href="/faq">Questions</a></p></div>`;
+<p class="gd-foot"><a class="sec-action" href="/how-it-works">How day passes work<span class="sa-arr" aria-hidden="true">→</span></a> · <a class="sec-action" href="/faq">Questions<span class="sa-arr" aria-hidden="true">→</span></a></p></div>`;
 }
 
 module.exports = {

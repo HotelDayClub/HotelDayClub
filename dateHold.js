@@ -116,15 +116,18 @@ class DateHold {
       return { date: iso, label: nice(iso), href: `/h/${encodeURIComponent(hotel.slug)}?${params.toString()}#book` };
     });
     const open = links.length > 0;
+    const beyondWindow = /beyond booking window/i.test(reason || '');
+    const emptyMsg = beyondWindow ? '' : 'No open dates in the next 90 days.';
     return {
       date,
       kind,
+      reason: reason || '',
       before: text.before,
       when: text.when,
       after: `${text.detail}${open ? ' Pick another date:' : ''}`,
-      status: open ? text.status : 'No open dates in the next 90 days.',
+      status: open ? text.status : emptyMsg,
       links,
-      empty: open ? '' : 'No open dates in the next 90 days.',
+      empty: open ? '' : emptyMsg,
       listingHref: listingHref || `/h/${encodeURIComponent(hotel.slug)}`,
       hotelName: hotel.name,
       longLabel: this.longLabel(date),

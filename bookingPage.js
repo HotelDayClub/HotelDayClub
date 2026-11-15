@@ -70,18 +70,19 @@ class TicketView {
     return demo ? `${money(a.total)} (demo)` : money(a.total);
   }
 
-  static towelChip(lines) {
-    const towel = (lines || []).find(line => /towel/i.test(line.name || ''));
-    const qty = towel ? Math.max(0, Number(towel.qty) || 0) : 0;
-    return qty ? `Towels: ${qty} provided` : '';
+  static towelsIncluded(hotel) {
+    return !(hotel && Number(hotel.towels) === 0);
   }
 
-  static bringChips(hotel, lines) {
+  static towelChip(hotel) {
+    return TicketView.towelsIncluded(hotel) ? 'Towels included' : 'Bring your own towel';
+  }
+
+  static bringChips(hotel) {
     const chips = [];
     if (Number(hotel && hotel.id_required) === 1) chips.push({ text: 'Photo ID', on: false });
     chips.push({ text: 'Swimwear', on: false }, { text: 'Sunscreen and hat', on: false });
-    const towel = TicketView.towelChip(lines);
-    if (towel) chips.push({ text: towel, on: true });
+    chips.push({ text: TicketView.towelChip(hotel), on: TicketView.towelsIncluded(hotel) });
     return chips;
   }
 
@@ -144,7 +145,7 @@ ${adds}
 <div class="tk-stub">${stub}</div>
 </article>`;
   const action = cancelled ? '' : `<a class="tk-btn" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">${CAL_ICON}Add to calendar</a>`;
-  const bring = cancelled ? '' : `<section class="tk-bring" aria-labelledby="tk-bring-h"><h2 id="tk-bring-h">What to bring</h2><ul class="tk-chips">${TicketView.bringChips(hotel, v.lines).map(c => `<li class="tk-chip${c.on ? ' inc' : ''}">${CHECK_ICON}${esc(c.text)}</li>`).join('')}</ul><p class="tk-food">${esc(FOOD_RULE)}</p></section>`;
+  const bring = cancelled ? '' : `<section class="tk-bring" aria-labelledby="tk-bring-h"><h2 id="tk-bring-h">What to bring</h2><ul class="tk-chips">${TicketView.bringChips(hotel).map(c => `<li class="tk-chip${c.on ? ' inc' : ''}">${CHECK_ICON}${esc(c.text)}</li>`).join('')}</ul><p class="tk-food">${esc(FOOD_RULE)}</p></section>`;
   const food = cancelled ? `<p class="tk-food">${esc(FOOD_RULE)}</p>` : '';
   const note = cancelled ? 'This demo booking is cancelled.' : displayCancelNote(v.note);
   const late = !cancelled && TicketView.isLate(note);

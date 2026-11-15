@@ -87,10 +87,10 @@ function h2(text) {
   return `<h2 style="margin:0 0 10px;font-family:${FONT};font-size:19px;line-height:1.3;color:${brand['hdc-navy']};font-weight:700;">${esc(text)}</h2>`;
 }
 
-function towelBring(included) {
-  const towel = String(included || '').split('\n').map(line => line.trim()).find(line => /towel/i.test(line));
+function towelBring(towelsIncluded) {
   const base = 'Photo ID when the hotel asks for it, swimwear and sunscreen.';
-  return towel ? `${base} Towels are included (${towel}).` : base;
+  if (towelsIncluded != null && Number(towelsIncluded) === 0) return `${base} Bring your own towel.`;
+  return `${base} Towels are included.`;
 }
 
 function bookingNotice(info) {
@@ -131,7 +131,7 @@ function bookingNotice(info) {
     info.transit ? `Train or bus: ${info.transit}` : '',
     park.text,
   ].filter(Boolean).join('\n');
-  const bring = towelBring(info.included);
+  const bring = towelBring(info.towelsIncluded);
   const arrivalSentence = info.arrival
     ? "Your pass is valid any time during the hotel's opening hours. Your expected arrival time is an estimate, not a reservation."
     : '';
@@ -328,6 +328,7 @@ async function bookingMessage(db, code) {
     arrival: arrivalText(row.expected_arrival, 'estimate'),
     passLabel: `${spotLabel({ name: row.pass_name, holds: row.holds })} × ${row.qty}`,
     guests: String(party),
+    towelsIncluded: hotel ? hotel.towels : 1,
     included,
     includedAccess,
     buyAccess,

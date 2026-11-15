@@ -15,7 +15,6 @@ body.hc-page{background:var(--hdc-bg,#fff)}
 .hc-ico-wrap .hc-ico{width:44px;height:44px;padding:9px;background:var(--hdc-tint);border-radius:12px;box-sizing:border-box}
 .hc-steps{padding-top:48px}
 .hc-guides{margin:16px 0 0}
-.hc-guides .see-all{font-weight:700;text-decoration:underline;text-underline-offset:3px;color:var(--hdc-rose-ink)}
 .hc-card h3 a:focus-visible{outline:2px solid var(--teal,#0B6E6F);outline-offset:2px}
 .hc-steps ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
 .hc-steps li{border-top:3px solid var(--hdc-primary);padding-top:16px}

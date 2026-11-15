@@ -71,6 +71,12 @@ function cdp(WS, wsUrl) {
 
 (async () => {
   const homeCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'golden', 'home.css'), 'utf8');
+  assert.ok(/\.assure ul\{[^}]*align-items:\s*start/.test(homeCss), 'assure grid rows align from the top');
+  assert.ok(/\.assure \.ico-wrap/.test(homeCss), 'assure icon wrapper');
+  assert.ok(/body\.home \.assure li:not\(:first-child\) span:not\(\.ico-wrap\)\{display:none\}/.test(homeCss), 'mobile hides sublines only');
+  const listingCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'listing-dir2.css'), 'utf8');
+  assert.ok(!/\.d2-mdb\{[^}]*text-decoration:\s*underline/.test(listingCss), 'd2-mdb default underline removed');
+  assert.ok(/\.d2-mdb\.text-link/.test(listingCss), 'd2 inline controls use text-link');
   const slotPCss = homeCss.match(/body\.home \.slot p\{[^}]+\}/);
   assert.ok(slotPCss, 'body.home .slot p rule');
   assert.ok(!/-webkit-line-clamp|line-clamp/.test(slotPCss[0]), 'plan card copy must not clamp');
@@ -166,7 +172,7 @@ function cdp(WS, wsUrl) {
           const copyEl = document.querySelector('.hero .copy');
           const copyBox = rectOf(copyEl);
           const kicker = document.querySelector('#explore .kicker');
-          const see = document.querySelector('#explore .see-all').getBoundingClientRect();
+          const see = (document.querySelector('#explore .sec-action') || document.querySelector('#explore .see-all')).getBoundingClientRect();
           const kickerBox = kicker.getBoundingClientRect();
           const range = document.createRange();
           range.selectNodeContents(kicker);
@@ -234,15 +240,32 @@ function cdp(WS, wsUrl) {
           const searchOverlap = submitBox && (whatBox && overlaps(submitBox, whatBox) || whatPickBox && overlaps(submitBox, whatPickBox) || chevBox && overlaps(submitBox, chevBox));
           const exploreH2 = document.querySelector('#explore h2');
           const exploreH2Top = exploreH2 ? exploreH2.getBoundingClientRect().top : 1e9;
-          const freeCancelSub = document.querySelector('.assure li:first-child span');
+          const wraps = [...document.querySelectorAll('.assure .ico-wrap')];
+          const gridCols = getComputedStyle(document.querySelector('.assure ul')).gridTemplateColumns.split(/\s+/).filter(Boolean).length || 1;
+          let iconTopSpread = 0;
+          for (let i = 0; i < wraps.length; i += gridCols) {
+            const tops = wraps.slice(i, i + gridCols).map(el => el.getBoundingClientRect().top);
+            if (tops.length > 1) iconTopSpread = Math.max(iconTopSpread, Math.max(...tops) - Math.min(...tops));
+          }
+          const freeCancelSub = document.querySelector('.assure li:first-child span:not(.ico-wrap)');
           const freeCancelVisible = !!(freeCancelSub
             && getComputedStyle(freeCancelSub).display !== 'none'
             && freeCancelSub.getBoundingClientRect().height > 0
             && /24 hours before your access hours start/i.test(freeCancelSub.textContent));
+          const iconInfo = wraps.map(el => {
+            const r = el.getBoundingClientRect();
+            const svg = el.querySelector('svg.ico');
+            const sr = svg ? svg.getBoundingClientRect() : { height: 0 };
+            return { top: r.top, h: r.height, svgH: sr.height, display: getComputedStyle(el).display };
+          });
+          const assureUlAlign = getComputedStyle(document.querySelector('.assure ul')).alignItems;
           return {
             top: box.top,
             exploreH2Top,
             freeCancelVisible,
+            iconTopSpread,
+            iconInfo,
+            assureUlAlign,
             inner: window.innerHeight,
             scroll: document.documentElement.scrollWidth,
             width: window.innerWidth,
@@ -304,6 +327,15 @@ function cdp(WS, wsUrl) {
       if (width === 360 || width === 390) {
         assert.ok(data.exploreH2Top < data.inner * 1.2, width + ' explore h2 fold ' + data.exploreH2Top + ' vs ' + (data.inner * 1.2));
         assert.ok(data.freeCancelVisible, width + ' free cancellation subline');
+      }
+      if (width === 390 || width === 1024 || width === 1440) {
+        assert.ok(data.iconTopSpread <= 1, width + ' assure icon top alignment ' + data.iconTopSpread);
+        assert.strictEqual(data.iconInfo.length, 5, width + ' assure tiles');
+        for (const icon of data.iconInfo) {
+          assert.ok(icon.display !== 'none' && icon.h >= 20, width + ' assure icon visible ' + JSON.stringify(icon));
+          assert.ok(icon.svgH >= 18, width + ' assure svg icon ' + JSON.stringify(icon));
+        }
+        assert.strictEqual(data.assureUlAlign, 'start', width + ' assure ul align-items');
       }
       if (width === 1024) {
         assert.ok(data.exploreH2Top < data.inner, width + ' explore h2 below fold ' + data.exploreH2Top + ' vs ' + data.inner);

@@ -100,6 +100,8 @@ function alts(html, where) {
     const homeDesc = 'Book a hotel pool, spa or gym for the day in Australia, no room needed. We&#39;re launching soon, so join the waitlist.';
     assert.ok(home.includes('<p class="kicker">Hotel day passes in Australia</p>'));
     assert.ok(home.includes('<h1 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h1>'));
+    assert.ok(!home.includes('minutes from home, no room needed.'));
+    assert.ok(!home.includes('class="lead">A hotel pool'));
     assert.ok(home.includes('>Plan your day</span>'));
     assert.ok(home.includes('A hotel day, your way'));
     assert.ok(home.includes('One example day. The hotel sets the hours.'));

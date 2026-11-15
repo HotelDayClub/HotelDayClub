@@ -100,7 +100,8 @@ function recorder(decide) {
     hours: '10am–4pm',
     passLabel: 'Pool chair × 1',
     guests: '1',
-    included: '1 × Towels',
+    included: 'Pool access',
+    towelsIncluded: 1,
     buyAccess: 'Bar & <grill>: Food and drink available to purchase. From noon',
     addons: [{ name: 'Gym', qty: 2, totalLabel: '$20' }],
     totalLabel: '$40',
@@ -125,8 +126,9 @@ function recorder(decide) {
   assert.ok(!direct.html.includes('Alex Citizen') && !direct.text.includes('Alex Citizen'));
   assert.ok(direct.html.includes('Alex C.') && direct.text.includes('Alex C.'));
   assert.ok(direct.html.includes('Bondi Beach, Australia'));
-  assert.ok(direct.html.includes('1 × Towels'));
-  assert.ok(direct.text.includes('Included: 1 × Towels'));
+  assert.ok(!direct.html.includes('× Towels'));
+  assert.ok(direct.html.includes('Towels are included.'));
+  assert.ok(direct.text.includes('Towels are included.'));
   assert.ok(direct.html.includes('On site to buy (not included)'));
   assert.ok(!direct.text.includes('Included access:'));
   assert.ok(direct.html.includes('Bar &amp; &lt;grill&gt;'));
@@ -309,8 +311,9 @@ function recorder(decide) {
   assert.ok(booked.html.includes('Bondi Beach, Australia'));
   assert.ok(booked.html.includes('Pool chair × 2'));
   assert.ok(booked.html.includes('Gym × 2'));
-  assert.ok(booked.html.includes('2 × Towels'));
-  assert.ok(booked.text.includes('2 × Towels'));
+  assert.ok(!booked.html.includes('× Towels'));
+  assert.ok(booked.html.includes('Towels are included.'));
+  assert.ok(booked.text.includes('Towels are included.'));
   assert.ok(booked.text.includes('Included: Complimentary Wi-Fi'));
   assert.ok(booked.html.includes('Complimentary Wi-Fi'));
   assert.ok(booked.html.includes('Lockers'));

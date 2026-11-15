@@ -16,6 +16,7 @@ const { HotelAmenities } = require('./hotelAmenities');
 const { listingHtml, reassureStrip, ListingPanel, dayStepLinks } = require('./listingView');
 const { ListingD2 } = require('./listingDir2');
 const { HomeQuick } = require('./homeQuick');
+const { LinkStyles } = require('./linkStyles');
 const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
 const { adminPassword, verifyPassword, safeEqual, hashPassword, migrateHotelPasswords, maskName, maskEmail } = require('./passwords');
 const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
@@ -488,7 +489,6 @@ function homePage({ destination = '', joined = false, error = '', values = {} } 
 <div class="clock"><span id="ct">8:00</span><small id="cl">Swim &amp; gym</small></div><span class="credit">Stock media · example only</span></div>
 <div class="copy"><p class="kicker">Hotel day passes in Australia</p>
 <h1 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h1>
-<p class="lead">A hotel pool, gym, daybed or spa for the day, minutes from home, no room needed.</p>
 <div class="times"><button type="button" data-i="0" class="on" aria-pressed="true">Swim &amp; gym</button><button type="button" data-i="1" aria-pressed="false">Spa afternoon</button><button type="button" data-i="2" aria-pressed="false">Golden hour</button></div>
 ${homeQuickHtml()}
 <form class="search" action="/search" method="get">
@@ -498,8 +498,8 @@ ${homeQuickHtml()}
 <button type="submit">Search</button></form></div></header>
 <div class="marquee" aria-label="Pool day, gym session, spa afternoon, daybed for two, cabana with friends, golden-hour swim"><div class="track" aria-hidden="true"><span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺<span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺</div></div>
 ${reassureStrip()}
-<section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings · not real hotels</span><h2>Example listings</h2></div><a class="see-all" href="/search">See all day passes</a></div>
-<p class="home-note">Fictional example hotels. <a href="/guides">Read the day pass guides</a>.</p>
+<section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings · not real hotels</span><h2>Example listings</h2></div>${LinkStyles.sectionAction('/search', 'See all day passes')}</div>
+<p class="home-note">Fictional example hotels. ${LinkStyles.textLink('/guides', 'Read the day pass guides')}.</p>
 <div class="list">${exampleCards || '<p class="home-note">No example listings yet.</p>'}</div></section>
 <section data-rv><span class="kicker sand">Plan your day</span><h2>A hotel day, your way</h2>
 <p class="home-note">One example day. The hotel sets the hours.</p>
@@ -520,7 +520,7 @@ ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the li
 <div class="faq-list"><details><summary>Do I need to stay at the hotel?</summary><p>No. A day pass covers the pool, gym or spa for set hours.</p></details>
 <details><summary>Is Hotel Day Club taking bookings?</summary><p>Not yet. Join the waitlist and we'll email you when passes open near you.</p></details>
 <details><summary>What's included?</summary><p>Each hotel sets its own inclusions. Every listing shows what your pass covers. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.</p></details>
-<p class="faq-more"><a href="/faq">All questions</a></p></div></section>
+<p class="faq-more">${LinkStyles.sectionAction('/faq', 'All questions')}</p></div></section>
 <div class="hotels" id="hotels"><div><span class="kicker">For hotels</span><h2>List a hotel pool</h2><p>List spare pool, gym and spa capacity. You set the hours, prices and guest numbers.</p></div><a class="btn" href="/for-hotels">Talk to us</a></div>
 <noscript><style>#waitlist{display:block;position:static;margin:24px auto 40px}</style></noscript>
 <dialog id="waitlist" aria-labelledby="wl-title" data-open="${openWait ? '1' : '0'}"><div class="wl-in">
@@ -806,7 +806,7 @@ ${keepSort}
 ${params.guestsCapped ? '<p class="cap-note" role="status">Up to 6 people per booking.</p>' : ''}
 ${chips ? `<div class="chips" aria-label="Active filters">${chips}${clear}</div>` : ''}
 ${empty || `<div class="${resultClass}">${cards}</div>`}${others}
-<p class="note">Fictional example hotels. <a href="/guides">Read the day pass guides</a>.</p>
+<p class="note">Fictional example hotels. ${LinkStyles.textLink('/guides', 'Read the day pass guides')}.</p>
 </div>
 <div class="sheet-bd" data-close-drawer hidden></div>
 <form id="filter-drawer" class="drawer" action="/search" method="get" role="dialog" aria-modal="true" aria-labelledby="filters-h" hidden>
