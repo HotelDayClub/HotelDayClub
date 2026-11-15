@@ -41,11 +41,11 @@ function post(port, urlPath, fields) {
   });
 }
 
-function start(port) {
+function start(port, extraEnv = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['server.js'], {
       cwd: root,
-      env: { ...process.env, PORT: String(port), DB_PATH: dbPath, DATA_DIR: '', ADMIN_PASSWORD: 'dir2-admin', DEMO_HOTEL_PASSWORD: 'dir2-hotel' },
+      env: { ...process.env, PORT: String(port), DB_PATH: dbPath, DATA_DIR: '', ADMIN_PASSWORD: 'dir2-admin', DEMO_HOTEL_PASSWORD: 'dir2-hotel', ...extraEnv },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let log = '';
@@ -170,7 +170,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
       assert.strictEqual(count(visibleText(gtkSlice), FOOD_RULE), 1, slug + ' food rule once in good to know');
       if (body.includes('d2-ex-food')) {
         const exSlice = body.slice(body.indexOf('id="d2-explore-sheet"'), body.indexOf('</dialog>', body.indexOf('id="d2-explore-sheet"')));
-        assert.ok(exSlice.includes(FOOD_RULE.replace(/'/g, '&#39;')) || exSlice.includes(FOOD_RULE), slug + ' food rule in explore sheet');
+        assert.strictEqual(exSlice.split(FOOD_RULE).length - 1, 1, slug + ' food rule once in explore sheet');
       }
       assert.strictEqual(count(text, FREE_CANCEL), 1, slug + ' free cancellation once');
       assert.strictEqual(count(body, 'Photo ID at check-in'), 1, slug + ' ID line once');
@@ -244,21 +244,26 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(chipPos > todayPos, 'out-of-range date chip follows the 14 chips');
     assert.ok(/<input[^>]*name="date"[^>]*required|required[^>]*name="date"/.test(sheet) || /name="date"[^>]*>/.test(sheet));
 
-    // A8: the late notice is only shown by the availability reply and matches the cancel note.
+    // A8: late notice uses fixed clock; late and not-late are both asserted.
     assert.ok(!visibleText(sheet).includes("can't be cancelled for free"));
-    const lateRes = await get(port, `/api/availability?hotel=saltwater-terrace&date=${today}`);
-    const late = JSON.parse(lateRes.body);
-    if (/can't be cancelled for free/.test(late.cancel)) assert.strictEqual(late.cancel, LATE_NOTE);
-    assert.strictEqual(late.cancel, cancelSalt);
-    if (/can't be cancelled for free/.test(cancelSalt)) {
-      const todayBook = await get(port, `/h/saltwater-terrace?pass=lounger&date=${today}&qty=1`);
+    const lateClockPort = port + 2;
+    const lateClock = await start(lateClockPort, { HDC_NOW: '2026-11-17T01:00:00.000Z' });
+    try {
+      const fixedToday = '2026-11-17';
+      const lateAvail = JSON.parse((await get(lateClockPort, `/api/availability?hotel=saltwater-terrace&date=${fixedToday}`)).body);
+      assert.strictEqual(lateAvail.cancel, LATE_NOTE);
+      const todayBook = await get(lateClockPort, `/h/saltwater-terrace?pass=lounger&date=${fixedToday}&qty=1`);
       assert.ok(todayBook.body.includes('id="d2-late"'));
       assert.ok(todayBook.body.includes('class="d2-note warn" id="d2-late"'));
       assert.ok(todayBook.body.includes('can&#39;t be cancelled for free'));
+      const far = '2026-12-10';
+      const farRes = JSON.parse((await get(lateClockPort, `/api/availability?hotel=saltwater-terrace&date=${far}`)).body);
+      assert.ok(!/can't be cancelled for free/.test(farRes.cancel), farRes.cancel);
+    } finally {
+      lateClock.kill('SIGTERM');
     }
-    const far = ymd(addDays(new Date(today + 'T12:00:00'), 30));
-    const farRes = JSON.parse((await get(port, `/api/availability?hotel=saltwater-terrace&date=${far}`)).body);
-    assert.ok(!/can't be cancelled for free/.test(farRes.cancel));
+    const saltHoursBand = pages['saltwater-terrace'].slice(pages['saltwater-terrace'].indexOf('class="d2-hours-band"'), pages['saltwater-terrace'].indexOf('class="d2-hb-park"'));
+    assert.ok(saltHoursBand.includes('<dt>Mon to Sun</dt><dd>10am\u20134pm</dd>'), 'Mon to Sun hours on listing');
 
     // A9: children line.
     for (const slug of ['manly-sands', 'skyline-rooftop', 'harbourside-lido']) {
@@ -316,8 +321,9 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.strictEqual(bad.status, 200);
 
     // A13: ticket.
+    const ticketDate = ymd(addDays(new Date(today + 'T12:00:00'), 30));
     const fields = {
-      hotel: 'saltwater-terrace', date: far, pass: 'daybed', qty: '1', name: 'Alex Citizen', email: 'ticket@example.com', phone: '0412345678',
+      hotel: 'saltwater-terrace', date: ticketDate, pass: 'daybed', qty: '1', name: 'Alex Citizen', email: 'ticket@example.com', phone: '0412345678',
       rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
     };
     const params = new URLSearchParams(fields);
@@ -372,8 +378,10 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     const saltExplore = pages['saltwater-terrace'];
     assert.ok(saltExplore.includes('href="#explore">Pool bar'), 'pool bar links to explore');
     assert.ok(saltExplore.includes('During pass hours, 10am\u20134pm'), 'pool bar hours on explore card');
-    const exSheet = saltExplore.slice(saltExplore.indexOf('id="d2-explore-sheet"'));
-    assert.ok(exSheet.includes(FOOD_RULE.replace(/'/g, '&#39;')) || exSheet.includes(FOOD_RULE), 'FOOD_RULE in explore sheet');
+    const exSheetAt = saltExplore.indexOf('id="d2-explore-sheet"');
+    const exSheetEnd = saltExplore.indexOf('</dialog>', exSheetAt);
+    const exSheet = saltExplore.slice(exSheetAt, exSheetEnd > exSheetAt ? exSheetEnd : undefined);
+    assert.strictEqual(exSheet.split(FOOD_RULE).length - 1, 1, 'FOOD_RULE once in explore sheet');
     assert.ok(!saltExplore.includes('id="overview"'), 'no duplicate overview block');
     assert.ok(!saltExplore.includes('Demo: no charge.'), 'no demo charge line in booking sheet');
     const saltHdr = saltExplore.slice(saltExplore.indexOf('<header'), saltExplore.indexOf('<main>'));

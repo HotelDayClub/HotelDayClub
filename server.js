@@ -975,7 +975,7 @@ app.get('/h/:slug', (req, res) => {
   }
   const demo = Number(h.is_demo) === 1;
   const photo = h.photos[0] ? seo.absolute('/assets/photos/' + h.photos[0]) : seo.DEFAULT_IMAGE;
-  const late = d => cancelNote(db, h, d) === ListingD2.LATE_NOTE;
+  const late = d => cancelNote(db, h, d, clockNow()) === ListingD2.LATE_NOTE;
   const passCode = String(req.query.pass || '').slice(0, 40);
   res.send(page(h.name, listingHtml({
     h, date, minDate: startDay, maxDate, closed, passes, av, from, late,
@@ -1018,7 +1018,7 @@ app.get('/api/availability', (req, res) => {
   }
   const passes = availability(h.id, date);
   const offer = listingOffer(h, date, qty, passCode, passes);
-  res.json({ hotel: h.slug, date, passes, day_left: passes.day_left ?? null, addons: addonAvailability(h.id, date), cancel: cancelNote(db, h, date), offer, step });
+  res.json({ hotel: h.slug, date, passes, day_left: passes.day_left ?? null, addons: addonAvailability(h.id, date), cancel: cancelNote(db, h, date, clockNow()), offer, step });
 });
 
 function validate(q) {

@@ -25,8 +25,35 @@ body.home.guest-d2 .hero.hero-d2 .hero-line{color:#fff;text-shadow:none;margin:8
 body.home.guest-d2 .hero.hero-d2 .times{display:none}
 @media (min-width:1024px){
  body.home.guest-d2 .hero.hero-d2 .times{display:flex}
- body.home.guest-d2 .hero.hero-d2 .media{height:280px}
- body.home.guest-d2 .hero.hero-d2 .media img{height:280px}
+ body.home.guest-d2 .hero.hero-d2 .media{height:220px}
+ body.home.guest-d2 .hero.hero-d2 .media img{height:220px}
+ body.home.guest-d2 .hero.hero-d2 .copy{padding:14px 5vw 16px}
+ body.home.guest-d2 .hero.hero-d2 .hero-line{margin:6px 0 12px;font-size:clamp(32px,3.8vw,48px)}
+}
+@media (min-width:1024px) and (max-height:900px){
+ body.home.guest-d2 .hero.hero-d2 .media{height:180px}
+ body.home.guest-d2 .hero.hero-d2 .media img{height:180px}
+ body.home.guest-d2 .hero.hero-d2 .copy{padding:12px 5vw 14px}
+ body.home.guest-d2 .hero.hero-d2 .hero-line{margin:4px 0 10px}
+}
+@media (min-width:1024px) and (max-height:800px){
+ body.home.guest-d2 .hero.hero-d2 .media{height:150px}
+ body.home.guest-d2 .hero.hero-d2 .media img{height:150px}
+ body.home.guest-d2 .hero.hero-d2 .copy{padding:8px 5vw 10px}
+ body.home.guest-d2 .hero.hero-d2 .hero-line{margin:0 0 6px;font-size:28px;line-height:1.05}
+ body.home.guest-d2 .hero.hero-d2 .lead{font-size:14px;line-height:1.25;margin:0}
+ body.home.guest-d2 .assure{padding:2px 5vw}
+ body.home.guest-d2 main > section{padding-top:4px;padding-bottom:4px}
+ body.home.guest-d2 #explore{padding-top:0}
+ body.home.guest-d2 .list{margin-top:0}
+ body.home.guest-d2 .day{margin-top:2px;gap:8px}
+ body.home.guest-d2 .home-note{margin-top:0}
+}
+@media (min-width:1280px) and (max-height:800px){
+ body.home.guest-d2 main > section{padding-top:6px;padding-bottom:6px}
+ body.home.guest-d2 .assure{padding:6px 5vw}
+ body.home.guest-d2 .list{margin-top:0}
+ body.home.guest-d2 .day{margin-top:4px;gap:12px}
 }
 body.home.guest-d2 .hero .search{background:#fff;border:1px solid var(--hdc-border);border-radius:16px;padding:6px;max-width:100%;width:100%}
 body.home.guest-d2 .hero .search button[type="submit"]{background:var(--teal,#0B6E6F);color:#fff}

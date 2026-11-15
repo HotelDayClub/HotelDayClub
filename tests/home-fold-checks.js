@@ -339,12 +339,10 @@ function cdp(WS, wsUrl) {
         assert.strictEqual(data.assureUlAlign, 'start', width + ' assure ul align-items');
       }
       if (width === 1024) {
-        const exploreLimit = data.guestD2 ? data.inner * 1.35 : data.inner;
-        assert.ok(data.exploreH2Top < exploreLimit, width + ' explore h2 fold ' + data.exploreH2Top + ' vs ' + exploreLimit);
+        assert.ok(data.exploreH2Top < data.inner, width + ' explore h2 fold ' + data.exploreH2Top + ' vs ' + data.inner);
       }
       if (width >= 1280) {
-        const cardLimit = data.guestD2 ? data.inner * 1.35 : data.inner;
-        assert.ok(data.top < cardLimit, width + ' first listing fold ' + data.top + ' vs ' + cardLimit);
+        assert.ok(data.top < data.inner, width + ' first listing fold ' + data.top + ' vs ' + data.inner);
       }
       if (width === 1024 || width === 1100 || width === 1280 || width === 1440) {
         assert.ok(!data.searchOverlap, width + ' search overlaps what');

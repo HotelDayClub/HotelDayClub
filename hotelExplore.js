@@ -151,15 +151,15 @@ ${HotelExplore.sheetHtml(hotel, vis.areas)}
   static sheetRow(a, demo) {
     const food = isBar(a.kind);
     const note = food ? '<p class="d2-ex-sheet-note">On site (not included)</p>' : '';
-    const foodRule = food ? `<p class="d2-ex-food">${esc(FOOD_RULE)}</p>` : '';
+    const body = food
+      ? `<p>${esc(a.line)}</p><p class="d2-ex-food">${esc(FOOD_RULE)}</p><p class="d2-ex-hrs">${esc(a.hours)}</p>`
+      : `<p class="d2-ex-hrs">${esc(a.hours)}</p><p>${esc(a.details)}</p>`;
     return `<li class="d2-ex-sheet-item">
 ${areaImg(a.photo, demo ? 'Stock photo, not this hotel' : a.name)}
 <div>
 <h3>${esc(a.name)}</h3>
 ${note}
-<p class="d2-ex-hrs">${esc(a.hours)}</p>
-<p>${esc(a.details)}</p>
-${foodRule}
+${body}
 </div>
 </li>`;
   }

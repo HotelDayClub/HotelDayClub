@@ -5,6 +5,7 @@ const http = require('http');
 const { spawn } = require('child_process');
 
 const outDir = process.env.PROOF_DIR || '/opt/cursor/artifacts/after';
+const proofOnly = process.env.PROOF_ONLY ? new Set(process.env.PROOF_ONLY.split(',').map(s => s.trim()).filter(Boolean)) : null;
 fs.mkdirSync(outDir, { recursive: true });
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-proofs-'));
 const dbPath = path.join(dir, 'app.db');
@@ -67,8 +68,10 @@ async function shot(ws, { url, width, height, name, prep, full, awaitMs = 1400 }
     await new Promise(r => setTimeout(r, 300));
   }
   const cap = await wsSend(ws, { method: 'Page.captureScreenshot', params: { format: 'png', fromSurface: true, captureBeyondViewport: !!full } });
-  fs.writeFileSync(path.join(outDir, name), Buffer.from(cap.data, 'base64'));
-  console.log('wrote', name);
+  if (!proofOnly || proofOnly.has(name)) {
+    fs.writeFileSync(path.join(outDir, name), Buffer.from(cap.data, 'base64'));
+    console.log('wrote', name);
+  }
 }
 
 const SHEET_PAINT = `(function(){
