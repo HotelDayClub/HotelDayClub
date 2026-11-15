@@ -111,10 +111,10 @@ body:has(.d2) main{overflow-x:hidden}
 .d2-ex-wrap{margin:16px -16px 0;padding:0 16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
 .d2-ex-row{display:flex;gap:12px;padding-bottom:4px}
 .d2-ex-card{flex:0 0 272px;scroll-snap-align:start;border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
-.d2-ex-card picture{display:block;line-height:0;max-height:160px;overflow:hidden}
-.d2-ex-card img{width:100%;height:160px;object-fit:cover;display:block}
+.d2-ex-card picture{display:block;height:160px;overflow:hidden;line-height:0;font-size:0}
+.d2-ex-card img{width:100%;height:100%;object-fit:cover;display:block;vertical-align:top}
 .d2-ex-body{padding:12px 14px 16px;display:flex;flex-direction:column;gap:6px;flex:1}
-.d2-ex-body h3{font:600 22px/28px var(--d2-disp);color:var(--deep)}
+.d2-ex-body h3{margin:0;font:600 22px/28px var(--d2-disp);color:var(--deep)}
 .d2-ex-tag{font-size:14px;line-height:20px;font-weight:600;color:var(--sec)}
 .d2-ex-line,.d2-ex-hrs{margin:0;font-size:14px;line-height:20px;color:var(--sec)}
 .d2-ex-open{margin-top:auto;align-self:flex-start;min-height:44px}

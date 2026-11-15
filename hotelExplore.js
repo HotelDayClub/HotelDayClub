@@ -110,7 +110,7 @@ function checkInLine(hotel) {
 
 function areaImg(file, alt) {
   if (!file) return '';
-  return PhotoAssets.imgTag(file, { alt, width: 400, height: 260, sizes: '(max-width:390px) 272px, 260px', loading: 'lazy' });
+  return PhotoAssets.imgTag(file, { alt, width: 272, height: 160, sizes: '(max-width:390px) 272px, 260px', loading: 'lazy' });
 }
 
 class HotelExplore {

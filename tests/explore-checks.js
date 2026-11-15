@@ -170,6 +170,34 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
         });
         assert.ok(Number(tabsTop.result.value) < 900, 'tabs visible on 1440x900 first screen: ' + tabsTop.result.value);
         assert.ok(Number(top1280.result.value) < 800, 'tabs visible on 1280x800 first screen: ' + top1280.result.value);
+
+        await send({ method: 'Emulation.setDeviceMetricsOverride', params: { width: 390, height: 844, deviceScaleFactor: 1, mobile: true } });
+        await send({ method: 'Page.navigate', params: { url: `http://localhost:${port}/h/saltwater-terrace` } });
+        await new Promise(r => setTimeout(r, 2000));
+        await send({
+          method: 'Runtime.evaluate',
+          params: {
+            expression: `window.scrollTo(0, document.getElementById('explore').offsetTop - 48)`,
+            returnByValue: true,
+          },
+        });
+        await new Promise(r => setTimeout(r, 400));
+        const photoGap = await send({
+          method: 'Runtime.evaluate',
+          params: {
+            expression: `(function(){
+              var card = document.querySelector('#explore .d2-ex-card');
+              if (!card) return 999;
+              var media = card.querySelector('picture') || card.querySelector('img');
+              var h3 = card.querySelector('.d2-ex-body h3');
+              if (!media || !h3) return 999;
+              return h3.getBoundingClientRect().top - media.getBoundingClientRect().bottom;
+            })()`,
+            returnByValue: true,
+          },
+        });
+        assert.ok(Number(photoGap.result.value) < 24, 'explore card photo-title gap at 390: ' + photoGap.result.value);
+
         proc.kill('SIGTERM');
         ws.close();
       }
