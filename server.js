@@ -497,6 +497,9 @@ ${homeQuickHtml()}
 <button type="submit">Search</button></form></div></header>
 <div class="marquee" aria-label="Pool day, gym session, spa afternoon, daybed for two, cabana with friends, golden-hour swim"><div class="track" aria-hidden="true"><span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺<span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺</div></div>
 ${reassureStrip()}
+<section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings · not real hotels</span><h2>Example listings</h2></div><a class="see-all" href="/search">See all day passes</a></div>
+<p class="home-note">Fictional example hotels. <a href="/guides">Read the day pass guides</a>.</p>
+<div class="list">${exampleCards || '<p class="home-note">No example listings yet.</p>'}</div></section>
 <section data-rv><span class="kicker sand">Plan your day</span><h2>A hotel day, your way</h2>
 <p class="home-note">One example day. The hotel sets the hours.</p>
 <div class="day">
@@ -505,9 +508,6 @@ ${slot('4-sm', 'Hotel daybed beside a pool', '12 pm', 'Daybed by the pool', 'Str
 ${slot('3-sm', 'Spa treatment table', '3 pm', 'Spa afternoon', 'Steam, sauna, a treatment if the hotel offers one.')}
 ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
 </div></section>
-<section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings · not real hotels</span><h2>Example listings</h2></div><a class="see-all" href="/search">See all day passes</a></div>
-<p class="home-note">Fictional example hotels. <a href="/guides">Read the day pass guides</a>.</p>
-<div class="list">${exampleCards || '<p class="home-note">No example listings yet.</p>'}</div></section>
 <section class="steps" data-rv><div><span class="kicker">How it works</span><h2>How a hotel day pass works</h2></div>
 <ol><li><span>01</span><div><b>Find a hotel</b><p>Each listing shows hours, price and what's included.</p></div></li>
 <li><span>02</span><div><b>Pick a pass and a day</b><p>See the price before you confirm.</p></div></li>

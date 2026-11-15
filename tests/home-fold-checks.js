@@ -127,7 +127,7 @@ function cdp(WS, wsUrl) {
     const send = (method, params = {}) => session.send(method, params, sessionId);
     await send('Page.enable');
     await send('Runtime.enable');
-    for (const [width, height] of [[360, 844], [390, 844], [1024, 800], [1280, 800]]) {
+    for (const [width, height] of [[360, 844], [390, 844], [1024, 800], [1280, 800], [1440, 900]]) {
       await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 800 });
       await send('Page.navigate', { url: `http://127.0.0.1:${port}/` });
       await new Promise(resolve => setTimeout(resolve, 1200));
@@ -141,10 +141,23 @@ function cdp(WS, wsUrl) {
             text: el.textContent.trim(),
             clipped: el.scrollWidth > el.clientWidth + 1,
           }));
-          const helpers = [...document.querySelectorAll('.assure span')].map(el => ({
+          const helpers = [...document.querySelectorAll('.assure b, .assure span')].map(el => ({
             text: el.textContent.trim(),
             clipped: el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 1,
           }));
+          const assureEl = document.querySelector('.assure');
+          const rectOf = el => {
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
+          };
+          const assureBox = rectOf(assureEl);
+          const dayEl = document.querySelector('.day');
+          const dayBox = rectOf(dayEl);
+          const planSec = dayEl ? dayEl.closest('section') : null;
+          const planSecW = planSec ? planSec.clientWidth : 0;
+          const copyEl = document.querySelector('.hero .copy');
+          const copyBox = rectOf(copyEl);
           const kicker = document.querySelector('#explore .kicker');
           const see = document.querySelector('#explore .see-all').getBoundingClientRect();
           const kickerBox = kicker.getBoundingClientRect();
@@ -166,6 +179,8 @@ function cdp(WS, wsUrl) {
             h: planImg.getBoundingClientRect().height,
             style: getComputedStyle(planImg),
           } : null;
+          const helpEl = [...document.querySelectorAll('.assure b')].find(n => /help when you need it/i.test(n.textContent));
+          const helpRight = helpEl ? helpEl.getBoundingClientRect().right : 0;
           return {
             top: box.top,
             inner: window.innerHeight,
@@ -179,11 +194,28 @@ function cdp(WS, wsUrl) {
             seeH: see.height,
             planP,
             planI,
+            assureBox,
+            dayBox,
+            planSecW,
+            copyBox,
+            helpRight,
           };
         })()`,
       });
       const data = result.result.value;
       assert.ok(data.scroll <= data.width, width + ' sideways scroll ' + data.scroll);
+      assert.ok(data.scroll <= data.width + 1, width + ' page horizontal overflow');
+      if (data.assureBox) {
+        assert.ok(data.assureBox.right <= data.width + 2, width + ' assure overflow right ' + JSON.stringify(data.assureBox));
+        assert.ok(data.assureBox.width <= data.width + 2, width + ' assure too wide ' + data.assureBox.width);
+      }
+      if (data.helpRight) assert.ok(data.helpRight <= data.width + 2, width + ' help link clipped ' + data.helpRight);
+      if (data.dayBox && data.planSecW) {
+        assert.ok(data.dayBox.width >= data.planSecW * 0.85, width + ' plan day narrow ' + data.dayBox.width + ' in ' + data.planSecW);
+      }
+      if (width >= 1024 && data.copyBox) {
+        assert.ok(data.copyBox.width >= Math.min(420, data.width * 0.38), width + ' hero copy squeeze ' + data.copyBox.width);
+      }
       assert.ok(data.planP, width + ' plan copy');
       assert.ok(data.planP.text.includes('gym session'), width + ' plan sample');
       assert.ok(!data.planP.tall, width + ' plan copy clipped ' + data.planP.text);
@@ -200,6 +232,9 @@ function cdp(WS, wsUrl) {
       assert.strictEqual(data.kicker, 'Example listings · not real hotels');
       assert.ok(!data.kickerClipped, width + ' kicker clipped');
       assert.ok(data.seeH >= 44, width + ' see all ' + data.seeH);
+      if (width >= 1280) {
+        assert.ok(data.top < data.inner, width + ' first listing below fold ' + data.top + ' vs ' + data.inner);
+      }
       console.log(width + 'x' + height + ' card top ' + Math.round(data.top) + ' of ' + data.inner);
     }
     console.log('home fold checks passed');

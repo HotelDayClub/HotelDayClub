@@ -107,7 +107,7 @@ function alts(html, where) {
     const exploreAt = home.indexOf('id="explore"');
     const stepsAt = home.indexOf('class="steps"');
     const destAt = home.indexOf('id="destinations"');
-    assert.ok(planAt < exploreAt && exploreAt < stepsAt && stepsAt < destAt);
+    assert.ok(exploreAt < planAt && exploreAt < stepsAt && planAt < stepsAt && stepsAt < destAt);
     assert.ok(!home.includes('by the hour'));
     assert.ok(!/swim till six/i.test(home));
     assert.ok(home.includes('How a hotel day pass works'));
