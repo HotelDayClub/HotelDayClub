@@ -7,10 +7,16 @@ const vm = require('vm');
 const { spawn } = require('child_process');
 const { CheckoutFlow } = require('../checkout');
 const { CheckoutConsent, ConsentLog, LEGAL_EFFECTIVE, LEGAL_VERSIONS } = require('../consent');
-const { GuestCheckIn } = require('../offering');
+const offering = require('../offering');
+const { GuestCheckIn } = offering;
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-checkout-'));
 const dbPath = path.join(dir, 'daypass.db');
+process.env.DB_PATH = dbPath;
+const db = require('../db');
+const { seed, ensureSchedules } = require('../seed');
+seed(db);
+ensureSchedules(db);
 
 function get(port, urlPath) {
   return new Promise((resolve, reject) => {
@@ -127,7 +133,33 @@ function makeForm(opts = {}) {
   assert.deepStrictEqual(CheckoutConsent.hazardLines({}), []);
   assert.ok(CheckoutConsent.acceptHtml().includes('href="/terms"') && CheckoutConsent.acceptHtml().includes('href="/refunds"'));
   assert.ok(!CheckoutConsent.keyPointsText({ age_policy: '18+', kids_hours: 'No children' }).includes('actively supervised'));
-  assert.ok(!CheckoutConsent.acceptHtml({ age_policy: '18+', kids_hours: 'No children' }).includes('actively supervise any children'));
+  const acceptTick = CheckoutConsent.acceptHtml();
+  assert.ok(acceptTick.includes('actively supervise any children at all times.'));
+  const demoSlugs = ['saltwater-terrace', 'skyline-rooftop', 'harbourside-lido', 'palm-court', 'manly-sands', 'bayview-spa'];
+  for (const slug of demoSlugs) {
+    assert.strictEqual(CheckoutConsent.acceptHtml(db.prepare('SELECT * FROM hotels WHERE slug=?').get(slug)), acceptTick, slug);
+  }
+  function unescRisk(s) {
+    return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  }
+  function riskLinesFromCheckout(html) {
+    const start = html.indexOf('<div class="co-risk">');
+    assert.ok(start >= 0, 'co-risk');
+    const end = html.indexOf('<div class="co-facts-block">', start);
+    const block = html.slice(start, end);
+    const lines = [];
+    const lead = block.match(/<h3>Risk warning<\/h3><p>([^<]*)<\/p>/);
+    assert.ok(lead, 'risk lead');
+    lines.push(unescRisk(lead[1]));
+    for (const m of block.matchAll(/<li>([^<]*)<\/li>/g)) lines.push(unescRisk(m[1]));
+    return lines;
+  }
+  function assertCheckoutRiskMatchesStored(hotel, html) {
+    const shown = riskLinesFromCheckout(html);
+    const expected = offering.riskLines(hotel);
+    assert.deepStrictEqual(shown, expected);
+    assert.strictEqual(offering.riskText(hotel), expected.join(' '));
+  }
   assert.ok(CheckoutConsent.checkoutMarketingText().includes('by email'));
   assert.ok(!CheckoutConsent.checkoutMarketingText().includes('SMS'));
   assert.strictEqual(CheckoutFlow.extraValue([]), 'None');
@@ -183,8 +215,22 @@ function makeForm(opts = {}) {
       const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
       if (!live.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?').get(hotel.id, iso)) when = iso;
     }
+    const saltHotel = live.prepare("SELECT * FROM hotels WHERE slug='saltwater-terrace'").get();
+  const bayHotel = live.prepare("SELECT * FROM hotels WHERE slug='bayview-spa'").get();
+    live.prepare("UPDATE hotels SET kids_hours='Children until 2pm' WHERE slug='skyline-rooftop'").run();
+    const skylineHotel = live.prepare("SELECT * FROM hotels WHERE slug='skyline-rooftop'").get();
     live.close();
     assert.ok(when);
+
+    for (const [slug, pass, hotel] of [
+      ['saltwater-terrace', 'lounger', saltHotel],
+      ['bayview-spa', 'entry', bayHotel],
+      ['skyline-rooftop', 'chair', skylineHotel],
+    ]) {
+      const riskPage = await get(port, `/checkout?hotel=${slug}&date=${encodeURIComponent(when)}&pass=${pass}&qty=1`);
+      assert.strictEqual(riskPage.status, 200, slug + ' checkout risk');
+      assertCheckoutRiskMatchesStored(hotel, riskPage.body);
+    }
 
     const checkout = await get(port, `/checkout?hotel=saltwater-terrace&date=${encodeURIComponent(when)}&pass=lounger&qty=1`);
     assert.strictEqual(checkout.status, 200);
@@ -355,7 +401,10 @@ function makeForm(opts = {}) {
     assert.ok(done.body.includes('Demo: nothing is charged or refunded.'));
 
     const saved = new Database(dbPath);
-    const stored = saved.prepare('SELECT id, consent_at, consent_ip, marketing_opt_in, rules_text FROM bookings WHERE email=?').get('alex@example.com');
+    const stored = saved.prepare('SELECT id, consent_at, consent_ip, marketing_opt_in, rules_text, risk_text FROM bookings WHERE email=?').get('alex@example.com');
+    assert.strictEqual(stored.risk_text, offering.riskText(saltHotel));
+    const shownAtBook = riskLinesFromCheckout(checkout.body);
+    assert.strictEqual(stored.risk_text, shownAtBook.join(' '));
     const logs = saved.prepare('SELECT kind, policy_version, consented_at, ip, terms_version, refunds_version, rules_version, risk_version, privacy_version, marketing FROM consent_log WHERE booking_id=?').all(stored.id);
     assert.strictEqual(logs.length, 1);
     assert.strictEqual(logs[0].kind, 'acceptance');

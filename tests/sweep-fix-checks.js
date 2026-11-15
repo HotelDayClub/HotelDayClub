@@ -73,7 +73,7 @@ function get(port, urlPath) {
 
     const coPage = await get(port, '/checkout?hotel=skyline-rooftop&date=2026-11-22&pass=chair&qty=1');
     assert.ok(coPage.body.includes('Age: 18+'));
-    assert.ok(!coPage.body.includes('actively supervise any children'));
+    assert.ok(coPage.body.includes('actively supervise any children at all times.'));
     assert.ok(!coPage.body.includes('Children must be actively supervised'));
 
     const listing = await get(port, '/h/skyline-rooftop');

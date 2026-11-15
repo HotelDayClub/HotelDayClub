@@ -91,11 +91,8 @@ class CheckoutConsent {
     return `<div class="co-key" id="co-risk-points"><p>${esc(this.keyPointsText(hotel))}</p><p>${esc(this.refusalText())}</p>${list}</div>`;
   }
 
-  static acceptHtml(hotel) {
-    const { childrenAllowed } = require('./offering');
-    const tail = childrenAllowed(hotel || {})
-      ? ' I\'ll show the rules and risk warning to everyone on my booking, and I or another adult on my booking will actively supervise any children at all times.'
-      : ' I\'ll show the rules and risk warning to everyone on my booking.';
+  static acceptHtml() {
+    const tail = ' I\'ll show the rules and risk warning to everyone on my booking, and I or another adult on my booking will actively supervise any children at all times.';
     return `I'm 18 or over. I accept the <a href="/terms">Customer Terms</a>, the <a href="/refunds">Cancellation &amp; Refund Policy</a>, the hotel's rules and the risk warning.${tail}`;
   }
 

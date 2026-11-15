@@ -273,7 +273,10 @@ const inside = offering.cancelNote(db, sky.h, sky.date, new Date(y, m - 1, d, 10
 assert.ok(/can't be cancelled for free/.test(inside), inside);
 assert.ok(!/hotel terms apply/.test(offering.rulesText(sky.h)));
 assert.ok(offering.riskText(sky.h).includes('No lifeguard is on duty'));
-assert.ok(offering.riskText(db.prepare("SELECT * FROM hotels WHERE slug='palm-court'").get()).includes('A lifeguard is on duty'));
+const palmRow = db.prepare("SELECT * FROM hotels WHERE slug='palm-court'").get();
+assert.ok(offering.riskText(palmRow).includes('A lifeguard is on duty'));
+assert.ok(offering.guardFacts(palmRow).watch.includes('actively supervise each child'));
+assert.ok(offering.riskText(palmRow).includes('actively supervise each child'));
 require('../inclusions').ensureInclusions(db);
 db.prepare("UPDATE addons SET name='Spa treatment discount', blurb='A discount on a spa treatment booked at the hotel.' WHERE code='discount'").run();
 db.prepare("UPDATE hotels SET blurb=? WHERE slug='bayview-spa'").run(
