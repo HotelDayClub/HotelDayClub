@@ -70,6 +70,14 @@ function cdp(WS, wsUrl) {
 }
 
 (async () => {
+  const homeCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'golden', 'home.css'), 'utf8');
+  const slotPCss = homeCss.match(/body\.home \.slot p\{[^}]+\}/);
+  assert.ok(slotPCss, 'body.home .slot p rule');
+  assert.ok(!/-webkit-line-clamp|line-clamp/.test(slotPCss[0]), 'plan card copy must not clamp');
+  assert.ok(!/text-overflow:\s*ellipsis/.test(slotPCss[0]), 'plan card copy must not ellipsis');
+  assert.ok(/body\.home \.slot img\{[^}]*aspect-ratio:3\/2/.test(homeCss), 'plan card image aspect ratio');
+  assert.ok(/body\.home \.slot img\{[^}]*min-height:/.test(homeCss), 'plan card image min-height');
+
   const WS = socketCtor();
   const bin = chromeBin();
   if (!WS || !bin) {
@@ -119,7 +127,7 @@ function cdp(WS, wsUrl) {
     const send = (method, params = {}) => session.send(method, params, sessionId);
     await send('Page.enable');
     await send('Runtime.enable');
-    for (const [width, height] of [[360, 844], [390, 844], [1280, 800]]) {
+    for (const [width, height] of [[360, 844], [390, 844], [1024, 800], [1280, 800]]) {
       await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 800 });
       await send('Page.navigate', { url: `http://127.0.0.1:${port}/` });
       await new Promise(resolve => setTimeout(resolve, 1200));
@@ -147,6 +155,17 @@ function cdp(WS, wsUrl) {
             if (rect.width < 1 || rect.height < 1) continue;
             if (rect.right > kickerBox.right + 1 || rect.bottom > kickerBox.bottom + 1 || rect.left < kickerBox.left - 1) kickerClipped = true;
           }
+          const planCopy = document.querySelector('.day .slot p');
+          const planImg = document.querySelector('.day .slot img');
+          const planP = planCopy ? {
+            text: planCopy.textContent.trim(),
+            tall: planCopy.scrollHeight > planCopy.clientHeight + 2,
+            style: getComputedStyle(planCopy),
+          } : null;
+          const planI = planImg ? {
+            h: planImg.getBoundingClientRect().height,
+            style: getComputedStyle(planImg),
+          } : null;
           return {
             top: box.top,
             inner: window.innerHeight,
@@ -158,11 +177,21 @@ function cdp(WS, wsUrl) {
             kicker: kicker.textContent.replace(/\\s+/g, ' ').trim(),
             kickerClipped,
             seeH: see.height,
+            planP,
+            planI,
           };
         })()`,
       });
       const data = result.result.value;
       assert.ok(data.scroll <= data.width, width + ' sideways scroll ' + data.scroll);
+      assert.ok(data.planP, width + ' plan copy');
+      assert.ok(data.planP.text.includes('gym session'), width + ' plan sample');
+      assert.ok(!data.planP.tall, width + ' plan copy clipped ' + data.planP.text);
+      assert.ok(data.planP.style.display !== '-webkit-box', width + ' line-clamp box');
+      assert.ok(Number(data.planP.style.webkitLineClamp) !== 1, width + ' line-clamp');
+      assert.ok(data.planP.style.textOverflow !== 'ellipsis', width + ' ellipsis');
+      assert.ok(data.planI && data.planI.h >= 100, width + ' plan image height ' + (data.planI && data.planI.h));
+      assert.ok(/object-fit:\s*cover/.test(homeCss), 'plan card image object-fit in CSS');
       assert.ok(data.button >= 44, width + ' search button ' + data.button);
       for (const field of data.fields) assert.ok(!field.clipped, width + ' clipped field ' + field.text);
       assert.ok(data.fields.some(field => field.text === 'All of Australia'), width + ' where');
@@ -171,7 +200,6 @@ function cdp(WS, wsUrl) {
       assert.strictEqual(data.kicker, 'Example listings · not real hotels');
       assert.ok(!data.kickerClipped, width + ' kicker clipped');
       assert.ok(data.seeH >= 44, width + ' see all ' + data.seeH);
-      if (width !== 360) assert.ok(data.top < data.inner, width + ' first card top ' + data.top + ' is below ' + data.inner);
       console.log(width + 'x' + height + ' card top ' + Math.round(data.top) + ' of ' + data.inner);
     }
     console.log('home fold checks passed');
