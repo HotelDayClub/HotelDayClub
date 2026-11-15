@@ -156,7 +156,7 @@ const OPEN_SHEET = `new Promise(function(done){
   const readyPrep = OPEN_SHEET + `;${SHEET_PAINT}`;
   await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-ready-390.png', prep: readyPrep, awaitMs: 2000 });
   await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 360, height: 844, name: 'd2-sheet-ready-360.png', prep: readyPrep, awaitMs: 2000 });
-  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 1280, height: 800, name: 'd2-sheet-ready-1280.png', prep: readyPrep, awaitMs: 2000 });
+  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 1440, height: 900, name: 'd2-sheet-ready-1440.png', prep: readyPrep, awaitMs: 2000 });
 
   const closedPrep = OPEN_SHEET + `;new Promise(function(r){var chip=document.querySelector('.d2-d.cl[data-date],button.cd.cl[data-date]');if(chip) chip.click();var n=0;(function t(){var el=document.getElementById('d2-closed');if(el&&!el.hidden&&/closed/i.test(el.textContent)){${SHEET_PAINT};r(1);}else if(++n>60)setTimeout(function(){${SHEET_PAINT};r(0)},0);else setTimeout(t,150)})()})`;
   await shot(ws, { url: `${base}/h/skyline-rooftop?qty=1`, width: 390, height: 844, name: 'd2-sheet-closed-390.png', prep: closedPrep, awaitMs: 2200 });
@@ -170,8 +170,8 @@ const OPEN_SHEET = `new Promise(function(done){
  var n=0;(function t(){
   var late=document.getElementById('d2-late');
   var hid=document.querySelector('#book input[type="hidden"][name="date"]');
-  var tot=document.getElementById('d2-tot-p');
-  if(late&&!late.hidden&&/can't be cancelled for free/i.test(late.textContent)&&hid&&hid.value===d&&tot&&/\\$/.test(tot.textContent)){
+  var go=document.getElementById('d2-go');
+  if(late&&!late.hidden&&/can't be cancelled for free/i.test(late.textContent)&&hid&&hid.value===d&&go&&/Book · \\$/.test(go.textContent)){
    late.scrollIntoView({block:'center'});
    ${SHEET_PAINT};
    r(1);

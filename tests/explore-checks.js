@@ -6,6 +6,7 @@ const http = require('http');
 const { spawn } = require('child_process');
 const { FOOD_RULE } = require('../offering');
 const { HotelExplore, saveExplore } = require('../hotelExplore');
+const MAX_CARDS = 4;
 const { HotelClock } = require('../calendar');
 
 const sydneyMidnight = new Date('2026-11-16T13:30:00.000Z');
@@ -91,6 +92,9 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
       assert.ok(cards >= 3 && cards <= 4, slug + ' card count ' + cards);
       assert.ok(body.includes('Example hotel details (demo)'), slug + ' demo tag');
       assert.ok(body.includes('Stock photos'), slug + ' stock label');
+      assert.ok(!body.includes('class="d2-ex-intro"'), slug + ' no explore intro paragraph');
+      const exSlice = body.slice(body.indexOf('id="explore"'), body.indexOf('id="d2-explore-sheet"', body.indexOf('id="explore"')));
+      assert.ok(!/A short look at/i.test(visibleText(exSlice)), slug + ' no long explore intro copy');
       assert.ok(!/[\u2605\u2606]|\/5|aggregateRating/.test(body), slug + ' no ratings');
       assert.ok(!visibleText(body).includes('\u2014'), slug + ' no em-dashes in explore');
       assert.ok(body.includes('data-open-explore'), slug + ' see details control');
@@ -123,7 +127,7 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
       for (const bin of ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/local/bin/google-chrome']) {
         if (fs.existsSync(bin)) { chrome = bin; break; }
       }
-      if (chrome && !process.env.CI) {
+      if (chrome) {
         const WebSocket = require('ws');
         const debugPort = 9420;
         const prof = path.join(dir, 'chrome-explore');
@@ -148,28 +152,25 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
           ws.send(JSON.stringify({ ...obj, id }));
         });
         await send({ method: 'Page.enable' });
-        await send({ method: 'Emulation.setDeviceMetricsOverride', params: { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false } });
+        await send({ method: 'Emulation.setDeviceMetricsOverride', params: { width: 390, height: 844, deviceScaleFactor: 1, mobile: true } });
         await send({ method: 'Page.navigate', params: { url: `http://localhost:${port}/h/saltwater-terrace` } });
-        await new Promise(r => setTimeout(r, 2500));
-        const tabsTop = await send({
+        await new Promise(r => setTimeout(r, 2000));
+        const tabs390 = await send({
           method: 'Runtime.evaluate',
           params: {
-            expression: `(function(){var t=document.getElementById('d2-tabs');return t?t.getBoundingClientRect().top:9999})()`,
+            expression: `(function(){window.scrollTo(0,0);var t=document.getElementById('d2-tabs');return t?t.getBoundingClientRect().top:9999})()`,
             returnByValue: true,
           },
         });
-        await send({ method: 'Emulation.setDeviceMetricsOverride', params: { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false } });
-        await send({ method: 'Page.navigate', params: { url: `http://localhost:${port}/h/saltwater-terrace` } });
-        await new Promise(r => setTimeout(r, 2500));
-        const top1280 = await send({
+        const tabsBottom = await send({
           method: 'Runtime.evaluate',
           params: {
-            expression: `(function(){return document.getElementById('d2-tabs')?document.getElementById('d2-tabs').getBoundingClientRect().top:9999})()`,
+            expression: `(function(){var t=document.getElementById('d2-tabs');return t?t.getBoundingClientRect().bottom:0})()`,
             returnByValue: true,
           },
         });
-        assert.ok(Number(tabsTop.result.value) < 900, 'tabs visible on 1440x900 first screen: ' + tabsTop.result.value);
-        assert.ok(Number(top1280.result.value) < 800, 'tabs visible on 1280x800 first screen: ' + top1280.result.value);
+        assert.ok(Number(tabs390.result.value) >= 0 && Number(tabs390.result.value) < 844, 'tabs on 390x844 first screen top: ' + tabs390.result.value);
+        assert.ok(Number(tabsBottom.result.value) > 0 && Number(tabsBottom.result.value) <= 844, 'tabs on 390x844 first screen bottom: ' + tabsBottom.result.value);
 
         for (const phoneW of [360, 390]) {
           await send({ method: 'Emulation.setDeviceMetricsOverride', params: { width: phoneW, height: 844, deviceScaleFactor: 1, mobile: true } });
@@ -212,9 +213,31 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
       if (!process.env.CI) throw err;
     }
 
+    const hotelLogin = await post(port, '/hotel/login', { user: 'demo-saltwater', pass: 'explore-hotel' });
+    assert.strictEqual(hotelLogin.status, 302);
+    const hotelCookie = (hotelLogin.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
     const Sqlite = require('better-sqlite3');
     const db = new Sqlite(dbPath);
     const hotelId = db.prepare("SELECT id FROM hotels WHERE slug='saltwater-terrace'").get().id;
+    while (db.prepare('SELECT COUNT(*) AS n FROM hotel_explore_areas WHERE hotel_id=?').get(hotelId).n < MAX_CARDS) {
+      const added = saveExplore(db, hotelId, { add: '1' });
+      assert.ok(added.ok, 'add explore card');
+    }
+    const settingsRes = await new Promise((resolve, reject) => {
+      http.get({ hostname: '127.0.0.1', port, path: '/hotel/settings', headers: { Cookie: hotelCookie } }, res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString() }));
+      }).on('error', reject);
+    });
+    assert.strictEqual(settingsRes.status, 200);
+    assert.ok(settingsRes.body.includes('id="explore-edit"'), 'explore admin form');
+    assert.match(settingsRes.body, /<button[^>]*\bdisabled\b[^>]*name="add"[^>]*value="1"|<button[^>]*name="add"[^>]*value="1"[^>]*\bdisabled\b/, 'add card disabled at cap');
+    const cardCount = (settingsRes.body.match(/class="explore-edit"/g) || []).length;
+    assert.strictEqual(cardCount, MAX_CARDS, 'explore admin shows four cards');
+    const fifth = saveExplore(db, hotelId, { add: '1' });
+    assert.strictEqual(fifth.err, 'Up to 4 cards only.');
+
     saveExplore(db, hotelId, {
       about_intro: 'Intro',
       card_name: ['Escape test'],
@@ -225,6 +248,9 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
       card_kind: ['pool'],
       card_id: [''],
     });
+    const withIntro = await get(port, '/h/saltwater-terrace');
+    assert.ok(!withIntro.body.includes('class="d2-ex-intro"'), 'explore intro hidden after DB update');
+    assert.ok(!withIntro.body.includes('>Intro<'), 'intro copy not on listing');
     db.close();
   } finally {
     child.kill('SIGTERM');
