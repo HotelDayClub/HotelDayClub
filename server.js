@@ -380,7 +380,7 @@ function page(title, body, opts = {}) {
   const css = home
     ? `${FONT_LINKS}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}<link rel="stylesheet" href="/golden/home.css"><link rel="stylesheet" href="/header.css">`
     : `${FONT_LINKS}${tokensCss}${pickerCss}<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/golden/site.css"><link rel="stylesheet" href="/header.css">${extraCss}`;
-  const bodyClass = home ? 'home' : nav === 'guest' ? 'guest' : 'staff';
+  const bodyClass = opts.bodyClass || (home ? 'home' : nav === 'guest' ? 'guest' : 'staff');
   const header = `<header class="hdr" id="site-hdr"><div class="wrap hdr-in">${logoLink('light')}${chrome.nav}${headerExtra}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
@@ -674,8 +674,8 @@ function searchCard(hotel, params, index, kidsChip) {
     : `<p class="ex-price">From ${money(offer.price)} <small>(demo)</small>${offer.activity ? ' · ' + esc(offer.activity) : ''}</p>`;
   const book = offer.sold
     ? `<a class="btn quiet" href="/h/${esc(hotel.slug)}#book">See other dates</a>`
-    : `<a class="btn book" href="${esc(listing)}#book">Book<span class="vh"> ${esc(hotel.name)}</span></a>`;
-  return `<article class="ex${offer.sold ? ' is-sold' : ''}"><div class="ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></div><div class="bd"><h3><a href="${esc(listing)}">${esc(hotel.name)}</a></h3><p class="ex-area">${esc(area)}</p>${kidsChip ? `<p class="kidchip">${FAMILY_ICON}<span>${esc(kidsChip)}</span></p>` : ''}${span ? `<p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p>` : ''}${price}<p class="ex-note">Demo</p><div class="act"><a class="tlink" href="${esc(listing)}">View details</a>${book}</div></div></article>`;
+    : `<a class="btn quiet" href="${esc(listing)}#book">Book<span class="vh"> ${esc(hotel.name)}</span></a>`;
+  return `<article class="ex${offer.sold ? ' is-sold' : ''}"><div class="ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></div><div class="bd"><h3><a href="${esc(listing)}">${esc(hotel.name)}</a></h3><p class="ex-area">${esc(area)}</p>${kidsChip ? `<p class="kidchip">${FAMILY_ICON}<span>${esc(kidsChip)}</span></p>` : ''}${span ? `<p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p>` : ''}${price}<div class="act"><a class="btn tlink fill" href="${esc(listing)}">View details</a>${book}</div></div></article>`;
 }
 function radioGroup(name, options, current, klass) {
   const now = String(current || '');
@@ -2581,53 +2581,19 @@ app.get('/admin/export/hotels.csv', adminAuth, (req, res) => {
 });
 
 app.get('/how-it-works', (req, res) => {
-  res.send(page('How it works', `<div class="wrap hiw-hero">
-<p class="eyebrow-s">How it works</p>
-<h1 class="l-title">A hotel day, without the overnight.</h1>
-<p class="lead">Book a hotel pool, daybed or spa for the day. No room needed. Hotels set their own passes, prices and how many guests they take.</p>
-<p class="hiw-jumps"><a href="#guests">For guests</a><a href="#partners">For hotels</a><a href="#faq">Questions</a></p>
-</div>
-<div class="wrap hiw-block" id="guests">
-<h2>For guests</h2>
-<div class="how-grid">
-<div><span class="n">1</span><h3>Browse</h3><p class="muted">Search by neighbourhood, date and what you want: pool, gym or spa. Each listing shows what's included and the pool rules.</p></div>
-<div><span class="n">2</span><h3>Book</h3><p class="muted">Pick a sun lounger, daybed, cabana or whatever that hotel offers. Add parking or gym access if you want. ${esc(FOOD_RULE)} Before you confirm, you'll tick the risk warning, hotel rules, group and children, terms and sharing consent. Hot-day alerts are optional. The total updates before you confirm. This demo doesn't charge a card.</p></div>
-<div><span class="n">3</span><h3>Show your QR code</h3><p class="muted">${esc(GuestCheckIn.line())} The hours are on your confirmation.</p></div>
-<div><span class="n">4</span><h3>Enjoy</h3><p class="muted">Your spot, for the hours that hotel has set. Add-ons stay optional.</p></div>
-</div>
-<p style="margin-top:18px"><a class="btn btn-coral" href="/#explore">Browse pools</a></p>
-<p><a href="/guides">Guides to hotel day passes</a></p>
-</div>
-${WAVE.replace('fill="#fff"', 'fill="#0B2545"').replace('class="wave"', 'class="wave wave-band"')}<section class="hiw-band" id="partners"><div class="wrap">
-<h2>For hotels</h2>
-<p class="hiw-lead">Free to list. You decide the seating, the prices and the numbers, and you get paid monthly.</p>
-<div class="partner-grid">
-<div class="partner-card"><b>Free to join</b><p>No signup fee and no monthly charge.</p></div>
-<div class="partner-card"><b>You set the offering</b><p>Seating types, how many people each holds, daily numbers, hours and pool rules.</p></div>
-<div class="partner-card"><b>Guest list the night before</b><p>We email the next day's guest list the evening before. The same list is on your dashboard, ready for check-in.</p></div>
-<div class="partner-card"><b>You keep food and drink spend</b><p>Guests buy food and drink from you at the venue. It is never sold through Hotel Day Club.</p></div>
-<div class="partner-card"><b>Paid monthly</b><p>Seating and add-on sales are paid out once a month. Your share is set out in your hotel agreement.</p></div>
-</div>
-<p class="hiw-cta"><a class="btn btn-coral" href="/for-hotels">Talk to us</a> <a class="btn btn-line" href="/hotel">Hotel login</a></p>
-</div></section>
-<div class="wrap hiw-block" id="faq">
-<h2>Questions</h2>
-<div class="faq">
-<details open><summary>Cancellations</summary><p>${esc(FREE_CANCEL)} Checkout and your confirmation show that time for the date you chose. A booking made inside that window can't be cancelled for free. <a href="/refunds">Cancellation and refunds</a>.</p></details>
-<details><summary>What to bring</summary><p>Photo ID when the hotel asks for it, swimwear and sunscreen. The listing says whether a towel is included.</p></details>
-<details><summary>Age limits</summary><p>You need to be 18 or over to book. Each hotel sets its own age policy and kids' hours. They're on the listing, and in the risk warning, before you confirm.</p></details>
-<details><summary>Weather</summary><p>Rain on its own is not a closure. If the hotel closes the pool, you choose a full refund or a free rebooking. <a href="/faq">All questions</a>.</p></details>
-<details><summary>Do I need to book a room?</summary><p>No. A day pass is the pool, gym or spa for the hours that hotel has set. There is no room and no overnight stay.</p></details>
-<details><summary>How do I check in?</summary><p>${esc(GuestCheckIn.line())} The hours are on your confirmation. In this demo the confirmation stays on the page, and a confirmation email is sent to the address you give. Bring photo ID when the hotel asks for it.</p></details>
-<details><summary>What does the pass include?</summary><p>Each hotel sets its own inclusions. The listing says what the pass covers for that date and those hours. ${esc(FOOD_RULE)} Treatments are not included unless the listing says so.</p></details>
-<details><summary>Can children come?</summary><p>You need to be 18 or over to book. Each hotel sets its own age rules and kids' hours. They are on the listing and in the risk warning before you confirm. Children must be on the booking, and an adult on that booking supervises each child.</p></details>
-<details><summary>What if a pass is sold out?</summary><p>The page says when a pass is sold out for that date, or when there are not enough left. The terms say that if a pass sells out at the same moment and we can't confirm the booking, the booking is not made. This demo doesn't take a real payment.</p></details>
-<details><summary>Does this demo charge a card?</summary><p>No. Checkout is a mock payment. No card is needed and nothing is charged.</p></details>
-<details><summary>What are the hours?</summary><p>Each hotel sets its own hours. A day pass is not sold past the time a room-guests-only period starts. Late access, where a hotel offers it, starts only after that period ends and stops when the pool closes.</p></details>
-<details><summary>Are these real hotels?</summary><p>No. This is a demo. The example listings use neighbourhood names in Australia. They are not participating hotels, and the photos are stock photos. No real bookings or payments are taken.</p></details>
-</div>
-<p>Still need a hand? <a href="/contact">Contact us</a>.</p>
-</div>`, { analytics: true, index: true, ...seo.pageCopy('how'), jsonld: seo.graph(seo.crumbs([{ name: 'How it works', path: '/how-it-works' }])) }));
+  const copy = seo.pageCopy('how');
+  const { HelpCentre } = require('./helpCentre');
+  const mail = contactMail();
+  const body = HelpCentre.pageHtml(mail);
+  res.send(page('Help centre', body, {
+    analytics: true,
+    index: true,
+    path: '/how-it-works',
+    bodyClass: 'guest hc-page',
+    css: '/help-centre.css',
+    ...copy,
+    jsonld: seo.graph(seo.crumbs([{ name: 'Help centre', path: '/how-it-works' }])),
+  }));
 });
 
 function contactHtml({ error, values, sent }) {

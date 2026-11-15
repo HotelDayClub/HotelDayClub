@@ -206,7 +206,7 @@ assert.deepStrictEqual(closedParty.list, []);
     assert.ok(!plain.body.includes('Example listings · not real hotels'));
     assert.ok(plain.body.includes('Demo site: listings are examples, no real bookings or payments.'));
     assert.ok(plain.body.includes('>Example</span>'));
-    assert.ok(plain.body.includes('class="ex-note">Demo</p>'));
+    assert.ok(!plain.body.includes('class="ex-note">Demo</p>'));
     assert.ok(!plain.body.includes('class="hero"'));
     assert.ok(plain.body.indexOf('class="list results"') < plain.body.indexOf('<footer'));
     assert.deepStrictEqual(names(plain.body, 'results'), [
@@ -262,6 +262,8 @@ assert.deepStrictEqual(closedParty.list, []);
     assert.ok(!/<button class="apply"[^>]*disabled/.test(plain.body));
     assert.ok(!plain.body.includes('Free cancellation up to 24h before access starts'));
     assert.ok(plain.body.includes('View details'));
+    assert.ok(plain.body.includes('class="btn tlink fill"'));
+    assert.ok(plain.body.includes('class="btn quiet"'));
     assert.ok(plain.body.includes('>Book<span'));
     assert.ok(plain.body.includes('class="hrs"'));
     assert.ok(plain.body.includes('loading="eager"'));

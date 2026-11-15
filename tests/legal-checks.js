@@ -531,7 +531,10 @@ function start(port, extra = {}) {
     }
     const how = await get(port, '/how-it-works');
     assert.strictEqual(how.status, 200);
-    assert.ok(how.body.includes('Seating and add-on sales are paid out once a month. Your share is set out in your hotel agreement.'));
+    assert.ok(!how.body.includes('Your share is set out in your hotel agreement'));
+    assert.ok(!/\bshare\b/i.test(how.body.replace(/<footer[\s\S]*/i, '')));
+    assert.ok(!/%|commission/i.test(how.body.replace(/<footer[\s\S]*/i, '')));
+    assert.ok(how.body.includes('href="/for-hotels"'));
     assert.ok(!how.body.includes('A free date change may be available once, subject to availability.'));
     assert.ok(how.body.includes('A day pass has no hotel room, and you can&#39;t charge anything to a room.'));
     assert.ok(how.body.includes('pool access pass or wristband'));

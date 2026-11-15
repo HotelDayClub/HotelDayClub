@@ -85,7 +85,10 @@ html.js .n9-bar{display:flex}
 .day-empty{margin:8px 0 0;color:var(--hdc-secondary)}
 .search-page .act{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:12px}
 .search-page .tlink{min-height:44px;display:inline-flex;align-items:center;color:var(--hdc-primary);font-weight:700;text-decoration:underline;text-underline-offset:3px}
-.search-page .ex-note{margin-top:8px}
+.search-page .tlink.fill{min-height:44px;display:inline-flex;align-items:center;justify-content:center;background:var(--hdc-primary);color:#fff;font-weight:700;text-decoration:none;border-radius:999px;padding:0 18px;flex:1}
+.search-page .tlink.fill:hover{background:var(--hdc-primary-hover,#08585A);color:#fff}
+.search-page .act .btn.quiet{min-height:44px;display:inline-flex;align-items:center;justify-content:center;background:#fff;color:var(--hdc-primary);border:2px solid var(--hdc-primary);border-radius:999px;padding:0 16px;font-weight:700;text-decoration:none;flex:0 0 auto}
+.search-page .act .btn.quiet:hover{background:var(--hdc-tint)}
 
 .sheet-bd{position:fixed;inset:0;z-index:60;background:rgba(0,52,76,.45)}
 .drawer,.ssheet{position:fixed;z-index:70;background:#fff;color:var(--hdc-text)}

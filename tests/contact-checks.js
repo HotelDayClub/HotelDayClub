@@ -148,7 +148,7 @@ const valid = {
     assert.ok(home.body.includes('class="assure-link" href="/contact"'));
     assert.ok(home.body.includes('href="/contact">Contact</a>'));
     const hiw = await get(port, '/how-it-works');
-    assert.ok(hiw.body.includes('Cancellations'));
+    assert.ok(hiw.body.includes('Changes and cancellations'));
     assert.ok(hiw.body.includes('href="/contact"'));
     const faq = await get(port, '/faq');
     assert.ok(faq.body.includes('Cancel in your booking link or email'));

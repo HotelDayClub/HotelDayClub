@@ -181,6 +181,12 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(sheet.includes(`max="${max}"`), 'More dates and the no-JS date field stop at today plus 90');
     assert.ok(sheet.includes(`min="${today}"`));
     assert.ok(/<noscript><form class="d2-nojs"[^>]*method="get"/.test(sheet), 'no-JS other date form');
+    const chipDay = ymd(addDays(new Date(today + 'T12:00:00'), 20));
+    const chipPage = await get(port, '/h/saltwater-terrace?date=' + chipDay);
+    const chipDates = chipPage.body.slice(chipPage.body.indexOf('id="d2-dates"'), chipPage.body.indexOf('</div>', chipPage.body.indexOf('id="d2-dates"')));
+    const chipPos = chipDates.indexOf('value="' + chipDay + '"');
+    const todayPos = chipDates.indexOf('>Today<');
+    assert.ok(chipPos > todayPos, 'out-of-range date chip follows the 14 chips');
     assert.ok(/<input[^>]*name="date"[^>]*required|required[^>]*name="date"/.test(sheet) || /name="date"[^>]*>/.test(sheet));
 
     // A8: the late notice is only shown by the availability reply and matches the cancel note.
