@@ -402,8 +402,8 @@ function alts(html, where) {
     assert.ok(!hiw.includes('At the front desk, when the hotel opens for day passes'));
     assert.ok(guests.includes('Tick one box to accept the terms.'));
     assert.ok(guests.includes('The full risk warning, hotel rules and group rules are in a dropdown above it.'));
-    assert.ok(guests.includes('Send me hot-day alerts and offers by email. I can unsubscribe at any time.'));
-    assert.ok(guests.includes('optional in a separate box, left unticked.'));
+    assert.ok(guests.includes('Hot-day alerts and offers by email are optional, in a separate box left unticked.'));
+    assert.ok(!guests.includes('. is optional'));
     assert.ok(!/sharing consent/i.test(hiw));
     assert.ok(!guests.includes('tick the risk warning, hotel rules, group and children'));
     assert.strictEqual(times(guests, food), 1);
