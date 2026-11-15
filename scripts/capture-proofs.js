@@ -71,25 +71,54 @@ async function shot(ws, { url, width, height, name, prep, full, awaitMs = 1400 }
   console.log('wrote', name);
 }
 
+const SHEET_PAINT = `(function(){
+ var s=document.getElementById('d2-sheet');
+ if(!s) return;
+ if(!s.open&&s.showModal) s.showModal();
+ document.documentElement.classList.add('d2-lock');
+ if(!document.getElementById('proof-sheet-style')){
+  var st=document.createElement('style');
+  st.id='proof-sheet-style';
+  st.textContent='dialog.d2-sheet[open]{display:block!important;position:fixed!important;inset:auto 0 0 0!important;margin:0 auto!important;width:100%!important;max-width:600px!important;max-height:calc(100dvh - 40px)!important;overflow-y:auto!important;background:#fff!important;z-index:100000!important;border-radius:20px 20px 0 0!important;padding:8px 0 0!important;border:0!important;transform:none!important}dialog.d2-sheet[open] .d2-book{display:block!important;margin:0!important}';
+  document.head.appendChild(st);
+ }
+ if(!document.querySelector('.proof-backdrop')){
+  var bd=document.createElement('div');
+  bd.className='proof-backdrop';
+  bd.style.cssText='position:fixed;inset:0;background:rgba(10,79,85,.55);z-index:99999;pointer-events:none';
+  document.body.appendChild(bd);
+ }
+})()`;
+
+const CLOSE_SHEET = `(function(){
+ var s=document.getElementById('d2-sheet');
+ if(s&&s.open) s.close();
+ document.querySelectorAll('.proof-backdrop').forEach(function(el){el.remove()});
+ var st=document.getElementById('proof-sheet-style');
+ if(st) st.remove();
+ document.documentElement.classList.remove('d2-lock');
+ if(location.hash) history.replaceState(null,'',location.pathname+location.search);
+})()`;
+
 const OPEN_SHEET = `new Promise(function(done){
  window.scrollTo(0,0);
- function wait(sel,ms){
-  return new Promise(function(r){
-   var n=0;(function tick(){
-    if(document.querySelector(sel)){r(1);return;}
-    if(++n>40){r(0);return;}
-    setTimeout(tick,100);
-   })();
-  });
+ var tries=0;
+ function step(){
+  tries++;
+  var link=document.querySelector('.d2-bar-btn,a.d2-btn[href="#book"][data-open],#d2-pill,a[data-open="date"]');
+  if(link) link.click();
+  setTimeout(function(){
+   if(location.hash!=='#book') location.hash='#book';
+   var d=document.getElementById('d2-sheet');
+   if(!d&&tries<30){setTimeout(step,150);return;}
+   if(d&&!d.open&&d.showModal) d.showModal();
+   ${SHEET_PAINT}
+   if(d&&d.open) done(1);
+   else if(tries<30) setTimeout(step,150);
+   else done(0);
+  },220);
  }
- function open(){
-  if(location.hash!=='#book') location.hash='#book';
-  var d=document.getElementById('d2-sheet');
-  if(d&&typeof d.showModal==='function'&&!d.open) d.showModal();
-  if(d&&d.open){done(1);return;}
-  setTimeout(open,120);
- }
- setTimeout(open,300);
+ setTimeout(step,500);
 })`;
 
 (async () => {
@@ -115,48 +144,49 @@ const OPEN_SHEET = `new Promise(function(done){
   const { ymd, addDays } = require('../util');
   const when = ymd(addDays(new Date(), 14));
   const today = ymd(new Date());
-  const fri = (() => {
-    const d = new Date(today + 'T12:00:00');
-    while (d.getDay() !== 5) d.setDate(d.getDate() + 1);
-    return ymd(d);
-  })();
   const beyond = ymd(addDays(new Date(), 120));
   const scrollTop = 'window.scrollTo(0,0);';
+  const listingPrep = `${CLOSE_SHEET};${scrollTop}`;
   const rv = "document.querySelectorAll('[data-rv]').forEach(el=>el.classList.add('in'));";
   const listing = 'saltwater-terrace';
   const base = `http://127.0.0.1:${port}`;
 
+  for (const stale of ['booking-sheet-390.png', 'd2-saltwater-hero.png', 'listing-390.png', 'banner-90day-390.png', 'help-390.png', 'terms-390.png', 'home-fold-390.png']) {
+    const p = path.join(outDir, stale);
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+  }
+
   const firstHeights = { 360: 844, 390: 844, 1024: 800, 1280: 800, 1440: 900 };
   for (const [w, h] of Object.entries(firstHeights)) {
-    await shot(ws, { url: `${base}/h/${listing}`, width: +w, height: h, name: `d2-listing-first-${w}.png`, prep: scrollTop });
+    await shot(ws, { url: `${base}/h/${listing}`, width: +w, height: h, name: `d2-listing-first-${w}.png`, prep: listingPrep, awaitMs: 1600 });
     await shot(ws, { url: `${base}/h/${listing}`, width: +w, height: h, name: `d2-listing-full-${w}.png`, prep: scrollTop, full: true });
   }
 
-  const pickPrep = OPEN_SHEET + `;document.querySelectorAll('input[name="date"]').forEach(i=>{i.checked=false});var hid=document.querySelector('#book input[type="hidden"][name="date"]');if(hid)hid.value='';['d2-late','d2-closed'].forEach(function(id){var el=document.getElementById(id);if(el){el.hidden=true;el.textContent='';}});document.getElementById('d2-go').setAttribute('aria-disabled','true');`;
-  await shot(ws, { url: `${base}/h/${listing}#book`, width: 390, height: 844, name: 'd2-sheet-pick-390.png', prep: pickPrep, awaitMs: 1800 });
+  const pickPrep = OPEN_SHEET + `;var hid=document.querySelector('#book input[type="hidden"][name="date"]');if(hid)hid.value='';document.querySelectorAll('#d2-form .d2-d input').forEach(function(i){i.checked=false});['d2-late','d2-closed'].forEach(function(id){var el=document.getElementById(id);if(el){el.hidden=true;el.textContent='';}});var go=document.getElementById('d2-go');if(go)go.setAttribute('aria-disabled','true');${SHEET_PAINT}`;
+  await shot(ws, { url: `${base}/h/${listing}`, width: 390, height: 844, name: 'd2-sheet-pick-390.png', prep: pickPrep, awaitMs: 2000 });
 
-  const readyPrep = OPEN_SHEET;
-  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-ready-390.png', prep: readyPrep });
-  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 360, height: 844, name: 'd2-sheet-ready-360.png', prep: readyPrep });
-  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 1280, height: 800, name: 'd2-sheet-ready-1280.png', prep: readyPrep });
+  const readyPrep = OPEN_SHEET + `;${SHEET_PAINT}`;
+  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-ready-390.png', prep: readyPrep, awaitMs: 2000 });
+  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 360, height: 844, name: 'd2-sheet-ready-360.png', prep: readyPrep, awaitMs: 2000 });
+  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 1280, height: 800, name: 'd2-sheet-ready-1280.png', prep: readyPrep, awaitMs: 2000 });
 
-  const closedPrep = OPEN_SHEET + `;new Promise(r=>{var n=0;(function t(){var el=document.getElementById('d2-closed')||document.querySelector('#d2-closed[role="alert"]');if(el&&!el.hidden)r(1);else if(++n>50)r(0);else setTimeout(t,120)})()})`;
-  await shot(ws, { url: `${base}/h/skyline-rooftop?date=${fri}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-closed-390.png', prep: closedPrep, awaitMs: 2000 });
+  const closedPrep = OPEN_SHEET + `;new Promise(function(r){var chip=document.querySelector('.d2-d.cl[data-date],button.cd.cl[data-date]');if(chip) chip.click();var n=0;(function t(){var el=document.getElementById('d2-closed');if(el&&!el.hidden&&/closed/i.test(el.textContent)){${SHEET_PAINT};r(1);}else if(++n>60)setTimeout(function(){${SHEET_PAINT};r(0)},0);else setTimeout(t,150)})()})`;
+  await shot(ws, { url: `${base}/h/skyline-rooftop?qty=1`, width: 390, height: 844, name: 'd2-sheet-closed-390.png', prep: closedPrep, awaitMs: 2200 });
 
-  const latePrep = OPEN_SHEET + `;new Promise(function(r){var n=0;(function t(){var el=document.getElementById('d2-late');if(el&&!el.hidden&&/can't be cancelled/i.test(el.textContent)){el.scrollIntoView({block:'center'});r(1);}else if(++n<50)setTimeout(t,200);else r(0)})()})`;
-  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${today}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-late-390.png', prep: latePrep, awaitMs: 2200 });
+  const latePrep = OPEN_SHEET + `;new Promise(function(r){var n=0;(function t(){var el=document.getElementById('d2-late');if(el&&!el.hidden&&/can't be cancelled/i.test(el.textContent)){el.scrollIntoView({block:'center'});${SHEET_PAINT};r(1);}else if(++n<55)setTimeout(t,200);else{r(0)}})()})`;
+  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${today}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-late-390.png', prep: latePrep, awaitMs: 2400 });
 
-  const morePrep = OPEN_SHEET + `;var m=document.getElementById('d2-more');if(m){m.hidden=false;m.click();}`;
-  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-more-390.png', prep: morePrep });
+  const morePrep = OPEN_SHEET + `;var m=document.getElementById('d2-more');if(m){m.hidden=false;m.click();}${SHEET_PAINT}`;
+  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-more-390.png', prep: morePrep, awaitMs: 2000 });
 
-  const kidsPrep = OPEN_SHEET + `;new Promise(r=>{var el=document.getElementById('d2-kids');if(el)el.scrollIntoView({block:'center'});r(1)})`;
-  await shot(ws, { url: `${base}/h/manly-sands?pass=daybed&date=${when}&qty=2#book`, width: 390, height: 844, name: 'd2-sheet-kids-390.png', prep: kidsPrep });
+  const kidsPrep = OPEN_SHEET + `;new Promise(r=>{var el=document.getElementById('d2-kids');if(el)el.scrollIntoView({block:'center'});${SHEET_PAINT};r(1)})`;
+  await shot(ws, { url: `${base}/h/manly-sands?pass=daybed&date=${when}&qty=2#book`, width: 390, height: 844, name: 'd2-sheet-kids-390.png', prep: kidsPrep, awaitMs: 2000 });
 
-  const adultsPrep = OPEN_SHEET + `;new Promise(r=>{var el=document.getElementById('d2-kids');if(el){el.scrollIntoView({block:'center'});}r(1)})`;
-  await shot(ws, { url: `${base}/h/skyline-rooftop?pass=chair&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-adults-390.png', prep: adultsPrep });
+  const adultsPrep = OPEN_SHEET + `;new Promise(r=>{var el=document.getElementById('d2-kids');if(el){el.scrollIntoView({block:'center'});}${SHEET_PAINT};r(1)})`;
+  await shot(ws, { url: `${base}/h/skyline-rooftop?pass=chair&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-adults-390.png', prep: adultsPrep, awaitMs: 2000 });
 
-  const holdPrep = `window.scrollTo(0,0);var h=document.getElementById('d2-hold');if(h){h.scrollIntoView({block:'center'});}`;
-  await shot(ws, { url: `${base}/h/skyline-rooftop?date=${beyond}&pass=chair&qty=1#book`, width: 390, height: 844, name: 'd2-banner-90day-390.png', prep: holdPrep, awaitMs: 1800 });
+  const holdPrep = `${CLOSE_SHEET};window.scrollTo(0,0);var h=document.getElementById('d2-hold');if(h){h.hidden=false;h.scrollIntoView({block:'center'});}`;
+  await shot(ws, { url: `${base}/h/skyline-rooftop?date=${beyond}&pass=chair&qty=1`, width: 390, height: 844, name: 'd2-banner-90day-390.png', prep: holdPrep, awaitMs: 2000 });
 
   await shot(ws, { url: `${base}/`, width: 390, height: 844, name: 'p2a-home-quick-390.png', prep: rv + scrollTop });
   await shot(ws, { url: `${base}/search?mood=family`, width: 390, height: 844, name: 'p2b-search-mood-family-390.png', prep: scrollTop });
