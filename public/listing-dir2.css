@@ -110,7 +110,7 @@ body:has(.d2){background:var(--cream);padding-bottom:84px}
 .d2-d b{font-size:18px;line-height:22px}
 .d2-d i{font-style:normal;font-size:14px;line-height:16px}
 .d2-d.on{background:var(--teal);border-color:var(--teal);color:#fff}
-.d2-d:focus-within{outline:3px solid var(--deep);outline-offset:2px}
+.d2-d input:focus-visible+span,.d2-d input:focus-visible~b{outline:3px solid var(--deep);outline-offset:2px;border-radius:8px}
 .d2-d.cl{background:var(--tint);color:var(--sec);border-style:dashed}
 .d2-d.cl.pk{border:2px solid var(--deep)}
 .d2-nojs{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}

@@ -268,7 +268,7 @@ function alts(html, where) {
 
     const melbourne = text(await get(port, '/destinations/melbourne'));
     assert.ok(melbourne.includes('content="noindex, follow"'));
-    assert.ok(melbourne.includes('Coming soon'));
+    assert.ok(melbourne.includes('No day passes in Melbourne yet'));
     assert.ok(melbourne.includes('href="/?destination=melbourne#waitlist"'));
     assert.ok(!melbourne.includes('Saltwater Terrace'));
     assert.ok(!melbourne.includes('These are fictional example listings, not hotels that have signed up.'));

@@ -149,15 +149,16 @@ function dayClosure(db, hotel, date, now = new Date()) {
   if (!plan) {
     if (!hotel.open_days) return null;
     const [y, m, d] = date.split('-').map(Number);
+    const wd = new Date(y, m - 1, d).getDay();
     const open = hotel.open_days.split(',').map(n => parseInt(n, 10));
-    if (open.includes(new Date(y, m - 1, d).getDay())) return null;
-    const days = String(hotel.hours || '').split('·')[0].trim();
-    return days ? `Day passes run ${days}` : 'Closed this day';
+    if (open.includes(wd)) return null;
+    return `No day passes on ${DAY_NAMES[wd]}`;
   }
   if (!plan.open) {
     if (plan.roomOnly) return 'Room guests only';
-    const days = String(hotel.hours || '').split('·')[0].trim();
-    return days ? `Day passes run ${days}` : 'Closed this day';
+    const [y, m, d] = date.split('-').map(Number);
+    const wd = new Date(y, m - 1, d).getDay();
+    return `No day passes on ${DAY_NAMES[wd]}`;
   }
   const { hotelToday } = require('./calendar');
   if (date === hotelToday(hotel, now) && plan.effective) {
@@ -237,6 +238,13 @@ function heatWord(heated) {
   return Number(heated) ? 'Heated' : 'Unheated';
 }
 const SUPERVISION = "Lifeguards don't replace adult supervision: an adult on the booking must actively supervise each child at all times.";
+const DAY_NAMES = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
+function childrenAllowed(hotel) {
+  if (/18\s*\+/.test(String(hotel && hotel.age_policy || ''))) return false;
+  const kids = String((hotel && hotel.kids_hours) || '').trim();
+  if (/^no children/i.test(kids)) return false;
+  return true;
+}
 function guardFacts(hotel) {
   const raw = hotel && hotel.lifeguard;
   const n = raw == null || raw === '' ? null : Number(raw);
@@ -251,7 +259,7 @@ function guardFacts(hotel) {
       swim: duty,
       on: true,
       policy: n === 2 && hours ? `On duty ${hours}` : 'On duty',
-      watch: SUPERVISION,
+      watch: childrenAllowed(hotel) ? SUPERVISION : '',
     };
   }
   if (n === 0) {
@@ -276,6 +284,7 @@ function guardFacts(hotel) {
   };
 }
 function supervisionNote(hotel) {
+  if (!childrenAllowed(hotel)) return '';
   const g = guardFacts(hotel || {});
   return g.on ? g.watch : '';
 }
@@ -419,7 +428,9 @@ function riskLines(hotel) {
     "Water-borne illness. Don't swim if you've had diarrhoea recently.",
     `Lifeguard: ${v.guard} Staff are not watching the pool continuously.`,
     `Pool: ${v.setting} · ${v.heat}.`,
-    `Children: ${v.age}. ${v.kids} Every child must be actively supervised in the water by an adult on this booking.`.replace(/\s+/g, ' ').trim(),
+    childrenAllowed(hotel)
+      ? `Age: ${v.age}. ${v.kids} Every child must be actively supervised in the water by an adult on this booking.`.replace(/\s+/g, ' ').trim()
+      : `Age: ${v.age}. ${v.kids}`.replace(/\s+/g, ' ').trim(),
   ];
 }
 function riskText(hotel) { return riskLines(hotel).join(' '); }
@@ -814,8 +825,9 @@ function arrivalWindowPhrase(start) {
   if (startMin == null) return '';
   const a = hourParts(startMin);
   const b = hourParts(startMin + 60);
-  if (a.ap === b.ap) return `${a.text}–${b.text} ${b.ap}`;
-  return `${a.text} ${a.ap} – ${b.text} ${b.ap}`;
+  const compact = part => `${part.text}${part.ap}`;
+  if (a.ap === b.ap) return `${compact(a)}–${compact(b)}`;
+  return `${compact(a)}–${compact(b)}`;
 }
 function hourWindows(opens, closes) {
   const startMin = minutes(parseTime(opens) || '');
@@ -890,7 +902,7 @@ function arrivalText(value, mode) {
 module.exports = {
   KINDS, PHOTOS, FOOD_RULE, FREE_CANCEL, fmtTime, parseTime, minutes, spotLabel, hoursSummary, dayPlan, dayClosure, closureReason,
   rulesLines, rulesText, rulesCard, amenitiesFrom, slugify, hoursFor, blankJoin, readForm,
-  policyFacts, guardFacts, supervisionNote, venueMissing, PICK_DATE_CANCEL,
+  policyFacts, guardFacts, supervisionNote, childrenAllowed, venueMissing, PICK_DATE_CANCEL,
   writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,
   listingHours, hoursView, hoursLines, syncHoursLabels, inSeason, latePossible, hotelLatePossible, lateWindow, syncLateAddons,
   cancelNote, displayCancelNote, riskLines, riskText, riskCard, riskTick, swimNote, GuestCheckIn,

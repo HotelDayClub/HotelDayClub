@@ -203,7 +203,8 @@ function makeForm(opts = {}) {
     assert.ok(body.includes('class="co-decide"'));
     assert.ok(body.includes('class="co-dock"'));
     assert.ok(body.includes('id="co-reason-live" aria-live="polite"'));
-    assert.ok(body.split('Tick the box above to continue.').length - 1 >= 4);
+    const tickHints = (body.match(/Tick the (?:box above|terms box) to continue\./g) || []).length;
+    assert.ok(tickHints >= 4, 'disabled confirm hints ' + tickHints);
     assert.ok(!body.includes('Tick the 5 boxes'));
     assert.ok(body.includes('<span class="co-fact-val co-pass-line">Sun lounger × 1 · $45 (demo)</span>'));
     assert.ok(body.includes(`href="/h/saltwater-terrace?date=${when}&amp;pass=lounger&amp;qty=1#book"`));

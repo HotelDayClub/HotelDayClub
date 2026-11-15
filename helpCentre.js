@@ -129,7 +129,7 @@ class HelpCentre {
     const items = STEPS.map((row, i) => `<li><span class="hc-num" aria-hidden="true">${i + 1}</span><h3>${esc(row[0])}</h3><p>${esc(row[1])}</p></li>`).join('');
     return `<section class="wrap hc-steps" id="guests" aria-labelledby="hc-steps-h"><h2 id="hc-steps-h">For guests</h2><ol>${items}</ol>
 <p class="hc-cta"><a class="btn btn-coral" href="/#explore">Browse pools</a></p>
-<p><a href="/guides">Guides to hotel day passes</a></p></section>`;
+<p class="hc-guides"><a class="see-all" href="/guides">Guides to hotel day passes</a></p></section>`;
   }
 
   static cardsHtml() {
@@ -191,7 +191,7 @@ function onInput(){
     if(term&&hit){var s=a.closest('details.hc-sec');if(s)s.open=true;}
   });
   secs.forEach(function(s){s.hidden=!!term&&!s.querySelector('.hc-art:not([hidden])');});
-  countEl.textContent=term?(n+(n===1?' article':' articles')+' match'):'';
+  countEl.textContent=term?(n+(n===1?' article matches':' articles match')):'';
   if(noneEl)noneEl.hidden=!(term&&!n);
   if(!term){open.forEach(function(p){if(!p.el.open)p.el.open=p.was;});open=[];}
 }

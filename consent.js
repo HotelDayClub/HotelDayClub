@@ -38,7 +38,7 @@ class CheckoutConsent {
   }
 
   static marketingText() {
-    return 'Send me hot-day alerts and offers by email/SMS. I can unsubscribe at any time.';
+    return 'Send me hot-day alerts and offers by email. I can unsubscribe at any time.';
   }
 
   static checkoutMarketingText() {
@@ -70,12 +70,13 @@ class CheckoutConsent {
   }
 
   static hazardLines(hotel) {
-    const { riskLines } = require('./offering');
+    const { riskLines, childrenAllowed } = require('./offering');
     const source = hotel || {};
     return riskLines(source).slice(7).filter(line => {
       if (line.startsWith('Lifeguard:')) return false;
       if (line.startsWith('Pool:') && /\bNot set\b/.test(line)) return false;
-      if (line.startsWith('Children:') && !String(source.age_policy || '').trim() && !String(source.kids_hours || '').trim()) return false;
+      if ((line.startsWith('Children:') || line.startsWith('Age:')) && !String(source.age_policy || '').trim() && !String(source.kids_hours || '').trim()) return false;
+      if (/actively supervised/i.test(line) && !childrenAllowed(source)) return false;
       return true;
     });
   }

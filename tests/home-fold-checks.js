@@ -222,6 +222,10 @@ function cdp(WS, wsUrl) {
             if (!a || !b) return false;
             return !(a.right <= b.left + 1 || a.left >= b.right - 1 || a.bottom <= b.top + 1 || a.top >= b.bottom - 1);
           };
+          const heroKickerEl = document.querySelector('.copy .kicker');
+          const heroKickerBox = rectOf(heroKickerEl);
+          const badgeKickerOverlap = overlaps(creditBox, heroKickerBox);
+          const creditLineCount = creditEl ? ((creditEl.scrollHeight > creditEl.clientHeight + 2) ? 2 : 1) : 0;
           const whatBox = whatSeg ? rectOf(whatSeg) : null;
           const whatPickBox = whatPk ? rectOf(whatPk) : null;
           const submitBox = submitBtn ? rectOf(submitBtn) : null;
@@ -259,6 +263,8 @@ function cdp(WS, wsUrl) {
             phBox,
             creditBox,
             clockBox,
+            badgeKickerOverlap,
+            creditLines: creditLineCount,
             quickBtns,
             searchOverlap,
             whatTxtClip,
@@ -316,6 +322,10 @@ function cdp(WS, wsUrl) {
       if (data.creditBox) {
         assert.ok(data.creditBox.width >= 20 && data.creditBox.height >= 10, width + ' credit visible ' + JSON.stringify(data.creditBox));
         assert.ok(data.creditBox.left >= -1 && data.creditBox.right <= data.width + 2, width + ' credit clipped');
+      }
+      if (width === 360 || width === 390) {
+        assert.ok(!data.badgeKickerOverlap, width + ' credit overlaps kicker');
+        assert.ok(data.creditLines <= 1, width + ' credit wraps ' + data.creditLines);
       }
       if (data.clockBox) {
         assert.ok(data.clockBox.width >= 20 && data.clockBox.height >= 10, width + ' clock visible ' + JSON.stringify(data.clockBox));

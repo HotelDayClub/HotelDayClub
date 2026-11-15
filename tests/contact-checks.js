@@ -137,7 +137,8 @@ const valid = {
     const contactCss = await get(port, '/golden/site.css');
     assert.ok(contactCss.body.includes('.contact-note.hotel-notice{display:none}'));
     assert.ok(contactCss.body.includes('option[value="partnership"]:checked'));
-    assert.ok(page.body.includes('Send me hot-day alerts and offers by email/SMS. I can unsubscribe at any time.'));
+    assert.ok(page.body.includes('Send me hot-day alerts and offers by email. I can unsubscribe at any time.'));
+    assert.ok(!page.body.includes('email/SMS'));
     assert.ok(!/name="marketing"[^>]*checked/.test(page.body));
     assert.ok(page.body.includes('in Australia'));
     assert.ok(!/response time|support hours|live chat|7-day support|within \d+/i.test(page.body));

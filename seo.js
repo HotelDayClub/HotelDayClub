@@ -81,7 +81,7 @@ const GUIDES = [
   {
     slug: 'day-pass-hotel-stay-or-day-spa',
     h1: 'Day pass, hotel stay or day spa: what is the difference?',
-    title: 'Day pass, hotel stay or day spa: what is the difference?',
+    title: 'Day pass vs hotel stay vs day spa',
     description: 'What a hotel day pass, an overnight stay and a day spa visit each usually include, so you can pick the right option in Australia.',
     comparison: true,
     sections: [
@@ -427,7 +427,7 @@ function guideHtml(guide) {
   const lead = guide.comparison
     ? '<p class="lead">Three ways to spend time at a pool, a gym or a spa in Australia. Here is what each one usually gives you, so you can pick the right one for your day.</p>'
     : `<p class="lead">${esc(guide.description)}</p>`;
-  const table = guide.comparison ? '<h2>At a glance</h2>' + guideComparisonTable() : '';
+  const table = guide.comparison ? '<h2>At a glance</h2><div class="gd-tablewrap">' + guideComparisonTable() + '<p class="gd-scroll-hint">Swipe to see more</p></div>' : '';
   const body = guide.comparison
     ? guide.sections.map(([h, p]) => `<h2>${esc(h)}</h2><p>${p.includes('<a ') ? p : esc(p)}</p>`).join('') + '<p class="gd-note">This is a demo site. Listings are examples and no real bookings are taken.</p>'
     : guide.paras.map(p => `<p>${esc(p)}</p>`).join('');
@@ -438,7 +438,7 @@ function guideHtml(guide) {
 <h1 class="l-title">${esc(guide.h1)}</h1>
 ${lead}
 ${table}${body}${tail}
-<p><a href="/how-it-works">How day passes work</a> · <a href="/faq">Questions</a></p></div>`;
+<p class="gd-foot"><a class="see-all" href="/how-it-works">How day passes work</a> · <a class="see-all" href="/faq">Questions</a></p></div>`;
 }
 
 module.exports = {

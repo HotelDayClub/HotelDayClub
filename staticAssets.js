@@ -15,7 +15,7 @@ class StaticAssets {
     const raw = String(path || '').trim();
     if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return raw;
     const base = raw.split('?')[0].split('#')[0];
-    if (!/\.(?:css|js)$/i.test(base)) return raw;
+    if (!/\.(?:css|js|webp|jpe?g|png|gif|svg|woff2?)$/i.test(base)) return raw;
     const join = raw.includes('?') ? '&' : '?';
     return `${raw}${join}v=${StaticAssets.buildId()}`;
   }

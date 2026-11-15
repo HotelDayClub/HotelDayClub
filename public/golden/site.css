@@ -166,6 +166,9 @@ form:has(select[name="topic"] option[value="partnership"]:checked) .contact-note
   .search-page .chip{padding:0 8px}
   .search-page .list,.search-page .list.is-single{grid-template-columns:minmax(0,1fr);margin-top:10px}
 }
+@media (min-width:600px) and (max-width:800px){
+  .search-page .list,.search-page .list.is-single{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+}
 @media(prefers-reduced-motion:reduce){
   .search-page .ex{transition:none}
 }

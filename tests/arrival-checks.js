@@ -50,11 +50,11 @@ addHours(normal.id, '09:00', '18:00');
 const normalOpts = arrivalOptions(db, normal, '2027-06-15');
 assert.strictEqual(normalOpts[0].value, 'unsure');
 assert.strictEqual(normalOpts[0].label, 'Not sure');
-assert.strictEqual(normalOpts.find(option => option.value === '09:00').label, '9–10 am');
-assert.strictEqual(normalOpts.find(option => option.value === '11:00').label, '11 am – 12 pm');
-assert.strictEqual(normalOpts.find(option => option.value === '12:00').label, '12–1 pm');
+assert.strictEqual(normalOpts.find(option => option.value === '09:00').label, '9am–10am');
+assert.strictEqual(normalOpts.find(option => option.value === '11:00').label, '11am–12pm');
+assert.strictEqual(normalOpts.find(option => option.value === '12:00').label, '12pm–1pm');
 assert.strictEqual(normalOpts[normalOpts.length - 1].value, '17:00');
-assert.strictEqual(normalOpts[normalOpts.length - 1].label, '5–6 pm');
+assert.strictEqual(normalOpts[normalOpts.length - 1].label, '5pm–6pm');
 
 const bare = addHotel('arrival-bare', { timezone: 'Australia/Brisbane' });
 const warns = [];
@@ -99,12 +99,12 @@ const malformed = normalizeArrival(['11:00'], list);
 assert.strictEqual(malformed.status, 400);
 assert.strictEqual(malformed.error, ARRIVAL_LIST_ERROR);
 
-assert.strictEqual(arrivalText('11:00', 'estimate'), '11 am – 12 pm (estimate)');
+assert.strictEqual(arrivalText('11:00', 'estimate'), '11am–12pm (estimate)');
 assert.strictEqual(arrivalText('unsure', 'estimate'), 'Not sure');
 assert.strictEqual(arrivalText(null, 'estimate'), '');
 assert.strictEqual(arrivalText(null, 'short'), '—');
 assert.strictEqual(arrivalText('11:00', 'short'), '11 am');
-assert.strictEqual(arrivalText('11:00', 'detail'), "11 am – 12 pm (guest's estimate)");
+assert.strictEqual(arrivalText('11:00', 'detail'), "11am–12pm (guest's estimate)");
 assert.strictEqual(arrivalText('unsure', 'csv'), 'Not sure');
 assert.strictEqual(arrivalText('11:00', 'csv'), '11:00');
 assert.strictEqual(arrivalText(null, 'csv'), '');
@@ -140,12 +140,12 @@ const mailed = bookingNotice({
   cancel: 'Free cancellation until 11am Wed 4 Nov.',
   contact: 'hello@hoteldayclub.com.au',
   link: 'https://www.hoteldayclub.com.au/booking/HDC-A',
-  arrival: '11 am – 12 pm (estimate)',
+  arrival: '11am–12pm (estimate)',
 });
 assert.ok(mailed.text.includes('Your demo booking'));
 assert.ok(mailed.text.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
 assert.ok(mailed.html.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
-assert.ok(mailed.text.includes('Expected arrival: 11 am – 12 pm (estimate)'));
+assert.ok(mailed.text.includes('Expected arrival: 11am–12pm (estimate)'));
 assert.ok(mailed.text.includes("Your pass is valid any time during the hotel's opening hours. Your expected arrival time is an estimate, not a reservation."));
 assert.ok(!mailed.text.includes('\u2014') && !mailed.html.includes('\u2014'));
 assert.ok(mailed.html.includes("Your expected arrival time is an estimate, not a reservation."));

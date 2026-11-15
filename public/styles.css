@@ -128,8 +128,8 @@ section.blk{padding:64px 0}
 
 /* FAQ */
 .faq{display:grid;gap:0;border-top:1px solid var(--line)}
-.faq details{border-bottom:1px solid var(--line);padding:20px 4px}
-.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:16px;font-weight:600;font-size:1.02rem}
+.faq details{border-bottom:1px solid var(--line);padding:0 4px}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:48px;padding:12px 0;font-weight:600;font-size:1.02rem}
 .faq summary::-webkit-details-marker{display:none}
 .faq summary::after{content:"";width:10px;height:10px;border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:rotate(45deg);margin-top:4px;flex:0 0 auto;transition:transform .2s}
 .faq details[open] summary::after{transform:rotate(-135deg);margin-top:8px}

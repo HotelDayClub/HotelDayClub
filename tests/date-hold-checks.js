@@ -119,10 +119,10 @@ function expectDays(html, days) {
     const unknown = await get(port, `/checkout?hotel=missing-hotel&date=${open}&pass=lounger&qty=1`);
     assert.strictEqual(unknown.status, 404);
 
-    const badPass = await get(port, `/checkout?hotel=hold-pool&date=${open}&pass=not-a-pass&qty=1`);
-    assert.strictEqual(badPass.status, 409);
-    assert.ok(badPass.body.includes('Pick a pass.'));
-    assert.ok(!badPass.body.includes('date-alert'));
+    const badPass = await follow(port, `/checkout?hotel=hold-pool&date=${open}&pass=not-a-pass&qty=1`);
+    assert.strictEqual(badPass.status, 303);
+    assert.ok(badPass.location.includes('/h/hold-pool'));
+    assert.ok(badPass.location.includes('#book'));
 
     const ready = await get(port, `/checkout?hotel=hold-pool&date=${open}&pass=lounger&qty=1`);
     assert.strictEqual(ready.status, 200);

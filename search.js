@@ -155,7 +155,8 @@ class SearchQuery {
     const wantRaw = SearchQuery.first(query, 'want');
     const want = SearchQuery.WANTS.some(w => w.id && w.id === wantRaw) ? wantRaw : '';
     const guestsRaw = parseInt(SearchQuery.first(query, 'guests'), 10);
-    const guests = guestsRaw >= 1 && guestsRaw <= SearchQuery.BOOKING_SPOTS ? guestsRaw : 0;
+    const guests = guestsRaw >= 1 ? Math.min(guestsRaw, SearchQuery.BOOKING_SPOTS) : 0;
+    const guestsCapped = guestsRaw > SearchQuery.BOOKING_SPOTS;
     const priceRaw = parseInt(SearchQuery.first(query, 'price'), 10);
     const price = PRICE_CAPS.includes(priceRaw) ? priceRaw : 0;
     const ageRaw = SearchQuery.first(query, 'age');
@@ -165,7 +166,7 @@ class SearchQuery {
     const destination = SearchQuery.findDestination(query, destinations);
     const wantLabel = want ? (SearchQuery.WANTS.find(w => w.id === want) || {}).label || '' : '';
     const ageLabel = age === 'kids' ? 'Kids welcome' : age === '18' ? 'Adults only (18+)' : '';
-    return { destination, date, dateLabel: date ? nice(date) : rangeLabel, range, rangeLabel, mood, moodLabel, want, wantLabel, guests, price, age, ageLabel, sort };
+    return { destination, date, dateLabel: date ? nice(date) : rangeLabel, range, rangeLabel, mood, moodLabel, want, wantLabel, guests, guestsCapped, price, age, ageLabel, sort };
   }
 
   static kidsWelcome(policy) {
@@ -193,6 +194,17 @@ class SearchQuery {
 
   // Spots one booking can take. Shared with the listing, seat page and checkout clamps.
   static BOOKING_SPOTS = 6;
+
+  static maxUnits(holds) {
+    const each = Math.max(1, Number(holds) || 1);
+    return Math.max(1, Math.floor(SearchQuery.BOOKING_SPOTS / each));
+  }
+
+  static bookingPeople(qty, holds) {
+    const q = Math.max(0, Number(qty) || 0);
+    const each = Math.max(1, Number(holds) || 1);
+    return q * each;
+  }
 
   static bookingSpots() {
     const out = [];
@@ -419,7 +431,7 @@ class SearchQuery {
     const parts = ['Day passes'];
     if (params.destination) parts.push(params.destination.name);
     if (params.date || params.range) parts.push(params.dateLabel);
-    return parts.join(' · ') + ' | Hotel Day Club';
+    return parts.join(' · ') + ' · Hotel Day Club';
   }
 
   static heading(params) {
