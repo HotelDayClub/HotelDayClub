@@ -127,10 +127,17 @@ function cdp(WS, wsUrl) {
     const send = (method, params = {}) => session.send(method, params, sessionId);
     await send('Page.enable');
     await send('Runtime.enable');
+    await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     for (const [width, height] of [[360, 844], [390, 844], [1024, 800], [1280, 800], [1440, 900]]) {
       await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 800 });
       await send('Page.navigate', { url: `http://127.0.0.1:${port}/` });
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      await new Promise(resolve => setTimeout(resolve, 900));
+      await send('Runtime.evaluate', {
+        expression: `(() => {
+          document.querySelectorAll('[data-rv]').forEach(el => el.classList.add('in'));
+        })()`,
+      });
+      await new Promise(resolve => setTimeout(resolve, 200));
       const result = await send('Runtime.evaluate', {
         returnByValue: true,
         expression: `(() => {
@@ -181,8 +188,11 @@ function cdp(WS, wsUrl) {
           } : null;
           const helpEl = [...document.querySelectorAll('.assure b')].find(n => /help when you need it/i.test(n.textContent));
           const helpRight = helpEl ? helpEl.getBoundingClientRect().right : 0;
+          const exploreH2 = document.querySelector('#explore h2');
+          const exploreH2Top = exploreH2 ? exploreH2.getBoundingClientRect().top : 1e9;
           return {
             top: box.top,
+            exploreH2Top,
             inner: window.innerHeight,
             scroll: document.documentElement.scrollWidth,
             width: window.innerWidth,
@@ -232,10 +242,13 @@ function cdp(WS, wsUrl) {
       assert.strictEqual(data.kicker, 'Example listings · not real hotels');
       assert.ok(!data.kickerClipped, width + ' kicker clipped');
       assert.ok(data.seeH >= 44, width + ' see all ' + data.seeH);
+      if (width === 360 || width === 390 || width === 1024) {
+        assert.ok(data.exploreH2Top < data.inner, width + ' explore h2 below fold ' + data.exploreH2Top + ' vs ' + data.inner);
+      }
       if (width >= 1280) {
         assert.ok(data.top < data.inner, width + ' first listing below fold ' + data.top + ' vs ' + data.inner);
       }
-      console.log(width + 'x' + height + ' card top ' + Math.round(data.top) + ' of ' + data.inner);
+      console.log(width + 'x' + height + ' card top ' + Math.round(data.top) + ' explore h2 ' + Math.round(data.exploreH2Top) + ' of ' + data.inner);
     }
     console.log('home fold checks passed');
   } finally {
