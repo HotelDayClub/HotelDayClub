@@ -129,7 +129,7 @@ function cookie(res) {
     const exploreAt = home.body.indexOf('id="explore"');
     const stepsAt = home.body.indexOf('class="steps"');
     const destAt = home.body.indexOf('id="destinations"');
-    assert.ok(planAt >= 0 && planAt < exploreAt && exploreAt < stepsAt && stepsAt < destAt, 'homepage order');
+    assert.ok(exploreAt >= 0 && exploreAt < planAt && planAt < stepsAt && stepsAt < destAt, 'homepage order');
     assert.ok(home.body.includes('Numbers count example listings only.'));
     assert.ok(home.body.includes('Fictional example hotels.'));
     assert.ok(home.body.includes('Not taking bookings yet. Leave your email and we\'ll tell you when passes open near you. Free to join. We never sell this list.'));

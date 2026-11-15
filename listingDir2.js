@@ -256,7 +256,7 @@ ${holdHtml(o.hold)}
 </div>
 <div class="d2-passrow" id="d2-passrow" hidden><span class="d2-lab">Pass <small id="d2-passrow-t"></small></span><button type="button" class="d2-mdb" id="d2-change">Change</button></div>
 <div class="d2-lab d2-labrow"><span>Date <small id="d2-hrs">${hours ? `${esc(hours)}, hotel time` : 'Hotel time'}</small></span><button type="button" class="d2-mdb" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
-<div class="d2-dates" id="d2-dates" role="group" aria-label="Date, next ${ListingD2.CHIPS} days">${extra}${days.map(chipHtml).join('')}</div>
+<div class="d2-dates" id="d2-dates" role="group" aria-label="Date, next ${ListingD2.CHIPS} days">${days.map(chipHtml).join('')}${extra}</div>
 <div class="d2-cal" id="d2-calbox" hidden></div>
 <p class="d2-note" id="d2-closed" role="status" hidden></p>
 <p class="d2-note warn" id="d2-late" role="status"${o.lateNote ? '' : ' hidden'}>${esc(o.lateNote || '')}</p>
@@ -634,7 +634,7 @@ function ensureChip(s){
  inp.type='radio';inp.name='chip';inp.value=s;inp.setAttribute('aria-label',label(s));
  lab.appendChild(inp);
  lab.insertAdjacentHTML('beforeend','<span class="w">'+WK[wdOf(s)]+'</span><b>'+p.d+'</b>');
- $('#d2-dates').insertBefore(lab,$('#d2-dates').firstChild);
+ $('#d2-dates').appendChild(lab);
  chips.unshift(inp);bindChip(inp);
  inp.checked=(hidden.value===s);
 }

@@ -70,6 +70,14 @@ function cdp(WS, wsUrl) {
 }
 
 (async () => {
+  const homeCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'golden', 'home.css'), 'utf8');
+  const slotPCss = homeCss.match(/body\.home \.slot p\{[^}]+\}/);
+  assert.ok(slotPCss, 'body.home .slot p rule');
+  assert.ok(!/-webkit-line-clamp|line-clamp/.test(slotPCss[0]), 'plan card copy must not clamp');
+  assert.ok(!/text-overflow:\s*ellipsis/.test(slotPCss[0]), 'plan card copy must not ellipsis');
+  assert.ok(/body\.home \.slot img\{[^}]*aspect-ratio:3\/2/.test(homeCss), 'plan card image aspect ratio');
+  assert.ok(/body\.home \.slot img\{[^}]*min-height:/.test(homeCss), 'plan card image min-height');
+
   const WS = socketCtor();
   const bin = chromeBin();
   if (!WS || !bin) {
@@ -119,10 +127,17 @@ function cdp(WS, wsUrl) {
     const send = (method, params = {}) => session.send(method, params, sessionId);
     await send('Page.enable');
     await send('Runtime.enable');
-    for (const [width, height] of [[360, 844], [390, 844], [1280, 800]]) {
+    await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    for (const [width, height] of [[360, 844], [390, 844], [1024, 800], [1280, 800], [1440, 900]]) {
       await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 800 });
       await send('Page.navigate', { url: `http://127.0.0.1:${port}/` });
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      await new Promise(resolve => setTimeout(resolve, 900));
+      await send('Runtime.evaluate', {
+        expression: `(() => {
+          document.querySelectorAll('[data-rv]').forEach(el => el.classList.add('in'));
+        })()`,
+      });
+      await new Promise(resolve => setTimeout(resolve, 200));
       const result = await send('Runtime.evaluate', {
         returnByValue: true,
         expression: `(() => {
@@ -133,10 +148,23 @@ function cdp(WS, wsUrl) {
             text: el.textContent.trim(),
             clipped: el.scrollWidth > el.clientWidth + 1,
           }));
-          const helpers = [...document.querySelectorAll('.assure span')].map(el => ({
+          const helpers = [...document.querySelectorAll('.assure b, .assure span')].map(el => ({
             text: el.textContent.trim(),
             clipped: el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 1,
           }));
+          const assureEl = document.querySelector('.assure');
+          const rectOf = el => {
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
+          };
+          const assureBox = rectOf(assureEl);
+          const dayEl = document.querySelector('.day');
+          const dayBox = rectOf(dayEl);
+          const planSec = dayEl ? dayEl.closest('section') : null;
+          const planSecW = planSec ? planSec.clientWidth : 0;
+          const copyEl = document.querySelector('.hero .copy');
+          const copyBox = rectOf(copyEl);
           const kicker = document.querySelector('#explore .kicker');
           const see = document.querySelector('#explore .see-all').getBoundingClientRect();
           const kickerBox = kicker.getBoundingClientRect();
@@ -147,8 +175,30 @@ function cdp(WS, wsUrl) {
             if (rect.width < 1 || rect.height < 1) continue;
             if (rect.right > kickerBox.right + 1 || rect.bottom > kickerBox.bottom + 1 || rect.left < kickerBox.left - 1) kickerClipped = true;
           }
+          const planCopy = document.querySelector('.day .slot p');
+          const planImg = document.querySelector('.day .slot img');
+          const planP = planCopy ? {
+            text: planCopy.textContent.trim(),
+            tall: planCopy.scrollHeight > planCopy.clientHeight + 2,
+            style: getComputedStyle(planCopy),
+          } : null;
+          const planI = planImg ? {
+            h: planImg.getBoundingClientRect().height,
+            style: getComputedStyle(planImg),
+          } : null;
+          const helpEl = [...document.querySelectorAll('.assure b')].find(n => /help when you need it/i.test(n.textContent));
+          const helpRight = helpEl ? helpEl.getBoundingClientRect().right : 0;
+          const exploreH2 = document.querySelector('#explore h2');
+          const exploreH2Top = exploreH2 ? exploreH2.getBoundingClientRect().top : 1e9;
+          const freeCancelSub = document.querySelector('.assure li:first-child span');
+          const freeCancelVisible = !!(freeCancelSub
+            && getComputedStyle(freeCancelSub).display !== 'none'
+            && freeCancelSub.getBoundingClientRect().height > 0
+            && /24 hours before your access hours start/i.test(freeCancelSub.textContent));
           return {
             top: box.top,
+            exploreH2Top,
+            freeCancelVisible,
             inner: window.innerHeight,
             scroll: document.documentElement.scrollWidth,
             width: window.innerWidth,
@@ -158,11 +208,38 @@ function cdp(WS, wsUrl) {
             kicker: kicker.textContent.replace(/\\s+/g, ' ').trim(),
             kickerClipped,
             seeH: see.height,
+            planP,
+            planI,
+            assureBox,
+            dayBox,
+            planSecW,
+            copyBox,
+            helpRight,
           };
         })()`,
       });
       const data = result.result.value;
       assert.ok(data.scroll <= data.width, width + ' sideways scroll ' + data.scroll);
+      assert.ok(data.scroll <= data.width + 1, width + ' page horizontal overflow');
+      if (data.assureBox) {
+        assert.ok(data.assureBox.right <= data.width + 2, width + ' assure overflow right ' + JSON.stringify(data.assureBox));
+        assert.ok(data.assureBox.width <= data.width + 2, width + ' assure too wide ' + data.assureBox.width);
+      }
+      if (data.helpRight) assert.ok(data.helpRight <= data.width + 2, width + ' help link clipped ' + data.helpRight);
+      if (data.dayBox && data.planSecW) {
+        assert.ok(data.dayBox.width >= data.planSecW * 0.85, width + ' plan day narrow ' + data.dayBox.width + ' in ' + data.planSecW);
+      }
+      if (width >= 1024 && data.copyBox) {
+        assert.ok(data.copyBox.width >= Math.min(420, data.width * 0.38), width + ' hero copy squeeze ' + data.copyBox.width);
+      }
+      assert.ok(data.planP, width + ' plan copy');
+      assert.ok(data.planP.text.includes('gym session'), width + ' plan sample');
+      assert.ok(!data.planP.tall, width + ' plan copy clipped ' + data.planP.text);
+      assert.ok(data.planP.style.display !== '-webkit-box', width + ' line-clamp box');
+      assert.ok(Number(data.planP.style.webkitLineClamp) !== 1, width + ' line-clamp');
+      assert.ok(data.planP.style.textOverflow !== 'ellipsis', width + ' ellipsis');
+      assert.ok(data.planI && data.planI.h >= 100, width + ' plan image height ' + (data.planI && data.planI.h));
+      assert.ok(/object-fit:\s*cover/.test(homeCss), 'plan card image object-fit in CSS');
       assert.ok(data.button >= 44, width + ' search button ' + data.button);
       for (const field of data.fields) assert.ok(!field.clipped, width + ' clipped field ' + field.text);
       assert.ok(data.fields.some(field => field.text === 'All of Australia'), width + ' where');
@@ -171,8 +248,17 @@ function cdp(WS, wsUrl) {
       assert.strictEqual(data.kicker, 'Example listings · not real hotels');
       assert.ok(!data.kickerClipped, width + ' kicker clipped');
       assert.ok(data.seeH >= 44, width + ' see all ' + data.seeH);
-      if (width !== 360) assert.ok(data.top < data.inner, width + ' first card top ' + data.top + ' is below ' + data.inner);
-      console.log(width + 'x' + height + ' card top ' + Math.round(data.top) + ' of ' + data.inner);
+      if (width === 360 || width === 390) {
+        assert.ok(data.exploreH2Top < data.inner * 1.2, width + ' explore h2 fold ' + data.exploreH2Top + ' vs ' + (data.inner * 1.2));
+        assert.ok(data.freeCancelVisible, width + ' free cancellation subline');
+      }
+      if (width === 1024) {
+        assert.ok(data.exploreH2Top < data.inner, width + ' explore h2 below fold ' + data.exploreH2Top + ' vs ' + data.inner);
+      }
+      if (width >= 1280) {
+        assert.ok(data.top < data.inner, width + ' first listing below fold ' + data.top + ' vs ' + data.inner);
+      }
+      console.log(width + 'x' + height + ' card top ' + Math.round(data.top) + ' explore h2 ' + Math.round(data.exploreH2Top) + ' of ' + data.inner);
     }
     console.log('home fold checks passed');
   } finally {

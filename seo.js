@@ -21,8 +21,8 @@ const PAGES = {
   },
   how: {
     path: '/how-it-works',
-    title: 'How hotel day passes work',
-    description: 'How a hotel day pass works in Australia: choose a pool, gym or spa, book the day, and check in at the desk. No room needed.',
+    title: 'Help centre: how hotel day passes work',
+    description: 'How hotel day passes work in Australia, and short answers on booking, arriving, parking, changes and cancellations.',
   },
   faq: {
     path: '/faq',
@@ -76,6 +76,19 @@ const GUIDES = [
       'The hotel decides what is included. One listing might be a lounger and a towel. Another might add a gym session or a treatment. The page should say which, and it should show the price before you confirm.',
       'Hotel Day Club is a way to find those passes across Australia. We are the booking side. The hotel still runs the pool, sets the rules and takes the guest on the day.',
       'This website is a demo. The hotels you can open today are fictional examples with stock photos. They are not partners, and a booking on this site does not take a payment. Join the waitlist if you want a note when a real pass is available near you.',
+    ],
+  },
+  {
+    slug: 'day-pass-hotel-stay-or-day-spa',
+    h1: 'Day pass, hotel stay or day spa: what is the difference?',
+    title: 'Day pass, hotel stay or day spa: what is the difference?',
+    description: 'What a hotel day pass, an overnight stay and a day spa visit each usually include, so you can pick the right option in Australia.',
+    comparison: true,
+    sections: [
+      ['What a day pass is', 'A day pass lets you use a hotel\'s pool, gym or spa areas for one day without booking a room. On Hotel Day Club you pick a hotel, a pass and a date. Each listing shows what is included, the hours and the hotel\'s rules.'],
+      ['What happens on the day', 'Show your QR code or booking code at the hotel desk, with photo ID if the hotel asks for it. Then enjoy the facilities within your pass hours.'],
+      ['What is not included', 'Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue. Treatments, parking and gym access are only included where the listing says so, or as a paid add-on.'],
+      ['Changing your plans', 'Free cancellation up to 24 hours before your access hours start. Read the <a href="/refunds">cancellation and refund policy</a> for the date you chose.'],
     ],
   },
   {
@@ -395,16 +408,36 @@ function guideBySlug(slug) {
 function guideIndexHtml() {
   const cards = GUIDES.map(g => `<article class="fh-card"><h2><a href="/guides/${g.slug}">${esc(g.h1)}</a></h2><p>${esc(g.description)}</p></article>`).join('');
   return `<div class="wrap sec"><h1 class="l-title">Hotel day pass guides</h1>
-<p class="lead">Two short notes on day passes in Australia. No rankings, and no hotels named as partners.</p>
+<p class="lead">Short guides to day passes in Australia. No rankings, and no hotels named as partners.</p>
 <div class="fh-grid">${cards}</div></div>`;
 }
 
+function guideComparisonTable() {
+  return `<div class="gd-tablewrap"><table class="gd-cmp"><thead><tr><th scope="col"></th><th scope="col">Day pass</th><th scope="col">Hotel stay</th><th scope="col">Day spa</th></tr></thead><tbody>
+<tr><th scope="row">What you get</th><td>Use of a hotel's pool, gym or spa areas for the day</td><td>A room for the night, plus the hotel's facilities for guests</td><td>Treatments such as massages or facials</td></tr>
+<tr><th scope="row">Overnight room</th><td>No</td><td>Yes</td><td>No</td></tr>
+<tr><th scope="row">Pool</th><td>Yes, on pool passes</td><td>If the hotel has one</td><td>Not always</td></tr>
+<tr><th scope="row">When</th><td>Within the pass hours the hotel sets</td><td>From check-in to check-out</td><td>At your appointment time</td></tr>
+<tr><th scope="row">Food and drink</th><td>Not sold through Hotel Day Club</td><td>Depends on the booking</td><td>Depends on the spa</td></tr>
+<tr><th scope="row">Who it suits</th><td>A day out, a hot day, a short break without staying over</td><td>A trip or a night away</td><td>When the treatment is the point</td></tr>
+</tbody></table></div>`;
+}
+
 function guideHtml(guide) {
-  const body = guide.paras.map(p => `<p>${esc(p)}</p>`).join('');
-  return `<div class="wrap sec"><p class="eyebrow-s"><a href="/guides">Guides</a></p>
+  const lead = guide.comparison
+    ? '<p class="lead">Three ways to spend time at a pool, a gym or a spa in Australia. Here is what each one usually gives you, so you can pick the right one for your day.</p>'
+    : `<p class="lead">${esc(guide.description)}</p>`;
+  const table = guide.comparison ? '<h2>At a glance</h2>' + guideComparisonTable() : '';
+  const body = guide.comparison
+    ? guide.sections.map(([h, p]) => `<h2>${esc(h)}</h2><p>${p.includes('<a ') ? p : esc(p)}</p>`).join('') + '<p class="gd-note">This is a demo site. Listings are examples and no real bookings are taken.</p>'
+    : guide.paras.map(p => `<p>${esc(p)}</p>`).join('');
+  const tail = guide.comparison
+    ? '<p class="gd-cta"><a class="btn btn-coral" href="/search">Browse passes</a></p>'
+    : '';
+  return `<div class="wrap sec gd-page"><p class="eyebrow-s"><a href="/guides">Guides</a> · <a href="/how-it-works">Help centre</a></p>
 <h1 class="l-title">${esc(guide.h1)}</h1>
-<p class="lead">${esc(guide.description)}</p>
-${body}
+${lead}
+${table}${body}${tail}
 <p><a href="/how-it-works">How day passes work</a> · <a href="/faq">Questions</a></p></div>`;
 }
 
@@ -413,5 +446,5 @@ module.exports = {
   siteIndexable, legalPagesIndexable, robotsContent, fullTitle, clampDesc, absolute, shortName,
   listingTitle, listingDescription, pageCopy, crumbs, graph, homeJsonLd, listingJsonLd, articleJsonLd,
   headMeta, robotsTxt, sitemapDocument, canonicalRedirect,
-  faqHtml, faqJsonLd, guideBySlug, guideIndexHtml, guideHtml,
+  faqItems, faqHtml, faqJsonLd, guideBySlug, guideIndexHtml, guideHtml,
 };
