@@ -121,10 +121,9 @@ class ListingD2 {
     return times.length === 1 ? times[0] : '';
   }
 
-  static fitsLine(pass, items) {
+  static fitsLine(pass) {
     const holds = Number(pass && pass.holds) || 1;
-    const towel = ListingPanel.towelFor(items, holds);
-    return towel ? `Fits ${holds} · ${towel}` : `Fits ${holds}`;
+    return `Fits ${holds}`;
   }
 
   static passGroups(passes) {
@@ -208,7 +207,7 @@ function galleryHtml(h) {
 function passCard(p, h, items, opts) {
   const desc = String(p.description || '').trim();
   const href = ListingD2.cardHref(h.slug, p, { date: opts.date, qty: opts.qty });
-  return `<a class="d2-card" href="${esc(href)}" data-pass="${esc(p.code)}"><div><b class="n">${esc(p.name)}</b>${desc ? `<p>${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p, items))}</p><p class="pr">From ${priceHtml(h, p.price)}</p></div>${passThumb(p, passAlt(p, h))}<span class="go" aria-hidden="true">${icon('arrow')}</span></a>`;
+    return `<a class="d2-card" href="${esc(href)}" data-pass="${esc(p.code)}"><div><b class="n">${esc(p.name)}</b>${desc ? `<p>${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p))}</p><p class="pr">From ${priceHtml(h, p.price)}</p></div>${passThumb(p, passAlt(p, h))}<span class="go" aria-hidden="true">${icon('arrow')}</span></a>`;
 }
 
 function chipHtml(c) {
@@ -253,7 +252,7 @@ function sheetHtml(o) {
   const tiles = passes.map(p => {
     const on = pick && p.code === pick.code;
     const off = out(p);
-    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p, items))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${PhotoAssets.imgTag(safePhoto(String(p.photo || '')), { alt: isDemo(h) ? 'Stock photo, not this hotel' : p.name, width: 120, height: 60, sizes: '120px', loading: 'lazy' })}<b>${esc(p.name)}</b><span>${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><i class="tk">${icon('tick')}</i></label>`;
+    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${PhotoAssets.imgTag(safePhoto(String(p.photo || '')), { alt: isDemo(h) ? 'Stock photo, not this hotel' : p.name, width: 120, height: 60, sizes: '120px', loading: 'lazy' })}<b>${esc(p.name)}</b><span>${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><i class="tk">${icon('tick')}</i></label>`;
   }).join('');
   const noJsDate = `<noscript><form class="d2-nojs" action="/h/${esc(encodeURIComponent(h.slug))}#book" method="get"><label>Another date<input type="date" name="date" min="${esc(o.today)}" max="${esc(maxDate)}" value="${esc(outside ? date : '')}"></label><input type="hidden" name="pass" value="${esc(pick ? pick.code : '')}"><input type="hidden" name="qty" value="${qty}"><button class="d2-btn out" type="submit">Use this date</button></form></noscript>`;
   return `<section class="d2-book" id="book" aria-labelledby="d2-book-h" tabindex="-1">
@@ -265,7 +264,7 @@ ${holdHtml(o.hold)}
 <div class="d2-passblock" id="d2-passblock">
 <span class="d2-lab" id="d2-pass-lab">Pass</span>
 <div class="d2-pp" role="radiogroup" aria-labelledby="d2-pass-lab">${tiles}</div>
-<p class="d2-fit" id="d2-fit">${icon('towel')}<span id="d2-fit-t">${esc(pick ? ListingD2.fitsLine(pick, items) : '')}</span></p>
+<p class="d2-fit" id="d2-fit">${icon('people')}<span id="d2-fit-t">${esc(pick ? ListingD2.fitsLine(pick) : '')}</span></p>
 </div>
 <div class="d2-passrow" id="d2-passrow" hidden><span class="d2-lab">Pass <small id="d2-passrow-t"></small></span><button type="button" class="d2-mdb" id="d2-change">Change</button></div>
 <div class="d2-lab d2-labrow"><span>Date <small id="d2-hrs">${hours ? `${esc(hours)}, hotel time` : 'Hotel time'}</small></span><button type="button" class="d2-mdb" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
@@ -385,6 +384,9 @@ function listingHtmlD2(opts) {
   const fromHtml = `From <b>${esc(money(from))}</b>${demo ? ' <small>(demo)</small>' : ''}`;
   const addressLine = String(h.area || '').trim();
   const desc = `<b>${esc(h.tagline)}.</b> ${esc(h.blurb)}`;
+  const towelChip = h.towels != null && Number(h.towels) === 0
+    ? `<ul class="chips-c d2-towel-chip" aria-label="Towels"><li class="am-row">${icon('towel')}<span>Bring your own towel</span></li></ul>`
+    : `<ul class="chips-c d2-towel-chip" aria-label="Towels"><li class="am-row">${icon('towel')}<span>Towels included</span></li></ul>`;
   return `<div class="d2" id="d2-root">${SPRITE}
 ${galleryHtml(h)}
 <div class="d2-tabs" id="d2-tabs"><div class="in"><nav aria-label="On this page"><a href="#passes" aria-current="true">Passes</a><a href="#details">Details</a></nav><a class="d2-datebtn" href="#book" id="d2-pill" data-open="date">${icon('cal')}<span id="d2-pill-t">${esc(dateLabel)}</span></a></div></div>
@@ -392,7 +394,7 @@ ${galleryHtml(h)}
 <section class="d2-head" id="overview"><h1 class="d2-title">${esc(heading)}</h1>
 <p class="d2-loc">${esc(addressLine)}</p>
 ${demo ? '<span class="d2-tag">Fictional demo listing</span>' : ''}
-<p class="d2-desc" id="d2-desc">${desc}</p><button type="button" class="d2-rm" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button></section>
+<p class="d2-desc" id="d2-desc">${desc}</p>${towelChip}<button type="button" class="d2-rm" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button></section>
 <section class="d2-s" id="passes"><h2>Passes</h2><p class="d2-muted">Price per spot.${demo ? ' Example photos.' : ''}</p>
 ${sections}
 ${sheet}
@@ -732,7 +734,8 @@ function toggleCal(on){
  moreBtn.querySelector('span').textContent=on?'Next 14 days':'More dates';
  if(!on) ensureChip(hidden.value);
  if(on){
-  var p=parse(hidden.value)||parse(MIN);
+  var p=parse(hidden.value);
+  if(!p||hidden.value<MIN||hidden.value>MAX) p=parse(MIN);
   viewY=p.y;viewM=p.m;
   renderCal();
  }

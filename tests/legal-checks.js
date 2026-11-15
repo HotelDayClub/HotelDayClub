@@ -376,6 +376,11 @@ function start(port, extra = {}) {
         assert.ok(doc.body.includes('Version 1.0'), pathName);
         assert.ok(doc.body.includes('Effective 12 November 2026'), pathName);
         assert.ok(!doc.body.includes('Version 1.1'), pathName);
+      } else if (pathName === '/terms') {
+        assert.ok(doc.body.includes('Version 1.2'), pathName);
+        assert.ok(doc.body.includes('Effective ' + publishedOn), pathName);
+        assert.ok(doc.body.includes('A clean pool towel is included for each guest unless the listing says &quot;Bring your own towel&quot;.'), pathName);
+        assert.ok(!doc.body.includes('Version 1.0'), pathName);
       } else {
         assert.ok(doc.body.includes('Version 1.1'), pathName);
         assert.ok(doc.body.includes('Effective ' + publishedOn), pathName);
@@ -675,7 +680,7 @@ function start(port, extra = {}) {
     const { LegalVersions, ConsentLog } = require('../consent');
     const versions = LegalVersions.current();
     assert.deepStrictEqual(versions, {
-      terms: '2026-11-15',
+      terms: '1.2',
       refunds: '2026-11-12',
       privacy: '2026-11-15',
       risk: '2026-11-15',

@@ -1,6 +1,7 @@
 const { esc } = require('./util');
 const { GuestCheckIn, FOOD_RULE, FREE_CANCEL } = require('./offering');
 const seo = require('./seo');
+const { LinkStyles } = require('./linkStyles');
 
 const ICONS = {
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
@@ -45,6 +46,7 @@ const RAW_CATEGORIES = [
       { id: 'what-do-i-accept-at-checkout', q: 'What do I accept at checkout?', from: 'faq:What do I accept at checkout?' },
       { id: 'who-can-book-and-can-children-come', q: 'Who can book, and can children come?', from: 'faq:Who can book, and can children come?' },
       { id: 'what-if-a-pass-is-sold-out', q: 'What if a pass is sold out?', html: 'The page says when a pass is sold out for that date, or when there are not enough left. The terms say that if a pass sells out at the same moment and we can\'t confirm the booking, the booking is not made. This demo doesn\'t take a real payment.' },
+      { id: 'cant-find-booking-email', q: "Can't find your booking email?", html: 'Check your spam folder, or email us at {mail} with your name and booking date and we\'ll resend it.' },
     ],
   },
   {
@@ -58,7 +60,8 @@ const RAW_CATEGORIES = [
         q: 'How do I check in?',
         html: `${GuestCheckIn.line()} The hours are on your confirmation. In this demo the confirmation stays on the page, and a confirmation email is sent to the address you give. Bring photo ID when the hotel asks for it.`,
       },
-      { id: 'what-should-i-bring', q: 'What should I bring?', html: 'Photo ID when the hotel asks for it, swimwear and sunscreen. The listing says whether a towel is included.' },
+      { id: 'what-should-i-bring', q: 'What should I bring?', html: 'Photo ID when the hotel asks for it, swimwear and sunscreen.' },
+      { id: 'do-i-need-a-towel', q: 'Do I need a towel?', html: 'No, towels are included unless the listing says to bring your own.' },
     ],
   },
   {
@@ -129,7 +132,7 @@ class HelpCentre {
     const items = STEPS.map((row, i) => `<li><span class="hc-num" aria-hidden="true">${i + 1}</span><h3>${esc(row[0])}</h3><p>${esc(row[1])}</p></li>`).join('');
     return `<section class="wrap hc-steps" id="guests" aria-labelledby="hc-steps-h"><h2 id="hc-steps-h">For guests</h2><ol>${items}</ol>
 <p class="hc-cta"><a class="btn btn-coral" href="/#explore">Browse pools</a></p>
-<p class="hc-guides"><a class="see-all" href="/guides">Guides to hotel day passes</a></p></section>`;
+<p class="hc-guides">${LinkStyles.sectionAction('/guides', 'Guides to hotel day passes')}</p></section>`;
   }
 
   static cardsHtml() {

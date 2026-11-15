@@ -120,7 +120,7 @@ function cookie(res) {
     assert.ok(!home.body.includes('You book the day.'));
     assert.ok(!home.body.includes('by the hour'));
     assert.ok(home.body.includes('If the pool closes'));
-    assert.ok(home.body.includes('full refund or a free rebooking'));
+    assert.ok(home.body.includes('Full refund or free rebooking.'));
     assert.ok(home.body.includes('Help when you need it'));
     assert.ok(home.body.includes('href="/contact"'));
     assert.ok(home.body.includes('Questions? Email us.'));

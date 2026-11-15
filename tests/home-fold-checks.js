@@ -166,7 +166,7 @@ function cdp(WS, wsUrl) {
           const copyEl = document.querySelector('.hero .copy');
           const copyBox = rectOf(copyEl);
           const kicker = document.querySelector('#explore .kicker');
-          const see = document.querySelector('#explore .see-all').getBoundingClientRect();
+          const see = (document.querySelector('#explore .sec-action') || document.querySelector('#explore .see-all')).getBoundingClientRect();
           const kickerBox = kicker.getBoundingClientRect();
           const range = document.createRange();
           range.selectNodeContents(kicker);
@@ -234,7 +234,14 @@ function cdp(WS, wsUrl) {
           const searchOverlap = submitBox && (whatBox && overlaps(submitBox, whatBox) || whatPickBox && overlaps(submitBox, whatPickBox) || chevBox && overlaps(submitBox, chevBox));
           const exploreH2 = document.querySelector('#explore h2');
           const exploreH2Top = exploreH2 ? exploreH2.getBoundingClientRect().top : 1e9;
-          const freeCancelSub = document.querySelector('.assure li:first-child span');
+          const wraps = [...document.querySelectorAll('.assure .ico-wrap')];
+          const gridCols = getComputedStyle(document.querySelector('.assure ul')).gridTemplateColumns.split(/\s+/).filter(Boolean).length || 1;
+          let iconTopSpread = 0;
+          for (let i = 0; i < wraps.length; i += gridCols) {
+            const tops = wraps.slice(i, i + gridCols).map(el => el.getBoundingClientRect().top);
+            if (tops.length > 1) iconTopSpread = Math.max(iconTopSpread, Math.max(...tops) - Math.min(...tops));
+          }
+          const freeCancelSub = document.querySelector('.assure li:first-child span:not(.ico-wrap)');
           const freeCancelVisible = !!(freeCancelSub
             && getComputedStyle(freeCancelSub).display !== 'none'
             && freeCancelSub.getBoundingClientRect().height > 0
@@ -243,6 +250,7 @@ function cdp(WS, wsUrl) {
             top: box.top,
             exploreH2Top,
             freeCancelVisible,
+            iconTopSpread,
             inner: window.innerHeight,
             scroll: document.documentElement.scrollWidth,
             width: window.innerWidth,
@@ -304,6 +312,9 @@ function cdp(WS, wsUrl) {
       if (width === 360 || width === 390) {
         assert.ok(data.exploreH2Top < data.inner * 1.2, width + ' explore h2 fold ' + data.exploreH2Top + ' vs ' + (data.inner * 1.2));
         assert.ok(data.freeCancelVisible, width + ' free cancellation subline');
+      }
+      if (width === 1024 || width === 1440) {
+        assert.ok(data.iconTopSpread <= 2, width + ' assure icon top alignment ' + data.iconTopSpread);
       }
       if (width === 1024) {
         assert.ok(data.exploreH2Top < data.inner, width + ' explore h2 below fold ' + data.exploreH2Top + ' vs ' + data.inner);

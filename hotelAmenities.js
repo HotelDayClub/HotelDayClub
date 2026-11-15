@@ -210,11 +210,7 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
 
   static inclusionLabel(item, people) {
     if (item.code === 'wifi') return 'Wi-Fi';
-    if (item.code === 'towels') {
-      const qty = item.per === 'booking' ? 1 : Math.max(1, Number(people) || 1);
-      if (qty === 1) return 'Towels: 1 per person';
-      return `${qty} towels`;
-    }
+    if (item.code === 'towels') return '';
     return item.name;
   }
 
@@ -243,6 +239,7 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
     for (const item of items) {
       if (item.mode !== 'included' && item.mode !== 'addon') continue;
       if (FOOD_DRINK.has(item.code)) continue;
+      if (item.code === 'towels') continue;
       const cats = CODE_CATS[item.code];
       const bucket = item.mode === 'included' ? included : optional;
       if (cats) {
@@ -257,10 +254,12 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
         }
         if (covered.has(item.code)) continue;
       }
+      const label = HotelAmenities.inclusionLabel(item, people);
+      if (!label) continue;
       bucket.push({
-        label: HotelAmenities.inclusionLabel(item, people),
+        label,
         icon: HotelAmenities.iconKeyForCode(item.code),
-        towels: item.code === 'towels',
+        towels: false,
       });
     }
 
@@ -331,7 +330,8 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
       parts.push(`<h3>On site (not included)</h3><ul class="chips-c os">${groups.onsite.map(row => `<li class="am-row">${HotelAmenities.icon(row.icon)}<span>${esc(row.label)}</span></li>`).join('')}</ul>`);
     }
     const href = `/h/${encodeURIComponent(hotel.slug)}#am-h`;
-    return `<section class="am-c" aria-labelledby="amc-h"><h2 id="amc-h" class="h3">${esc(title)}</h2>${parts.join('')}<a class="tlink" href="${esc(href)}">See all amenities</a></section>`;
+    const { LinkStyles } = require('./linkStyles');
+    return `<section class="am-c" aria-labelledby="amc-h"><h2 id="amc-h" class="h3">${esc(title)}</h2>${parts.join('')}${LinkStyles.sectionAction(href, 'See all amenities')}</section>`;
   }
 
   static bookingHtml(db, hotelId) {

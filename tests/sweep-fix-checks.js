@@ -65,7 +65,9 @@ function get(port, urlPath) {
     assert.ok(loc.includes('skyline-rooftop'), loc);
     const beyondListing = await get(port, loc.split('#')[0]);
     assert.ok(beyondListing.body.includes('You can book up to 90 days ahead.'), beyondListing.body.slice(0, 400));
+    assert.ok(!beyondListing.body.includes('No open dates in the next 90 days.'), beyondListing.body.slice(0, 800));
     assert.ok(beyondListing.body.includes('id="d2-hold"'));
+    assert.ok(beyondListing.body.includes('hidden.value<MIN||hidden.value>MAX'), 'out-of-range dates open the calendar on the current month');
 
     const noDate = await get(port, '/checkout?hotel=skyline-rooftop');
     assert.ok([302, 303].includes(noDate.status), 'missing date redirects to listing');

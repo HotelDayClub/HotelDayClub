@@ -151,14 +151,16 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
       assert.ok(body.includes('Open in Google Maps') || body.includes('Map placeholder (demo)'), slug);
     }
 
-    // A5: included amenities, towels are the only quantity.
+    // A5: included amenities omit per-guest towel counts; towel chip is on the listing header.
     const saltText = visibleText(pages['saltwater-terrace']);
     const incAt = pages['saltwater-terrace'].indexOf('Included in your pass');
     const incEnd = pages['saltwater-terrace'].indexOf('</ul>', incAt);
     const incRows = [...pages['saltwater-terrace'].slice(incAt, incEnd).matchAll(/<li>(.*?)<\/li>/g)].map(m => m[1].replace(/<[^>]+>/g, ''));
-    assert.strictEqual(incRows.length, 6, incRows.join('|'));
-    assert.deepStrictEqual(incRows.filter(r => /\d/.test(r)).length <= 1, true, 'towels are the only quantity');
-    assert.ok(incRows.some(r => /^Towels/.test(r)));
+    assert.ok(incRows.length >= 1, incRows.join('|'));
+    assert.strictEqual(incRows.filter(r => /\d/.test(r)).length, 0, 'no quantity labels in included list');
+    assert.ok(!incRows.some(r => /^Towels/.test(r)));
+    assert.ok(pages['saltwater-terrace'].includes('d2-towel-chip'));
+    assert.ok(pages['saltwater-terrace'].includes('Towels included'));
     assert.ok(!incRows.some(r => /Pool access/.test(r)));
     assert.ok(saltText.includes('Example amenities (demo)'));
 
@@ -276,7 +278,8 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(/Fitness centre access \u00d7 2/.test(tt), tt);
     assert.ok(/<span>Parking<\/span>/.test(t));
     assert.ok(!/Parking \u00d7 1/.test(tt));
-    assert.ok(t.includes('Towels: 2 provided'));
+    assert.ok(t.includes('Towels included'));
+    assert.ok(!t.includes('Towels: 2 provided'));
     assert.strictEqual(count(tt, FOOD_RULE), 1);
     assert.ok(tt.includes('Free cancellation until'));
     assert.strictEqual(count(t, 'class="tk-btn"'), 1, 'one filled button');

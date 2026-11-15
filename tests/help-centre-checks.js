@@ -83,6 +83,9 @@ async function main() {
 
     const deep = await get(port, '/how-it-works#can-i-cancel-for-free');
     assert.ok(deep.body.includes('id="can-i-cancel-for-free"'));
+    assert.ok(hiw.body.includes('id="do-i-need-a-towel"'));
+    assert.ok(hiw.body.includes('id="cant-find-booking-email"'));
+    assert.ok(hiw.body.includes('No, towels are included unless the listing says to bring your own.'));
 
     const faqBefore = await get(port, '/faq');
     const faqAfter = faqBefore.body;
