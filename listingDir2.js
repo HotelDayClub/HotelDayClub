@@ -195,20 +195,22 @@ function passAlt(p, h) {
   return isDemo(h) ? `Example photo of a ${kind}, not this hotel` : `${kind} at ${shortName(h)}`;
 }
 
-function heroTowelChip(h) {
-  const bring = h && (h.towels == null || Number(h.towels) === 0);
-  const label = bring ? 'Bring your own towel' : 'Towels included';
-  return `<ul class="d2-towel-chip" aria-label="Towels"><li>${icon('towel')}<span>${esc(label)}</span></li></ul>`;
-}
-
-function heroCopyHtml(h, heading, area, desc) {
+function heroCopyHtml(h, heading, area, descHtml) {
   const demo = isDemo(h);
   return `<div class="d2-hero-copy" id="d2-hero-copy"><div class="d2-hero-in">
 <p class="d2-hero-loc">${esc(area)}</p>
 <h1 class="d2-hero-title">${esc(heading)}</h1>
 ${demo ? '<span class="d2-hero-tag">Fictional demo listing</span>' : ''}
-<p class="d2-desc" id="d2-desc">${desc}</p>${heroTowelChip(h)}<button type="button" class="d2-rm text-link" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button>
+${descHtml}<button type="button" class="d2-rm text-link" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button>
 </div></div>`;
+}
+
+function heroDescHtml(h) {
+  const tag = String(h.tagline || '').trim();
+  if (tag) {
+    return `<p class="d2-desc" id="d2-desc">${esc(tag)}.<span class="d2-more-txt" hidden> ${esc(String(h.blurb || '').trim())}</span></p>`;
+  }
+  return `<p class="d2-desc" id="d2-desc">${esc(String(h.blurb || '').trim())}</p>`;
 }
 
 function galleryHtml(h, hero) {
@@ -374,7 +376,7 @@ function detailsHtml(o) {
   const location = `<div class="d2-block"><h3>Location</h3>${addr}${embed ? `<div class="d2-map d2-embed">${embed}</div>` : placeholder}${mapsHref ? `<a class="d2-btn out block" href="${esc(mapsHref)}" target="_blank" rel="noopener">${icon('nav')}Open in Google Maps</a>` : ''}</div>`;
 
   const groups = o.groups || { included: [], onsite: [] };
-  const incRows = groups.included.filter(r => !/^towels?\b/i.test(String(r.label || '')));
+  const incRows = groups.included;
   const row = r => `<li>${icon(AMENITY_ICON[r.icon] || 'check')}${esc(r.label)}</li>`;
   const included = incRows.length
     ? `<p class="d2-sub first">Included in your pass${demo ? ' <span class="ex">Example amenities (demo)</span>' : ''}</p><ul class="d2-inc">${incRows.map(row).join('')}</ul>`
@@ -444,16 +446,16 @@ function listingHtmlD2(opts) {
   const dateLabel = date ? ListingD2.label(date) : 'Any date';
   const fromHtml = `From <b>${esc(money(from))}</b>${demo ? ' <small>(demo)</small>' : ''}`;
   const addressLine = String(h.area || '').trim();
-  const desc = `<b>${esc(h.tagline)}.</b> ${esc(h.blurb)}`;
+  const overviewDesc = `${esc(String(h.tagline || '').trim())}. ${esc(String(h.blurb || '').trim())}`;
   return `<div class="d2 listing" id="d2-root">${SPRITE}
-${galleryHtml(h, { heading, area: addressLine, desc })}
+${galleryHtml(h, { heading, area: addressLine, desc: heroDescHtml(h) })}
 ${bookBarHtml(fromHtml, dateLabel, qty)}
 <div class="d2-tabs" id="d2-tabs"><div class="in"><nav aria-label="On this page"><a href="#passes" aria-current="true">Passes</a><a href="#details">Details</a></nav><a class="d2-datebtn" href="#book" id="d2-pill" data-open="date">${icon('cal')}<span id="d2-pill-t">${esc(dateLabel)}</span></a></div></div>
 <div class="d2-layout"><div class="d2-col">
 <section class="d2-head" id="overview" hidden aria-hidden="true"><p class="d2-title">${esc(heading)}</p>
 <p class="d2-loc">${esc(addressLine)}</p>
 ${demo ? '<span class="d2-tag">Fictional demo listing</span>' : ''}
-<p class="d2-desc">${desc}</p></section>
+<p class="d2-desc">${overviewDesc}</p></section>
 <section class="d2-s" id="passes"><h2>Passes</h2><p class="d2-muted">Price per spot.${demo ? ' Example photos.' : ''}</p>
 <div class="d2-pass-groups">${sections}</div>
 ${sheet}
@@ -530,21 +532,32 @@ if(gw&&lb){
 
 var desc=$('#d2-desc'),rm=$('#d2-rm');
 if(desc&&rm){
- var fitDesc=function(){
-  if(rm.getAttribute('aria-expanded')==='true'){rm.hidden=false;return}
-  desc.classList.add('is-clamped');
-  rm.hidden=!(desc.scrollHeight>desc.clientHeight+1);
- };
- rm.addEventListener('click',function(){
-  var open=rm.getAttribute('aria-expanded')==='true';
-  rm.setAttribute('aria-expanded',open?'false':'true');
-  rm.textContent=open?'Read more':'Read less';
-  desc.classList.toggle('is-clamped',open);
-  if(open) fitDesc();
- });
- fitDesc();
- window.addEventListener('resize',fitDesc);
- if(document.fonts&&document.fonts.ready) document.fonts.ready.then(fitDesc);
+ var more=desc.querySelector('.d2-more-txt');
+ if(more){
+  rm.hidden=false;
+  rm.addEventListener('click',function(){
+   var open=rm.getAttribute('aria-expanded')==='true';
+   rm.setAttribute('aria-expanded',open?'false':'true');
+   more.hidden=open;
+   rm.textContent=open?'Read more':'Read less';
+  });
+ }else{
+  var fitDesc=function(){
+   if(rm.getAttribute('aria-expanded')==='true'){rm.hidden=false;return}
+   desc.classList.add('is-clamped');
+   rm.hidden=!(desc.scrollHeight>desc.clientHeight+1);
+  };
+  rm.addEventListener('click',function(){
+   var open=rm.getAttribute('aria-expanded')==='true';
+   rm.setAttribute('aria-expanded',open?'false':'true');
+   rm.textContent=open?'Read more':'Read less';
+   desc.classList.toggle('is-clamped',open);
+   if(open) fitDesc();
+  });
+  fitDesc();
+  window.addEventListener('resize',fitDesc);
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(fitDesc);
+ }
 }
 
 var tabs=$('#d2-tabs nav');

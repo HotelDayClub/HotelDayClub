@@ -39,7 +39,7 @@ function post(port, urlPath, fields, headers = {}) {
 }
 function leadAndMeta(body, slug, name, area) {
   const intro = DEMO_INTROS[slug];
-  assert.ok(body.includes(`<b>${intro.tagline}.</b> ${intro.blurb}`), slug);
+  assert.ok(body.includes(`${intro.tagline}.`) && body.includes(intro.blurb), slug);
   const meta = body.match(/<meta name="description" content="([^"]*)">/);
   const og = body.match(/<meta property="og:description" content="([^"]*)">/);
   const tw = body.match(/<meta name="twitter:description" content="([^"]*)">/);
@@ -229,9 +229,8 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(salt.body.includes('type="button"'));
     const incAt = salt.body.indexOf('class="d2-inc"');
     const incList = incAt >= 0 ? salt.body.slice(incAt, salt.body.indexOf('</ul>', incAt)) : '';
-    assert.ok(!incList.includes('Towel'));
+    assert.ok(!/\d+\s*towels|Towels:\s*\d/i.test(incList));
     assert.ok(!/food|drink|café|cafe|\bbar\b/i.test(incList));
-    assert.ok(salt.body.includes('d2-towel-chip'));
     assert.ok(salt.body.includes('Towels included'));
     assert.ok(salt.body.includes('Fits 1'));
     assert.ok(salt.body.includes('Fits 2'));

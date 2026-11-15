@@ -49,14 +49,17 @@ function wsSend(ws, obj) {
   });
 }
 
-async function shot(ws, { url, width, height, name, prep, full }) {
+async function shot(ws, { url, width, height, name, prep, full, awaitMs = 1400 }) {
   let h = height;
   if (full) h = Math.max(height, 1200);
   await wsSend(ws, { method: 'Emulation.setDeviceMetricsOverride', params: { width, height: h, deviceScaleFactor: 1, mobile: width < 800 } });
   await wsSend(ws, { method: 'Emulation.setEmulatedMedia', params: { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] } });
   await wsSend(ws, { method: 'Page.navigate', params: { url } });
-  await new Promise(r => setTimeout(r, 1400));
-  if (prep) await wsSend(ws, { method: 'Runtime.evaluate', params: { expression: prep, awaitPromise: true } });
+  await new Promise(r => setTimeout(r, awaitMs));
+  if (prep) {
+    await wsSend(ws, { method: 'Runtime.evaluate', params: { expression: prep, awaitPromise: true, returnByValue: true } });
+    await new Promise(r => setTimeout(r, 600));
+  }
   if (full) {
     const layout = await wsSend(ws, { method: 'Page.getLayoutMetrics' });
     h = Math.min(Math.ceil(layout.contentSize.height) + 20, 14000);
@@ -68,22 +71,26 @@ async function shot(ws, { url, width, height, name, prep, full }) {
   console.log('wrote', name);
 }
 
-function httpPost(port, postPath, fields) {
-  const body = new URLSearchParams(fields).toString();
-  return new Promise((resolve, reject) => {
-    const req = http.request({
-      hostname: '127.0.0.1', port, path: postPath, method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) },
-    }, res => {
-      const chunks = [];
-      res.on('data', c => chunks.push(c));
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString() }));
-    });
-    req.on('error', reject);
-    req.write(body);
-    req.end();
+const OPEN_SHEET = `new Promise(function(done){
+ window.scrollTo(0,0);
+ function wait(sel,ms){
+  return new Promise(function(r){
+   var n=0;(function tick(){
+    if(document.querySelector(sel)){r(1);return;}
+    if(++n>40){r(0);return;}
+    setTimeout(tick,100);
+   })();
   });
-}
+ }
+ function open(){
+  if(location.hash!=='#book') location.hash='#book';
+  var d=document.getElementById('d2-sheet');
+  if(d&&typeof d.showModal==='function'&&!d.open) d.showModal();
+  if(d&&d.open){done(1);return;}
+  setTimeout(open,120);
+ }
+ setTimeout(open,300);
+})`;
 
 (async () => {
   const server = await startServer();
@@ -105,25 +112,6 @@ function httpPost(port, postPath, fields) {
   const ws = new WebSocket(list[0].webSocketDebuggerUrl);
   await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
 
-  const beyond = new Date();
-  beyond.setDate(beyond.getDate() + 120);
-  const beyondIso = beyond.toISOString().slice(0, 10);
-  const shots = [
-    { url: `http://127.0.0.1:${port}/`, width: 360, height: 844, name: 'home-fold-360.png', prep: "document.querySelectorAll('[data-rv]').forEach(el=>el.classList.add('in'));" },
-    { url: `http://127.0.0.1:${port}/`, width: 390, height: 844, name: 'home-390.png', prep: "document.querySelectorAll('[data-rv]').forEach(el=>el.classList.add('in'));" },
-    { url: `http://127.0.0.1:${port}/`, width: 1024, height: 800, name: 'home-1024.png', prep: "document.querySelectorAll('[data-rv]').forEach(el=>el.classList.add('in'));" },
-    { url: `http://127.0.0.1:${port}/`, width: 1440, height: 900, name: 'home-1440.png', prep: "document.querySelectorAll('[data-rv]').forEach(el=>el.classList.add('in'));" },
-    { url: `http://127.0.0.1:${port}/h/saltwater-terrace`, width: 390, height: 844, name: 'listing-390.png' },
-    { url: `http://127.0.0.1:${port}/h/saltwater-terrace#details`, width: 390, height: 844, name: 'listing-extras-390.png', prep: "var el=document.querySelector('.d2-os-note')||document.querySelector('.d2-extra-list');if(el){el.scrollIntoView({block:'center'});}else{var h=[...document.querySelectorAll('#details h3')].find(n=>/On site/i.test(n.textContent));if(h)h.scrollIntoView({block:'center'});}" },
-    { url: `http://127.0.0.1:${port}/h/saltwater-terrace#details`, width: 1440, height: 900, name: 'listing-extras-1440.png', prep: "var el=document.querySelector('.d2-extra-list')||document.querySelector('.d2-os-note');if(el)el.scrollIntoView({block:'center'});" },
-    { url: `http://127.0.0.1:${port}/h/skyline-rooftop?notice=1&date=${beyondIso}&pass=chair&qty=1#book`, width: 390, height: 844, name: 'banner-90day-390.png' },
-    { url: `http://127.0.0.1:${port}/h/saltwater-terrace?pass=lounger&qty=1#book`, width: 390, height: 844, name: 'booking-sheet-390.png', prep: "var m=document.getElementById('d2-more');if(m)m.hidden=false;var b=document.getElementById('book');if(b)b.scrollIntoView({block:'start'});" },
-    { url: `http://127.0.0.1:${port}/how-it-works#do-i-need-a-towel`, width: 390, height: 844, name: 'help-towel-390.png' },
-    { url: `http://127.0.0.1:${port}/how-it-works#cant-find-booking-email`, width: 390, height: 844, name: 'help-booking-email-390.png' },
-    { url: `http://127.0.0.1:${port}/terms`, width: 390, height: 844, name: 'terms-41-390.png', prep: "var a=document.querySelector('article');if(a){var p=[...a.querySelectorAll('p')].find(x=>x.textContent.includes('4.1'));if(p)p.scrollIntoView();}" },
-  ];
-  for (const s of shots) await shot(ws, s);
-
   const { ymd, addDays } = require('../util');
   const when = ymd(addDays(new Date(), 14));
   const today = ymd(new Date());
@@ -132,28 +120,47 @@ function httpPost(port, postPath, fields) {
     while (d.getDay() !== 5) d.setDate(d.getDate() + 1);
     return ymd(d);
   })();
+  const beyond = ymd(addDays(new Date(), 120));
   const scrollTop = 'window.scrollTo(0,0);';
   const rv = "document.querySelectorAll('[data-rv]').forEach(el=>el.classList.add('in'));";
   const listing = 'saltwater-terrace';
   const base = `http://127.0.0.1:${port}`;
+
   const firstHeights = { 360: 844, 390: 844, 1024: 800, 1280: 800, 1440: 900 };
   for (const [w, h] of Object.entries(firstHeights)) {
     await shot(ws, { url: `${base}/h/${listing}`, width: +w, height: h, name: `d2-listing-first-${w}.png`, prep: scrollTop });
     await shot(ws, { url: `${base}/h/${listing}`, width: +w, height: h, name: `d2-listing-full-${w}.png`, prep: scrollTop, full: true });
   }
-  const sheetBase = `${base}/h/${listing}`;
-  const openSheet = scrollTop + "var b=document.getElementById('book');if(b)b.scrollIntoView({block:'start'});";
-  await shot(ws, { url: `${sheetBase}?qty=1#book`, width: 390, height: 844, name: 'd2-sheet-pick-390.png', prep: openSheet });
-  await shot(ws, { url: `${sheetBase}?pass=lounger&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-ready-390.png', prep: openSheet });
-  await shot(ws, { url: `${sheetBase}?pass=lounger&date=${when}&qty=1#book`, width: 360, height: 844, name: 'd2-sheet-ready-360.png', prep: openSheet });
-  await shot(ws, { url: `${sheetBase}?pass=lounger&date=${when}&qty=1#book`, width: 1280, height: 800, name: 'd2-sheet-ready-1280.png', prep: openSheet });
-  await shot(ws, { url: `${base}/h/skyline-rooftop?date=${fri}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-closed-390.png', prep: openSheet });
-  await shot(ws, { url: `${sheetBase}?pass=lounger&date=${today}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-late-390.png', prep: openSheet });
-  await shot(ws, { url: `${sheetBase}?pass=lounger&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-more-390.png', prep: openSheet + "var m=document.getElementById('d2-more');if(m){m.hidden=false;m.click();}" });
-  await shot(ws, { url: `${base}/h/manly-sands?pass=daybed&date=${when}&qty=2#book`, width: 390, height: 844, name: 'd2-sheet-kids-390.png', prep: openSheet });
-  await shot(ws, { url: `${base}/h/skyline-rooftop?pass=chair&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-adults-390.png', prep: openSheet });
+
+  const pickPrep = OPEN_SHEET + `;document.querySelectorAll('input[name="date"]').forEach(i=>{i.checked=false});var hid=document.querySelector('#book input[type="hidden"][name="date"]');if(hid)hid.value='';['d2-late','d2-closed'].forEach(function(id){var el=document.getElementById(id);if(el){el.hidden=true;el.textContent='';}});document.getElementById('d2-go').setAttribute('aria-disabled','true');`;
+  await shot(ws, { url: `${base}/h/${listing}#book`, width: 390, height: 844, name: 'd2-sheet-pick-390.png', prep: pickPrep, awaitMs: 1800 });
+
+  const readyPrep = OPEN_SHEET;
+  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-ready-390.png', prep: readyPrep });
+  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 360, height: 844, name: 'd2-sheet-ready-360.png', prep: readyPrep });
+  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 1280, height: 800, name: 'd2-sheet-ready-1280.png', prep: readyPrep });
+
+  const closedPrep = OPEN_SHEET + `;new Promise(r=>{var n=0;(function t(){var el=document.getElementById('d2-closed')||document.querySelector('#d2-closed[role="alert"]');if(el&&!el.hidden)r(1);else if(++n>50)r(0);else setTimeout(t,120)})()})`;
+  await shot(ws, { url: `${base}/h/skyline-rooftop?date=${fri}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-closed-390.png', prep: closedPrep, awaitMs: 2000 });
+
+  const latePrep = OPEN_SHEET + `;new Promise(function(r){var n=0;(function t(){var el=document.getElementById('d2-late');if(el&&!el.hidden&&/can't be cancelled/i.test(el.textContent)){el.scrollIntoView({block:'center'});r(1);}else if(++n<50)setTimeout(t,200);else r(0)})()})`;
+  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${today}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-late-390.png', prep: latePrep, awaitMs: 2200 });
+
+  const morePrep = OPEN_SHEET + `;var m=document.getElementById('d2-more');if(m){m.hidden=false;m.click();}`;
+  await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-more-390.png', prep: morePrep });
+
+  const kidsPrep = OPEN_SHEET + `;new Promise(r=>{var el=document.getElementById('d2-kids');if(el)el.scrollIntoView({block:'center'});r(1)})`;
+  await shot(ws, { url: `${base}/h/manly-sands?pass=daybed&date=${when}&qty=2#book`, width: 390, height: 844, name: 'd2-sheet-kids-390.png', prep: kidsPrep });
+
+  const adultsPrep = OPEN_SHEET + `;new Promise(r=>{var el=document.getElementById('d2-kids');if(el){el.scrollIntoView({block:'center'});}r(1)})`;
+  await shot(ws, { url: `${base}/h/skyline-rooftop?pass=chair&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-adults-390.png', prep: adultsPrep });
+
+  const holdPrep = `window.scrollTo(0,0);var h=document.getElementById('d2-hold');if(h){h.scrollIntoView({block:'center'});}`;
+  await shot(ws, { url: `${base}/h/skyline-rooftop?date=${beyond}&pass=chair&qty=1#book`, width: 390, height: 844, name: 'd2-banner-90day-390.png', prep: holdPrep, awaitMs: 1800 });
+
   await shot(ws, { url: `${base}/`, width: 390, height: 844, name: 'p2a-home-quick-390.png', prep: rv + scrollTop });
   await shot(ws, { url: `${base}/search?mood=family`, width: 390, height: 844, name: 'p2b-search-mood-family-390.png', prep: scrollTop });
+
   const bookFields = new URLSearchParams({
     hotel: listing, date: when, pass: 'daybed', qty: '1', name: 'Proof Guest', email: 'proof@example.com', phone: '0412345678',
     rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
@@ -174,21 +181,10 @@ function httpPost(port, postPath, fields) {
     req.write(body);
     req.end();
   });
-  const ticketPath = (booked.headers.location || '').replace(/^https?:\/\/[^/]+/, '') || `/booking/HDC-DEMO`;
+  const ticketPath = (booked.headers.location || '').replace(/^https?:\/\/[^/]+/, '');
   if (booked.status === 303 && ticketPath) {
     await shot(ws, { url: `${base}${ticketPath}`, width: 390, height: 844, name: 'p1-ticket-390.png', prep: scrollTop });
     await shot(ws, { url: `${base}${ticketPath}`, width: 1280, height: 900, name: 'p1-ticket-1280.png', prep: scrollTop });
-  }
-  await shot(ws, { url: `${base}/h/${listing}`, width: 390, height: 844, name: 'd2-saltwater-hero.png', prep: scrollTop });
-  const checkout = await new Promise((resolve, reject) => {
-    http.get(`http://127.0.0.1:${port}/checkout?hotel=saltwater-terrace&date=${when}&pass=lounger&qty=1`, res => {
-      const chunks = [];
-      res.on('data', c => chunks.push(c));
-      res.on('end', () => resolve(res));
-    }).on('error', reject);
-  });
-  if (checkout.statusCode === 200) {
-    await shot(ws, { url: `http://127.0.0.1:${port}/checkout?hotel=saltwater-terrace&date=${when}&pass=lounger&qty=1`, width: 390, height: 844, name: 'checkout-390.png' });
   }
 
   ws.close();

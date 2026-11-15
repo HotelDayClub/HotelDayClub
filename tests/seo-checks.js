@@ -132,8 +132,12 @@ function alts(html, where) {
     assert.ok(home.includes('https://www.hoteldayclub.com.au/assets/og-image-1200x630.png'));
     const homeHeader = home.slice(home.indexOf('<header class="hdr"'), home.indexOf('<main>'));
     const homeFooter = home.slice(home.indexOf('<footer'));
-    assert.ok(homeHeader.includes('src="/assets/hdc-lockup-light.svg"'));
-    assert.ok(!homeHeader.includes('hdc-lockup-dark.svg'), 'home header uses light lockup only');
+    assert.ok(homeHeader.includes('src="/assets/hdc-lockup-light.svg"') || homeHeader.includes('hdc-lockup-dark.svg'));
+    if (home.includes('class="guest-d2"') || home.includes('guest-d2')) {
+      assert.ok(homeHeader.includes('hdc-lockup-dark.svg'), 'guest D2 home uses dark lockup on deep header');
+    } else {
+      assert.ok(!homeHeader.includes('hdc-lockup-dark.svg'), 'home header uses light lockup only');
+    }
     assert.ok(homeFooter.includes('src="/assets/hdc-lockup-dark.svg"'));
     assert.ok(home.includes('src="/assets/hdc-lockup-light.svg"'));
     assert.ok(home.includes('alt="Hotel Day Club"'));

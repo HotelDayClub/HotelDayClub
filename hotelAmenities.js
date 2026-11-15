@@ -230,6 +230,7 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
 
   static groups(db, hotelId, opts = {}) {
     const items = loadInclusions(db, hotelId);
+    const hotelRow = opts.hotel || db.prepare('SELECT towels FROM hotels WHERE id=?').get(hotelId);
     const people = Math.max(1, Number(opts.people) || 1);
     const areas = opts.areas || hotelAreas(db, hotelId);
     const covered = HotelAmenities.coveredCodes(areas);
@@ -256,7 +257,10 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
         }
         if (covered.has(item.code)) continue;
       }
-      const label = HotelAmenities.inclusionLabel(item, people);
+      let label = HotelAmenities.inclusionLabel(item, people);
+      if (item.code === 'towels' && hotelRow && hotelRow.towels != null && Number(hotelRow.towels) === 0) {
+        label = 'Bring your own towel';
+      }
       if (!label) continue;
       bucket.push({
         label,

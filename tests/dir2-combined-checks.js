@@ -161,10 +161,9 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     const incAt = pages['saltwater-terrace'].indexOf('class="d2-inc"');
     const incEnd = pages['saltwater-terrace'].indexOf('</ul>', incAt);
     const incRows = [...pages['saltwater-terrace'].slice(incAt, incEnd).matchAll(/<li>(.*?)<\/li>/g)].map(m => m[1].replace(/<[^>]+>/g, ''));
-    assert.strictEqual(incRows.length, 5, incRows.join('|'));
+    assert.strictEqual(incRows.length, 6, incRows.join('|'));
     assert.strictEqual(incRows.filter(r => /\d/.test(r)).length, 0, 'no quantity labels in included list');
-    assert.ok(!incRows.some(r => /^Towels/.test(r)));
-    assert.ok(pages['saltwater-terrace'].includes('d2-towel-chip'));
+    assert.ok(incRows.some(r => /^Towels included/i.test(r)));
     assert.ok(pages['saltwater-terrace'].includes('Towels included'));
     assert.ok(!incRows.some(r => /Pool access/.test(r)));
     assert.ok(saltText.includes('Example amenities (demo)'));

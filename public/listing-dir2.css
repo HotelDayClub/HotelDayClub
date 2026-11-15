@@ -14,6 +14,8 @@
 .d2 .flip{transform:rotate(180deg)}
 .d2 :focus-visible,.d2-sheet :focus-visible,.d2-lb :focus-visible{outline:3px solid var(--deep);outline-offset:2px}
 body:has(.d2){background:var(--cream);padding-bottom:84px}
+body:has(.d2) main{padding-top:0}
+body:has(.d2) .d2-photos{margin-top:0}
 body:has(.d2) .hdr{background:var(--deep);border-bottom:0;position:sticky;top:0;z-index:40;max-width:none;width:100%}
 body:has(.d2) .hdr .wrap{max-width:none;padding-inline:16px}
 body:has(.d2) .hdr img.logo-light{display:none}
@@ -43,10 +45,8 @@ body:has(.d2) main{overflow-x:hidden}
 .d2-hero-title{font:600 32px/38px var(--d2-disp);color:#FFF8EE;margin:2px 0 0}
 .d2-hero-tag{display:inline-flex;align-items:center;min-height:28px;margin-top:12px;padding:2px 10px;border-radius:999px;font-size:14px;line-height:20px;font-weight:600;background:transparent;border:1px solid var(--d2-soft);color:#FFF8EE}
 .d2-hero-copy .d2-desc{color:var(--d2-soft);margin:8px 0 0;font-size:16px;line-height:24px}
+.d2-hero-copy .d2-desc.is-clamped{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .d2-hero-copy .d2-rm{color:#FFF8EE}
-.d2-towel-chip{list-style:none;margin:12px 0 0;padding:0;display:inline-flex}
-.d2-towel-chip li{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:4px 12px;border-radius:999px;border:1px solid var(--d2-soft);background:rgba(255,248,238,.12);color:#FFF8EE;font-size:14px;line-height:20px;font-weight:600}
-.d2-towel-chip .d2ic{color:#FFF8EE}
 .d2-hb-schedule{margin:12px 0 0;display:grid;gap:8px 16px;font-size:15px;line-height:22px;color:var(--d2-soft)}
 .d2-hb-schedule div{display:grid;grid-template-columns:120px 1fr;gap:8px;align-items:baseline}
 .d2-hb-schedule dt{font-weight:700;color:#FFF8EE;margin:0}
@@ -289,9 +289,11 @@ body:has(.d2) main{overflow-x:hidden}
 @media (min-width:1024px){
  body:has(.d2){padding-bottom:0}
  body:has(.d2) .hdr{height:72px}
- body:has(.d2) .hdr .wrap{padding-inline:24px}
+ body:has(.d2) .hdr .wrap{padding:inline:24px}
  .d2-bar{display:none}
- .d2-photos{display:block;margin:0;padding:0;max-width:none}
+ .d2-photos{display:block;margin:0 auto;padding:24px 24px 0;max-width:1128px;box-sizing:border-box}
+ .d2-hero{border-radius:16px;overflow:hidden;border:1px solid var(--border)}
+ .d2-bookbar{border-radius:16px;max-width:1080px;width:calc(100% - 48px);margin:16px auto 0;box-sizing:border-box}
  .d2-gw{overflow:hidden}
  .d2-gw img{height:680px;object-position:center 70%}
  .d2-gw img+img{display:none}
