@@ -85,6 +85,32 @@ assert.strictEqual(ListingD2.childrenLine({ kids_hours: 'All open hours' }), '')
 assert.strictEqual(ListingD2.childrenLine({ kids_hours: '' }), '');
 assert.strictEqual(ListingD2.hourGroups([{ day: 'Mon', time: '9am' }, { day: 'Tue', time: '9am' }, { day: 'Wed', time: 'Closed' }]).length, 2);
 
+function contrastRatio(fg, bg) {
+  const hex = s => {
+    const h = s.replace('#', '');
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  };
+  const lum = ([r, g, b]) => {
+    const ch = [r, g, b].map(v => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  };
+  const L1 = lum(hex(fg));
+  const L2 = lum(hex(bg));
+  const [hi, lo] = L1 >= L2 ? [L1, L2] : [L2, L1];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+const listingCss = fs.readFileSync(path.join(root, 'public/listing-dir2.css'), 'utf8');
+assert.match(listingCss, /body:has\(\.d2\) \.d2\.listing\{padding:0/);
+assert.match(listingCss, /@media \(max-width:1023px\)[\s\S]*body:has\(\.d2\) \.d2-photos[\s\S]*padding-top:0/);
+const guestCss = fs.readFileSync(path.join(root, 'public/guest-d2.css'), 'utf8');
+assert.ok(guestCss.includes('search-page .ex .tag') && guestCss.includes('#FFF1E4') && guestCss.includes('#8A3B12'));
+assert.ok(!/search-page \.ex \.tag\{[^}]*background:transparent/.test(guestCss));
+assert.ok(contrastRatio('#8A3B12', '#FFF1E4') >= 4.5, 'search Example tag contrast');
+
 const wed = HomeQuick.build('2026-11-11');
 assert.deepStrictEqual([wed.first.label, wed.first.sub, wed.first.href], ['Today', 'Wed 11 Nov', '/search?date=2026-11-11']);
 assert.deepStrictEqual([wed.second.label, wed.second.sub, wed.second.href], ['This weekend', 'Sat 14\u2013Sun 15', '/search?from=2026-11-14&to=2026-11-15']);
@@ -105,6 +131,11 @@ assert.deepStrictEqual([sunLate.first.label, sunLate.first.href], ['Tomorrow', '
 assert.strictEqual(sunLate.second.label, 'Next weekend');
 assert.strictEqual(HomeQuick.build('nope'), null);
 assert.ok(!/\u2014/.test(HomeQuick.html('2026-11-11')));
+
+const d2css = fs.readFileSync(path.join(root, 'public/listing-dir2.css'), 'utf8');
+assert.ok(/\.d2-hero-title\{[^}]*color:\s*#FFF8EE/i.test(d2css), 'hero title on deep band');
+assert.ok(/\.d2-hours-band\{[^}]*color:\s*#FFF8EE/i.test(d2css), 'hours band text');
+assert.ok(/\.d2-bookbar\{[^}]*color:\s*#fff/i.test(d2css), 'desktop book bar text');
 
 // A3: moods.
 assert.deepStrictEqual(SearchQuery.MOODS.map(m => m.label), ['Rooftop', 'Beachside', 'Quiet', 'Family friendly']);
@@ -153,13 +184,12 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
 
     // A5: included amenities omit per-guest towel counts; towel chip is on the listing header.
     const saltText = visibleText(pages['saltwater-terrace']);
-    const incAt = pages['saltwater-terrace'].indexOf('Included in your pass');
+    const incAt = pages['saltwater-terrace'].indexOf('class="d2-inc"');
     const incEnd = pages['saltwater-terrace'].indexOf('</ul>', incAt);
     const incRows = [...pages['saltwater-terrace'].slice(incAt, incEnd).matchAll(/<li>(.*?)<\/li>/g)].map(m => m[1].replace(/<[^>]+>/g, ''));
-    assert.ok(incRows.length >= 1, incRows.join('|'));
+    assert.strictEqual(incRows.length, 6, incRows.join('|'));
     assert.strictEqual(incRows.filter(r => /\d/.test(r)).length, 0, 'no quantity labels in included list');
-    assert.ok(!incRows.some(r => /^Towels/.test(r)));
-    assert.ok(pages['saltwater-terrace'].includes('d2-towel-chip'));
+    assert.ok(incRows.some(r => /^Towels included/i.test(r)));
     assert.ok(pages['saltwater-terrace'].includes('Towels included'));
     assert.ok(!incRows.some(r => /Pool access/.test(r)));
     assert.ok(saltText.includes('Example amenities (demo)'));
@@ -172,9 +202,10 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(saltDetails.includes('<h3>On site (not included)</h3>'), 'on site heading');
     const onIdx = saltDetails.indexOf('<h3>On site (not included)</h3>');
     const extrasIdx = saltDetails.indexOf('<h3>Extras</h3>');
-    const hoursIdx = saltDetails.indexOf('<h3>Hours</h3>');
-    assert.ok(onIdx > -1 && extrasIdx > onIdx && hoursIdx > extrasIdx, 'section order');
-    const onSlice = saltDetails.slice(onIdx, extrasIdx > onIdx ? extrasIdx : hoursIdx);
+    const detailsClose = pages['saltwater-terrace'].indexOf('</section>', pages['saltwater-terrace'].indexOf('id="details"'));
+    const hoursBandIdx = pages['saltwater-terrace'].indexOf('class="d2-hours-band"');
+    assert.ok(onIdx > -1 && extrasIdx > onIdx && hoursBandIdx > detailsClose, 'section order');
+    const onSlice = saltDetails.slice(onIdx, extrasIdx);
     assert.ok(onSlice.includes('class="d2-os-note"'), 'muted not-included line in on site block');
     assert.ok(!onSlice.includes('class="d2-muted">Not included:'), 'not-included not outside on site');
 
@@ -213,6 +244,12 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     const late = JSON.parse(lateRes.body);
     if (/can't be cancelled for free/.test(late.cancel)) assert.strictEqual(late.cancel, LATE_NOTE);
     assert.strictEqual(late.cancel, cancelSalt);
+    if (/can't be cancelled for free/.test(cancelSalt)) {
+      const todayBook = await get(port, `/h/saltwater-terrace?pass=lounger&date=${today}&qty=1`);
+      assert.ok(todayBook.body.includes('id="d2-late"'));
+      assert.ok(todayBook.body.includes('class="d2-note warn" id="d2-late"'));
+      assert.ok(todayBook.body.includes('can&#39;t be cancelled for free'));
+    }
     const far = ymd(addDays(new Date(today + 'T12:00:00'), 30));
     const farRes = JSON.parse((await get(port, `/api/availability?hotel=saltwater-terrace&date=${far}`)).body);
     assert.ok(!/can't be cancelled for free/.test(farRes.cancel));

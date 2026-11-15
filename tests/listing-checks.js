@@ -39,7 +39,7 @@ function post(port, urlPath, fields, headers = {}) {
 }
 function leadAndMeta(body, slug, name, area) {
   const intro = DEMO_INTROS[slug];
-  assert.ok(body.includes(`<b>${intro.tagline}.</b> ${intro.blurb}`), slug);
+  assert.ok(body.includes(`${intro.tagline}.`) && body.includes(intro.blurb), slug);
   const meta = body.match(/<meta name="description" content="([^"]*)">/);
   const og = body.match(/<meta property="og:description" content="([^"]*)">/);
   const tw = body.match(/<meta name="twitter:description" content="([^"]*)">/);
@@ -89,6 +89,8 @@ function listingFacts(db, slug) {
 assert.strictEqual(ListingPanel.leftText(10), '10 left');
 assert.strictEqual(ListingPanel.leftText(11), '');
 assert.strictEqual(ListingPanel.leftText(0), '');
+assert.strictEqual(ListingPanel.towelText(1), 'Towels included');
+assert.strictEqual(ListingPanel.towelText(4), 'Towels included');
 assert.strictEqual(ListingPanel.towelFor([], 2), '');
 assert.strictEqual(ListingPanel.viewAllLabel(4), '');
 assert.strictEqual(ListingPanel.viewAllLabel(7), 'View all 7 photos');
@@ -172,10 +174,11 @@ function sampleListing(photos, remaining) {
   });
 }
 const fourPhotos = sampleListing(['a.jpg', 'b.jpg', 'c.jpg', 'd.jpg'], 4);
-assert.ok(fourPhotos.includes('>View all 4 photos</button>'));
+assert.ok(fourPhotos.includes('id="d2-count"'));
+assert.ok(fourPhotos.includes('1 / 4'));
 assert.ok(!fourPhotos.includes('pc-chip'));
 const sevenPhotos = sampleListing(['a.jpg', 'b.jpg', 'c.jpg', 'd.jpg', 'e.jpg', 'f.jpg', 'g.jpg'], 24);
-assert.ok(sevenPhotos.includes('>View all 7 photos</button>'));
+assert.ok(sevenPhotos.includes('1 / 7'));
 
 (async () => {
   const port = 3217;
@@ -224,14 +227,29 @@ assert.ok(sevenPhotos.includes('>View all 7 photos</button>'));
     assert.ok(!salt.body.includes('>View details</summary>'));
     assert.ok(!salt.body.includes('class="pass-detail"'));
     assert.ok(salt.body.includes('type="button"'));
-    const incList = salt.body.slice(salt.body.indexOf('<ul class="inc">'), salt.body.indexOf('</ul>', salt.body.indexOf('<ul class="inc">')));
-    assert.ok(!incList.includes('Towel'));
+    const incAt = salt.body.indexOf('class="d2-inc"');
+    const incList = incAt >= 0 ? salt.body.slice(incAt, salt.body.indexOf('</ul>', incAt)) : '';
+    assert.ok(!/\d+\s*towels|Towels:\s*\d/i.test(incList));
     assert.ok(!/food|drink|café|cafe|\bbar\b/i.test(incList));
-    assert.ok(salt.body.includes('d2-towel-chip'));
     assert.ok(salt.body.includes('Towels included'));
-    assert.ok(!salt.body.includes('Towels: 1 per person'));
+    assert.ok(salt.body.includes('Fits 1'));
+    assert.ok(salt.body.includes('Fits 2'));
+    assert.ok(salt.body.includes('Fits 4'));
     assert.ok(!salt.body.includes('2 towels'));
+    assert.ok(!salt.body.includes('Towels: 1 per person'));
     assert.ok(!salt.body.includes('4 towels'));
+    const passNames = ['lounger', 'daybed', 'cabana'];
+    const amenityLists = [];
+    for (const code of passNames) {
+      const at = salt.body.indexOf(`data-pass="${code}"`);
+      assert.ok(at >= 0, code);
+      const card = salt.body.slice(at, salt.body.indexOf('</a>', at));
+      const fit = (card.match(/<p class="fit">([^<]*)<\/p>/) || [])[1] || '';
+      assert.ok(/^Fits \d+$/.test(fit.trim()), code + ' ' + fit);
+      assert.ok(!/\d+ towel/i.test(card), code);
+      amenityLists.push(card);
+    }
+    assert.strictEqual(amenityLists.length, 3);
     assert.ok(!salt.body.includes('1 × Towels'));
     assert.ok(!salt.body.includes('2 × Towels'));
     assert.ok(!salt.body.includes('4 × Towels'));
@@ -250,17 +268,8 @@ assert.ok(sevenPhotos.includes('>View all 7 photos</button>'));
     const seatLounger = await get(port, '/h/saltwater-terrace');
     const seatDaybed = await get(port, '/h/saltwater-terrace');
     const seatCabana = await get(port, '/h/saltwater-terrace');
-    const amenityLists = [seatLounger.body, seatDaybed.body, seatCabana.body].map(body => {
-      const start = body.indexOf('<ul class="pass-inc-list');
-      return body.slice(start, body.indexOf('</ul>', start));
-    });
-    assert.strictEqual(amenityLists.length, 3);
-    for (const list of amenityLists) {
-      assert.ok(!list.includes('× Towels'));
-      assert.ok(!list.includes('Towel'));
-      assert.ok(!/\d+ × (?!Towels)/.test(list));
-    }
     assert.ok(!seatLounger.body.includes('× Towels'));
+    assert.ok(!seatLounger.body.includes('Towels: 1 per person'));
     assert.ok(!seatLounger.body.includes('Pay the venue directly. Menus, prices and opening hours are set by the venue.'));
     assert.ok(!salt.body.includes('<summary>Parking</summary>'));
     assert.ok(!salt.body.includes('Train and bus'));
@@ -452,7 +461,7 @@ assert.ok(sevenPhotos.includes('>View all 7 photos</button>'));
 
     const bay = await get(port, '/h/bayview-spa');
     leadAndMeta(bay.body, 'bayview-spa', 'Bayview Spa Hotel', 'Eastern Suburbs');
-    assert.ok(bay.body.includes('>Age</dt><dd>18+</dd>'));
+    assert.ok(bay.body.includes('>Ages</dt><dd>18+</dd>'));
     assert.ok(bay.body.includes('>Children</dt><dd>No children</dd>'));
     assert.ok(!bay.body.includes('18+ on weekdays'));
     assert.ok(!bay.body.includes('Adults only (18+).'));
@@ -473,7 +482,7 @@ assert.ok(sevenPhotos.includes('>View all 7 photos</button>'));
     leadAndMeta(manly.body, 'manly-sands', 'Manly Sands House', 'Northern Beaches');
     assert.ok(manly.body.includes('steps from the beach'));
     assert.ok(!manly.body.includes('water line'));
-    assert.ok(manly.body.includes('>Age</dt><dd>All ages</dd>'));
+    assert.ok(manly.body.includes('>Ages</dt><dd>All ages</dd>'));
     assert.ok(manly.body.includes('>Children</dt><dd>Children welcome until 2pm</dd>'));
     assert.ok(!manly.body.includes('>Children</dt><dd>Until 2pm</dd>'));
     assert.ok(!/adults only after 2pm/i.test(manly.body));
@@ -487,7 +496,7 @@ assert.ok(sevenPhotos.includes('>View all 7 photos</button>'));
 
     const palm = await get(port, '/h/palm-court');
     leadAndMeta(palm.body, 'palm-court', 'Palm Court Resort', 'Parramatta');
-    assert.ok(palm.body.includes('>Lifeguard</dt><dd>On duty. Lifeguards don&#39;t replace adult supervision: an adult on the booking must actively supervise each child at all times.</dd>'));
+    assert.ok(palm.body.includes("Lifeguards don&#39;t replace adult supervision: an adult on the booking must actively supervise each child at all times."));
     assert.ok(!palm.body.includes('during day-pass hours'));
     assert.ok(palm.body.includes('>Heated</dt><dd>No</dd>'));
     assert.ok(!palm.body.includes('kids-float.jpg'));

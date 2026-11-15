@@ -11,7 +11,16 @@ class ListingPanel {
     return `${n} left`;
   }
 
-  static towelFor() {
+  static towelText(qty) {
+    const n = Math.max(0, Number(qty) || 0);
+    if (n < 1) return '';
+    return 'Towels included';
+  }
+
+  static towelFor(items, people) {
+    const towel = (items || []).find(i => i.code === 'towels');
+    if (towel && towel.mode === 'included') return 'Towels included';
+    if (towel && towel.mode === 'off') return 'Bring your own towel';
     return '';
   }
 

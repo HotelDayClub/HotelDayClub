@@ -37,7 +37,7 @@ picture.layer img{width:100%;height:100%;object-fit:cover;display:block}
 .times button{font:600 15px Inter,sans-serif;border:1.5px solid color-mix(in srgb,var(--white) 50%,transparent);background:transparent;color:var(--white);padding:11px 15px;border-radius:99px;cursor:pointer;transition:background .3s,color .3s,border-color .3s}
 .times button.on{background:var(--white);border-color:var(--white);color:var(--hdc-deep)}
 .quick{display:flex;gap:8px;margin:0 0 12px;max-width:440px;width:100%;box-sizing:border-box}
-.copy .quick a.qb,.quick a.qb{box-sizing:border-box;flex:1 1 0%;min-width:0;display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 12px;background-color:var(--white);color:var(--hdc-text);border:1px solid var(--hdc-border);border-radius:12px;text-decoration:none;-webkit-tap-highlight-color:transparent}
+.copy .quick a.qb,.quick a.qb{box-sizing:border-box;flex:1 1 0%;min-width:0;display:flex;align-items:center;gap:10px;min-height:56px;padding:6px 12px;background-color:var(--white);color:var(--hdc-text);border:1px solid var(--hdc-border);border-radius:12px;text-decoration:none;-webkit-tap-highlight-color:transparent}
 .copy .quick a.qb:link,.copy .quick a.qb:visited,.quick a.qb:link,.quick a.qb:visited{text-decoration:none;color:var(--hdc-text)}
 .qb .qi{flex:none;color:var(--hdc-primary)}
 .qb span{display:block;min-width:0}

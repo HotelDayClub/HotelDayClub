@@ -239,9 +239,15 @@ const ICON = {
   check: '<svg class="ico sm" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg>',
   lock: '<svg class="ico sm" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
 };
-function logoLink(tone) {
+function logoLink(tone, opts = {}) {
   const light = tone === 'light';
   const src = light ? '/assets/hdc-lockup-light.svg' : '/assets/hdc-lockup-dark.svg';
+  if (light && opts.dualOnDark) {
+    return `<a class="logo" href="/"><img class="logo-light" src="${src}" alt="Hotel Day Club" width="187" height="32"><img class="logo-dark" src="/assets/hdc-lockup-dark.svg" alt="Hotel Day Club" width="187" height="32"></a>`;
+  }
+  if (light) {
+    return `<a class="logo" href="/"><img src="${src}" alt="Hotel Day Club" width="187" height="32"></a>`;
+  }
   return `<a class="logo" href="/"><img src="${src}" alt="Hotel Day Club" width="187" height="32"></a>`;
 }
 function contactEmail() {
@@ -310,7 +316,8 @@ const HOME_SCRIPT = `<script>
 var S=[["8:00","Swim & gym"],["15:00","Spa afternoon"],["18:00","Golden hour"]],media=[0,1,2],cur=0;
 var hero=document.querySelector('.hero'),bs=document.querySelectorAll('.times button');
 function set(i){cur=i;if(!hero)return;hero.dataset.slot=String(i);bs.forEach(function(b,k){b.classList.toggle('on',k===i);b.setAttribute('aria-pressed',k===i?'true':'false')});
-var ct=document.getElementById('ct'),cl=document.getElementById('cl');if(ct)ct.textContent=S[i][0];if(cl)cl.textContent=S[i][1];
+var ct=document.getElementById('ct'),cl=document.getElementById('cl');
+if(!ct||!cl){ct=cl=null;}if(ct)ct.textContent=S[i][0];if(cl)cl.textContent=S[i][1];
 document.querySelectorAll('.layer').forEach(function(l){l.classList.toggle('on',+l.dataset.slot===media[i])});}
 bs.forEach(function(b){b.addEventListener('click',function(){set(+b.dataset.i)})});set(0);
 var rm=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -379,11 +386,15 @@ function page(title, body, opts = {}) {
   });
   const pickerCss = StaticAssets.stylesheet('/pickers.css');
   const tokensCss = StaticAssets.stylesheet('/tokens.css');
+  const guestD2 = !!opts.guestD2;
+  const guestD2Css = guestD2 ? StaticAssets.stylesheet('/guest-d2.css') : '';
   const css = home
-    ? `${StaticAssets.fontLinks()}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}${StaticAssets.stylesheet('/golden/home.css')}${StaticAssets.stylesheet('/header.css')}`
-    : `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${StaticAssets.stylesheet('/styles.css')}${StaticAssets.stylesheet('/app.css')}${StaticAssets.stylesheet('/golden/site.css')}${StaticAssets.stylesheet('/header.css')}${extraCss}`;
-  const bodyClass = opts.bodyClass || (home ? 'home' : nav === 'guest' ? 'guest' : 'staff');
-  const header = `<header class="hdr" id="site-hdr"><div class="wrap hdr-in">${logoLink('light')}${chrome.nav}${headerExtra}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
+    ? `${StaticAssets.fontLinks()}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}${StaticAssets.stylesheet('/golden/home.css')}${StaticAssets.stylesheet('/header.css')}${guestD2Css}`
+    : `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${StaticAssets.stylesheet('/styles.css')}${StaticAssets.stylesheet('/app.css')}${StaticAssets.stylesheet('/golden/site.css')}${StaticAssets.stylesheet('/header.css')}${extraCss}${guestD2Css}`;
+  const bodyExtra = [guestD2 ? 'guest-d2' : '', opts.bodyClassExtra || ''].filter(Boolean).join(' ');
+  const bodyClass = [opts.bodyClass || (home ? 'home' : nav === 'guest' ? 'guest' : 'staff'), bodyExtra].filter(Boolean).join(' ');
+  const deepHeader = !!(opts.logoOnDark || guestD2);
+  const header = `<header class="hdr" id="site-hdr"><div class="wrap hdr-in">${logoLink('light', { dualOnDark: deepHeader })}${chrome.nav}${headerExtra}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 ${demoSite() ? '<div class="demo-banner">Demo site: listings are examples, no real bookings or payments.</div>' : ''}
@@ -481,12 +492,12 @@ function homePage({ destination = '', joined = false, error = '', values = {} } 
   const openWait = Boolean(joined || error || pickedDest);
   const exampleCards = hotels.slice(0, 6).map(h => exampleCard(h, '')).join('');
   const slot = (src, alt, time, title, copy) => `<div class="slot"><picture><source type="image/webp" srcset="/golden/img/${src}.webp"><img src="/golden/img/${src}.jpg" alt="${alt}" width="900" height="600" loading="lazy" decoding="async"></picture><span class="t">${time}</span><div class="b"><h3>${title}</h3><p>${copy}</p></div></div>`;
-  return page('Hotel day passes in Australia', `<header class="hero" data-slot="0"><div class="ph"><div class="media">
+  return page('Hotel day passes in Australia', `<header class="hero hero-d2" data-slot="0"><div class="ph"><div class="media">
 <picture class="layer on" data-slot="0"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-swim-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-swim-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-swim.webp"><img fetchpriority="high" src="/golden/img/hero-swim.jpg" alt="Ocean pool at sunrise" width="1920" height="1080" decoding="async"></picture>
 <picture class="layer" data-slot="1"><source type="image/webp" srcset="/golden/img/3-sm.webp"><img src="/golden/img/3-sm.jpg" alt="Spa treatment room" width="900" height="600" loading="lazy" decoding="async"></picture>
 <picture class="layer" data-slot="2"><source type="image/webp" srcset="/golden/img/1-sm.webp"><img src="/golden/img/1-sm.jpg" alt="Hotel pool at dusk" width="900" height="900" loading="lazy" decoding="async"></picture>
 <div class="shimmer" aria-hidden="true"></div><div class="tint"></div></div>
-<div class="clock"><span id="ct">8:00</span><small id="cl">Swim &amp; gym</small></div><span class="credit">Stock media · example only</span></div>
+<span class="credit">Stock media · example only</span></div>
 <div class="copy"><p class="kicker">Hotel day passes in Australia</p>
 <h1 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h1>
 <div class="times"><button type="button" data-i="0" class="on" aria-pressed="true">Swim &amp; gym</button><button type="button" data-i="1" aria-pressed="false">Spa afternoon</button><button type="button" data-i="2" aria-pressed="false">Golden hour</button></div>
@@ -546,7 +557,7 @@ ${joined ? `<div class="wl-ok" role="status"><h3>You're on the list</h3><p>Thank
 <p>${CheckoutConsent.hotelNoticeHtml(contactMail())}</p>
 </div>
 <button class="btn" type="submit">Join the waitlist</button>
-</form></div></dialog>`, { analytics: true, home: true, index: true, ...seo.pageCopy('home'), jsonld: seo.homeJsonLd(contactEmail()) });
+</form></div></dialog>`, { analytics: true, home: true, index: true, guestD2: true, ...seo.pageCopy('home'), jsonld: seo.homeJsonLd(contactEmail()) });
 }
 function searchHidden(params, skip) {
   const bits = [];
@@ -670,13 +681,19 @@ function searchCard(hotel, params, index, kidsChip) {
   if (qty) query.push('qty=' + encodeURIComponent(String(qty)));
   const listing = '/h/' + hotel.slug + (query.length ? '?' + query.join('&') : '');
   const area = hotel.area + (hotel.age_policy ? ' · ' + hotel.age_policy : '');
+  const priceInner = offer.sold
+    ? `Sold out on ${esc(nice(params.date))}`
+    : `From ${money(offer.price)} <small>(demo)</small>${offer.activity ? ' · ' + esc(offer.activity) : ''}`;
   const price = offer.sold
-    ? `<p class="soldtxt">Sold out on ${esc(nice(params.date))}</p>`
-    : `<p class="ex-price">From ${money(offer.price)} <small>(demo)</small>${offer.activity ? ' · ' + esc(offer.activity) : ''}</p>`;
+    ? `<p class="soldtxt">${priceInner}</p>`
+    : (span
+      ? `<div class="ex-row"><p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p><p class="ex-price">${priceInner}</p></div>`
+      : `<p class="ex-price">${priceInner}</p>`);
   const book = offer.sold
     ? `<a class="btn quiet" href="/h/${esc(hotel.slug)}#book">See other dates</a>`
     : `<a class="btn quiet" href="${esc(listing)}#book">Book<span class="vh"> ${esc(hotel.name)}</span></a>`;
-  return `<article class="ex${offer.sold ? ' is-sold' : ''}"><div class="ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></div><div class="bd"><h3><a href="${esc(listing)}">${esc(hotel.name)}</a></h3><p class="ex-area">${esc(area)}</p>${kidsChip ? `<p class="kidchip">${FAMILY_ICON}<span>${esc(kidsChip)}</span></p>` : ''}${span ? `<p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p>` : ''}${price}<div class="act"><a class="btn tlink fill" href="${esc(listing)}">View details</a>${book}</div></div></article>`;
+  const kids = kidsChip ? `<p class="kidchip">${FAMILY_ICON}<span>${esc(kidsChip)}</span></p>` : '';
+  return `<article class="ex${offer.sold ? ' is-sold' : ''}"><div class="ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></div><div class="bd"><h3><a href="${esc(listing)}">${esc(hotel.name)}</a></h3><p class="ex-area">${esc(area)}</p>${kids}${offer.sold && span ? `<p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p>` : ''}${price}<div class="act"><a class="btn tlink fill" href="${esc(listing)}">View details</a>${book}</div></div></article>`;
 }
 function radioGroup(name, options, current, klass) {
   const now = String(current || '');
@@ -835,6 +852,7 @@ ${empty || `<div class="${resultClass}">${cards}</div>`}${others}
     css: '/search.css',
     js: '/search-ui.js',
     headerHtml,
+    guestD2: true,
   });
 }
 app.get('/', (req, res) => {
@@ -974,6 +992,7 @@ app.get('/h/:slug', (req, res) => {
     imageAlt: demo ? 'Stock photo, not this hotel' : seo.shortName(h.name),
     jsonld: seo.listingJsonLd(h, { from, image: photo }),
     css: '/listing-dir2.css',
+    logoOnDark: true,
   }));
 });
 
@@ -1484,7 +1503,7 @@ app.get('/booking/:code', async (req, res) => {
     status: cancelled ? 'Cancelled' : b.checked_in_at ? HotelClock.guestCheckedIn(hotel, b.checked_in_at) : 'Confirmed',
     mayCancel: BookingCancel.guestMay(db, hotel, b),
     parkingHtml: cancelled ? '' : parkingBlock(hotel, hasParking),
-  }), { analytics: false, index: false, canonical: false, css: '/booking-ticket.css' }));
+  }), { analytics: false, index: false, canonical: false, css: '/booking-ticket.css', guestD2: true }));
 });
 app.post('/booking/:code/cancel', async (req, res) => {
   if (bookingLimited(req.ip || 'unknown')) return rejectBookingLookup(res);

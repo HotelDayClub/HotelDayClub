@@ -9,7 +9,8 @@ body:has(.tk){background:var(--cream)}
 .tk .ti{width:18px;height:18px;flex:none}
 .tk .ex{display:inline-block;font:600 14px/20px var(--font-body,Inter,system-ui,sans-serif);color:#8A3B12;background:#FFF1E4;border-radius:6px;padding:0 6px}
 .tk :focus-visible{outline:3px solid var(--deep);outline-offset:2px}
-.tk-st{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:16px}
+.tk-st{display:flex;flex-wrap:nowrap;align-items:center;gap:8px 12px;margin-bottom:16px}
+.tk-st h1{flex:1;min-width:0}
 .tk-mk{width:36px;height:36px;border-radius:50%;background:var(--tk-soft);color:var(--teal);display:flex;align-items:center;justify-content:center;flex:none}
 .tk-mk .ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .tk-st h1{font:600 28px/34px Fraunces,Georgia,serif;color:var(--text)}
@@ -24,7 +25,7 @@ body:has(.tk){background:var(--cream)}
 .tk-dir .ti{color:var(--teal)}
 .tk-facts{display:grid!important;grid-template-columns:1fr 1fr;gap:12px 16px;margin:16px 0 0!important;padding:16px 0 0;border-top:1px solid var(--border)}
 .tk-facts dt{font-size:14px;line-height:20px;font-weight:600;color:var(--sec);text-transform:none;letter-spacing:0}
-.tk-facts dd{margin:2px 0 0;font-size:18px;line-height:24px;font-weight:700;color:var(--text)}
+.tk-facts dd{margin:2px 0 0;font:700 18px/24px Fraunces,Georgia,serif;color:var(--text)}
 .tk-arr{margin-top:12px;font-size:15px;line-height:22px;color:var(--sec)}
 .tk-adds{margin:16px 0 0;padding:12px 0 0;border-top:1px solid var(--border);list-style:none}
 .tk-adds .h{display:block;font-size:14px;line-height:20px;font-weight:600;color:var(--sec)}

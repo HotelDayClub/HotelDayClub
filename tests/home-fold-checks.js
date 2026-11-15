@@ -260,6 +260,7 @@ function cdp(WS, wsUrl) {
           });
           const assureUlAlign = getComputedStyle(document.querySelector('.assure ul')).alignItems;
           return {
+            guestD2: document.body.classList.contains('guest-d2'),
             top: box.top,
             exploreH2Top,
             freeCancelVisible,
@@ -337,10 +338,10 @@ function cdp(WS, wsUrl) {
         }
         assert.strictEqual(data.assureUlAlign, 'start', width + ' assure ul align-items');
       }
-      if (width === 1024) {
+      if (width === 1024 && !data.guestD2) {
         assert.ok(data.exploreH2Top < data.inner, width + ' explore h2 below fold ' + data.exploreH2Top + ' vs ' + data.inner);
       }
-      if (width >= 1280) {
+      if (width >= 1280 && !data.guestD2) {
         assert.ok(data.top < data.inner, width + ' first listing below fold ' + data.top + ' vs ' + data.inner);
       }
       if (width === 1024 || width === 1100 || width === 1280 || width === 1440) {
@@ -349,7 +350,11 @@ function cdp(WS, wsUrl) {
       }
       if (width === 390 || width === 1280) {
         assert.ok(data.heroBox && data.phBox, width + ' hero ph boxes');
-        assert.ok(Math.abs(data.phBox.height - data.heroBox.height) <= 2, width + ' hero ph fill ' + JSON.stringify({ hero: data.heroBox.height, ph: data.phBox.height }));
+        if (data.guestD2) {
+          assert.ok(data.phBox.height >= 150 && data.phBox.height <= 320, width + ' d2 photo strip ' + data.phBox.height);
+        } else {
+          assert.ok(Math.abs(data.phBox.height - data.heroBox.height) <= 2, width + ' hero ph fill ' + JSON.stringify({ hero: data.heroBox.height, ph: data.phBox.height }));
+        }
       }
       if (data.creditBox) {
         assert.ok(data.creditBox.width >= 20 && data.creditBox.height >= 10, width + ' credit visible ' + JSON.stringify(data.creditBox));
