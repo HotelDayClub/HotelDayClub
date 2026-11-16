@@ -216,7 +216,7 @@ function cdp(WS, wsUrl) {
     assert.strictEqual(t.dateText, 'Date', 'Date label without hours ' + t.dateText);
     assert.ok(!t.dateHasHours, 'no hours next to Date');
     assert.ok(t.fitsOnCards, 'Fits N on every pass card: ' + t.passCount);
-    assert.match(t.bookLabel, /^Book · \$[\d,.]+ \(demo\)$/, 'Book label shows pass total');
+    assert.match(t.bookLabel, /^Book · \$[\d,.]+$/, 'Book label shows pass total, no (demo) suffix');
 
   const bookLive = await send('Runtime.evaluate', {
       awaitPromise: true,
@@ -255,7 +255,7 @@ function cdp(WS, wsUrl) {
     assert.match(live.other, /^Book · \$/, 'Book label after pass change');
     assert.notStrictEqual(live.two, live.other, 'Book label updates when pass changes');
     assert.notStrictEqual(live.one, live.other, 'Book label differs from one lounger after pass change');
-    assert.match(live.two, /^Book · \$90(\\.00)? \(demo\)$/, 'doubled price at 2 spots');
+    assert.match(live.two, /^Book · \$90(\\.00)?$/, 'doubled price at 2 spots');
 
     await send('Page.navigate', { url: `http://127.0.0.1:${port}/h/saltwater-terrace?pass=lounger&qty=1` });
     await new Promise(r => setTimeout(r, 1200));

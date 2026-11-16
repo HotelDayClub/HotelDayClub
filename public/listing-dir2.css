@@ -307,8 +307,8 @@ body:has(.d2) .sec-action .sa-arr{font-weight:700}
 .d2-band h2{font:600 32px/38px var(--d2-disp);color:var(--deep);margin:0 0 20px}
 .d2-qa{display:block;padding:24px 0;border-top:1px solid var(--border)}
 .d2-qa:first-of-type{border-top:0}
-.d2-qa b{display:block;font:600 15px/22px var(--d2-body);color:var(--sec)}
-.d2-qa p{margin:8px 0 0;font:600 20px/28px var(--d2-disp);color:var(--deep)}
+.d2-qa b{display:block;font:600 20px/28px var(--d2-disp);color:var(--deep)}
+.d2-qa p{margin:8px 0 0;font:400 16px/24px var(--d2-body);color:var(--sec)}
 .d2-qa a{color:var(--teal);display:inline-flex;align-items:center;min-height:44px;font:700 16px/20px var(--d2-body);text-decoration:underline}
 .d2-contract{margin-top:20px;font-size:14px;line-height:20px;color:var(--sec)}
 
@@ -470,7 +470,7 @@ dialog.d2-sheet[open] .d2-book,.js dialog.d2-sheet[open] .d2-book{display:block}
  .d2-time{font-size:52px;line-height:56px}
  .d2-kv{display:grid;grid-template-columns:1fr 1fr;column-gap:40px}
  .d2-kv div{border-top:1px solid var(--border);min-width:0}
- .d2-qa p{font-size:22px;line-height:30px}
+ .d2-qa b{font-size:22px;line-height:30px}
  .d2-fake{display:inline-flex;align-items:center;justify-content:space-between;min-height:48px;border:1px solid var(--field);border-radius:12px;padding:0 14px;background:#fff;font:500 16px var(--d2-body);color:var(--text)!important;text-decoration:none;gap:8px}
  .d2-ex-wrap{margin-left:0;margin-right:0;padding:0;overflow:visible}
  .d2-ex-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}

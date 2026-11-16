@@ -59,3 +59,10 @@ Homepage hero stills, cropped to 16:9. They are example photos, not partner venu
 | golden/img/hero-lunch.jpg (resort pool still, not used on the homepage) | https://www.pexels.com/photo/38188725/ | Relaxing Journeys |
 
 WebP and smaller mobile copies sit beside those JPEGs. The on-page chip says "Stock media · example only". Attribution is optional under the Pexels licence. The footer photographer credit was removed on 26 Oct 2026.
+
+## For hotels page
+
+| File | Source | Notes |
+|---|---|---|
+| golden/img/fh-loungers.jpg, fh-loungers-sm.jpg (and .webp) | Cropped from photos/hero-loungers.jpg (Pexels, Quang Nguyen Vinh, link above) | A hotel sign in the frame is blurred. Also used in the homepage hotels banner. |
+| golden/img/fh-dashboard.jpg (and .webp) | Screenshot of this site's hotel dashboard, logged in as a fictional demo hotel | Sample data only. Cropped above the guest list, so no guest names. Labelled as sample data on the page. |

@@ -166,14 +166,16 @@ const ASSURE = [
   },
 ];
 
-function reassureStrip(lite) {
-  const items = ASSURE.map(item => {
+function reassureStrip(lite, opts = {}) {
+  // Home shows four points in one row; the help link lives in the footer there.
+  const list = opts.home ? ASSURE.filter(item => !item.href) : ASSURE;
+  const items = list.map(item => {
     const inner = `<span class="ico-wrap" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24">${item.icon}</svg></span><b>${item.title}</b>${item.text ? `<span>${item.text}</span>` : ''}`;
     return item.href
       ? `<li><a class="assure-link" href="${item.href}">${inner}</a></li>`
       : `<li>${inner}</li>`;
   }).join('');
-  return `<section class="assure${lite ? ' assure-lite' : ''}" aria-label="Before you book"><ul>${items}</ul></section>`;
+  return `<section class="assure${lite ? ' assure-lite' : ''}${opts.home ? ' assure-d1' : ''}" aria-label="Before you book"><ul>${items}</ul></section>`;
 }
 
 class DetailsAlias {

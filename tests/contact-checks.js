@@ -146,7 +146,7 @@ const valid = {
 
     const home = await get(port, '/');
     assert.ok(home.body.includes('Help when you need it'));
-    assert.ok(home.body.includes('class="assure-link" href="/contact"'));
+    assert.ok(home.body.includes('<p class="ftr-help"><b>Help when you need it</b> <a href="/contact">Questions? Email us.</a></p>'));
     assert.ok(home.body.includes('href="/contact">Contact</a>'));
     const hiw = await get(port, '/how-it-works');
     assert.ok(hiw.body.includes('Changes and cancellations'));
@@ -265,6 +265,51 @@ const valid = {
     const between = after.body.slice(beaAt, scriptAt);
     assert.ok(between.includes('Handled'));
     assert.ok(!between.includes('Mark as handled'));
+
+    // For hotels pitch page: enquiry form reuses the contact backend.
+    const pitch = await get(port, '/for-hotels');
+    assert.strictEqual(pitch.status, 200);
+    assert.ok(pitch.body.includes('<form class="fh-form" method="post" action="/contact">'));
+    assert.ok(pitch.body.includes('<input type="hidden" name="form" value="hotel">'));
+    for (const n of ['name', 'hotel', 'email', 'message', 'company_website']) assert.ok(pitch.body.includes(`name="${n}"`), 'hotel form field ' + n);
+    assert.ok(pitch.body.includes('Message <span class="opt">(optional)</span>'));
+    assert.ok(/<textarea name="message"(?![^>]*required)/.test(pitch.body), 'message is optional');
+    assert.ok(pitch.body.includes('<a class="hdr-login" href="/hotel/login">Hotel login</a>'));
+    assert.ok(pitch.body.includes('Sample data from the demo dashboard. The hotel and figures are fictional.'));
+    assert.ok(pitch.body.includes('/golden/img/fh-dashboard.webp'));
+    const figs = (pitch.body.match(/<section class="fh-figs"[\s\S]*?<\/section>/) || [''])[0];
+    assert.strictEqual((figs.match(/<li>/g) || []).length, 4, 'four facts in the figure strip');
+    assert.strictEqual((pitch.body.match(/class="fh-card"/g) || []).length, 3, 'three benefit cards');
+    const pitchText = pitch.body.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, ' ');
+    assert.ok(!/\d\s*%|commission|stripe|payout|sydney site|\u2014/i.test(pitchText), 'no %, commission, payout or em-dash on For hotels');
+    assert.ok(!/spots? left|of \d+ booked/i.test(pitchText), 'no invented availability figures');
+    const hotelValid = { form: 'hotel', name: 'Hana Host', hotel: 'Harbour View Hotel', email: 'hana@hotel.example', message: '' };
+    const noHotel = await post(port, '/contact', { ...hotelValid, hotel: '' }, { 'X-Forwarded-For': '203.0.113.61' });
+    assert.strictEqual(noHotel.status, 400);
+    assert.ok(noHotel.body.includes('Enter the hotel name.'));
+    assert.ok(noHotel.body.includes('<div class="fh fh-d1">'), 'hotel form errors re-render For hotels');
+    assert.ok(noHotel.body.includes('value="hana@hotel.example"'));
+    const badHotelMail = await post(port, '/contact', { ...hotelValid, email: 'nope' }, { 'X-Forwarded-For': '203.0.113.62' });
+    assert.strictEqual(badHotelMail.status, 400);
+    assert.ok(badHotelMail.body.includes('<div class="fh fh-d1">'));
+    const hotelBot = await post(port, '/contact', { ...hotelValid, company_website: 'http://spam.example' }, { 'X-Forwarded-For': '203.0.113.63' });
+    assert.strictEqual(hotelBot.status, 303);
+    assert.strictEqual(hotelBot.headers.location, '/for-hotels?sent=1#enquiry');
+    assert.strictEqual(messages().length, 2, 'invalid or bot hotel enquiries are not saved');
+    const hotelSaved = await post(port, '/contact', hotelValid, { 'X-Forwarded-For': '203.0.113.64' });
+    assert.strictEqual(hotelSaved.status, 303);
+    assert.strictEqual(hotelSaved.headers.location, '/for-hotels?sent=1#enquiry');
+    const hotelRow = messages()[2];
+    assert.strictEqual(hotelRow.topic, 'partnership');
+    assert.strictEqual(hotelRow.name, 'Hana Host');
+    assert.strictEqual(hotelRow.email, 'hana@hotel.example');
+    assert.strictEqual(hotelRow.message, 'Hotel: Harbour View Hotel. Enquiry from the For hotels page.');
+    const hotelThanks = await get(port, '/for-hotels?sent=1');
+    assert.ok(hotelThanks.body.includes('Thanks, we have your note.'));
+    assert.ok(!hotelThanks.body.includes('<form class="fh-form"'));
+    const hotelNote = await post(port, '/contact', { ...hotelValid, message: 'Two pools, keen to try.' }, { 'X-Forwarded-For': '203.0.113.65' });
+    assert.strictEqual(hotelNote.status, 303);
+    assert.strictEqual(messages()[3].message, 'Hotel: Harbour View Hotel. Two pools, keen to try.');
 
     const limitIp = '203.0.113.90';
     for (let i = 0; i < 8; i++) {

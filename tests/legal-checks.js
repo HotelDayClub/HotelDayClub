@@ -535,6 +535,7 @@ function start(port, extra = {}) {
     assert.ok(!/75%|25%/.test(forHotels.body));
     assert.ok(forHotels.body.includes('Free to list, no monthly fee. You set the seating, prices, numbers and hours. You get a monthly statement of your bookings. The terms are set out in your hotel agreement.'));
     assert.ok(forHotels.body.includes('Your in-house guests always come first.'));
+    assert.ok(!/paid monthly|payout|stripe/i.test(forHotels.body), 'no payout wording on For hotels');
     assert.ok(!forHotels.body.includes('You stay in control. You stay in control.'));
     const publicPaths = ['/', '/for-hotels', '/how-it-works', '/faq', '/contact', '/privacy', '/terms', '/refunds', '/risk', '/guides', '/h/saltwater-terrace', '/destinations/sydney', '/destinations/melbourne', '/hotel/login', '/checkout?hotel=skyline-rooftop&date=' + encodeURIComponent(freeSky.date) + '&pass=chair&qty=1'];
     const legalPaths = new Set(['/privacy', '/terms', '/refunds', '/risk']);

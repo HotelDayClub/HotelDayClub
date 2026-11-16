@@ -80,7 +80,7 @@ try {
   assert.ok(!unset.includes(KEY));
 
   const unsetPage = listing(salt);
-  assert.ok(unsetPage.includes('aria-label="Map placeholder (demo)"'));
+  assert.ok(unsetPage.includes('aria-label="Map placeholder"'));
   assert.ok(unsetPage.includes('This is a fictional demo address.'));
   assert.ok(!unsetPage.includes('/vendor/leaflet/leaflet.js'));
   assert.ok(!unsetPage.includes('<iframe'));

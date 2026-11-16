@@ -150,7 +150,7 @@ ${hrs ? `<p class="d2-ex-hrs">${esc(hrs)}</p>` : ''}
 </div>
 </article>`;
     }).join('');
-    const tag = demo ? '<span class="ex">Example hotel details (demo)</span>' : '';
+    const tag = demo ? '<span class="ex">Example hotel details</span>' : '';
     const stock = demo ? '<p class="d2-ex-stock">Stock photos · not this hotel</p>' : '';
     return `<section class="d2-s" id="explore"><h2>Explore the hotel</h2>${tag}${stock}
 <div class="d2-ex-wrap" tabindex="0" aria-label="Hotel areas"><div class="d2-ex-row">${cards}</div></div>
@@ -186,7 +186,7 @@ ${body}
 <div class="d2-ex-sheet-in">
 <div class="d2-grab" aria-hidden="true"></div>
 <div class="d2-top"><h2 id="d2-explore-h">Explore the hotel</h2><button type="button" class="d2-x" id="d2-explore-close" aria-label="Close">${icon('x')}</button></div>
-${demo ? '<span class="ex">Example hotel details (demo)</span>' : ''}
+${demo ? '<span class="ex">Example hotel details</span>' : ''}
 <ul class="d2-ex-sheet-list">${rows}</ul>
 ${foot}
 </div>

@@ -96,7 +96,8 @@ function start(port) {
     assert.ok((footer.match(/class="ftr-toggle"/g) || []).length === 3);
     assert.ok(home.includes('Demo site: listings are examples, no real bookings or payments.'));
     assert.ok(!home.includes('>Long lunch<'));
-    assert.ok(home.includes('>Swim &amp; gym</button><button type="button" data-i="1" aria-pressed="false">Spa afternoon</button><button type="button" data-i="2" aria-pressed="false">Golden hour</button>'));
+    assert.ok(!home.includes('class="times"'), 'hero mood buttons removed, one search pill');
+    assert.ok(home.includes('<nav class="popular" aria-label="Popular searches">'));
 
     const faq = text(await get(port, '/faq'));
     const faqMain = faq.slice(faq.indexOf('<main>'), faq.indexOf('<footer'));

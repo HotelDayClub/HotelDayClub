@@ -98,7 +98,8 @@ function alts(html, where) {
     assert.strictEqual(titleOf(home), 'Hotel day passes in Australia · Hotel Day Club');
     assert.ok(home.includes('rel="canonical" href="https://www.hoteldayclub.com.au/"'));
     const homeDesc = 'Book a hotel pool, spa or gym for the day in Australia, no room needed. We&#39;re launching soon, so join the waitlist.';
-    assert.ok(home.includes('<p class="kicker">Hotel day passes in Australia</p>'));
+    assert.ok(!home.includes('<p class="kicker">Hotel day passes in Australia</p>'), 'hero kicker removed, headline sits on the photo');
+    assert.ok(home.includes('<p class="hero-sub">Book a day at a hotel pool, gym or spa. No room needed.</p>'));
     assert.ok(home.includes('<h1 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h1>'));
     assert.ok(!home.includes('minutes from home, no room needed.'));
     assert.ok(!home.includes('class="lead">A hotel pool'));
@@ -107,13 +108,13 @@ function alts(html, where) {
     assert.ok(home.includes('One example day. The hotel sets the hours.'));
     const planAt = home.indexOf('A hotel day, your way');
     const exploreAt = home.indexOf('id="explore"');
-    const stepsAt = home.indexOf('class="steps"');
+    const stepsAt = home.indexOf('class="steps steps-d1"');
     const destAt = home.indexOf('id="destinations"');
-    assert.ok(exploreAt < planAt && exploreAt < stepsAt && planAt < stepsAt && stepsAt < destAt);
+    assert.ok(exploreAt >= 0 && exploreAt < planAt && planAt < destAt && destAt < stepsAt, 'home order: listings, plan, destinations, how it works');
     assert.ok(!home.includes('by the hour'));
     assert.ok(!/swim till six/i.test(home));
-    assert.ok(home.includes('How a hotel day pass works'));
-    assert.ok(home.includes('<h2>Destinations</h2>'));
+    assert.ok(home.includes('<h2>Three steps to the pool</h2>'));
+    assert.ok(home.includes('<h2>Where to spend the day</h2>'));
     assert.ok(home.includes('Questions about hotel day passes'));
     assert.ok(home.includes(`name="description" content="${homeDesc}"`));
     assert.ok(home.includes(`property="og:description" content="${homeDesc}"`));

@@ -307,6 +307,7 @@ ${this.column('ftr-dest', 'Destinations', destLinks, 'dest-links')}
 ${this.column('ftr-guides', 'Guides', guideLinks)}
 ${this.column('ftr-site', 'Site', siteLinks)}
 </div></div>
+<p class="ftr-help"><b>Help when you need it</b> <a href="/contact">Questions? Email us.</a></p>
 <div class="ftr-bottom"><p>Demo only. Fictional hotels, stock photos, no payments.</p><p>© ${this.year()} Hotel Day Club</p></div></div></footer>${this.script()}`;
   }
 
@@ -337,6 +338,9 @@ if(rm||!('IntersectionObserver' in window)){els.forEach(show)}else{
   els.forEach(function(e){io.observe(e)});
   setTimeout(function(){els.forEach(show)},250);
 }
+var hd=document.getElementById('site-hdr');
+function hs(){if(!hd)return;document.documentElement.style.setProperty('--hdr-h',hd.offsetHeight+'px');hd.classList.toggle('is-solid',window.scrollY>8);}
+hs();window.addEventListener('scroll',hs,{passive:true});window.addEventListener('resize',hs);
 var dlg=document.getElementById('waitlist');
 function openWl(){if(dlg&&typeof dlg.showModal==='function'&&!dlg.open)dlg.showModal();}
 document.querySelectorAll('a[href="#waitlist"]').forEach(function(a){a.addEventListener('click',function(e){if(!dlg)return;e.preventDefault();openWl();});});
@@ -366,7 +370,8 @@ function page(title, body, opts = {}) {
   const home = !!opts.home;
   const index = opts.index !== undefined ? opts.index : nav === 'guest';
   const waitHref = home ? '#waitlist' : '/#waitlist';
-  const right = nav === 'hotel' ? '<a class="hotel-link show" href="/hotel/logout">Log out</a>'
+  const right = opts.headerRight ? opts.headerRight
+    : nav === 'hotel' ? '<a class="hotel-link show" href="/hotel/logout">Log out</a>'
     : nav === 'admin' ? '<a class="hotel-link show" href="/admin/logout">Log out</a>'
     : `<a class="pill" href="${waitHref}">Join the waitlist</a>`;
   const chrome = nav === 'guest' ? guestChrome(opts.path || '', waitHref) : { nav: '<nav class="hdr-nav" aria-label="Site"></nav>', sheet: '' };
@@ -391,9 +396,10 @@ function page(title, body, opts = {}) {
   const tokensCss = StaticAssets.stylesheet('/tokens.css');
   const guestD2 = !!opts.guestD2;
   const guestD2Css = guestD2 ? StaticAssets.stylesheet('/guest-d2.css') : '';
+  const polishCss = nav === 'guest' ? StaticAssets.stylesheet('/polish.css') : '';
   const css = home
-    ? `${StaticAssets.fontLinks()}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}${StaticAssets.stylesheet('/golden/home.css')}${StaticAssets.stylesheet('/header.css')}${guestD2Css}`
-    : `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${StaticAssets.stylesheet('/styles.css')}${StaticAssets.stylesheet('/app.css')}${StaticAssets.stylesheet('/golden/site.css')}${StaticAssets.stylesheet('/header.css')}${extraCss}${guestD2Css}`;
+    ? `${StaticAssets.fontLinks()}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}${StaticAssets.stylesheet('/golden/home.css')}${StaticAssets.stylesheet('/header.css')}${guestD2Css}${polishCss}`
+    : `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${StaticAssets.stylesheet('/styles.css')}${StaticAssets.stylesheet('/app.css')}${StaticAssets.stylesheet('/golden/site.css')}${StaticAssets.stylesheet('/header.css')}${extraCss}${guestD2Css}${polishCss}`;
   const bodyExtra = [guestD2 ? 'guest-d2' : '', opts.bodyClassExtra || ''].filter(Boolean).join(' ');
   const bodyClass = [opts.bodyClass || (home ? 'home' : nav === 'guest' ? 'guest' : 'staff'), bodyExtra].filter(Boolean).join(' ');
   const deepHeader = !!(opts.logoOnDark || guestD2);
@@ -465,16 +471,26 @@ function exampleCard(h, date) {
     ? `<img src="/golden/img/cards/${esc(base)}.webp" alt="${esc('Example photo of a hotel pool in ' + h.area + ', not a real hotel')}" width="800" height="600" loading="lazy" decoding="async">`
     : photo ? `<img src="/assets/photos/${esc(photo)}" alt="${esc('Example photo of a hotel pool in ' + h.area + ', not a real hotel')}" width="1200" height="900" loading="lazy" decoding="async">` : '';
   const facts = amenitiesFrom(h).filter(line => line !== h.age_policy).slice(0, 3);
-  const limit = h.age_policy ? `<p class="ex-limit">${esc(h.age_policy)}</p>` : '';
+  const sub = guestAreaName(h.area) + (h.age_policy ? ' · ' + h.age_policy : '');
   const href = `/h/${h.slug}${date ? '?date=' + encodeURIComponent(date) : ''}`;
-  return `<a class="ex" href="${href}">${img}<span class="tag">Example</span><h3>${esc(h.name)}</h3><p class="ex-area">${esc(guestAreaName(h.area))}</p>${facts.length ? `<p class="ex-amen">${esc(facts.join(' · '))}</p>` : ''}<p class="ex-price">From ${money(from)}</p>${limit}</a>`;
+  const short = [];
+  for (const f of facts) {
+    if (f.length > 22 || short.join('').length + f.length > 34) continue;
+    short.push(f);
+  }
+  const chips = short.length ? `<ul class="ex-chips">${short.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : '';
+  return `<a class="ex" href="${href}"><span class="ex-ph">${img}<span class="tag">Example</span></span><span class="ex-top"><h3>${esc(displayName(h))}</h3><span class="ex-price"><small>from</small> ${money(from)}</span></span><p class="ex-area">${esc(sub)}</p>${chips}</a>`;
 }
-function homeQuickHtml() {
+function displayName(h) {
+  return String((h && h.name) || '').replace(/\s*\(Demo\)\s*$/i, '');
+}
+const FAQ_PLUS = (q, a) => `<details><summary><span>${esc(q)}</span><i class="faq-plus" aria-hidden="true"></i></summary><p>${a}</p></details>`;
+function homePopularHtml() {
   const hotels = getHotels();
   const first = hotels[0];
   const day = first ? today(first) : today();
   const cutoff = hotels.length === 0 || hotels.every(h => Boolean(closureReason(db, h, today(h))));
-  return HomeQuick.html(day, { cutoff });
+  return HomeQuick.popular(day, { cutoff });
 }
 function whereOptions(selectedId) {
   return DESTINATIONS.map(d => `<option value="${esc(d.id)}" data-icon="${esc(d.icon)}"${d.id === selectedId ? ' selected' : ''}>${esc(d.name)}</option>`).join('');
@@ -485,42 +501,40 @@ function homePage({ destination = '', joined = false, error = '', values = {} } 
     ? values.destination
     : destination;
   const counts = DESTINATIONS.map(d => ({ ...d, count: hotels.filter(h => d.areas.includes(h.area)).length }));
-  const destCards = counts.map(d => {
-    const href = `/destinations/${encodeURIComponent(d.slug)}`;
-    const status = DestinationTiles.status(d);
-    const go = d.count ? 'View example listings' : 'Join the waitlist';
-    return `<li><a class="dest-card" href="${href}">
-<span class="dest-ico">${destIcon(d.icon)}</span>
-<span class="dest-name">${esc(d.name)}</span>
-<span class="dest-status">${status}</span>
-<span class="dest-go">${go}</span>
-</a></li>`;
-  }).join('');
+  const listed = counts.filter(d => d.count);
+  const tileHtml = (d, i) => {
+    const h = hotels.find(x => d.areas.includes(x.area) && x.photos && x.photos[0]);
+    const base = h ? String(h.photos[0]).replace(/\.jpe?g$/i, '') : '';
+    const webp = base && fs.existsSync(path.join(__dirname, 'public', 'golden', 'img', 'cards', base + '.webp'));
+    const src = !h ? '' : webp ? `/golden/img/cards/${esc(base)}.webp` : `/assets/photos/${esc(h.photos[0])}`;
+    const img = src ? `<img src="${src}" alt="Example photo for ${esc(d.name)}" width="800" height="600" loading="lazy" decoding="async">` : '';
+    return `<li class="dt${i === 0 && listed.length === 5 ? ' dt-big' : ''}"><a class="dest-tile" href="/destinations/${encodeURIComponent(d.slug)}">${img}<span class="dt-txt"><span class="dest-name">${esc(d.name)}</span><span class="dest-status">${exampleCount(d.count)}</span></span></a></li>`;
+  };
+  const destTiles = listed.length ? `<ul class="dest-tiles dt-n${listed.length}">${listed.map(tileHtml).join('')}</ul>` : '';
+  const soon = counts.filter(d => !d.count);
+  const destSoon = soon.length ? `<div class="dest-soon"><b>Coming soon</b><ul>${soon.map(d => `<li><a class="dest-chip" href="/destinations/${encodeURIComponent(d.slug)}">${esc(d.name)}</a></li>`).join('')}</ul><a class="text-link" href="#waitlist">Tell me when<span aria-hidden="true"> →</span></a></div>` : '';
   const form = values || {};
   const destOptions = DESTINATIONS.map(d => `<option value="${esc(d.id)}" data-icon="${esc(d.icon)}"${pickedDest === d.id ? ' selected' : ''}>${esc(d.name)}</option>`).join('');
   const lead = joined ? `<script>if(typeof gtag==='function')gtag('event','generate_lead');</script>` : '';
   const openWait = Boolean(joined || error || pickedDest);
   const exampleCards = hotels.slice(0, 6).map(h => exampleCard(h, '')).join('');
   const slot = (src, alt, time, title, copy) => `<div class="slot"><picture><source type="image/webp" srcset="/golden/img/${src}.webp"><img src="/golden/img/${src}.jpg" alt="${alt}" width="900" height="600" loading="lazy" decoding="async"></picture><span class="t">${time}</span><div class="b"><h3>${title}</h3><p>${copy}</p></div></div>`;
-  return page('Hotel day passes in Australia', `<header class="hero hero-d2" data-slot="0"><div class="ph"><div class="media">
+  return page('Hotel day passes in Australia', `<header class="hero hero-d2 hero-d1" data-slot="0"><div class="ph"><div class="media">
 <picture class="layer on" data-slot="0"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-swim-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-swim-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-swim.webp"><img fetchpriority="high" src="/golden/img/hero-swim.jpg" alt="Ocean pool at sunrise" width="1920" height="1080" decoding="async"></picture>
-<picture class="layer" data-slot="1"><source type="image/webp" srcset="/golden/img/3-sm.webp"><img src="/golden/img/3-sm.jpg" alt="Spa treatment room" width="900" height="600" loading="lazy" decoding="async"></picture>
-<picture class="layer" data-slot="2"><source type="image/webp" srcset="/golden/img/1-sm.webp"><img src="/golden/img/1-sm.jpg" alt="Hotel pool at dusk" width="900" height="900" loading="lazy" decoding="async"></picture>
 <div class="shimmer" aria-hidden="true"></div><div class="tint"></div></div>
 <span class="credit">Stock media · example only</span></div>
-<div class="copy"><p class="kicker">Hotel day passes in Australia</p>
+<div class="copy">
 <h1 class="hero-line">Take the day <em>off.</em><br>Stay till&nbsp;close.</h1>
-<div class="times"><button type="button" data-i="0" class="on" aria-pressed="true">Swim &amp; gym</button><button type="button" data-i="1" aria-pressed="false">Spa afternoon</button><button type="button" data-i="2" aria-pressed="false">Golden hour</button></div>
-${homeQuickHtml()}
+<p class="hero-sub">Book a day at a hotel pool, gym or spa. No room needed.</p>
 <form class="search" action="/search" method="get">
 <div class="seg"><label for="w">Where</label><select id="w" class="hdc-pick" name="destination" aria-label="Where"><option value="" data-icon="pin">All of Australia</option>${whereOptions('')}</select></div>
 <div class="seg"><label for="d">When</label><input id="d" class="hdc-date" type="date" name="date" min="${today()}" max="${ymd(addDays(new Date(), 90))}" value=""></div>
 <div class="seg"><label for="p">What</label><select id="p" class="hdc-pick" name="want">${WANTS.map(w => `<option value="${w.id}" data-icon="${w.icon}">${esc(w.name)}</option>`).join('')}</select></div>
-<button type="submit">Search</button></form></div></header>
-<div class="marquee" aria-label="Pool day, gym session, spa afternoon, daybed for two, cabana with friends, golden-hour swim"><div class="track" aria-hidden="true"><span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺<span>Pool day</span>✺<span>Gym session</span>✺<span>Spa afternoon</span>✺<span>Daybed for two</span>✺<span>Cabana with friends</span>✺<span>Golden-hour swim</span>✺</div></div>
-${reassureStrip()}
-<section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings · not real hotels</span><h2>Example listings</h2></div>${LinkStyles.sectionAction('/search', 'See all day passes')}</div>
-<p class="home-note">Fictional example hotels. ${LinkStyles.textLink('/guides', 'Read the day pass guides')}.</p>
+<button type="submit">Search</button></form>
+${homePopularHtml()}</div></header>
+${reassureStrip(false, { home: true })}
+<section id="explore" data-rv><div class="sec-row"><div><span class="kicker sand">Example listings</span><h2>A day by the water</h2>
+<p class="home-note">Fictional hotels with stock photos, shown to preview the experience.</p></div>${LinkStyles.sectionAction('/search', 'See all day passes')}</div>
 <div class="list">${exampleCards || '<p class="home-note">No example listings yet.</p>'}</div></section>
 <section data-rv><span class="kicker sand">Plan your day</span><h2>A hotel day, your way</h2>
 <p class="home-note">One example day. The hotel sets the hours.</p>
@@ -530,19 +544,21 @@ ${slot('4-sm', 'Hotel daybed beside a pool', '12 pm', 'Daybed by the pool', 'Str
 ${slot('3-sm', 'Spa treatment table', '3 pm', 'Spa afternoon', 'Steam, sauna, a treatment if the hotel offers one.')}
 ${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
 </div></section>
-<section class="steps" data-rv><div><span class="kicker">How it works</span><h2>How a hotel day pass works</h2></div>
+<section id="destinations" data-rv><div class="sec-row"><div><span class="kicker sand">Explore by destination</span><h2>Where to spend the day</h2></div>${LinkStyles.sectionAction('/search', 'All destinations')}</div>
+${destTiles}
+${destSoon}</section>
+<section class="steps steps-d1" data-rv><div class="steps-in"><span class="kicker">How it works</span><h2>Three steps to the pool</h2>
 <ol><li><span>01</span><div><b>Find a hotel</b><p>Each listing shows hours, price and what's included.</p></div></li>
 <li><span>02</span><div><b>Pick a pass and a day</b><p>See the price before you confirm.</p></div></li>
-<li><span>03</span><div><b>Show up, switch off</b><p>Check in at the desk and the day is yours.</p></div></li></ol></section>
-<section id="destinations" data-rv><span class="kicker sand">Explore by destination</span><h2>Destinations</h2>
-<p class="home-note">Numbers count example listings only.</p>
-<ul class="dests">${destCards}</ul></section>
-<section class="faq" data-rv><div><span class="kicker sand">Good to know</span><h2>Questions about hotel day passes</h2></div>
-<div class="faq-list"><details><summary>Do I need to stay at the hotel?</summary><p>No. A day pass covers the pool, gym or spa for set hours.</p></details>
-<details><summary>Is Hotel Day Club taking bookings?</summary><p>Not yet. Join the waitlist and we'll email you when passes open near you.</p></details>
-<details><summary>What's included?</summary><p>Each hotel sets its own inclusions. Every listing shows what your pass covers. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.</p></details>
-<p class="faq-more">${LinkStyles.sectionAction('/faq', 'All questions')}</p></div></section>
-<div class="hotels" id="hotels"><div><span class="kicker">For hotels</span><h2>List a hotel pool</h2><p>List spare pool, gym and spa capacity. You set the hours, prices and guest numbers.</p></div><a class="btn" href="/for-hotels">Talk to us</a></div>
+<li><span>03</span><div><b>Show up, switch off</b><p>Check in at the desk and the day is yours.</p></div></li></ol></div></section>
+<section class="faq faq-d1" data-rv><div><span class="kicker sand">Good to know</span><h2>Questions about hotel day passes</h2>
+<p class="home-note">Short answers. The full list is in the help centre.</p>
+<p class="faq-more">${LinkStyles.sectionAction('/faq', 'All questions')}</p></div>
+<div class="faq-list">${FAQ_PLUS('Do I need to stay at the hotel?', 'No. A day pass covers the pool, gym or spa for set hours.')}
+${FAQ_PLUS('Is Hotel Day Club taking bookings?', "Not yet. Join the waitlist and we'll email you when passes open near you.")}
+${FAQ_PLUS("What's included?", 'Each hotel sets its own inclusions. Every listing shows what your pass covers. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.')}
+${FAQ_PLUS('Can I cancel?', 'Yes. Free cancellation up to 24 hours before your access hours start. The <a href="/refunds">cancellation and refund policy</a> has the detail.')}</div></section>
+<div class="hotels hotels-d1" id="hotels"><div class="hotels-copy"><span class="kicker">For hotels</span><h2>A quiet pool, put to use.</h2><p>List spare pool, gym and spa capacity. You set the hours, prices and guest numbers.</p><a class="btn" href="/for-hotels">Talk to us</a></div><picture class="hotels-ph"><source type="image/webp" srcset="/golden/img/fh-loungers-sm.webp"><img src="/golden/img/fh-loungers-sm.jpg" alt="Sun loungers and umbrellas beside a hotel pool" width="800" height="534" loading="lazy" decoding="async"></picture></div>
 <noscript><style>#waitlist{display:block;position:static;margin:24px auto 40px}</style></noscript>
 <dialog id="waitlist" aria-labelledby="wl-title" data-open="${openWait ? '1' : '0'}"><div class="wl-in">
 <button type="button" class="wl-x" data-close>Close</button>
@@ -567,7 +583,7 @@ ${joined ? `<div class="wl-ok" role="status"><h3>You're on the list</h3><p>Thank
 <p>${CheckoutConsent.hotelNoticeHtml(contactMail())}</p>
 </div>
 <button class="btn" type="submit">Join the waitlist</button>
-</form></div></dialog>`, { analytics: true, home: true, index: true, guestD2: true, htmlHero: 'B', ...seo.pageCopy('home'), jsonld: seo.homeJsonLd(contactEmail()) });
+</form></div></dialog>`, { analytics: true, home: true, index: true, guestD2: true, ...seo.pageCopy('home'), jsonld: seo.homeJsonLd(contactEmail()) });
 }
 function searchHidden(params, skip) {
   const bits = [];
@@ -693,7 +709,7 @@ function searchCard(hotel, params, index, kidsChip) {
   const area = guestAreaName(hotel.area) + (hotel.age_policy ? ' · ' + hotel.age_policy : '');
   const priceInner = offer.sold
     ? `Sold out on ${esc(nice(params.date))}`
-    : `From ${money(offer.price)} <small>(demo)</small>${offer.activity ? ' · ' + esc(offer.activity) : ''}`;
+    : `From ${money(offer.price)}${offer.activity ? ' · ' + esc(offer.activity) : ''}`;
   const price = offer.sold
     ? `<p class="soldtxt">${priceInner}</p>`
     : (span
@@ -701,9 +717,9 @@ function searchCard(hotel, params, index, kidsChip) {
       : `<p class="ex-price">${priceInner}</p>`);
   const book = offer.sold
     ? `<a class="btn quiet" href="/h/${esc(hotel.slug)}#book">See other dates</a>`
-    : `<a class="btn quiet" href="${esc(listing)}#book">Book<span class="vh"> ${esc(hotel.name)}</span></a>`;
+    : `<a class="btn quiet" href="${esc(listing)}#book">Book<span class="vh"> ${esc(displayName(hotel))}</span></a>`;
   const kids = kidsChip ? `<p class="kidchip">${FAMILY_ICON}<span>${esc(kidsChip)}</span></p>` : '';
-  return `<article class="ex${offer.sold ? ' is-sold' : ''}"><div class="ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></div><div class="bd"><h3><a href="${esc(listing)}">${esc(hotel.name)}</a></h3><p class="ex-area">${esc(area)}</p>${kids}${offer.sold && span ? `<p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p>` : ''}${price}<div class="act"><a class="btn tlink fill" href="${esc(listing)}">View details</a>${book}</div></div></article>`;
+  return `<article class="ex${offer.sold ? ' is-sold' : ''}"><div class="ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></div><div class="bd"><h3><a href="${esc(listing)}">${esc(displayName(hotel))}</a></h3><p class="ex-area">${esc(area)}</p>${kids}${offer.sold && span ? `<p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p>` : ''}${price}<div class="act"><a class="btn tlink fill" href="${esc(listing)}">View details</a>${book}</div></div></article>`;
 }
 function radioGroup(name, options, current, klass) {
   const now = String(current || '');
@@ -1604,31 +1620,108 @@ ${alert}
 <p class="fh-forgot">Forgot password? <a href="mailto:${esc(contactEmail())}">Email us</a>.</p>
 </section>`;
 }
-app.get('/for-hotels', (req, res) => {
+const FH_ICONS = {
+  quiet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 20V10M10 20V5M15 20v-7M20 20H3"/></svg>',
+  guests: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M15.8 14.2c2.3.2 4 1.8 4.6 4.8"/></svg>',
+  control: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>',
+  tick: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+};
+// The For hotels enquiry form reuses the contact backend as a partnership message.
+function hotelEnquiryParse(body) {
+  const raw = body || {};
+  const clean = v => String(v || '').replace(/[\u0000-\u001F\u007F]/g, ' ').trim();
+  const hotel = clean(raw.hotel);
+  const note = clean(raw.message);
+  const values = { name: clean(raw.name).slice(0, 80), email: clean(raw.email).slice(0, 254), hotel: hotel.slice(0, 120), message: note.slice(0, 1800) };
+  const message = `Hotel: ${hotel}. ${note || 'Enquiry from the For hotels page.'}`;
+  const parsed = parseMessage({ name: raw.name, email: raw.email, company_website: raw.company_website, topic: 'partnership', message });
+  if (parsed.honeypot || parsed.error) return { ...parsed, values };
+  if (!hotel) return { error: 'Enter the hotel name.', values };
+  if (hotel.length > 120) return { error: 'Hotel name is too long.', values };
+  if (note.length > 1800) return { error: 'Message is too long. Keep it under 1,800 characters.', values };
+  return { ...parsed, values };
+}
+function forHotelsHtml({ code = '', sent = false, error = '', values = {} } = {}) {
   const href = esc(talkHref());
-  res.send(page('For hotels', `<div class="wrap fh">
-<div class="fh-intro">
-<div>
+  const v = values || {};
+  const field = (label, name, attrs, val) => `<label class="fl"><span>${label}</span><input name="${name}" ${attrs} value="${esc(val || '')}"></label>`;
+  const form = sent
+    ? `<div class="fh-sent" role="status"><h3>Thanks, we have your note.</h3><p>We will be in touch by email soon.</p></div>`
+    : `${error ? `<div class="alert" role="alert">${esc(error)}</div>` : ''}<form class="fh-form" method="post" action="/contact">
+<input type="hidden" name="form" value="hotel">
+<div class="hp" aria-hidden="true"><label>Company website<input name="company_website" tabindex="-1" autocomplete="off" value=""></label></div>
+${field('Your name', 'name', 'required maxlength="80" autocomplete="name"', v.name)}
+${field('Hotel', 'hotel', 'required maxlength="120" autocomplete="organization"', v.hotel)}
+${field('Work email', 'email', 'type="email" required maxlength="254" autocomplete="email"', v.email)}
+<label class="fl"><span>Message <span class="opt">(optional)</span></span><textarea name="message" rows="3" maxlength="1800">${esc(v.message || '')}</textarea></label>
+<button class="btn fh-submit" type="submit">Send enquiry</button>
+<p class="fh-notice">${CheckoutConsent.hotelNoticeHtml(contactMail())}</p>
+</form>`;
+  const fig = (big, small) => `<li><b>${big}</b><span>${small}</span></li>`;
+  const benefit = (icon, title, copy) => `<article class="fh-card"><span class="fh-ico">${FH_ICONS[icon]}</span><h3>${title}</h3><p>${copy}</p></article>`;
+  const check = text => `<li>${FH_ICONS.tick}<span>${text}</span></li>`;
+  return page('For hotels', `<div class="fh fh-d1">
+<section class="wrap fh-hero">
+<div class="fh-hero-copy">
 <p class="fh-kicker">For hotels</p>
 <h1>A quiet pool, <em>put to use.</em></h1>
-<p class="fh-lead">Hotel Day Club is for hotels in Australia. Local guests come for the pool, the gym or the spa for the day. They do not need a room.</p>
-<p>Hotels are invited. There is no sign-up form. Email ${contactMail()} and we will set up the login.</p>
+<p class="fh-lead">Hotel Day Club is for hotels in Australia. Local guests book your pool, gym or spa for the day, on the days you choose. They do not need a room.</p>
+<p class="fh-cta"><a class="btn btn-coral" href="#enquiry">Talk to us</a><a class="text-link" href="#dashboard">See how it works<span aria-hidden="true"> ↓</span></a></p>
 </div>
-${hotelLoginPanel(req.query.e === 'lock' ? 'lock' : req.query.e ? '1' : '')}
-</div>
+<picture class="fh-hero-ph"><source type="image/webp" srcset="/golden/img/fh-loungers-sm.webp 800w, /golden/img/fh-loungers.webp 1400w" sizes="(max-width:800px) 100vw, 560px"><img src="/golden/img/fh-loungers.jpg" alt="Sun loungers and umbrellas beside a hotel pool" width="1400" height="934" fetchpriority="high" decoding="async"></picture>
+</section>
+<section class="fh-figs" aria-label="At a glance"><ul class="wrap">
+${fig('$0', 'to list, no monthly fee')}
+${fig('You set', 'days, spots, prices and hours')}
+${fig('Pause', 'any day, from your dashboard')}
+${fig('QR', 'check-in at your front desk')}
+</ul></section>
+<section class="wrap fh-why">
+<p class="fh-kicker">Why hotels list</p>
+<h2>Revenue from capacity you already have</h2>
 <div class="fh-grid">
-<article class="fh-card"><h2>Fill the quiet hours</h2><p>Weekday pool, gym and spa time often has room in it. Day guests can take that time. Your in-house guests always come first.</p></article>
-<article class="fh-card"><h2>Welcome local guests</h2><p>They are new people through the door. Food and drink are never included in the pass. What they buy from you stays with the hotel.</p></article>
+${benefit('quiet', 'Fill the quiet hours', 'Weekday pool, gym and spa time often has room in it. Day guests can take that time. Your in-house guests always come first.')}
+${benefit('guests', 'Welcome local guests', 'They are new people through the door. Food and drink are never included in the pass. What they buy from you stays with the hotel.')}
+${benefit('control', 'You stay in control', 'Free to list, no monthly fee. You set the seating, prices, numbers and hours. You get a monthly statement of your bookings. The terms are set out in your hotel agreement.')}
 </div>
-<article class="fh-card fh-wide"><h2>You stay in control</h2><p>Free to list, no monthly fee. You set the seating, prices, numbers and hours. You get a monthly statement of your bookings. The terms are set out in your hotel agreement.</p></article>
+</section>
+<section class="wrap fh-dash" id="dashboard">
+<div class="fh-dash-copy">
+<p class="fh-kicker">The hotel dashboard</p>
+<h2>See today's guests at a glance</h2>
+<ul class="fh-checks">
+${check('Scan a QR code to check a guest in')}
+${check('Night-before guest list by email')}
+${check('Bookings, sales and fill rate in one place')}
+${check('Pause a day or block dates yourself')}
+</ul>
 </div>
-<section class="fh-pilot"><div class="wrap">
+<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-dashboard.webp"><img src="/golden/img/fh-dashboard.jpg" alt="The hotel dashboard for a fictional demo hotel, showing today's check-ins, pause buttons and booking totals" width="1600" height="735" loading="lazy" decoding="async"></picture></div>
+<figcaption>Sample data from the demo dashboard. The hotel and figures are fictional.</figcaption></figure>
+</section>
+<section class="fh-pilot" id="enquiry"><div class="wrap fh-pilot-in">
+<div class="fh-pilot-copy">
 <p class="fh-kicker">A short pilot</p>
 <h2>See if it suits the hotel.</h2>
-<p>A brief trial is a simple way to find out. We shape it with you, then you decide. Write to us and we will be in touch.</p>
-<a class="btn btn-coral" href="${href}">Talk to us</a>
-<p class="fh-mail">Email ${contactMail()}</p>
-</div></section>`, { analytics: true, index: true, ...seo.pageCopy('hotels'), jsonld: seo.graph(seo.crumbs([{ name: 'For hotels', path: '/for-hotels' }])) }));
+<p>A brief trial is a simple way to find out. We shape it with you, then you decide.</p>
+<p>Hotels are invited. There is no sign-up form. Send us a note and we will be in touch.</p>
+<p class="fh-mail">Prefer email? <a href="${href}">Talk to us at ${esc(contactEmail())}</a></p>
+</div>
+<div class="fh-form-card">${form}</div>
+</div></section>
+<section class="wrap fh-login-row"><details class="fh-login-box"${code ? ' open' : ''}><summary>Hotel partner login</summary>${hotelLoginPanel(code)}</details></section>
+</div>
+<script>(function(){var d=document.querySelector('.fh-login-box');if(d&&location.hash==='#login')d.open=true;${error ? "var e=document.getElementById('enquiry');if(e)e.scrollIntoView();" : ''}})();</script>`, {
+    analytics: true,
+    index: true,
+    headerRight: '<a class="hdr-login" href="/hotel/login">Hotel login</a><a class="pill pill-rose" href="#enquiry">Talk to us</a>',
+    ...seo.pageCopy('hotels'),
+    jsonld: seo.graph(seo.crumbs([{ name: 'For hotels', path: '/for-hotels' }])),
+  });
+}
+app.get('/for-hotels', (req, res) => {
+  const code = req.query.e === 'lock' ? 'lock' : req.query.e ? '1' : '';
+  res.send(forHotelsHtml({ code, sent: req.query.sent === '1' }));
 });
 app.get('/hotel/join', (req, res) => res.redirect(302, '/for-hotels'));
 app.post('/hotel/join', (req, res) => {
@@ -2742,13 +2835,17 @@ app.get('/contact', (req, res) => {
   res.send(contactHtml({ sent: req.query.sent === '1' }));
 });
 app.post('/contact', async (req, res) => {
-  const parsed = parseMessage(req.body || {});
-  const show = (status, extra) => res.status(status).send(contactHtml({ error: extra.error, values: parsed.values || {} }));
+  const hotelForm = String((req.body || {}).form || '') === 'hotel';
+  const parsed = hotelForm ? hotelEnquiryParse(req.body || {}) : parseMessage(req.body || {});
+  const done = hotelForm ? '/for-hotels?sent=1#enquiry' : '/contact?sent=1';
+  const show = (status, extra) => res.status(status).send(hotelForm
+    ? forHotelsHtml({ error: extra.error, values: parsed.values || {} })
+    : contactHtml({ error: extra.error, values: parsed.values || {} }));
   if (contactLimited(req.ip || 'unknown')) {
-    if (parsed.honeypot) return res.redirect(303, '/contact?sent=1');
+    if (parsed.honeypot) return res.redirect(303, done);
     return show(429, { error: 'Please wait a few minutes, then try the form again.' });
   }
-  if (parsed.honeypot) return res.redirect(303, '/contact?sent=1');
+  if (parsed.honeypot) return res.redirect(303, done);
   if (!sameSitePost(req)) return show(403, { error: 'That message could not be sent. Use the form on this page.' });
   if (parsed.error) return show(400, parsed);
   let messageId;
@@ -2763,7 +2860,7 @@ app.post('/contact', async (req, res) => {
   } catch (err) {
     console.error('contact alert email failed id=' + messageId);
   }
-  res.redirect(303, '/contact?sent=1');
+  res.redirect(303, done);
 });
 
 // Full demo seed runs only when there are no hotels. A database that already has rows is not replaced.

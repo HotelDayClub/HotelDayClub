@@ -251,7 +251,8 @@ function contrast(fg, bg) {
 
     const listing = await get(port, '/h/saltwater-terrace');
     assert.strictEqual(listing.status, 200);
-    assert.ok(listing.body.includes('Example amenities (demo)'));
+    assert.ok(listing.body.includes('<span class="ex">Example amenities</span>'));
+    assert.ok(!listing.body.includes('Example amenities (demo)'));
     assert.ok(listing.body.includes('On site (not included)'));
     assert.ok(!textOf(listing.body).includes(SENTENCE));
     assert.ok(!group(listing.body, 'am-y').includes('Pool bar'));
