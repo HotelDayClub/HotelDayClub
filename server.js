@@ -1739,7 +1739,8 @@ ${check('Pause a day or block dates yourself')}
 <script>(function(){var d=document.querySelector('.fh-login-box');if(d&&location.hash==='#login')d.open=true;${error ? "var e=document.getElementById('enquiry');if(e)e.scrollIntoView();" : ''}})();</script>`, {
     analytics: true,
     index: true,
-    headerRight: '<a class="hdr-login" href="/hotel/login">Hotel login</a><a class="pill pill-rose" href="#enquiry">Talk to us</a>',
+    headerRight: '<a class="hdr-login" href="/hotel/login">Hotel login</a><a class="pill" href="/#waitlist">Join the waitlist</a><a class="pill pill-rose" href="#enquiry">Talk to us</a>',
+    guestD2: true,
     ...seo.pageCopy('hotels'),
     jsonld: seo.graph(seo.crumbs([{ name: 'For hotels', path: '/for-hotels' }])),
   });
@@ -2808,6 +2809,7 @@ app.get('/how-it-works', (req, res) => {
     path: '/how-it-works',
     bodyClass: 'guest hc-page',
     css: '/help-centre.css',
+    guestD2: true,
     ...copy,
     jsonld: seo.graph(seo.crumbs([{ name: 'Help centre', path: '/how-it-works' }])),
   }));
@@ -2818,6 +2820,7 @@ function contactHtml({ error, values, sent }) {
   const opts = {
     analytics: true,
     index: true,
+    guestD2: true,
     ...copy,
     jsonld: seo.graph(seo.crumbs([{ name: 'Contact', path: '/contact' }])),
   };
@@ -3017,6 +3020,7 @@ function legalDoc(heading, file) {
   return page(heading, `<div class="wrap sec legal-page"><h1 class="l-title">${esc(heading)}</h1><div class="legal-grid">${LegalContents.nav(LegalContents.headings(raw))}<article class="legal-doc">${article}</article></div></div>`, {
     analytics: true,
     index: seo.legalPagesIndexable() ? true : 'follow',
+    guestD2: true,
     ...copy,
     jsonld: seo.graph(seo.crumbs([{ name: copy.crumb, path: copy.path }])),
   });
@@ -3030,6 +3034,7 @@ app.get('/faq', (req, res) => {
   res.send(page('Hotel day pass questions', seo.faqHtml(contactMail()), {
     analytics: true,
     index: true,
+    guestD2: true,
     ...copy,
     jsonld: seo.faqJsonLd(contactEmail()),
   }));
@@ -3054,6 +3059,7 @@ app.get('/destinations/:slug', (req, res) => {
     analytics: true,
     index: destinationHasListings(d) ? true : 'follow',
     path: '/destinations/' + d.slug,
+    guestD2: true,
     documentTitle: seo.fullTitle(d.title),
     description: d.description,
     jsonld: seo.graph(seo.crumbs([{ name: d.name, path: '/destinations/' + d.slug }])),
@@ -3064,6 +3070,7 @@ app.get('/guides', (req, res) => {
   res.send(page('Guides', seo.guideIndexHtml(), {
     analytics: true,
     index: true,
+    guestD2: true,
     ...copy,
     jsonld: seo.graph(seo.crumbs([{ name: 'Guides', path: '/guides' }])),
   }));
@@ -3075,6 +3082,7 @@ app.get('/guides/:slug', (req, res) => {
     analytics: true,
     index: true,
     path: '/guides/' + guide.slug,
+    guestD2: true,
     documentTitle: seo.fullTitle(guide.title),
     description: guide.description,
     jsonld: seo.articleJsonLd(guide),

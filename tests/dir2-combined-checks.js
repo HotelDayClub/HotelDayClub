@@ -181,9 +181,9 @@ assert.match(listingCss, /\.d2 \.g-track > \* \+ \*\{display:none!important\}/);
 assert.match(listingCss, /html\.pass-b \.d2-card img,[\s\S]*object-fit:\s*cover/);
 assert.ok(!/html\.pass-b[^{]*\.d2-card[^{]*\{[^}]*object-fit:\s*contain/.test(listingCss), 'pass-row thumbs use cover');
 const guestCss = fs.readFileSync(path.join(root, 'public/guest-d2.css'), 'utf8');
-assert.ok(guestCss.includes('search-page .ex .tag') && guestCss.includes('#FFF1E4') && guestCss.includes('#8A3B12'));
+assert.ok(guestCss.includes('search-page .ex .tag') && guestCss.includes('var(--hdc-sun-soft)') && guestCss.includes('var(--hdc-rose-ink)'));
 assert.ok(!/search-page \.ex \.tag\{[^}]*background:transparent/.test(guestCss));
-assert.ok(contrastRatio('#8A3B12', '#FFF1E4') >= 4.5, 'search Example tag contrast');
+assert.ok(contrastRatio('#C63662', '#FFF6DC') >= 4.5, 'search Example tag contrast');
 
 const wed = HomeQuick.build('2026-11-11');
 assert.deepStrictEqual([wed.first.label, wed.first.sub, wed.first.href], ['Today', 'Wed 11 Nov', '/search?date=2026-11-11']);
@@ -208,7 +208,7 @@ assert.ok(!/\u2014/.test(HomeQuick.html('2026-11-11')));
 
 const d2css = fs.readFileSync(path.join(root, 'public/listing-dir2.css'), 'utf8');
 assert.ok(/\.d2-head \.d2-title\{[^}]*color:\s*var\(--deep\)/i.test(d2css), 'title on cream block');
-assert.ok(/\.d2-hours-band\{[^}]*color:\s*#FFF8EE/i.test(d2css), 'hours band text');
+assert.ok(/\.d2-hours-band\{[^}]*color:\s*var\(--cream\)/i.test(d2css), 'hours band text');
 assert.ok(!/\.d2-bookbar\{[^}]*display:\s*flex/.test(d2css), 'teal desktop bookbar removed');
 
 // A3: moods.

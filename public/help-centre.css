@@ -1,5 +1,5 @@
 body.hc-page{background:var(--hdc-bg,#fff)}
-.hc-hero{background:var(--hdc-deep);color:#fff;padding:48px 0 40px}
+.hc-hero{background:var(--hdc-deep);color:#fff;padding:var(--section) 0 calc(var(--section) * 0.9)}
 .hc-hero .l-title{color:#fff;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(36px,5vw,46px);margin:0 0 8px}
 .hc-hero .eyebrow-s{color:var(--hdc-tint)}
 .hc-hero .lead{margin:0 0 24px;font-size:19px;color:#fff;max-width:42rem}
@@ -13,9 +13,9 @@ body.hc-page{background:var(--hdc-bg,#fff)}
 .hc-count{margin:10px 0 0;min-height:1.4em;font-size:15px;color:#fff}
 .hc-ico{width:24px;height:24px;fill:none;stroke:var(--hdc-deep);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .hc-ico-wrap .hc-ico{width:44px;height:44px;padding:9px;background:var(--hdc-tint);border-radius:12px;box-sizing:border-box}
-.hc-steps{padding-top:48px}
+.hc-steps{padding-top:var(--section)}
 .hc-guides{margin:16px 0 0}
-.hc-card h3 a:focus-visible{outline:2px solid var(--teal,#0B6E6F);outline-offset:2px}
+.hc-card h3 a:focus-visible{outline:2px solid var(--teal,var(--hdc-primary));outline-offset:2px}
 .hc-steps ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
 .hc-steps li{border-top:3px solid var(--hdc-primary);padding-top:16px}
 .hc-steps p{color:var(--hdc-secondary);margin:0;font-size:15.5px;line-height:1.5}
@@ -60,7 +60,7 @@ body.hc-page{background:var(--hdc-bg,#fff)}
 .hc-contact{display:flex;gap:16px;background:var(--hdc-tint);border:1px solid var(--hdc-border);border-radius:var(--r-card);padding:24px}
 .hc-contact p{color:var(--hdc-secondary);margin:0 0 14px;line-height:1.5}
 .hc-btn{min-height:48px;display:inline-flex;align-items:center;background:var(--hdc-primary);color:#fff;font-weight:600;text-decoration:none;border-radius:999px;padding:0 20px}
-.hc-btn:hover{background:var(--hdc-primary-hover,#08585A)}
+.hc-btn:hover{background:var(--hdc-primary-hover,var(--hdc-hover))}
 .hc-hotels{display:flex;flex-direction:column;gap:6px;background:var(--hdc-tint);color:var(--hdc-primary);border-radius:var(--r-card);padding:24px;text-decoration:none;min-height:44px;border:1px solid var(--hdc-border)}
 .hc-hotels .h{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:21px;color:var(--hdc-text)}
 .hc-hotels:hover .h{text-decoration:underline}

@@ -140,7 +140,7 @@ assert.strictEqual(DetailsAlias.replacement('#location'), '#details');
 assert.strictEqual(DetailsAlias.replacement('#policies'), '#details');
 assert.strictEqual(DetailsAlias.replacement('#seating'), '#passes');
 const closedRule = pickerCss.match(/\.pk-day:disabled\{[^}]*\}/);
-assert.ok(closedRule && closedRule[0].includes('text-decoration:line-through') && closedRule[0].includes('background:#eef1f4'), closedRule && closedRule[0]);
+assert.ok(closedRule && closedRule[0].includes('text-decoration:line-through') && closedRule[0].includes('background:var(--hdc-tint)'), closedRule && closedRule[0]);
 assert.ok(pickerCss.includes('.pk-legend{display:flex;flex-wrap:nowrap'));
 assert.ok(pickerCss.includes('.pk-inline{') && pickerCss.includes('overflow:visible'));
 assert.ok(pickerCss.includes('.pk-cal-note{') && pickerCss.includes('padding:0 0 4px'));
