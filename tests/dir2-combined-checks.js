@@ -106,6 +106,9 @@ function contrastRatio(fg, bg) {
 const listingCss = fs.readFileSync(path.join(root, 'public/listing-dir2.css'), 'utf8');
 assert.match(listingCss, /body:has\(\.d2\) \.d2\.listing\{padding:0/);
 assert.match(listingCss, /@media \(max-width:1023px\)[\s\S]*body:has\(\.d2\) \.d2-photos[\s\S]*padding-top:0/);
+assert.match(listingCss, /\.d2 \.g-thumb img\{[\s\S]*object-fit:\s*cover/);
+assert.match(listingCss, /\.d2 \.g-track img\{[\s\S]*object-fit:\s*contain/);
+assert.match(listingCss, /\.g-lb-track img[\s\S]*object-fit:\s*contain/);
 const guestCss = fs.readFileSync(path.join(root, 'public/guest-d2.css'), 'utf8');
 assert.ok(guestCss.includes('search-page .ex .tag') && guestCss.includes('#FFF1E4') && guestCss.includes('#8A3B12'));
 assert.ok(!/search-page \.ex \.tag\{[^}]*background:transparent/.test(guestCss));

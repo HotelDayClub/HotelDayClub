@@ -198,6 +198,8 @@ const WAIT_SHEET = `new Promise(function(done){
   const openLb = `new Promise(function(r){var b=document.getElementById('g-all')||document.getElementById('g-count');if(b)b.click();setTimeout(r,700);})`;
   await shot(ws, { url: `${base}/h/${listing}`, width: 390, height: 844, name: 'gallery-390.png', prep: listingPrep, awaitMs: 1600 });
   await shot(ws, { url: `${base}/h/${listing}`, width: 1440, height: 900, name: 'gallery-1440.png', prep: listingPrep, awaitMs: 1600 });
+  await shot(ws, { url: `${base}/h/${listing}`, width: 1440, height: 900, name: 'gallery-1440-4photo.png', prep: listingPrep, awaitMs: 1600 });
+  await shot(ws, { url: `${base}/h/palm-court`, width: 1440, height: 900, name: 'gallery-1440-3photo.png', prep: listingPrep, awaitMs: 1600 });
   await shot(ws, { url: `${base}/h/${listing}`, width: 390, height: 844, name: 'gallery-viewer-390.png', prep: listingPrep + ';' + openLb, awaitMs: 2000 });
 
   const exploreScroll = `window.scrollTo(0,document.getElementById('explore').offsetTop-80);`;
@@ -206,9 +208,33 @@ const WAIT_SHEET = `new Promise(function(done){
   await shot(ws, { url: `${base}/h/${listing}`, width: 1440, height: 900, name: 'passes-b-1440.png', prep: passesScroll, awaitMs: 1600 });
 
   const dec = '2026-12-15';
-  const decReadyPrep = WAIT_SHEET;
-  await shot(ws, { url: `${base}/h/harbourside-lido?date=${dec}&pass=lounger&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-harbourside-dec-390.png', prep: decReadyPrep, awaitMs: 2400 });
-  await shot(ws, { url: `${base}/h/harbourside-lido?date=${dec}&pass=lounger&qty=1#book`, width: 1440, height: 900, name: 'd2-sheet-harbourside-dec-1440.png', prep: decReadyPrep, awaitMs: 2400 });
+  const pickHarbDec = `new Promise(function(done){
+ var link=document.querySelector('.d2-bar-btn,a.d2-btn[href="#book"]');
+ if(link) link.click();
+ var n=0;(function waitSheet(){
+  var sheet=document.getElementById('d2-sheet');
+  if(!(sheet&&sheet.open)){if(++n<50)setTimeout(waitSheet,120);else done(0);return;}
+  var more=document.getElementById('d2-more');
+  if(more) more.click();
+  var target='${dec}';
+  var m=0;(function toDec(){
+   var cal=document.getElementById('d2-calbox');
+   if(!cal||cal.hidden){if(++m<40)setTimeout(toDec,150);else done(0);return;}
+   var title=cal.querySelector('b');
+   if(title&&/December\\s+2026/.test(title.textContent)){
+    var day=cal.querySelector('.cd[data-date="'+target+'"]');
+    if(day) day.click();
+    setTimeout(function(){done(1);},400);
+    return;
+   }
+   var next=cal.querySelector('[data-nav="1"]');
+   if(next&&next.getAttribute('aria-disabled')!=='true'){next.click();setTimeout(toDec,250);}
+   else if(++m<24)setTimeout(toDec,200); else done(0);
+  })();
+ })();
+})`;
+  await shot(ws, { url: `${base}/h/harbourside-lido?pass=lounger&qty=1`, width: 390, height: 844, name: 'd2-sheet-harbourside-dec-390.png', prep: pickHarbDec, awaitMs: 3200 });
+  await shot(ws, { url: `${base}/h/harbourside-lido?pass=lounger&qty=1`, width: 1440, height: 900, name: 'd2-sheet-harbourside-dec-1440.png', prep: pickHarbDec, awaitMs: 3200 });
 
   const checkoutOpenInc = `new Promise(function(r){var d=document.querySelector('details.co-inc');if(d&&!d.open)d.querySelector('summary').click();window.scrollTo(0,d?d.offsetTop-40:0);setTimeout(r,400);})`;
   await shot(ws, { url: `${base}/checkout?hotel=harbourside-lido&date=${dec}&pass=lounger&qty=1`, width: 390, height: 844, name: 'checkout-inc-dec-390.png', prep: checkoutOpenInc, awaitMs: 2000 });
