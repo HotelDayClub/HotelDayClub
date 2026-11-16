@@ -93,6 +93,10 @@ function cookie(res) {
     const home = await get(port, '/');
     assert.strictEqual(home.status, 200);
     assert.ok(home.body.includes('Join the waitlist'));
+    assert.ok(home.body.includes('id="waitlist-band"'));
+    assert.ok(home.body.includes('class="wl-inline"'));
+    assert.match(home.body, /wl-inline[\s\S]*<input[^>]+name="role"[^>]+value="guest"/);
+    assert.match(home.body, /wl-inline[\s\S]*name="company_website"/);
     const homeCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'golden', 'home.css'), 'utf8');
     assert.ok(homeCss.includes('.wl input:not([type="radio"]):not([type="checkbox"])'), 'text fields must not size radios');
     assert.ok(homeCss.includes('.wl-choice:has(input:checked)'), 'selected role needs a visible state');

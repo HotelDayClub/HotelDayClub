@@ -565,6 +565,13 @@ ${destSoon}</section>
 ${FAQ_PLUS('Is Hotel Day Club taking bookings?', "Not yet. Join the waitlist and we'll email you when passes open near you.")}
 ${FAQ_PLUS("What's included?", 'Each hotel sets its own inclusions. Every listing shows what your pass covers. Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.')}
 ${FAQ_PLUS('Can I cancel?', 'Yes. Free cancellation up to 24 hours before your access hours start. The <a href="/refunds">cancellation and refund policy</a> has the detail.')}</div></section>
+<section class="wl-band" id="waitlist-band" aria-labelledby="wl-band-h"><div class="wrap wl-band-in"><h2 id="wl-band-h">Join the waitlist</h2>
+<p class="wl-lead">Not taking bookings yet. Leave your email and we'll tell you when passes open near you. Free to join. We never sell this list.</p>
+<form class="wl-inline" method="post" action="/waitlist">
+<input type="hidden" name="role" value="guest">
+<div class="hp" aria-hidden="true"><label>Company website<input name="company_website" tabindex="-1" autocomplete="off" value=""></label></div>
+<label class="wl-email"><span class="sr-only">Email</span><input name="email" type="email" required autocomplete="email" maxlength="254" placeholder="you@example.com"></label>
+<button class="btn" type="submit">Join the waitlist</button></form></div></section>
 <div class="hotels hotels-d1" id="hotels"><div class="hotels-copy"><span class="kicker">For hotels</span><h2>A quiet pool, put to use.</h2><p>List spare pool, gym and spa capacity. You set the hours, prices and guest numbers.</p><a class="btn" href="/for-hotels">Talk to us</a></div><picture class="hotels-ph"><source type="image/webp" srcset="/golden/img/fh-loungers-sm.webp"><img src="/golden/img/fh-loungers-sm.jpg" alt="Sun loungers and umbrellas beside a hotel pool" width="800" height="534" loading="lazy" decoding="async"></picture></div>
 <noscript><style>#waitlist{display:block;position:static;margin:24px auto 40px}</style></noscript>
 <dialog id="waitlist" aria-labelledby="wl-title" data-open="${openWait ? '1' : '0'}"><div class="wl-in">
