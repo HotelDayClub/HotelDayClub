@@ -61,6 +61,13 @@ h2{font-family:var(--font-display);font-weight:700;font-size:clamp(1.6rem,3.2vw,
 .faq-plus:after{transform:translate(-50%,-50%) rotate(90deg)}
 .faq details[open] .faq-plus{transform:rotate(45deg)}
 .faq details p{margin:0 0 18px;max-width:40rem;line-height:1.55;color:var(--hdc-secondary)}
+.faq summary:hover .faq-plus{border-color:var(--hdc-primary)}
+.faq-page .l-title{font-size:clamp(40px,6vw,64px);line-height:1.02;color:var(--hdc-text);margin:0 0 12px}
+.faq-page .lead{margin:0 0 24px}
+.faq-page-list{margin-top:4px}
+.faq-foot{margin-top:24px;color:var(--hdc-secondary);line-height:1.5;max-width:40rem}
+body.guest:not(.home) main > .wrap.sec:first-child{padding-top:var(--section)}
+@media(max-width:767px){body.guest:not(.home) main > .wrap.sec:first-child{padding-top:calc(var(--section) / 2)}}
 /* Header */
 .hdr{background:var(--hdc-bg);color:var(--hdc-text);border-bottom:1px solid var(--hdc-border);position:sticky;top:0;z-index:40;box-sizing:border-box;height:64px;max-height:64px;overflow:visible}
 body.home.guest-d2 .hdr{background:transparent;border-bottom:0;transition:background-color .25s ease,color .25s ease}

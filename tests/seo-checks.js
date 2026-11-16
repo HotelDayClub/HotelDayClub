@@ -364,7 +364,7 @@ function alts(html, where) {
     assert.ok(!faq.includes('\u2014'));
     const faqPage = ld(faq).find(n => n['@type'] === 'FAQPage');
     assert.ok(faqPage);
-    const visibleQa = [...faq.matchAll(/<summary>([^<]*)<\/summary><p>([\s\S]*?)<\/p>/g)];
+    const visibleQa = [...faq.matchAll(/<summary><span>([^<]*)<\/span>[\s\S]*?<\/summary><p>([\s\S]*?)<\/p>/g)];
     assert.strictEqual(faqPage.mainEntity.length, visibleQa.length);
     const decode = s => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
     faqPage.mainEntity.forEach((item, i) => {

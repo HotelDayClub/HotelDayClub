@@ -1,4 +1,5 @@
 const { esc } = require('./util');
+const { faqPlusDetail } = require('./faqUi');
 const brand = require('./brand');
 
 const ORIGIN = 'https://www.hoteldayclub.com.au';
@@ -382,13 +383,15 @@ function faqItems(mailHtml, mailText) {
 }
 
 function faqHtml(mailHtml) {
-  const blocks = faqItems(mailHtml).map(item => `<details><summary>${esc(item.q)}</summary><p>${item.html}</p></details>`).join('\n');
-  return `<div class="wrap sec"><h1 class="l-title">Hotel day pass questions</h1>
+  const blocks = faqItems(mailHtml).map(item => faqPlusDetail(item.q, item.html)).join('\n');
+  return `<div class="wrap sec narrow faq-page">
+<p class="contact-kicker">Good to know</p>
+<h1 class="l-title">Hotel day pass questions</h1>
 <p class="lead">Short answers, in line with the <a href="/terms">customer terms</a> and the <a href="/refunds">cancellation and refund policy</a>.</p>
-<div class="faq">
+<div class="faq faq-page-list">
 ${blocks}
 </div>
-<p>Cancel in your booking link or email ${mailHtml} with your booking code.</p></div>`;
+<p class="faq-foot">Cancel in your booking link or email ${mailHtml} with your booking code.</p></div>`;
 }
 
 function faqJsonLd(mailText) {

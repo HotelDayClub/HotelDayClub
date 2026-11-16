@@ -149,7 +149,7 @@ class HelpCentre {
         const ans = HelpCentre.resolveHtml(art, mailHtml);
         const rel = HelpCentre.relatedLinks(cat, art.id);
         const relLine = rel ? `<p class="hc-rel">Related: ${rel}</p>` : '';
-        return `<details class="hc-art" id="${esc(art.id)}"><summary>${esc(art.q)}</summary><div class="hc-ans"><p>${ans}</p>${relLine}</div></details>`;
+        return `<details class="hc-art" id="${esc(art.id)}"><summary><span>${esc(art.q)}</span><i class="faq-plus" aria-hidden="true"></i></summary><div class="hc-ans"><p>${ans}</p>${relLine}</div></details>`;
       }).join('');
       const n = cat.articles.length;
       return `<details class="hc-sec" id="${esc(cat.id)}"><summary><span class="hc-sec-t">${HelpCentre.icon(cat.icon)}<span><span class="h">${esc(cat.title)}</span><span class="d">${esc(cat.blurb)}</span></span></span><span class="hc-sec-n">${n}</span></summary><div class="hc-arts">${arts}</div></details>`;

@@ -492,7 +492,8 @@ function exampleCard(h, date) {
 function displayName(h) {
   return String((h && h.name) || '').replace(/\s*\(Demo\)\s*$/i, '');
 }
-const FAQ_PLUS = (q, a) => `<details><summary><span>${esc(q)}</span><i class="faq-plus" aria-hidden="true"></i></summary><p>${a}</p></details>`;
+const { faqPlusDetail } = require('./faqUi');
+const FAQ_PLUS = (q, a) => faqPlusDetail(q, a);
 function homePopularHtml() {
   const hotels = getHotels();
   const first = hotels[0];
