@@ -4,7 +4,7 @@ const os = require('os');
 const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
-const { guestAreaName } = require('../destinations');
+const { DESTINATIONS, guestAreaName } = require('../destinations');
 const { dayHoursText, cancelNote } = require('../offering');
 const { BookingCancel } = require('../cancelBooking');
 
@@ -42,6 +42,25 @@ function escHtml(s) {
   return String(s).replace(/&/g, '&amp;');
 }
 
+function destinationForArea(area) {
+  return DESTINATIONS.find(d => (d.areas || []).includes(area));
+}
+
+function listingAreaSnippet(html) {
+  const m = html.match(/class="d2-hero-loc"[^>]*>([^<]+)</);
+  return m ? m[1].replace(/&amp;/g, '&').trim() : '';
+}
+
+function searchCardAreaSnippet(html, slug) {
+  const needle = `href="/h/${slug}"`;
+  const i = html.indexOf(needle);
+  if (i < 0) return '';
+  const slice = html.slice(i, i + 2500);
+  const m = slice.match(/class="ex-area"[^>]*>([^<]+)</);
+  if (!m) return '';
+  return m[1].replace(/&amp;/g, '&').split(' · ')[0].trim();
+}
+
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-area-season-'));
 const dbPath = path.join(dir, 'daypass.db');
 
@@ -55,13 +74,21 @@ seedDb.close();
   try {
     const db = new Sqlite(dbPath, { readonly: true });
     const hotels = db.prepare('SELECT slug, area FROM hotels WHERE COALESCE(is_demo,0)=1 OR status=?').all('active');
+    const searchPage = await get(port, '/search');
     for (const h of hotels) {
-      const label = guestAreaName(h.area);
-      assert.strictEqual(label, guestAreaName(h.area), h.slug);
-      if (h.area === 'Eastern Beaches') assert.strictEqual(label, 'Bondi & Eastern Beaches', h.slug);
-      if (h.area === 'CBD & Harbour') assert.strictEqual(label, 'Sydney CBD', h.slug);
+      const dest = destinationForArea(h.area);
+      assert.ok(dest, `${h.slug} area ${h.area} maps to a destination`);
+      const expected = dest.name;
+      assert.strictEqual(guestAreaName(h.area), expected, h.slug);
       const page = await get(port, '/h/' + h.slug);
-      assert.ok(page.body.includes(escHtml(label)) || page.body.includes(label.replace(/&/g, '&amp;')), h.slug + ' card area');
+      const heroLoc = listingAreaSnippet(page.body);
+      assert.strictEqual(heroLoc, expected, `${h.slug} listing hero area`);
+      const cardArea = searchCardAreaSnippet(searchPage.body, h.slug);
+      assert.strictEqual(cardArea, expected, `${h.slug} search card area`);
+      if (h.area !== expected) {
+        assert.notStrictEqual(heroLoc, h.area, `${h.slug} listing shows raw area`);
+        assert.notStrictEqual(cardArea, h.area, `${h.slug} search shows raw area`);
+      }
     }
 
     const harb = db.prepare("SELECT * FROM hotels WHERE slug='harbourside-lido'").get();
