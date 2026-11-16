@@ -279,6 +279,7 @@ function sheetHtml(o) {
   const chosen = days.find(c => c.on) || null;
   const outside = Boolean(date && !chosen && ListingD2.parts(date) && date >= o.today && date <= maxDate && !(o.closed && o.closed[date]));
   const extra = outside ? chipHtml({ date, wd: WEEK[ListingD2.parts(date).wd], day: ListingD2.parts(date).d, label: ListingD2.label(date), today: false, closed: false, late: Boolean(o.lateNote), on: true }) : '';
+  const dayHrs = date && !(o.closed && o.closed[date]) ? ((o.dayHours && o.dayHours[date]) || '') : '';
   const bookBtn = (pick && date) ? `Book · ${esc(ListingD2.priceText(h, pick.price * qty))}` : 'Book';
   const disabled = !pick || !date;
   const out = p => {
@@ -294,7 +295,7 @@ function sheetHtml(o) {
   }).join('');
   const noJsDate = `<noscript><form class="d2-nojs" action="/h/${esc(encodeURIComponent(h.slug))}#book" method="get"><label>Another date<input type="date" name="date" min="${esc(o.today)}" max="${esc(maxDate)}" value="${esc(outside ? date : '')}"></label><input type="hidden" name="pass" value="${esc(pick ? pick.code : '')}"><input type="hidden" name="qty" value="${qty}"><button class="d2-btn out" type="submit">Use this date</button></form></noscript>`;
   return `<section class="d2-book" id="book" aria-labelledby="d2-book-h" tabindex="-1">
-<form class="d2-form" id="d2-form" action="/checkout" method="get" data-slug="${esc(h.slug)}" data-min="${esc(o.today)}" data-max="${esc(maxDate)}" data-date="${esc(date)}" data-qty="${qty}" data-demo="${isDemo(h) ? '1' : '0'}" data-closed="${esc(JSON.stringify(o.closed || {}))}" data-hours="${esc(JSON.stringify(ListingD2.hoursByWeekday(o.hourRows)))}" data-max-people="${SearchQuery.BOOKING_SPOTS}">
+<form class="d2-form" id="d2-form" action="/checkout" method="get" data-slug="${esc(h.slug)}" data-min="${esc(o.today)}" data-max="${esc(maxDate)}" data-date="${esc(date)}" data-qty="${qty}" data-demo="${isDemo(h) ? '1' : '0'}" data-closed="${esc(JSON.stringify(o.closed || {}))}" data-hours="${esc(JSON.stringify(ListingD2.hoursByWeekday(o.hourRows)))}" data-day-hours="${esc(JSON.stringify(o.dayHours || {}))}" data-max-people="${SearchQuery.BOOKING_SPOTS}">
 <input type="hidden" name="hotel" value="${esc(h.slug)}">
 <div class="d2-grab" aria-hidden="true"></div>
 <div class="d2-top"><h2 id="d2-book-h">Book a pass</h2><button type="button" class="d2-x" id="d2-close" aria-label="Close" hidden>${icon('x')}</button></div>
@@ -307,6 +308,7 @@ ${holdHtml(o.hold)}
 <div class="d2-lab d2-labrow"><span>Date</span><button type="button" class="d2-mdb text-link" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
 <div class="d2-dates" id="d2-dates" role="group" aria-label="Date, next ${ListingD2.CHIPS} days">${days.map(chipHtml).join('')}${extra}</div>
 <div class="d2-cal" id="d2-calbox" hidden></div>
+<p class="d2-hrs" id="d2-hrs"${dayHrs ? '' : ' hidden'}>${dayHrs ? `Hours ${esc(dayHrs)}` : ''}</p>
 <p class="d2-note" id="d2-closed" role="status" hidden></p>
 <p class="d2-note warn" id="d2-late" role="status"${o.lateNote ? '' : ' hidden'}>${esc(o.lateNote || '')}</p>
 ${kids ? `<p class="d2-note kid" id="d2-kids"><b>Children</b> ${esc(kids)}</p>` : ''}
@@ -631,10 +633,11 @@ if(!form||!book) return;
 var slug=${JSON.stringify(String(slug || ''))};
 var MIN=form.getAttribute('data-min'),MAX=form.getAttribute('data-max');
 var PEOPLE=parseInt(form.getAttribute('data-max-people'),10)||6;
-var closed={},hoursBy={};
+var closed={},hoursBy={},dayHrs={};
 var lastAvail=[];
 try{closed=JSON.parse(form.getAttribute('data-closed')||'{}')}catch(e){}
 try{hoursBy=JSON.parse(form.getAttribute('data-hours')||'{}')}catch(e){}
+try{dayHrs=JSON.parse(form.getAttribute('data-day-hours')||'{}')}catch(e){}
 var demo=form.getAttribute('data-demo')==='1';
 var WK=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var FULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -650,7 +653,7 @@ var hidden=document.createElement('input');
 hidden.type='hidden';hidden.name='date';hidden.value=form.getAttribute('data-date')||'';
 form.appendChild(hidden);
 var tiles=$$('input[name="pass"]',form);
-var qtyEl=$('#d2-qty'),go=$('#d2-go'),lateEl=$('#d2-late'),closedEl=$('#d2-closed');
+var qtyEl=$('#d2-qty'),go=$('#d2-go'),lateEl=$('#d2-late'),closedEl=$('#d2-closed'),hrsEl=$('#d2-hrs');
 var seq=0,soldAll=false,calOpen=false,viewY=0,viewM=0;
 var today=parse(MIN);viewY=today.y;viewM=today.m;
 $$('.d2-sb',form).forEach(function(b){b.hidden=false});
@@ -694,6 +697,7 @@ function paint(){
   var price=parseFloat(p.getAttribute('data-price'))*q;
   go.textContent='Book · '+money(price)+(demo?' (demo)':'');
  }else go.textContent='Book';
+ if(hrsEl){var hs=d&&!closed[d]?(dayHrs[d]||''):'';hrsEl.textContent=hs?'Hours '+hs:'';hrsEl.hidden=!hs}
  var ready=!!(p&&d&&!closed[d]&&!soldAll);
  if(ready) go.removeAttribute('aria-disabled'); else go.setAttribute('aria-disabled','true');
  var pill=$('#d2-pill-t'),sd=$('#d2-side-date'),sq=$('#d2-side-qty');

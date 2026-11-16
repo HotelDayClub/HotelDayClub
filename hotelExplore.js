@@ -161,9 +161,12 @@ ${HotelExplore.sheetHtml(hotel, vis.areas, ctx)}
   static sheetRow(a, demo, ctx = {}) {
     const { db, hotel, date, today } = ctx;
     const food = isBar(a.kind);
-    const note = food ? '<p class="d2-ex-sheet-note d2-ex-chip">Not included</p>' : '';
+    const note = food ? '<p class="d2-ex-sheet-note"><span class="d2-ex-chip">Not included</span></p>' : '';
     const hrs = cardHours(db, hotel, a, date, today);
-    const body = `<p>${esc(a.line)}</p>${hrs ? `<p class="d2-ex-hrs">${esc(hrs)}</p>` : ''}<p>${esc(a.details || a.line)}</p>`;
+    const line = cleanCopy(a.line);
+    const details = cleanCopy(a.details);
+    const extra = details && details !== line ? `<p>${esc(details)}</p>` : '';
+    const body = `${line || details ? `<p>${esc(line || details)}</p>` : ''}${hrs ? `<p class="d2-ex-hrs">${esc(hrs)}</p>` : ''}${line ? extra : ''}`;
     return `<li class="d2-ex-sheet-item">
 ${areaImg(a.photo, demo ? 'Stock photo, not this hotel' : a.name)}
 <div>
@@ -303,17 +306,42 @@ function saveExplore(db, hotelId, body) {
   return {};
 }
 
-function syncDemoExplore(db, hotelId, seed) {
-  const delAll = db.prepare('DELETE FROM hotel_explore_areas WHERE hotel_id=?');
-  const insArea = db.prepare('INSERT INTO hotel_explore_areas(hotel_id, sort_order, name, line, details, hours, photo, kind) VALUES (?,?,?,?,?,?,?,?)');
-  const updIntro = db.prepare('UPDATE hotels SET about_intro=? WHERE id=?');
-  db.transaction(() => {
-    updIntro.run(seed.intro || '', hotelId);
-    delAll.run(hotelId);
-    (seed.areas || []).forEach((a, sort) => {
-      insArea.run(hotelId, sort, a.name, a.line, a.details, a.hours || '', a.photo, a.kind);
-    });
-  })();
+const DEMO_EXPLORE_KEY = 'demo_explore_seed';
+const DEMO_EXPLORE_VERSION = '2';
+
+function metaTable(db) {
+  db.exec('CREATE TABLE IF NOT EXISTS app_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT \'\')');
+}
+
+// One-time upgrade of demo Explore copy seeded by earlier versions. A field is only
+// replaced when it still equals the old seed text, so hotel edits are kept. Adds the
+// new seed cards (the Restaurant card) that are missing, up to MAX_CARDS.
+function upgradeDemoExplore(db, hotelId, seed, oldSeed) {
+  const rows = db.prepare('SELECT * FROM hotel_explore_areas WHERE hotel_id=? ORDER BY sort_order, id').all(hotelId);
+  const upd = db.prepare('UPDATE hotel_explore_areas SET line=?, details=?, hours=? WHERE id=?');
+  const ins = db.prepare('INSERT INTO hotel_explore_areas(hotel_id, sort_order, name, line, details, hours, photo, kind) VALUES (?,?,?,?,?,?,?,?)');
+  const hotel = db.prepare('SELECT about_intro FROM hotels WHERE id=?').get(hotelId);
+  if (oldSeed && hotel && (hotel.about_intro || '') === (oldSeed.intro || '')) {
+    db.prepare('UPDATE hotels SET about_intro=? WHERE id=?').run(seed.intro || '', hotelId);
+  }
+  const oldAreas = (oldSeed && oldSeed.areas) || [];
+  for (const row of rows) {
+    const was = oldAreas.find(a => a.name === row.name);
+    const now = seed.areas.find(a => a.name === row.name);
+    if (!was || !now) continue;
+    const pick = (field) => (row[field] === (was[field] || '') ? (now[field] || '') : row[field]);
+    const next = { line: pick('line'), details: pick('details'), hours: pick('hours') };
+    if (next.line !== row.line || next.details !== row.details || next.hours !== row.hours) upd.run(next.line, next.details, next.hours, row.id);
+  }
+  const names = new Set(rows.map(r => r.name));
+  const oldNames = new Set(oldAreas.map(a => a.name));
+  let total = rows.length;
+  let sort = rows.reduce((m, r) => Math.max(m, Number(r.sort_order) || 0), -1) + 1;
+  for (const a of seed.areas) {
+    if (names.has(a.name) || oldNames.has(a.name) || total >= MAX_CARDS) continue;
+    ins.run(hotelId, sort++, a.name, a.line, a.details, a.hours || '', a.photo, a.kind);
+    total += 1;
+  }
 }
 
 function ensureExplore(db) {
@@ -321,6 +349,10 @@ function ensureExplore(db) {
   if (!have.has('about_intro')) return;
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='hotel_explore_areas'").get();
   if (!tables) return;
+  metaTable(db);
+  const done = db.prepare('SELECT value FROM app_meta WHERE key=?').get(DEMO_EXPLORE_KEY);
+  if (done && done.value === DEMO_EXPLORE_VERSION) return;
+  const { DEMO_SEED_V1 } = require('./exploreSeedV1');
   const count = db.prepare('SELECT COUNT(*) n FROM hotel_explore_areas WHERE hotel_id=?');
   const insIntro = db.prepare('UPDATE hotels SET about_intro=? WHERE slug=? AND (about_intro IS NULL OR about_intro=\'\')');
   const insArea = db.prepare('INSERT INTO hotel_explore_areas(hotel_id, sort_order, name, line, details, hours, photo, kind) VALUES (?,?,?,?,?,?,?,?)');
@@ -334,10 +366,11 @@ function ensureExplore(db) {
           insArea.run(h.id, sort, a.name, a.line, a.details, a.hours || '', a.photo, a.kind);
         });
       } else {
-        syncDemoExplore(db, h.id, seed);
+        upgradeDemoExplore(db, h.id, seed, DEMO_SEED_V1[slug]);
       }
     }
+    db.prepare('INSERT INTO app_meta(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(DEMO_EXPLORE_KEY, DEMO_EXPLORE_VERSION);
   })();
 }
 
-module.exports = { HotelExplore, load, saveExplore, ensureExplore, checkInLine, DEMO_SEED, isBar, BAR_KINDS, cardHours };
+module.exports = { HotelExplore, load, saveExplore, ensureExplore, checkInLine, DEMO_SEED, isBar, BAR_KINDS, cardHours, DEMO_EXPLORE_KEY, DEMO_EXPLORE_VERSION };

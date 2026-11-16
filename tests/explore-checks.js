@@ -112,6 +112,16 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
     assert.ok(sheet.includes('Have a drink by the pool. Cocktails, coffee and light bites.'), 'pool bar copy');
     assert.strictEqual(sheet.split(FOOD_RULE).length - 1, 0, 'no food rule in explore sheet');
     assert.ok(sheet.includes('Lunch with a view'), 'restaurant card copy');
+    for (const copy of ['Heated outdoor pool with loungers and ocean views.', 'Have a drink by the pool. Cocktails, coffee and light bites.', 'Lunch with a view. Modern Australian, seafood and share plates.']) {
+      assert.strictEqual(sheet.split(copy).length - 1, 1, 'explore sheet shows the description once: ' + copy);
+    }
+    const sheetChips = sheet.match(/<span class="d2-ex-chip">Not included<\/span>/g) || [];
+    assert.strictEqual(sheetChips.length, 2, 'explore sheet uses the card chip on the bar and restaurant');
+    const rest = sheet.slice(sheet.indexOf('<h3>Restaurant</h3>'));
+    assert.ok(/^<h3>Restaurant<\/h3>\s*<p class="d2-ex-sheet-note"><span class="d2-ex-chip">Not included<\/span><\/p>/.test(rest), 'restaurant sheet row chip');
+    const cardsHtml = salt.body.slice(salt.body.indexOf('id="explore"'), sheetStart);
+    const restCard = cardsHtml.slice(cardsHtml.indexOf('<h3>Restaurant</h3>'));
+    assert.ok(/^<h3>Restaurant<\/h3>\s*<span class="d2-ex-chip">Not included<\/span>/.test(restCard), 'restaurant card chip');
     assert.ok(sheet.includes('Where to check in'), 'check-in footer');
     assert.ok(salt.body.includes('loungers-snacks.jpg'), 'bar photo');
 

@@ -973,18 +973,23 @@ app.get('/h/:slug', (req, res) => {
   const items = loadInclusions(db, h.id);
   const foodLine = guestFoodLine(db, h);
   const closed = {};
+  const dayHours = {};
   const origin = new Date(startDay + 'T12:00:00');
   for (let i = 0; i <= 90; i++) {
     const d = ymd(addDays(origin, i));
-    const why = closureReason(db, h, d);
+    const why = closureReason(db, h, d, clockNow());
     if (why) closed[d] = String(why);
+    else {
+      const span = dayHoursText(db, h, d);
+      if (span) dayHours[d] = span;
+    }
   }
   const demo = Number(h.is_demo) === 1;
   const photo = h.photos[0] ? seo.absolute('/assets/photos/' + h.photos[0]) : seo.DEFAULT_IMAGE;
   const late = d => cancelNote(db, h, d, clockNow()) === ListingD2.LATE_NOTE;
   const passCode = String(req.query.pass || '').slice(0, 40);
   res.send(page(h.name, listingHtml({
-    h, date, minDate: startDay, maxDate, closed, passes, av, from, late,
+    h, date, minDate: startDay, maxDate, closed, dayHours, passes, av, from, late,
     included: items,
     groups: HotelAmenities.groups(db, h.id, { people: 1 }),
     addons: getAddons(h.id, true),
