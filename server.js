@@ -41,6 +41,7 @@ const { SearchQuery } = require('./search');
 const seo = require('./seo');
 const compress = require('./compress');
 const { parseSignup, saveSignup, notifyWebhook, rateLimited, waitlistCsv } = require('./waitlist');
+const { spotsCount, spotsLabel } = require('./listingScarcity');
 const { TOPICS, parseMessage, contactLimited, saveMessage, topicLabel, sameSitePost } = require('./contact');
 const paths = require('./paths');
 const backups = require('./backups');
@@ -1061,7 +1062,8 @@ app.get('/api/availability', (req, res) => {
   }
   const passes = availability(h.id, date);
   const offer = listingOffer(h, date, qty, passCode, passes);
-  res.json({ hotel: h.slug, date, passes, day_left: passes.day_left ?? null, addons: addonAvailability(h.id, date), cancel: cancelNote(db, h, date, clockNow()), offer, step });
+  const spots_banner = spotsLabel(spotsCount(passes, date));
+  res.json({ hotel: h.slug, date, passes, day_left: passes.day_left ?? null, spots_banner, addons: addonAvailability(h.id, date), cancel: cancelNote(db, h, date, clockNow()), offer, step });
 });
 
 function validate(q) {

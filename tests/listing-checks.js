@@ -404,7 +404,7 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(seatLounger.body.includes('On site (not included)'));
     assert.ok(seatLounger.body.includes('/assets/photos/infinity-ocean.jpg'));
     assert.ok(!salt.body.includes("$('#qty').value"));
-    assert.ok(!salt.body.includes('spots left'));
+    assert.ok(!salt.body.includes('spots left'), 'listing without date must not show scarcity');
     assert.ok(!salt.body.includes('Wed ·'));
     assert.ok(!/>\s*Seat\s*</.test(salt.body));
     assert.ok(!salt.body.includes('quietest'));

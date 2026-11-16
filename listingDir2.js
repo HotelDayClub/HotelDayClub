@@ -10,6 +10,7 @@ const { PhotoAssets } = require('./photoAssets');
 const { SPRITE, icon } = require('./d2Icons');
 const { ListingPanel } = require('./listingView');
 const { HotelExplore } = require('./hotelExplore');
+const { spotsCount, spotsLabel, passSpotsLabel } = require('./listingScarcity');
 
 const WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -249,7 +250,11 @@ function galleryHtml(h, hero) {
 function passCard(p, h, items, opts) {
   const desc = String(p.description || '').trim();
   const href = ListingD2.cardHref(h.slug, p, { date: opts.date, qty: opts.qty });
-  return `<a class="d2-card d2-row" href="${esc(href)}" data-pass="${esc(p.code)}">${passRowPhoto(p, passAlt(p, h))}<div class="d2-card-body"><div class="d2-card-top"><b class="n">${esc(p.name)}</b><p class="pr">From ${priceHtml(h, p.price)}</p></div>${desc ? `<p>${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p))}</p></div></a>`;
+  const scarcity = passSpotsLabel(opts.av, opts.date, p.code);
+  const scarcityHtml = scarcity
+    ? `<span class="d2-spots-left">${esc(scarcity)}</span>`
+    : '<span class="d2-spots-left" hidden></span>';
+  return `<a class="d2-card d2-row" href="${esc(href)}" data-pass="${esc(p.code)}">${passRowPhoto(p, passAlt(p, h))}<div class="d2-card-body"><div class="d2-card-top"><b class="n">${esc(p.name)}</b><p class="pr">From ${priceHtml(h, p.price)}</p>${scarcityHtml}</div>${desc ? `<p>${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p))}</p></div></a>`;
 }
 
 function chipHtml(c) {
@@ -283,6 +288,10 @@ function sheetHtml(o) {
   const dayHrs = date && !(o.closed && o.closed[date]) ? ((o.dayHours && o.dayHours[date]) || '') : '';
   const bookBtn = (pick && date) ? `Book · ${esc(ListingD2.priceText(h, pick.price * qty))}` : 'Book';
   const disabled = !pick || !date;
+  const sheetScarcity = spotsLabel(spotsCount(o.av, date));
+  const sheetScarcityHtml = sheetScarcity
+    ? `<p class="d2-day-scarcity" id="d2-sheet-scarcity">${esc(sheetScarcity)}</p>`
+    : '<p class="d2-day-scarcity" id="d2-sheet-scarcity" hidden></p>';
   const out = p => {
     if (!date || (o.closed && o.closed[date])) return false;
     const row = (o.av || []).find(r => r.code === p.code);
@@ -315,6 +324,7 @@ ${holdHtml(o.hold)}
 ${kids ? `<p class="d2-note kid" id="d2-kids"><b>Children</b> ${esc(kids)}</p>` : ''}
 <span class="d2-lab" id="d2-spots-lab">Spots <small>up to ${SearchQuery.BOOKING_SPOTS} people</small></span>
 <div class="d2-step" role="group" aria-labelledby="d2-spots-lab"><button type="button" class="d2-sb" id="d2-qminus" aria-label="Fewer spots" hidden>${icon('minus')}</button><input class="d2-qty" id="d2-qty" name="qty" type="number" inputmode="numeric" min="1" max="${SearchQuery.BOOKING_SPOTS}" value="${qty}" aria-label="Spots"><button type="button" class="d2-sb" id="d2-qplus" aria-label="More spots" hidden>${icon('plus')}</button></div>
+${sheetScarcityHtml}
 <button class="d2-btn d2-go" id="d2-go" type="submit"${disabled ? ' aria-disabled="true"' : ''}>${bookBtn}</button>
 </form>
 ${noJsDate}
@@ -423,9 +433,12 @@ function detailsHtml(o) {
   return `<section class="d2-s" id="details"><h2>Details</h2>${location}${included3}</section>`;
 }
 
-function bookBarHtml(fromHtml, dateLabel, qty) {
+function bookBarHtml(fromHtml, dateLabel, qty, dayScarcity) {
+  const scarcity = dayScarcity
+    ? `<p class="d2-day-scarcity">${esc(dayScarcity)}</p>`
+    : '<p class="d2-day-scarcity" hidden></p>';
   return `<div class="d2-bookbar" role="region" aria-label="Book"><div class="d2-bookbar-in">
-<p class="d2-bookbar-price">${fromHtml}</p>
+<p class="d2-bookbar-price">${fromHtml}</p>${scarcity}
 <a class="d2-fake" href="#book" data-open="date"><span id="d2-bar-date">${esc(dateLabel)}</span>${icon('cal')}</a>
 <a class="d2-fake" href="#book" data-open="spots"><span id="d2-bar-qty">${qty} (up to ${SearchQuery.BOOKING_SPOTS} people)</span>${icon('down')}</a>
 <a class="d2-btn" href="#book" data-open="date">Check dates</a>
@@ -460,11 +473,16 @@ function listingHtmlD2(opts) {
   const pick = ListingD2.pickPass(passes, opts.passCode);
   const lateNote = date && typeof opts.late === 'function' && opts.late(date) ? (opts.lateNote || ListingD2.LATE_NOTE) : '';
   const from = passes.length ? Math.min(...passes.map(p => Number(p.price))) : 0;
-  const cardOpts = { date, qty };
+  const av = opts.av;
+  const cardOpts = { date, qty, av };
+  const dayScarcity = spotsLabel(spotsCount(av, date));
   const sections = ListingD2.passGroups(passes).map(g => `<h3 class="d2-group">${esc(g.title)}</h3><div class="d2-cards">${g.passes.map(p => passCard(p, h, items, cardOpts)).join('')}</div>`).join('');
-  const sheet = sheetHtml({ ...opts, items, passes, days, pick, date, qty, today, maxDate, closed, lateNote });
+  const sheet = sheetHtml({ ...opts, items, passes, days, pick, date, qty, today, maxDate, closed, lateNote, av });
   const dateLabel = date ? ListingD2.label(date) : 'Any date';
   const fromHtml = `From <b>${esc(money(from))}</b>`;
+  const mobileScarcity = dayScarcity
+    ? `<p class="d2-day-scarcity">${esc(dayScarcity)}</p>`
+    : '<p class="d2-day-scarcity" hidden></p>';
   const addressLine = guestAreaName(h.area);
   const exploreData = opts.explore || null;
   const exploreCtx = { db: opts.db, date: date || '', today: opts.minDate || opts.today || '' };
@@ -473,7 +491,7 @@ function listingHtmlD2(opts) {
   const hoursSpan = opts.db && date ? dayHoursText(opts.db, h, date) : '';
   return `<div class="d2 listing" id="d2-root">${SPRITE}
 ${galleryHtml(h, { heading, area: addressLine, desc: heroDescHtml(h) })}
-${bookBarHtml(fromHtml, dateLabel, qty)}
+${bookBarHtml(fromHtml, dateLabel, qty, dayScarcity)}
 <div class="d2-tabs" id="d2-tabs"><div class="in"><nav aria-label="On this page"><a href="#passes" aria-current="true">Passes</a>${hasExplore ? '<a href="#explore">Explore</a>' : ''}<a href="#details">Details</a></nav><a class="d2-datebtn" href="#book" id="d2-pill" data-open="date">${icon('cal')}<span id="d2-pill-t">${esc(dateLabel)}</span></a></div></div>
 <div class="d2-layout"><div class="d2-col">
 <section class="d2-s" id="passes"><h2>Passes</h2><p class="d2-muted">Price per spot.${demo ? ' Example photos.' : ''}</p>
@@ -486,7 +504,7 @@ ${detailsHtml({ ...opts, items, hasExplore })}
 ${hoursBandHtml(h, { ...opts, items, hoursSpan })}
 ${policiesHtml(h)}
 ${goodToKnow(h)}
-<div class="d2-bar" role="region" aria-label="Book"><p>${fromHtml}</p><a class="d2-btn d2-bar-btn" href="#book" data-open="date">Check dates</a></div>
+<div class="d2-bar" role="region" aria-label="Book"><div class="d2-bar-l"><p>${fromHtml}</p>${mobileScarcity}</div><a class="d2-btn d2-bar-btn" href="#book" data-open="date">Check dates</a></div>
 </div>
 ${listingScriptD2(h.slug)}`;
 }
@@ -497,6 +515,24 @@ function listingScriptD2(slug) {
 var root=document.getElementById('d2-root');
 if(!root) return;
 var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function spotsLabelFromCount(n){n=Math.floor(Number(n));if(n<1||n>5)return '';return n+' spot'+(n===1?'':'s')+' left';}
+function dayCountFromAvail(data){
+ if(!data||!data.date)return null;
+ if(data.day_left!=null&&data.day_left!=='')return Math.max(0,Math.floor(Number(data.day_left)));
+ return (data.passes||[]).reduce(function(s,p){if(p.blocked||p.past)return s;return s+Math.max(0,Math.floor(Number(p.remaining)||0))},0);
+}
+function paintScarcity(data){
+ var day=spotsLabelFromCount(dayCountFromAvail(data));
+ $$('.d2-day-scarcity',root).forEach(function(el){el.textContent=day;el.hidden=!day;});
+ var rows=data&&data.passes?data.passes:[];
+ $$('.d2-card[data-pass]',root).forEach(function(card){
+  var code=card.getAttribute('data-pass');
+  var row=rows.filter(function(x){return x.code===code})[0];
+  var lab=row?spotsLabelFromCount(row.remaining):'';
+  var sp=card.querySelector('.d2-spots-left');
+  if(sp){sp.textContent=lab;sp.hidden=!lab;}
+ });
+}
 function $(s,r){return (r||document).querySelector(s)}
 function $$(s,r){return [].slice.call((r||document).querySelectorAll(s))}
 function offset(){
@@ -731,11 +767,12 @@ function applyAvail(data,s){
   var next=tiles.filter(function(t){return !t.disabled})[0];
   if(next) next.checked=true;
  }
- if(!any){soldAll=true;note(closedEl,'Sold out on '+label(s)+'. Pick another day.',true)}
- else if(!closed[s]) closedEl.hidden=true;
- var late=/can.t be cancelled for free/.test(data.cancel||'');
- note(lateEl,late?data.cancel:'',late);
- paint();
+  if(!any){soldAll=true;note(closedEl,'Sold out on '+label(s)+'. Pick another day.',true)}
+  else if(!closed[s]) closedEl.hidden=true;
+  var late=/can.t be cancelled for free/.test(data.cancel||'');
+  note(lateEl,late?data.cancel:'',late);
+  paintScarcity(Object.assign({date:s},data));
+  paint();
 }
 function check(){
  var d=hidden.value;
@@ -754,10 +791,11 @@ function setDate(s,fromChip){
  if(!fromChip) chips.forEach(function(c){c.checked=(c.value===s)});
  soldAll=false;
  if(s&&closed[s]) showClosed(s); else closedEl.hidden=true;
- if(!s||closed[s]) note(lateEl,'',false);
- else if(chips.filter(function(c){return c.value===s&&c.getAttribute('data-late')==='1'}).length===0) note(lateEl,'',false);
- paint();
- check();
+  if(!s||closed[s]) note(lateEl,'',false);
+  else if(chips.filter(function(c){return c.value===s&&c.getAttribute('data-late')==='1'}).length===0) note(lateEl,'',false);
+  if(!s||closed[s]) paintScarcity({date:'',passes:[]});
+  paint();
+  check();
  if(calOpen) renderCal();
 }
 function bindChip(c){c.addEventListener('change',function(){if(c.checked) setDate(c.value,true)})}
