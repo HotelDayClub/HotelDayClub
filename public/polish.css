@@ -7,7 +7,8 @@ body.home{--d1-pad:16px}
 
 /* ---------- Home: header over the photo ---------- */
 body.home.guest-d2 .hdr{position:sticky;top:0;z-index:40;background:transparent;transition:background-color .25s ease}
-body.home.guest-d2 .hdr.is-solid{background:var(--hdc-deep)}
+body.home.guest-d2 .hdr.is-solid .logo-light{display:block}
+body.home.guest-d2 .hdr.is-solid .logo-dark{display:none}
 body.home.guest-d2 .hero.hero-d1{margin-top:calc(-1 * var(--hdr-h,64px))}
 body.home.guest-d2 .demo-banner{position:relative;z-index:21}
 
@@ -67,7 +68,7 @@ body.home .assure-d1 li span:not(.ico-wrap),body.home .assure-d1 li:not(:first-c
   body.home .assure-d1 b{white-space:nowrap;font-size:14px}
   body.home .assure-d1 li span:not(.ico-wrap),body.home .assure-d1 li:not(:first-child) span:not(.ico-wrap){display:none}
   body.home .assure-d1 li:not(:first-child){flex-wrap:nowrap;flex-direction:row;align-self:center}
-  body.home .assure-d1 li:first-child{display:grid;grid-template-columns:20px auto;column-gap:8px;row-gap:0;border-radius:18px;padding:6px 14px}
+  body.home .assure-d1 li:first-child{display:grid;grid-template-columns:20px auto;column-gap:8px;row-gap:0;border-radius:var(--r-card);padding:6px 14px}
   body.home .assure-d1 li:first-child span:not(.ico-wrap){display:block;grid-column:2;font-size:12px;line-height:1.3;color:var(--hdc-secondary);max-width:200px;white-space:normal}
 }
 
@@ -85,7 +86,7 @@ body.home #explore .sec-row,body.home #destinations .sec-row{align-items:flex-en
 body.home #explore .list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:36px 24px;margin-top:28px}
 body.home #explore .ex{display:block;background:transparent;border:0;border-radius:0;padding:0;overflow:visible;box-shadow:none;color:var(--hdc-text)}
 body.home #explore .ex:hover{box-shadow:none}
-body.home #explore .ex-ph{display:block;position:relative;border-radius:16px;overflow:hidden;background:var(--hdc-tint)}
+body.home #explore .ex-ph{display:block;position:relative;border-radius:var(--r-card);overflow:hidden;background:var(--hdc-tint)}
 body.home #explore .ex-ph img{width:100%;aspect-ratio:4/3;height:auto;object-fit:cover;display:block}
 body.home #explore .ex .tag{position:absolute;top:12px;left:12px;margin:0;background:var(--white);color:var(--hdc-text);font-size:11px;letter-spacing:.1em;padding:4px 10px;border-radius:999px}
 body.home #explore .ex-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:14px}
@@ -215,7 +216,7 @@ body.home .hotels-d1 .hotels-ph img{width:100%;height:100%;object-fit:cover}
 .fh-checks li{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--hdc-border);color:var(--hdc-text)}
 .fh-checks svg{flex:none;width:20px;height:20px;color:var(--hdc-primary)}
 .fh-shot{margin:0}
-.fh-frame{border:1px solid var(--hdc-border);border-radius:16px;overflow:hidden;background:var(--white);box-shadow:var(--sh-3)}
+.fh-frame{border:1px solid var(--hdc-border);border-radius:var(--r-card);overflow:hidden;background:var(--white);box-shadow:var(--sh-3)}
 .fh-dots{display:flex;gap:6px;padding:10px 14px;background:var(--hdc-tint);border-bottom:1px solid var(--hdc-border)}
 .fh-dots i{width:9px;height:9px;border-radius:50%;background:var(--hdc-border)}
 .fh-frame img{display:block;width:100%;height:auto}

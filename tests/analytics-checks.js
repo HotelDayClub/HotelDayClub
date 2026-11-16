@@ -212,7 +212,7 @@ assert.notStrictEqual(pinned.views, utcDay.views);
 const css = fs.readFileSync(path.join(__dirname, '../public/app.css'), 'utf8');
 assert.ok(css.includes('font-family:Inter'));
 assert.ok(!css.includes('fonts.googleapis.com'));
-assert.ok(css.includes('.example-badge{display:inline-flex') && css.includes('background:#0B2545;color:#fff'));
+assert.ok(css.includes('.example-badge{display:inline-flex') && css.includes('background:var(--hdc-navy);color:#fff'));
 assert.ok(css.includes('@media(max-width:599px)'));
 
 db.close();

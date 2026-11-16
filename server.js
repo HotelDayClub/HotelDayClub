@@ -397,13 +397,20 @@ function page(title, body, opts = {}) {
   const guestD2 = !!opts.guestD2;
   const guestD2Css = guestD2 ? StaticAssets.stylesheet('/guest-d2.css') : '';
   const polishCss = nav === 'guest' ? StaticAssets.stylesheet('/polish.css') : '';
-  const css = home
-    ? `${StaticAssets.fontLinks()}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}${StaticAssets.stylesheet('/golden/home.css')}${StaticAssets.stylesheet('/header.css')}${guestD2Css}${polishCss}`
-    : `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${StaticAssets.stylesheet('/styles.css')}${StaticAssets.stylesheet('/app.css')}${StaticAssets.stylesheet('/golden/site.css')}${StaticAssets.stylesheet('/header.css')}${extraCss}${guestD2Css}${polishCss}`;
+  const baseCss = nav === 'guest' ? StaticAssets.stylesheet('/base.css') : '';
+  const homeCss = home && nav === 'guest' ? StaticAssets.stylesheet('/golden/home.css') : '';
+  const staffCss = nav !== 'guest'
+    ? `${StaticAssets.stylesheet('/styles.css')}${StaticAssets.stylesheet('/app.css')}${StaticAssets.stylesheet('/golden/site.css')}${StaticAssets.stylesheet('/header.css')}`
+    : '';
+  const guestPageCss = nav === 'guest' && !home && extraCss ? extraCss : '';
+  const css = home && nav === 'guest'
+    ? `${StaticAssets.fontLinks()}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}${baseCss}${homeCss}${guestD2Css}${polishCss}`
+    : nav === 'guest'
+    ? `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${baseCss}${guestPageCss}${guestD2Css}${polishCss}`
+    : `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${staffCss}${extraCss}${guestD2Css}${polishCss}`;
   const bodyExtra = [guestD2 ? 'guest-d2' : '', opts.bodyClassExtra || ''].filter(Boolean).join(' ');
   const bodyClass = [opts.bodyClass || (home ? 'home' : nav === 'guest' ? 'guest' : 'staff'), bodyExtra].filter(Boolean).join(' ');
-  const deepHeader = !!(opts.logoOnDark || guestD2);
-  const headerLogo = deepHeader ? logoLink('dark') : logoLink('light');
+  const headerLogo = home ? logoLink('light', { dualOnDark: true }) : logoLink('light');
   const header = `<header class="hdr" id="site-hdr"><div class="wrap hdr-in">${headerLogo}${chrome.nav}${headerExtra}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
   const htmlAttrs = [
     'lang="en-AU"',
@@ -1025,7 +1032,6 @@ app.get('/h/:slug', (req, res) => {
     imageAlt: demo ? 'Stock photo, not this hotel' : seo.shortName(h.name),
     jsonld: seo.listingJsonLd(h, { from, image: photo }),
     css: '/listing-dir2.css',
-    logoOnDark: true,
     htmlClass: 'pass-b',
     htmlDataN: (h.photos || []).length,
   }));

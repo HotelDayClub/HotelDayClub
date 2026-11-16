@@ -134,7 +134,7 @@ const valid = {
     assert.ok(page.body.includes('href="/privacy"'));
     assert.ok(page.body.includes('class="contact-note hotel-notice"'));
     assert.ok(page.body.includes('By sending an enquiry you consent to Hotel Day Club contacting you about a possible partnership.'));
-    const contactCss = await get(port, '/golden/site.css');
+    const contactCss = await get(port, '/base.css');
     assert.ok(contactCss.body.includes('.contact-note.hotel-notice{display:none}'));
     assert.ok(contactCss.body.includes('option[value="partnership"]:checked'));
     assert.ok(page.body.includes('Send me hot-day alerts and offers by email. I can unsubscribe at any time.'));

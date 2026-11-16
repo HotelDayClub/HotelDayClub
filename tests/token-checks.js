@@ -19,7 +19,7 @@ for (const name of brandKeys) {
   assert.strictEqual(brand[name], seen.get(name), name);
 }
 
-const publicCss = ['public/tokens.css', 'public/styles.css', 'public/golden/site.css', 'public/golden/home.css']
+const publicCss = ['public/tokens.css', 'public/base.css', 'public/golden/home.css']
   .map(file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8'))
   .join('\n');
 const allRoots = publicCss.match(/:root\s*\{/g) || [];

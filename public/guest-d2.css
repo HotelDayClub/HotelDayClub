@@ -1,13 +1,5 @@
-/* D2 guest chrome: home, search and ticket (deep header, white lockup, outlined controls). */
+/* D2 guest: search mood and legacy hero B (header rules live in base.css). */
 body.guest-d2{background:var(--cream,#FFF8EE)}
-body.guest-d2 .hdr{background:var(--deep,#0B6E6F);border-bottom:0;box-shadow:none}
-body.guest-d2 .hdr .wrap{max-width:none}
-body.guest-d2 .hdr img.logo-light{display:none}
-body.guest-d2 .hdr img.logo-dark{display:block}
-body.guest-d2 .hdr-nav a{color:#fff}
-body.guest-d2 .hdr-nav a:hover{background:rgba(255,255,255,.12);color:#fff}
-body.guest-d2 .hdr .pill{border-color:rgba(255,255,255,.55);color:#fff;background:transparent}
-body.guest-d2 .hdr .ibtn{border-color:#8FB6B4;color:#fff;background:transparent}
 body.guest-d2 .msheet a.pill{background:var(--hdc-rose);color:var(--hdc-navy);border:0}
 @media (max-width:374px){body.guest-d2 .hdr .logo img{height:28px}}
 
@@ -35,14 +27,14 @@ html[data-hero="B"] body.home.guest-d2 .hero.hero-d2 .copy{width:calc(100% - 48p
 @media (min-width:1440px){html[data-hero] body.home.guest-d2 .hero.hero-d2{padding-top:400px;padding-bottom:24px}
 html[data-hero="B"] body.home.guest-d2 .hero.hero-d2 .copy{max-width:44rem}}
 @media (max-width:360px){html[data-hero="B"] body.home.guest-d2 .hero.hero-d2 .copy{width:calc(100% - 16px);padding:20px 12px 20px}}
-body.home.guest-d2 .hero .search{background:#fff;border:1px solid var(--hdc-border);border-radius:16px;padding:6px;max-width:100%;width:100%}
+body.home.guest-d2 .hero .search{background:#fff;border:1px solid var(--hdc-border);border-radius:var(--r-card);padding:6px;max-width:100%;width:100%}
 body.home.guest-d2 .hero .search button[type="submit"]{background:var(--teal,#0B6E6F);color:#fff}
 body.home.guest-d2 .hero .search button[type="submit"]:hover{background:var(--deep,#08585A);color:#fff}
 body.home.guest-d2 .qb small{font-family:Fraunces,Georgia,serif;font-weight:600}
 
 /* Search mood cards */
-body.guest-d2 .search-page .ex{border-radius:16px;background:#fff}
-body.guest-d2 .search-page .ex .tag{position:absolute;top:12px;left:12px;background:#FFF1E4;border:0;color:#8A3B12;text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;padding:4px 10px;border-radius:6px}
+body.guest-d2 .search-page .ex{border-radius:var(--r-card);background:#fff}
+body.guest-d2 .search-page .ex .tag{position:absolute;top:12px;left:12px;background:#FFF1E4;border:0;color:#8A3B12;text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;padding:4px 10px;border-radius:var(--r-ctl)}
 body.guest-d2 .search-page .ex .bd h3{font-family:Fraunces,Georgia,serif;font-size:20px;line-height:1.2}
 body.guest-d2 .search-page .ex-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;flex-wrap:wrap}
 body.guest-d2 .search-page .ex-row .hrs{margin:0;font-size:14px;color:var(--hdc-secondary);font-weight:600;display:inline-flex;align-items:center;gap:6px}

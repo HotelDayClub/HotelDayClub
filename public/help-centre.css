@@ -6,7 +6,7 @@ body.hc-page{background:var(--hdc-bg,#fff)}
 .hc-search label{display:block;font-weight:600;margin-bottom:8px}
 .hc-field{position:relative;max-width:720px}
 .hc-field .hc-ico{position:absolute;left:16px;top:50%;transform:translateY(-50%);stroke:var(--hdc-secondary);fill:none;stroke-width:1.7}
-.hc-field input{width:100%;min-height:56px;font:inherit;font-size:18px;color:var(--hdc-text);background:#fff;border:1px solid var(--hdc-outline);border-radius:14px;padding:0 16px 0 50px}
+.hc-field input{width:100%;min-height:56px;font:inherit;font-size:18px;color:var(--hdc-text);background:#fff;border:1px solid var(--hdc-outline);border-radius:var(--r-ctl);padding:0 16px 0 50px}
 .hc-field input::placeholder{color:var(--hdc-secondary)}
 .hc-field input:focus-visible{outline:3px solid var(--hdc-rose);outline-offset:3px}
 .hc-hero .hc-field input:focus-visible{outline-color:var(--hdc-rose)}
@@ -22,10 +22,10 @@ body.hc-page{background:var(--hdc-bg,#fff)}
 .hc-num{display:inline-flex;width:36px;height:36px;border-radius:50%;background:var(--hdc-rose);color:var(--hdc-navy);font-weight:700;align-items:center;justify-content:center;margin-bottom:10px}
 .hc-steps .hc-cta{margin-top:18px}
 .hc-cards{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
-.hc-card{position:relative;background:var(--hdc-tint);border:1px solid var(--hdc-border);border-radius:16px;padding:20px}
+.hc-card{position:relative;background:var(--hdc-tint);border:1px solid var(--hdc-border);border-radius:var(--r-card);padding:20px}
 .hc-card h3{margin:0 0 4px;font-family:Fraunces,Georgia,serif;font-weight:600;font-size:19px}
 .hc-card h3 a{color:var(--hdc-text);text-decoration:none}
-.hc-card h3 a::after{content:"";position:absolute;inset:0;border-radius:16px}
+.hc-card h3 a::after{content:"";position:absolute;inset:0;border-radius:var(--r-card)}
 .hc-card:hover{border-color:var(--hdc-primary)}
 .hc-card:hover h3 a{text-decoration:underline}
 .hc-card:focus-within{outline:3px solid var(--hdc-deep);outline-offset:2px}
@@ -34,7 +34,7 @@ body.hc-page{background:var(--hdc-bg,#fff)}
 .hc-card .hc-n{margin-top:10px;font-weight:600;color:var(--hdc-primary);font-size:14px}
 .hc-art.is-open{border:2px solid var(--hdc-primary);border-radius:12px;padding:0 10px 6px;margin:4px 0}
 .hc-list{display:flex;flex-direction:column;gap:12px;margin-top:56px}
-.hc-sec{border:1px solid var(--hdc-border);border-radius:16px;background:#fff}
+.hc-sec{border:1px solid var(--hdc-border);border-radius:var(--r-card);background:#fff}
 .hc-sec>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 20px;min-height:64px}
 .hc-sec>summary::-webkit-details-marker,.hc-art>summary::-webkit-details-marker{display:none}
 .hc-sec-t{display:flex;gap:14px;align-items:center;min-width:0}
@@ -56,11 +56,11 @@ body.hc-page{background:var(--hdc-bg,#fff)}
 .hc-rel{font-size:15px;color:var(--hdc-secondary)!important}
 .hc-none{margin:12px 0 0;color:var(--hdc-secondary)}
 .hc-bottom{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin:56px auto;padding-bottom:56px}
-.hc-contact{display:flex;gap:16px;background:var(--hdc-tint);border:1px solid var(--hdc-border);border-radius:16px;padding:24px}
+.hc-contact{display:flex;gap:16px;background:var(--hdc-tint);border:1px solid var(--hdc-border);border-radius:var(--r-card);padding:24px}
 .hc-contact p{color:var(--hdc-secondary);margin:0 0 14px;line-height:1.5}
 .hc-btn{min-height:48px;display:inline-flex;align-items:center;background:var(--hdc-primary);color:#fff;font-weight:600;text-decoration:none;border-radius:999px;padding:0 20px}
 .hc-btn:hover{background:var(--hdc-primary-hover,#08585A)}
-.hc-hotels{display:flex;flex-direction:column;gap:6px;background:var(--hdc-tint);color:var(--hdc-primary);border-radius:16px;padding:24px;text-decoration:none;min-height:44px;border:1px solid var(--hdc-border)}
+.hc-hotels{display:flex;flex-direction:column;gap:6px;background:var(--hdc-tint);color:var(--hdc-primary);border-radius:var(--r-card);padding:24px;text-decoration:none;min-height:44px;border:1px solid var(--hdc-border)}
 .hc-hotels .h{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:21px;color:var(--hdc-text)}
 .hc-hotels:hover .h{text-decoration:underline}
 .hc-eyebrow2{text-transform:uppercase;letter-spacing:.08em;font-size:13px;font-weight:600;color:var(--hdc-primary)}

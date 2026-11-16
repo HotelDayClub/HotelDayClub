@@ -20,15 +20,19 @@
   --hdc-danger:#B42318;
   --hdc-focus:0 0 0 3px #FFFFFF, 0 0 0 5px var(--hdc-primary);
   --white:#fff;
-  --r-lg:24px;
-  --r:16px;
+  --section:88px;
+  --r-ctl:12px;
+  --r-card:20px;
+  --r-pill:999px;
+  --r-lg:20px;
+  --r:var(--r-card);
   --r-sm:12px;
   --sh-1:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
   --sh-2:0 6px 20px rgba(16,24,40,.08);
   --sh-3:0 16px 40px rgba(16,24,40,.14);
   --font-display:"Fraunces",Georgia,serif;
   --font-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --max:1280px;
+  --max:1200px;
   --hdc-coral:var(--hdc-rose);
   --hdc-coral-ink:var(--hdc-rose-ink);
   --hdc-coral-soft:var(--hdc-rose-soft);
@@ -65,4 +69,7 @@ a.text-link:hover,a.text-link:focus-visible,button.text-link:hover,button.text-l
 a.text-link:focus-visible,button.text-link:focus-visible{outline:3px solid var(--hdc-primary);outline-offset:2px;border-radius:4px}
 @media(max-width:640px){
   a.sec-action{min-height:40px;padding:8px 14px;font-size:14px}
+}
+@media(max-width:767px){
+  html{--section:48px}
 }

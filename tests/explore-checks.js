@@ -129,8 +129,8 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
     const hdr = salt.body.slice(salt.body.indexOf('<header'), salt.body.indexOf('<main>'));
     const logoImgs = (hdr.match(/<img[^>]+alt="Hotel Day Club"/g) || []).length;
     assert.strictEqual(logoImgs, 1, 'one header logo on listing');
-    assert.ok(hdr.includes('hdc-lockup-dark.svg'), 'dark lockup on listing');
-    assert.ok(!hdr.includes('hdc-lockup-light.svg'), 'no light lockup on listing');
+    assert.ok(hdr.includes('hdc-lockup-light.svg'), 'light lockup on listing');
+    assert.ok(!hdr.includes('hdc-lockup-dark.svg'), 'no dark lockup on listing');
 
     const palm = await get(port, '/h/palm-court?pass=chair#book');
     assert.ok(palm.body.includes('resort-palms.jpg') || palm.body.includes('assets/photos/resort-palms'), 'palm chair photo');
