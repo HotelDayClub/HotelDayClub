@@ -1617,10 +1617,10 @@ app.get('/for-hotels', (req, res) => {
 ${hotelLoginPanel(req.query.e === 'lock' ? 'lock' : req.query.e ? '1' : '')}
 </div>
 <div class="fh-grid">
-<article class="fh-card"><h2>Fill the quiet hours</h2><p>Weekday pool, gym and spa time often has room in it. Day guests can take that time.</p></article>
+<article class="fh-card"><h2>Fill the quiet hours</h2><p>Weekday pool, gym and spa time often has room in it. Day guests can take that time. Your in-house guests always come first.</p></article>
 <article class="fh-card"><h2>Welcome local guests</h2><p>They are new people through the door. Food and drink are never included in the pass. What they buy from you stays with the hotel.</p></article>
 </div>
-<article class="fh-card fh-wide"><h2>You stay in control</h2><p>Free to list, no monthly fee. You set the seating, prices, numbers and hours. You are paid monthly with a statement. The terms are set out in your hotel agreement.</p></article>
+<article class="fh-card fh-wide"><h2>You stay in control</h2><p>Free to list, no monthly fee. You set the seating, prices, numbers and hours. You get a monthly statement of your bookings. The terms are set out in your hotel agreement.</p></article>
 </div>
 <section class="fh-pilot"><div class="wrap">
 <p class="fh-kicker">A short pilot</p>

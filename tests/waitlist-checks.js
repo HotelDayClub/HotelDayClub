@@ -196,7 +196,8 @@ function cookie(res) {
     assert.ok(hotels.body.includes('Talk to us'));
     assert.ok(hotels.body.includes('mailto:hello@hoteldayclub.com.au?subject=Hotel%20Day%20Club%20-%20partnership%20enquiry'));
     assert.ok(!/75%|25%|partner hotel/i.test(hotels.body));
-    assert.ok(hotels.body.includes('Free to list, no monthly fee. You set the seating, prices, numbers and hours. You are paid monthly with a statement. The terms are set out in your hotel agreement.'));
+    assert.ok(hotels.body.includes('Free to list, no monthly fee. You set the seating, prices, numbers and hours. You get a monthly statement of your bookings. The terms are set out in your hotel agreement.'));
+    assert.ok(hotels.body.includes('Your in-house guests always come first.'));
     assert.ok(!/\bcommission\b/i.test(hotels.body));
     assert.ok(hotels.body.includes('Hotel partner login'));
     assert.ok(hotels.body.includes('action="/hotel/login"'));

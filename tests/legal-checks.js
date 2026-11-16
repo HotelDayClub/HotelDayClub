@@ -533,7 +533,8 @@ function start(port, extra = {}) {
     onlyThisMail(forHotels.body, 'for-hotels');
     assert.ok(forHotels.body.includes('mailto:hello@hoteldayclub.com.au?subject=Hotel%20Day%20Club%20-%20partnership%20enquiry'));
     assert.ok(!/75%|25%/.test(forHotels.body));
-    assert.ok(forHotels.body.includes('Free to list, no monthly fee. You set the seating, prices, numbers and hours. You are paid monthly with a statement. The terms are set out in your hotel agreement.'));
+    assert.ok(forHotels.body.includes('Free to list, no monthly fee. You set the seating, prices, numbers and hours. You get a monthly statement of your bookings. The terms are set out in your hotel agreement.'));
+    assert.ok(forHotels.body.includes('Your in-house guests always come first.'));
     assert.ok(!forHotels.body.includes('You stay in control. You stay in control.'));
     const publicPaths = ['/', '/for-hotels', '/how-it-works', '/faq', '/contact', '/privacy', '/terms', '/refunds', '/risk', '/guides', '/h/saltwater-terrace', '/destinations/sydney', '/destinations/melbourne', '/hotel/login', '/checkout?hotel=skyline-rooftop&date=' + encodeURIComponent(freeSky.date) + '&pass=chair&qty=1'];
     const legalPaths = new Set(['/privacy', '/terms', '/refunds', '/risk']);
