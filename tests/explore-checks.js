@@ -90,7 +90,8 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
       assert.ok(body.indexOf('id="explore"') < body.indexOf('id="details"'), slug + ' order details');
       const cards = (body.match(/class="d2-ex-card"/g) || []).length;
       assert.ok(cards >= 3 && cards <= 4, slug + ' card count ' + cards);
-      assert.ok(body.includes('Example hotel details (demo)'), slug + ' demo tag');
+      assert.ok(body.includes('<span class="ex">Example hotel details</span>'), slug + ' demo tag');
+      assert.ok(!body.includes('Example hotel details (demo)'), slug + ' demo tag without (demo)');
       assert.ok(body.includes('Stock photos'), slug + ' stock label');
       assert.ok(!body.includes('class="d2-ex-intro"'), slug + ' no explore intro paragraph');
       const exSlice = body.slice(body.indexOf('id="explore"'), body.indexOf('id="d2-explore-sheet"', body.indexOf('id="explore"')));

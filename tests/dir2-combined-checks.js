@@ -250,7 +250,8 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
       assert.ok(!text.includes('\u2014'), slug + ' no em-dashes');
       assert.ok(!/commission|stripe/i.test(text), slug);
       assert.ok(!/[\u2605\u2606]|\bstars?\b|aggregateRating|\bABN\b/.test(body), slug + ' no ratings or ABN');
-      assert.ok(text.includes('(demo)'), slug + ' demo price labels');
+      assert.ok(!/\(demo\)/i.test(visibleText(body.slice(body.indexOf('<body')))), slug + ' no (demo) on displayed listing prices or heading, label is once per screen (SEO title keeps it)');
+      assert.ok(body.includes('class="demo-banner"'), slug + ' demo banner stays');
       assert.ok(text.includes('Fictional demo listing'), slug);
       assert.ok(!text.includes('Pay later') && !text.includes('Best price'), slug);
       assert.ok(body.includes('<dialog'), slug + ' booking sheet is a dialog');
@@ -258,7 +259,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
       assert.ok(body.indexOf('id="passes"') < body.indexOf('id="explore"') && body.indexOf('id="explore"') < body.indexOf('id="details"'), slug + ' section order');
       assert.ok(body.indexOf('id="passes"') < body.indexOf('id="book"'), slug + ' book in passes');
       assert.ok(/href="\/refunds"/.test(body), slug);
-      assert.ok(body.includes('Open in Google Maps') || body.includes('Map placeholder (demo)'), slug);
+      assert.ok(body.includes('Open in Google Maps') || body.includes('Map placeholder'), slug);
     }
 
     const harbTrack = pages['harbourside-lido'].match(/id="g-track"[^>]*>([\s\S]*?)<\/div>/);
@@ -277,13 +278,14 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(incRows.some(r => /^Towels included/i.test(r)));
     assert.ok(pages['saltwater-terrace'].includes('Towels included'));
     assert.ok(!incRows.some(r => /Pool access/.test(r)));
-    assert.ok(saltText.includes('Example amenities (demo)'));
+    assert.ok(saltText.includes('Example amenities'));
+    assert.ok(!saltText.includes('Example amenities (demo)'));
     const saltDetails = pages['saltwater-terrace'].slice(pages['saltwater-terrace'].indexOf('id="details"'));
     assert.ok(saltDetails.includes('<h3>Extras</h3>'), 'extras heading');
     assert.ok(!saltDetails.includes('Extras (paid)'), 'no legacy extras label');
     assert.ok(saltDetails.includes('class="d2-extra-list"'), 'extras card list');
     assert.ok(saltDetails.includes('class="d2-extra"'), 'extra row/card');
-    assert.ok(/class="d2-extra-pr">.*\(demo\)/.test(saltDetails), 'demo price label on extras');
+    assert.ok(/class="d2-extra-pr">[^<]*\$\d/.test(saltDetails) && !/class="d2-extra-pr">[^<]*\(demo\)/.test(saltDetails), 'extras show a price, no (demo) suffix (banner carries the label)');
     assert.ok(saltDetails.includes('<h3>On site (not included)</h3>'), 'on site heading');
     const onIdx = saltDetails.indexOf('<h3>On site (not included)</h3>');
     const extrasIdx = saltDetails.indexOf('<h3>Extras</h3>');
@@ -362,10 +364,14 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
 
     // A11: home quick buttons.
     const home = await get(port, '/');
-    assert.ok(home.body.includes('<div class="quick" role="group" aria-label="Quick dates">'));
-    assert.strictEqual((home.body.match(/class="qb"/g) || []).length, 2);
-    assert.ok(home.body.includes(`href="/search?date=${today}"`) || home.body.includes(`href="/search?date=${ymd(addDays(new Date(today + 'T12:00:00'), 1))}"`));
-    assert.ok(home.body.indexOf('class="quick"') < home.body.indexOf('class="search'));
+    // Quick date buttons became the quiet "Popular" row under the search pill (design review mock-up 1).
+    const popular = (home.body.match(/<nav class="popular" aria-label="Popular searches">[\s\S]*?<\/nav>/) || [''])[0];
+    assert.ok(popular, 'popular searches row');
+    assert.ok(!home.body.includes('class="qb"'), 'old quick date buttons removed');
+    assert.strictEqual((popular.match(/<a /g) || []).length, 5);
+    assert.ok(popular.includes(`href="/search?date=${today}"`) || popular.includes(`href="/search?date=${ymd(addDays(new Date(today + 'T12:00:00'), 1))}"`));
+    assert.ok(popular.includes('href="/search?mood=rooftop"') && popular.includes('href="/search?want=spa"') && popular.includes('href="/search?mood=family"'));
+    assert.ok(home.body.indexOf('class="search') < home.body.indexOf('class="popular"'));
 
     // A12: search moods, range, and the children chip.
     const family = await get(port, '/search?mood=family');

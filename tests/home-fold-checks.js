@@ -336,7 +336,7 @@ const bin = chromeBin();
       assert.ok(data.fields.some(field => field.text === 'All of Australia'), width + ' where');
       assert.ok(data.fields.some(field => field.text === 'Any day'), width + ' when');
       for (const helper of data.helpers) assert.ok(!helper.clipped, width + ' clipped helper ' + helper.text);
-      assert.strictEqual(data.kicker, 'Example listings · not real hotels');
+      assert.strictEqual(data.kicker, 'Example listings');
       assert.ok(!data.kickerClipped, width + ' kicker clipped');
       assert.ok(data.seeH >= 44, width + ' see all ' + data.seeH);
       if (width === 360 || width === 390) {
@@ -349,7 +349,7 @@ const bin = chromeBin();
       }
       if (width === 390 || width === 1024 || width === 1440) {
         assert.ok(data.iconTopSpread <= 1, width + ' assure icon top alignment ' + data.iconTopSpread);
-        assert.strictEqual(data.iconInfo.length, 5, width + ' assure tiles');
+        assert.strictEqual(data.iconInfo.length, 4, width + ' assure tiles (help moved to the footer)');
         for (const icon of data.iconInfo) {
           assert.ok(icon.display !== 'none' && icon.h >= 20, width + ' assure icon visible ' + JSON.stringify(icon));
           assert.ok(icon.svgH >= 18, width + ' assure svg icon ' + JSON.stringify(icon));

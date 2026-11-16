@@ -170,14 +170,15 @@ class ListingD2 {
   }
 
   static priceText(h, n) {
-    return isDemo(h) ? `${money(n)} (demo)` : money(n);
+    // Demo labelling is once per screen (banner, Example tags, one line under the title), not on every price.
+    return money(n);
   }
 }
 
 function isDemo(h) { return Number(h && h.is_demo) === 1; }
 function shortName(h) { return String((h && h.name) || '').replace(/\s*\(Demo\)\s*$/, ''); }
 function priceHtml(h, n) {
-  return isDemo(h) ? `${esc(money(n))} <small>(demo)</small>` : esc(money(n));
+  return esc(money(n));
 }
 function passPhoto(p) {
   const file = safePhoto(String(p.photo || ''));
@@ -380,7 +381,7 @@ function detailsHtml(o) {
   const mapsHref = MapEmbed.directionsUrl(h);
   const embed = MapEmbed.html(h);
   const placeholder = demo && !embed
-    ? `<div class="d2-map" role="img" aria-label="Map placeholder (demo)"><svg viewBox="0 0 600 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="600" height="180" fill="#F5FAF9"/><path d="M0 120 C120 100 220 150 340 118 S520 90 600 110 V180 H0Z" fill="#DDF1EE"/><path d="M0 60 H600 M150 0 V180 M420 0 V180 M0 140 L600 30" stroke="#D9E6E4" stroke-width="6" fill="none"/><circle cx="300" cy="86" r="12" fill="#0B6E6F"/><circle cx="300" cy="86" r="5" fill="#fff"/></svg><span class="d2-pill">Map placeholder (demo)</span></div>`
+    ? `<div class="d2-map" role="img" aria-label="Map placeholder"><svg viewBox="0 0 600 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="600" height="180" fill="#F5FAF9"/><path d="M0 120 C120 100 220 150 340 118 S520 90 600 110 V180 H0Z" fill="#DDF1EE"/><path d="M0 60 H600 M150 0 V180 M420 0 V180 M0 140 L600 30" stroke="#D9E6E4" stroke-width="6" fill="none"/><circle cx="300" cy="86" r="12" fill="#0B6E6F"/><circle cx="300" cy="86" r="5" fill="#fff"/></svg><span class="d2-pill">Map placeholder</span></div>`
     : '';
   const addr = address
     ? `<p class="d2-addr">${icon('pin')}<span>${esc(address)}${demo ? '<span class="d2-muted blk">This is a fictional demo address.</span>' : ''}</span></p>`
@@ -391,7 +392,7 @@ function detailsHtml(o) {
   const incRows = groups.included;
   const row = r => `<li>${icon(AMENITY_ICON[r.icon] || 'check')}${esc(r.label)}</li>`;
   const included = incRows.length
-    ? `<p class="d2-sub first">Included in your pass${demo ? ' <span class="ex">Example amenities (demo)</span>' : ''}</p><ul class="d2-inc">${incRows.map(row).join('')}</ul>`
+    ? `<p class="d2-sub first">Included in your pass${demo ? ' <span class="ex">Example amenities</span>' : ''}</p><ul class="d2-inc">${incRows.map(row).join('')}</ul>`
     : `<p class="d2-muted">${esc(ListingImprove.includedEmptyCopy(false))}</p>`;
   const off = notIncludedChips(items);
   const hasExplore = Boolean(o.hasExplore);
@@ -447,7 +448,7 @@ function listingHtmlD2(opts) {
   const { h } = opts;
   const demo = isDemo(h);
   const short = shortName(h);
-  const heading = demo ? `${short} (Demo)` : short;
+  const heading = short;
   const passes = Array.isArray(opts.passes) ? opts.passes : [];
   const items = Array.isArray(opts.included) ? opts.included : [];
   const today = opts.minDate || opts.today;
@@ -463,7 +464,7 @@ function listingHtmlD2(opts) {
   const sections = ListingD2.passGroups(passes).map(g => `<h3 class="d2-group">${esc(g.title)}</h3><div class="d2-cards">${g.passes.map(p => passCard(p, h, items, cardOpts)).join('')}</div>`).join('');
   const sheet = sheetHtml({ ...opts, items, passes, days, pick, date, qty, today, maxDate, closed, lateNote });
   const dateLabel = date ? ListingD2.label(date) : 'Any date';
-  const fromHtml = `From <b>${esc(money(from))}</b>${demo ? ' <small>(demo)</small>' : ''}`;
+  const fromHtml = `From <b>${esc(money(from))}</b>`;
   const addressLine = guestAreaName(h.area);
   const exploreData = opts.explore || null;
   const exploreCtx = { db: opts.db, date: date || '', today: opts.minDate || opts.today || '' };
@@ -695,7 +696,7 @@ function paint(){
  var pr=$('#d2-passrow-t');if(pr&&p) pr.textContent=p.getAttribute('data-name')+' · '+p.getAttribute('data-label');
  if(p&&d&&!soldAll){
   var price=parseFloat(p.getAttribute('data-price'))*q;
-  go.textContent='Book · '+money(price)+(demo?' (demo)':'');
+  go.textContent='Book · '+money(price);
  }else go.textContent='Book';
  if(hrsEl){var hs=d&&!closed[d]?(dayHrs[d]||''):'';hrsEl.textContent=hs?'Hours '+hs:'';hrsEl.hidden=!hs}
  var ready=!!(p&&d&&!closed[d]&&!soldAll);

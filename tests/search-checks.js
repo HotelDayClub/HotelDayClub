@@ -187,7 +187,8 @@ assert.deepStrictEqual(closedParty.list, []);
     assert.strictEqual(home.status, 200);
     assert.strictEqual((home.body.match(/<a class="ex"/g) || []).length, 6);
     assert.ok(home.body.includes('See all day passes'));
-    assert.ok(home.body.includes('Example listings · not real hotels'));
+    assert.ok(home.body.includes('<span class="kicker sand">Example listings</span><h2>A day by the water</h2>'));
+    assert.ok(home.body.includes('Fictional hotels with stock photos, shown to preview the experience.'));
     assert.ok(home.body.includes('action="/search"'));
     assert.ok(!home.body.includes('action="/#explore"'));
     const homeWhere = selectOf(home.body, 'destination');
@@ -205,19 +206,21 @@ assert.deepStrictEqual(closedParty.list, []);
     assert.ok(plain.body.includes('>6 places<'));
     assert.ok(plain.body.includes('6 places'));
     assert.ok(!plain.body.includes('around Sydney'));
-    assert.ok(!plain.body.includes('Example listings · not real hotels'));
+    assert.ok(!plain.body.includes('<span class="kicker sand">Example listings</span>'));
     assert.ok(plain.body.includes('Demo site: listings are examples, no real bookings or payments.'));
     assert.ok(plain.body.includes('>Example</span>'));
     assert.ok(!plain.body.includes('class="ex-note">Demo</p>'));
     assert.ok(!plain.body.includes('class="hero"'));
     assert.ok(plain.body.indexOf('class="list results"') < plain.body.indexOf('<footer'));
+    assert.ok(!/<h3[^>]*>[^<]*\(Demo\)/.test(plain.body), 'card titles drop the (Demo) suffix; the banner and Example tags carry the label');
+    assert.ok(!plain.body.includes('<small>(demo)</small>'), 'card prices drop (demo)');
     assert.deepStrictEqual(names(plain.body, 'results'), [
-      'The Saltwater Terrace (Demo)',
-      'Skyline Rooftop Hotel (Demo)',
-      'Harbourside Lido (Demo)',
-      'Palm Court Resort (Demo)',
-      'Manly Sands House (Demo)',
-      'Bayview Spa Hotel (Demo)',
+      'The Saltwater Terrace',
+      'Skyline Rooftop Hotel',
+      'Harbourside Lido',
+      'Palm Court Resort',
+      'Manly Sands House',
+      'Bayview Spa Hotel',
     ]);
     const sort = selectOf(plain.body, 'sort');
     assert.ok(sort.includes('Recommended'));
@@ -302,59 +305,59 @@ assert.deepStrictEqual(closedParty.list, []);
 
     const low = await get(port, '/search?sort=price-asc');
     assert.deepStrictEqual(names(low.body, 'results'), [
-      'Palm Court Resort (Demo)',
-      'Manly Sands House (Demo)',
-      'The Saltwater Terrace (Demo)',
-      'Skyline Rooftop Hotel (Demo)',
-      'Harbourside Lido (Demo)',
-      'Bayview Spa Hotel (Demo)',
+      'Palm Court Resort',
+      'Manly Sands House',
+      'The Saltwater Terrace',
+      'Skyline Rooftop Hotel',
+      'Harbourside Lido',
+      'Bayview Spa Hotel',
     ]);
     const high = await get(port, '/search?sort=price-desc');
     assert.deepStrictEqual(names(high.body, 'results'), [
-      'Bayview Spa Hotel (Demo)',
-      'Harbourside Lido (Demo)',
-      'Skyline Rooftop Hotel (Demo)',
-      'The Saltwater Terrace (Demo)',
-      'Manly Sands House (Demo)',
-      'Palm Court Resort (Demo)',
+      'Bayview Spa Hotel',
+      'Harbourside Lido',
+      'Skyline Rooftop Hotel',
+      'The Saltwater Terrace',
+      'Manly Sands House',
+      'Palm Court Resort',
     ]);
     const hours = await get(port, '/search?sort=hours');
     assert.deepStrictEqual(names(hours.body, 'results'), [
-      'Harbourside Lido (Demo)',
-      'Palm Court Resort (Demo)',
-      'Bayview Spa Hotel (Demo)',
-      'The Saltwater Terrace (Demo)',
-      'Manly Sands House (Demo)',
-      'Skyline Rooftop Hotel (Demo)',
+      'Harbourside Lido',
+      'Palm Court Resort',
+      'Bayview Spa Hotel',
+      'The Saltwater Terrace',
+      'Manly Sands House',
+      'Skyline Rooftop Hotel',
     ]);
     const named = await get(port, '/search?sort=name');
     assert.deepStrictEqual(names(named.body, 'results'), names(plain.body, 'results'));
 
     const under = await get(port, '/search?price=50');
     assert.deepStrictEqual(names(under.body, 'results'), [
-      'The Saltwater Terrace (Demo)',
-      'Palm Court Resort (Demo)',
-      'Manly Sands House (Demo)',
+      'The Saltwater Terrace',
+      'Palm Court Resort',
+      'Manly Sands House',
     ]);
     const kids = await get(port, '/search?age=kids');
     assert.deepStrictEqual(names(kids.body, 'results'), [
-      'The Saltwater Terrace (Demo)',
-      'Palm Court Resort (Demo)',
-      'Manly Sands House (Demo)',
+      'The Saltwater Terrace',
+      'Palm Court Resort',
+      'Manly Sands House',
     ]);
     const adults = await get(port, '/search?age=18');
     assert.deepStrictEqual(names(adults.body, 'results'), [
-      'Skyline Rooftop Hotel (Demo)',
-      'Bayview Spa Hotel (Demo)',
+      'Skyline Rooftop Hotel',
+      'Bayview Spa Hotel',
     ]);
     const party = await get(port, '/search?guests=4');
     assert.deepStrictEqual(names(party.body, 'results'), [
-      'The Saltwater Terrace (Demo)',
-      'Skyline Rooftop Hotel (Demo)',
-      'Harbourside Lido (Demo)',
-      'Palm Court Resort (Demo)',
-      'Manly Sands House (Demo)',
-      'Bayview Spa Hotel (Demo)',
+      'The Saltwater Terrace',
+      'Skyline Rooftop Hotel',
+      'Harbourside Lido',
+      'Palm Court Resort',
+      'Manly Sands House',
+      'Bayview Spa Hotel',
     ]);
     const three = await get(port, '/search?guests=3');
     assert.deepStrictEqual(names(three.body, 'results'), names(party.body, 'results'));
@@ -377,8 +380,8 @@ assert.deepStrictEqual(closedParty.list, []);
     assert.ok(!gym.body.includes('Manly Sands'));
     const spa = await get(port, '/search?want=spa');
     assert.deepStrictEqual(names(spa.body, 'results'), [
-      'Harbourside Lido (Demo)',
-      'Bayview Spa Hotel (Demo)',
+      'Harbourside Lido',
+      'Bayview Spa Hotel',
     ]);
 
     const combo = `/search?destination=bondi&date=${saturday}&want=pool&guests=2&price=50&age=kids&sort=price-asc`;
@@ -387,11 +390,11 @@ assert.deepStrictEqual(closedParty.list, []);
     assert.strictEqual(titleOf(filtered.body), `Day passes · Bondi & Eastern Beaches · ${nice(saturday)} · Hotel Day Club`);
     assert.ok(filtered.body.includes('<h1 id="search-count"'));
     assert.ok(filtered.body.includes('>1 place<'));
-    assert.deepStrictEqual(names(filtered.body, 'results'), ['The Saltwater Terrace (Demo)']);
+    assert.deepStrictEqual(names(filtered.body, 'results'), ['The Saltwater Terrace']);
     assert.ok(filtered.body.includes('class="list results is-single"'));
     assert.ok(filtered.body.includes('Eastern Beaches'));
-    assert.ok(filtered.body.includes('From $45 <small>(demo)</small> · Pool'));
-    assert.ok(!filtered.body.includes('Example listings · not real hotels'));
+    assert.ok(filtered.body.includes('From $45 · Pool'));
+    assert.ok(!filtered.body.includes('<span class="kicker sand">Example listings</span>'));
     assert.ok(filtered.body.includes('>Clear all</a>'));
     assert.ok(filtered.body.includes('aria-label="Remove Pool"'));
     assert.ok(filtered.body.includes('aria-label="Remove 2 guests"'));
@@ -413,7 +416,7 @@ assert.deepStrictEqual(closedParty.list, []);
 
     const legacy = await get(port, '/search?where=' + encodeURIComponent('Eastern Beaches'));
     assert.strictEqual(legacy.status, 200);
-    assert.deepStrictEqual(names(legacy.body, 'results'), ['The Saltwater Terrace (Demo)']);
+    assert.deepStrictEqual(names(legacy.body, 'results'), ['The Saltwater Terrace']);
     assert.ok(selectOf(legacy.body, 'destination').includes('value="bondi" data-icon="wave" selected'));
 
     const bad = await get(port, '/search?want=seat&price=20&guests=9&age=teen&sort=name&date=yesterday');
@@ -429,9 +432,9 @@ assert.deepStrictEqual(closedParty.list, []);
     assert.ok(!emptyBlock.includes('class="link"'));
     assert.ok(none.body.includes('Other example listings'));
     assert.deepStrictEqual(names(none.body, 'others'), [
-      'Palm Court Resort (Demo)',
-      'Manly Sands House (Demo)',
-      'The Saltwater Terrace (Demo)',
+      'Palm Court Resort',
+      'Manly Sands House',
+      'The Saltwater Terrace',
     ]);
 
     const closed = await get(port, '/search?date=' + blockedAll);
@@ -489,16 +492,16 @@ assert.deepStrictEqual(closedParty.list, []);
     soldDb.close();
     const sold = await get(port, '/search?date=' + encodeURIComponent(saturday) + '&want=pool');
     assert.deepStrictEqual(names(sold.body, 'results'), [
-      'The Saltwater Terrace (Demo)',
-      'Skyline Rooftop Hotel (Demo)',
-      'Harbourside Lido (Demo)',
-      'Manly Sands House (Demo)',
-      'Bayview Spa Hotel (Demo)',
-      'Palm Court Resort (Demo)',
+      'The Saltwater Terrace',
+      'Skyline Rooftop Hotel',
+      'Harbourside Lido',
+      'Manly Sands House',
+      'Bayview Spa Hotel',
+      'Palm Court Resort',
     ]);
     assert.ok(sold.body.includes('Sold out on ' + nice(saturday)));
     assert.ok(sold.body.includes('See other dates'));
-    const palmCard = sold.body.slice(sold.body.indexOf('Palm Court Resort (Demo)'), sold.body.indexOf('</article>', sold.body.indexOf('Palm Court Resort (Demo)')));
+    const palmCard = sold.body.slice(sold.body.indexOf('Palm Court Resort'), sold.body.indexOf('</article>', sold.body.indexOf('Palm Court Resort')));
     assert.ok(palmCard.includes('class="soldtxt"'));
     assert.ok(!palmCard.includes('class="ex-price"'));
     assert.ok(!sold.body.includes('Pay online'));
@@ -511,11 +514,11 @@ assert.deepStrictEqual(closedParty.list, []);
       .run(soloId, 'entry', 'General entry', 30, 20, 0, 1, 'entry');
     soloDb.close();
     const soloPage = await get(port, '/search?guests=3');
-    assert.ok(names(soloPage.body, 'results').includes('Solo Laps (Demo)'));
-    const soloAt = soloPage.body.indexOf('Solo Laps (Demo)');
+    assert.ok(names(soloPage.body, 'results').includes('Solo Laps'));
+    const soloAt = soloPage.body.indexOf('Solo Laps');
     const soloCard = soloPage.body.slice(soloPage.body.lastIndexOf('<article', soloAt), soloPage.body.indexOf('</article>', soloAt));
     assert.ok(soloCard.includes('href="/h/solo-laps?qty=3"'), soloCard.slice(0, 400));
-    const saltAt = soloPage.body.indexOf('The Saltwater Terrace (Demo)');
+    const saltAt = soloPage.body.indexOf('The Saltwater Terrace');
     const saltCard = soloPage.body.slice(soloPage.body.lastIndexOf('<article', saltAt), soloPage.body.indexOf('</article>', saltAt));
     assert.ok(!saltCard.includes('qty='));
     const soloListing = await get(port, '/h/solo-laps?qty=3');

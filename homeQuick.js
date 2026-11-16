@@ -76,6 +76,20 @@ class HomeQuick {
     };
   }
 
+  // Home hero: one quiet row of shortcuts under the search pill.
+  static popular(todayIso, opts) {
+    const q = HomeQuick.build(todayIso, opts);
+    if (!q) return '';
+    const links = [
+      { label: q.first.label, href: q.first.href },
+      { label: q.second.label, href: q.second.href },
+      { label: 'Rooftop pools', href: '/search?mood=rooftop' },
+      { label: 'Spa afternoon', href: '/search?want=spa' },
+      { label: 'Family friendly', href: '/search?mood=family' },
+    ];
+    return `<nav class="popular" aria-label="Popular searches"><span>Popular:</span>${links.map(l => `<a href="${esc(l.href)}">${esc(l.label)}</a>`).join('')}</nav>`;
+  }
+
   static html(todayIso, opts) {
     const q = HomeQuick.build(todayIso, opts);
     if (!q) return '';

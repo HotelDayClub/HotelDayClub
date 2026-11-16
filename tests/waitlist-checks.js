@@ -1,4 +1,5 @@
 const assert = require('assert');
+const { DESTINATIONS } = require('../destinations');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -127,11 +128,11 @@ function cookie(res) {
     assert.ok(!home.body.includes("we'll reply by email"));
     const planAt = home.body.indexOf('A hotel day, your way');
     const exploreAt = home.body.indexOf('id="explore"');
-    const stepsAt = home.body.indexOf('class="steps"');
+    const stepsAt = home.body.indexOf('class="steps steps-d1"');
     const destAt = home.body.indexOf('id="destinations"');
-    assert.ok(exploreAt >= 0 && exploreAt < planAt && planAt < stepsAt && stepsAt < destAt, 'homepage order');
-    assert.ok(home.body.includes('Numbers count example listings only.'));
-    assert.ok(home.body.includes('Fictional example hotels.'));
+    assert.ok(exploreAt >= 0 && exploreAt < planAt && planAt < destAt && destAt < stepsAt, 'homepage order');
+    assert.ok(home.body.includes('<span class="dest-status">1 example listing</span>'), 'destination tiles count example listings');
+    assert.ok(home.body.includes('Fictional hotels with stock photos, shown to preview the experience.'));
     assert.ok(home.body.includes('Not taking bookings yet. Leave your email and we\'ll tell you when passes open near you. Free to join. We never sell this list.'));
     assert.ok(home.body.includes('Each hotel sets its own inclusions. Every listing shows what your pass covers.'));
     assert.ok(home.body.includes('List spare pool, gym and spa capacity. You set the hours, prices and guest numbers.'));
@@ -148,7 +149,7 @@ function cookie(res) {
     assert.ok(home.body.includes('action="/search"'));
     assert.ok(home.body.includes('>Find a day pass</a>'));
     assert.ok(home.body.includes('Swim &amp; gym'));
-    assert.ok(home.body.includes('Gym session'));
+    assert.ok(!home.body.includes('class="marquee"'), 'hidden marquee markup removed from home');
     assert.ok(home.body.includes('fetchpriority="high"'));
     assert.ok(home.body.includes('media=[0,1,2]'));
     assert.ok(!home.body.includes('media=[0,1,2,3]'));
@@ -184,7 +185,7 @@ function cookie(res) {
     assert.ok(!/fetchpriority="high"[^>]*loading="lazy"/.test(home.body), 'the hero image should not be lazy');
     assert.ok(home.body.includes('href="/faq"'));
     assert.ok(home.body.includes('For hotels'));
-    assert.ok(home.body.includes('List a hotel pool'));
+    assert.ok(home.body.includes('<h2>A quiet pool, put to use.</h2>'));
     assert.ok(home.body.includes('href="/for-hotels"'));
     assert.ok(!home.body.includes('href="/hotel/join"'));
     const hotels = await get(port, '/for-hotels');
@@ -223,14 +224,19 @@ function cookie(res) {
     assert.ok(hiw.body.includes('href="/for-hotels"'));
     assert.ok(!hiw.body.includes('href="/hotel/join"'));
     assert.ok(home.body.includes('Explore by destination'));
-    assert.ok(home.body.includes('<h2>Destinations</h2>'));
+    assert.ok(home.body.includes('<h2>Where to spend the day</h2>'));
     assert.ok(/href="\/destinations\/sydney"[\s\S]*?Sydney CBD[\s\S]*?1 example listing/.test(home.body));
     assert.ok(/href="\/destinations\/bondi"[\s\S]*?Bondi &amp; Eastern Beaches[\s\S]*?1 example listing/.test(home.body));
     const melbourneCard = home.body.match(/href="\/destinations\/melbourne"[\s\S]*?<\/a>/);
     assert.ok(melbourneCard, 'melbourne destination card');
-    assert.ok(melbourneCard[0].includes('No listings yet'));
-    assert.ok(!melbourneCard[0].includes('Coming soon'));
-    assert.strictEqual((melbourneCard[0].match(/dest-pill/g) || []).length, 1);
+    assert.ok(home.body.includes('<a class="dest-chip" href="/destinations/melbourne">Melbourne</a>'), 'melbourne is a coming-soon chip');
+    assert.ok(!melbourneCard[0].includes('No listings yet'));
+    const soonRow = (home.body.match(/<div class="dest-soon">[\s\S]*?<\/div>/) || [''])[0];
+    assert.ok(soonRow.includes('<b>Coming soon</b>') && soonRow.includes('href="#waitlist"'), 'one coming soon row with a waitlist link');
+    for (const d of DESTINATIONS) {
+      const listed = /example listing/.test((home.body.match(new RegExp('href="/destinations/' + d.slug + '"[\\s\\S]*?</a>')) || [''])[0]);
+      assert.notStrictEqual(listed, soonRow.includes('href="/destinations/' + d.slug + '"'), d.slug + ' is a tile or a coming-soon chip, not both');
+    }
     assert.ok(home.body.includes('Gold Coast') && home.body.includes('Brisbane') && home.body.includes('Byron Bay'));
     assert.ok(home.body.includes('Cairns &amp; Port Douglas') && home.body.includes('Perth'));
     assert.ok(!home.body.includes('0 example'));

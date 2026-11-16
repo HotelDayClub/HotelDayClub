@@ -160,7 +160,7 @@ const CASES = [
         assert.deepStrictEqual(v.before, { hidden: true, text: '' }, 'no hours before a date is picked ' + tag);
         assert.ok(v.inSheet && !v.hidden && v.shown, 'hours line shown inside the sheet ' + tag);
         assert.strictEqual(v.text, c.hours, 'season hours in the sheet ' + tag);
-        assert.match(v.go, /^Book · \$[\d,.]+ \(demo\)$/, 'Book label with price ' + tag);
+        assert.match(v.go, /^Book · \$[\d,.]+$/, 'Book label with price, no (demo) suffix ' + tag);
       }
       server.kill('SIGTERM');
       server = null;
