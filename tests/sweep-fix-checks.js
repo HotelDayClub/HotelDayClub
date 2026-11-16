@@ -81,7 +81,8 @@ function get(port, urlPath) {
     const listing = await get(port, '/h/skyline-rooftop');
     assert.ok(listing.body.includes('data-max-people'));
     assert.ok(listing.body.includes('data-holds'));
-    assert.ok(listing.body.includes('Up to 6 people per booking'));
+    assert.ok(!listing.body.includes('id="d2-cap"'), 'no duplicate cap note in D2 sheet');
+    assert.ok(listing.body.includes('Spots <small>up to 6 people</small>'), 'spots label keeps cap');
 
     const home = await get(port, '/');
     assert.ok(!home.body.includes('class="ex-note">Demo</p>'));

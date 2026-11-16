@@ -187,7 +187,8 @@ function sampleListing(photos, remaining) {
   });
 }
 const fourPhotos = sampleListing(['a.jpg', 'b.jpg', 'c.jpg', 'd.jpg'], 4);
-assert.ok(fourPhotos.includes('id="d2-count"'));
+assert.ok(fourPhotos.includes('id="g-count"'));
+assert.ok(fourPhotos.includes('g-wrap'));
 assert.ok(fourPhotos.includes('1 / 4'));
 assert.ok(!fourPhotos.includes('pc-chip'));
 const sevenPhotos = sampleListing(['a.jpg', 'b.jpg', 'c.jpg', 'd.jpg', 'e.jpg', 'f.jpg', 'g.jpg'], 24);
@@ -343,7 +344,7 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.strictEqual(goodToKnow.split(FOOD_RULE).length - 1, 1, 'food rule once in good to know');
     const exSheetEnd = salt.body.indexOf('</dialog>', salt.body.indexOf('id="d2-explore-sheet"'));
     const exSheet = salt.body.slice(salt.body.indexOf('id="d2-explore-sheet"'), exSheetEnd > 0 ? exSheetEnd : undefined);
-    assert.strictEqual(exSheet.split(FOOD_RULE).length - 1, 1, 'food rule once in explore sheet');
+    assert.strictEqual(exSheet.split(FOOD_RULE).length - 1, 0, 'no food rule in explore sheet');
     const saltBand = salt.body.slice(salt.body.indexOf('class="d2-hours-band"'), salt.body.indexOf('class="d2-hb-park"'));
     assert.ok(saltBand.includes('<dt>Mon to Sun</dt><dd>10am\u20134pm</dd>'), 'saltwater hours label and time');
     assert.ok(saltBand.includes('10am\u20134pm'), saltBand.slice(0, 400));
@@ -364,11 +365,9 @@ assert.ok(sevenPhotos.includes('1 / 7'));
       assert.ok(page.body.includes('id="before"'), slug + ' good to know section');
       const gtkBlock = page.body.slice(page.body.indexOf('id="before"'));
       assert.strictEqual(gtkBlock.split(FOOD_RULE).length - 1, 1, slug + ' food rule once in good to know');
-      if (page.body.includes('d2-ex-food')) {
-        const exEnd = page.body.indexOf('</dialog>', page.body.indexOf('id="d2-explore-sheet"'));
-        const ex = page.body.slice(page.body.indexOf('id="d2-explore-sheet"'), exEnd > 0 ? exEnd : undefined);
-        assert.strictEqual(ex.split(FOOD_RULE).length - 1, 1, slug + ' food rule once in explore sheet');
-      }
+      const exSec = page.body.slice(page.body.indexOf('id="explore"'), page.body.indexOf('id="details"'));
+      assert.strictEqual(exSec.split(FOOD_RULE).length - 1, 0, slug + ' no food rule in explore');
+      assert.ok(!/your pass|During pass hours/i.test(exSec), slug + ' place-only explore');
       const amenityAt = page.body.indexOf('id="amenities"');
       if (amenityAt >= 0) {
         assert.ok(page.body.indexOf('id="passes"') < amenityAt, slug + ' amenities after passes');
@@ -400,7 +399,7 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(!poolBar.includes('From 11am'));
     assert.ok(!poolBar.includes('Food and drink available to purchase'));
     assert.ok(!/included in your pass/i.test(poolBar));
-    assert.match(poolBar, /class="d2-ex-tag">On site \(not included\)<\/span>/, 'pool bar on-site tag on explore card');
+    assert.match(poolBar, /class="d2-ex-chip">Not included<\/span>/, 'pool bar Not included chip on explore card');
     assert.ok(!seatLounger.body.includes('looking straight out to the Pacific'));
     assert.ok(seatLounger.body.includes('On site (not included)'));
     assert.ok(seatLounger.body.includes('/assets/photos/infinity-ocean.jpg'));

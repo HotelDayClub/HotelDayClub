@@ -1,5 +1,6 @@
 const { esc, money } = require('./util');
-const { FOOD_RULE, FREE_CANCEL, KINDS, safePhoto, policyFacts, supervisionNote } = require('./offering');
+const { FOOD_RULE, FREE_CANCEL, KINDS, safePhoto, policyFacts, supervisionNote, dayHoursText } = require('./offering');
+const { guestAreaName } = require('./destinations');
 const { seatPhoto } = require('./inclusions');
 const { instantConfirmationText } = require('./siteMode');
 const { MapEmbed } = require('./mapEmbed');
@@ -114,7 +115,11 @@ class ListingD2 {
     return out;
   }
 
-  static hoursFor(rows, iso) {
+  static hoursFor(db, hotel, rows, iso) {
+    if (iso && db && hotel) {
+      const span = dayHoursText(db, hotel, iso);
+      if (span) return span;
+    }
     const byDay = ListingD2.hoursByWeekday(rows);
     const p = ListingD2.parts(iso);
     if (p && byDay[p.wd]) return byDay[p.wd];
@@ -184,6 +189,11 @@ function passThumb(p, alt) {
   if (!file) return `<img src="${esc(seatPhoto(p.kind || 'custom'))}" alt="${esc(alt)}" width="88" height="88" loading="lazy" decoding="async">`;
   return PhotoAssets.imgTag(file, { alt, width: 88, height: 88, sizes: '88px' });
 }
+function passRowPhoto(p, alt) {
+  const file = safePhoto(String(p.photo || ''));
+  if (!file) return `<img src="${esc(seatPhoto(p.kind || 'custom'))}" alt="${esc(alt)}" width="800" height="600" loading="lazy" decoding="async">`;
+  return PhotoAssets.imgTag(file, { alt, width: 800, height: 600, sizes: '(max-width:390px) 100vw, 40vw', loading: 'lazy' });
+}
 function galleryPhoto(p, alt, i) {
   const file = String(p || '').trim();
   if (!file) return '';
@@ -220,19 +230,25 @@ function galleryHtml(h, hero) {
   const demo = isDemo(h);
   const alt = demo ? 'Stock photo, not this hotel' : `Photo of ${shortName(h)}`;
   const strip = photos.map((p, i) => galleryPhoto(p, alt, i)).join('');
-  const dots = n > 1 ? `<span class="d2-dots" aria-hidden="true">${photos.map((p, i) => `<i${i === 0 ? ' class="on"' : ''}></i>`).join('')}</span>` : '';
-  const count = n > 1 ? `<button type="button" class="d2-count" id="d2-count" aria-label="Photo 1 of ${n}, view all photos">${icon('photo')}<span>1 / ${n}</span></button>` : '';
   const credit = demo ? '<span class="d2-pill d2-lbl">Stock photos · not this hotel</span>' : '';
-  const strong = n > 0 ? `<div class="d2-gw" id="d2-gw" role="group" aria-label="Photos, swipe for more" tabindex="0">${strip}</div>` : '';
+  const count = n > 1 ? `<button type="button" class="d2-count" id="g-count" aria-label="Photo 1 of ${n}, view all photos">${icon('photo')}<span>1 / ${n}</span></button>` : '';
+  const thumbs = photos.slice(1, 4).map((p, i) => {
+    const idx = i + 1;
+    const img = galleryPhoto(p, alt, idx).replace('loading="eager"', 'loading="lazy"').replace(' fetchpriority="high"', '');
+    return `<button type="button" class="g-thumb" data-i="${idx}" aria-label="Photo ${idx + 1} of ${n}">${img}</button>`;
+  }).join('');
+  const viewAll = n > 1 ? `<button type="button" class="g-all" id="g-all">${icon('photo')}Show all photos</button>` : '';
+  const track = n > 0 ? `<div class="g-track" id="g-track" role="group" aria-label="Photos, swipe for more" tabindex="0">${strip}</div>` : '';
+  const grid = n > 0 ? `<div class="g-grid">${track}${credit}${count}${thumbs}${viewAll}</div>` : '';
   const copy = hero ? heroCopyHtml(h, hero.heading, hero.area, hero.desc) : '';
-  return `<div class="d2-photos${n < 2 ? ' d2-solo' : ''}"><div class="d2-hero">${strong}${credit}${dots}${count}${copy}</div></div>
-<dialog class="d2-lb" id="d2-lb" aria-label="Photos"><div class="d2-lb-bar"><p id="d2-lb-count" aria-live="polite">1 / ${n || 1}</p><button type="button" class="d2-lb-close" aria-label="Close photos">${icon('x')}</button></div><div class="d2-lb-stage"><button type="button" class="d2-lb-prev" aria-label="Previous photo">${icon('arrow', 'flip')}</button><img alt="${esc(alt)}" width="1200" height="900"><button type="button" class="d2-lb-next" aria-label="Next photo">${icon('arrow')}</button></div></dialog>`;
+  return `<div class="d2-photos g-wrap${n < 2 ? ' d2-solo' : ''}"><div class="d2-hero">${grid}${copy}</div></div>
+<dialog class="g-lb" id="g-lb" role="dialog" aria-modal="true" aria-label="Photos"><div class="g-lb-bar"><p id="g-lb-count" aria-live="polite">1 / ${n || 1}</p><button type="button" class="g-lb-close" aria-label="Close">${icon('x')}</button></div><div class="g-lb-stage"><button type="button" class="g-lb-prev" aria-label="Previous photo">${icon('arrow', 'flip')}</button><div class="g-lb-track" id="g-lb-track"></div><button type="button" class="g-lb-next" aria-label="Next photo">${icon('arrow')}</button></div></dialog>`;
 }
 
 function passCard(p, h, items, opts) {
   const desc = String(p.description || '').trim();
   const href = ListingD2.cardHref(h.slug, p, { date: opts.date, qty: opts.qty });
-  return `<a class="d2-card d2-row" href="${esc(href)}" data-pass="${esc(p.code)}">${passThumb(p, passAlt(p, h))}<div class="d2-card-body"><div class="d2-card-top"><b class="n">${esc(p.name)}</b><p class="pr">From ${priceHtml(h, p.price)}</p></div>${desc ? `<p>${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p))}</p></div></a>`;
+  return `<a class="d2-card d2-row" href="${esc(href)}" data-pass="${esc(p.code)}">${passRowPhoto(p, passAlt(p, h))}<div class="d2-card-body"><div class="d2-card-top"><b class="n">${esc(p.name)}</b><p class="pr">From ${priceHtml(h, p.price)}</p></div>${desc ? `<p>${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p))}</p></div></a>`;
 }
 
 function chipHtml(c) {
@@ -263,7 +279,8 @@ function sheetHtml(o) {
   const chosen = days.find(c => c.on) || null;
   const outside = Boolean(date && !chosen && ListingD2.parts(date) && date >= o.today && date <= maxDate && !(o.closed && o.closed[date]));
   const extra = outside ? chipHtml({ date, wd: WEEK[ListingD2.parts(date).wd], day: ListingD2.parts(date).d, label: ListingD2.label(date), today: false, closed: false, late: Boolean(o.lateNote), on: true }) : '';
-  const bookBtn = pick ? `Book · ${esc(ListingD2.priceText(h, pick.price * qty))}` : 'Book';
+  const dayHrs = date && !(o.closed && o.closed[date]) ? ((o.dayHours && o.dayHours[date]) || '') : '';
+  const bookBtn = (pick && date) ? `Book · ${esc(ListingD2.priceText(h, pick.price * qty))}` : 'Book';
   const disabled = !pick || !date;
   const out = p => {
     if (!date || (o.closed && o.closed[date])) return false;
@@ -278,7 +295,7 @@ function sheetHtml(o) {
   }).join('');
   const noJsDate = `<noscript><form class="d2-nojs" action="/h/${esc(encodeURIComponent(h.slug))}#book" method="get"><label>Another date<input type="date" name="date" min="${esc(o.today)}" max="${esc(maxDate)}" value="${esc(outside ? date : '')}"></label><input type="hidden" name="pass" value="${esc(pick ? pick.code : '')}"><input type="hidden" name="qty" value="${qty}"><button class="d2-btn out" type="submit">Use this date</button></form></noscript>`;
   return `<section class="d2-book" id="book" aria-labelledby="d2-book-h" tabindex="-1">
-<form class="d2-form" id="d2-form" action="/checkout" method="get" data-slug="${esc(h.slug)}" data-min="${esc(o.today)}" data-max="${esc(maxDate)}" data-date="${esc(date)}" data-qty="${qty}" data-demo="${isDemo(h) ? '1' : '0'}" data-closed="${esc(JSON.stringify(o.closed || {}))}" data-hours="${esc(JSON.stringify(ListingD2.hoursByWeekday(o.hourRows)))}" data-max-people="${SearchQuery.BOOKING_SPOTS}">
+<form class="d2-form" id="d2-form" action="/checkout" method="get" data-slug="${esc(h.slug)}" data-min="${esc(o.today)}" data-max="${esc(maxDate)}" data-date="${esc(date)}" data-qty="${qty}" data-demo="${isDemo(h) ? '1' : '0'}" data-closed="${esc(JSON.stringify(o.closed || {}))}" data-hours="${esc(JSON.stringify(ListingD2.hoursByWeekday(o.hourRows)))}" data-day-hours="${esc(JSON.stringify(o.dayHours || {}))}" data-max-people="${SearchQuery.BOOKING_SPOTS}">
 <input type="hidden" name="hotel" value="${esc(h.slug)}">
 <div class="d2-grab" aria-hidden="true"></div>
 <div class="d2-top"><h2 id="d2-book-h">Book a pass</h2><button type="button" class="d2-x" id="d2-close" aria-label="Close" hidden>${icon('x')}</button></div>
@@ -291,11 +308,11 @@ ${holdHtml(o.hold)}
 <div class="d2-lab d2-labrow"><span>Date</span><button type="button" class="d2-mdb text-link" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
 <div class="d2-dates" id="d2-dates" role="group" aria-label="Date, next ${ListingD2.CHIPS} days">${days.map(chipHtml).join('')}${extra}</div>
 <div class="d2-cal" id="d2-calbox" hidden></div>
+<p class="d2-hrs" id="d2-hrs"${dayHrs ? '' : ' hidden'}>${dayHrs ? `Hours ${esc(dayHrs)}` : ''}</p>
 <p class="d2-note" id="d2-closed" role="status" hidden></p>
 <p class="d2-note warn" id="d2-late" role="status"${o.lateNote ? '' : ' hidden'}>${esc(o.lateNote || '')}</p>
 ${kids ? `<p class="d2-note kid" id="d2-kids"><b>Children</b> ${esc(kids)}</p>` : ''}
 <span class="d2-lab" id="d2-spots-lab">Spots <small>up to ${SearchQuery.BOOKING_SPOTS} people</small></span>
-<p class="d2-note" id="d2-cap" role="status" hidden>Up to 6 people per booking.</p>
 <div class="d2-step" role="group" aria-labelledby="d2-spots-lab"><button type="button" class="d2-sb" id="d2-qminus" aria-label="Fewer spots" hidden>${icon('minus')}</button><input class="d2-qty" id="d2-qty" name="qty" type="number" inputmode="numeric" min="1" max="${SearchQuery.BOOKING_SPOTS}" value="${qty}" aria-label="Spots"><button type="button" class="d2-sb" id="d2-qplus" aria-label="More spots" hidden>${icon('plus')}</button></div>
 <button class="d2-btn d2-go" id="d2-go" type="submit"${disabled ? ' aria-disabled="true"' : ''}>${bookBtn}</button>
 </form>
@@ -313,7 +330,7 @@ function hoursBandHtml(h, o) {
   const groups = ListingD2.hourGroups(o.hourRows || []);
   const open = groups.filter(g => g.time && g.time !== 'Closed');
   const uniform = open.length === 1 && groups.length === 1;
-  const time = open.length === 1 ? open[0].time : '';
+  const time = o.hoursSpan || (open.length === 1 ? open[0].time : '');
   const schedule = groups.map(g => `<div><dt>${esc(g.label)}</dt><dd>${esc(g.time)}</dd></div>`).join('');
   const rows = o.hourRows || [];
   const openDays = rows.filter(r => r.time && r.time !== 'Closed').map(r => r.day);
@@ -447,10 +464,12 @@ function listingHtmlD2(opts) {
   const sheet = sheetHtml({ ...opts, items, passes, days, pick, date, qty, today, maxDate, closed, lateNote });
   const dateLabel = date ? ListingD2.label(date) : 'Any date';
   const fromHtml = `From <b>${esc(money(from))}</b>${demo ? ' <small>(demo)</small>' : ''}`;
-  const addressLine = String(h.area || '').trim();
+  const addressLine = guestAreaName(h.area);
   const exploreData = opts.explore || null;
-  const exploreBlock = HotelExplore.sectionHtml(h, exploreData);
+  const exploreCtx = { db: opts.db, date: date || '', today: opts.minDate || opts.today || '' };
+  const exploreBlock = HotelExplore.sectionHtml(h, exploreData, exploreCtx);
   const hasExplore = Boolean(HotelExplore.visible(exploreData));
+  const hoursSpan = opts.db && date ? dayHoursText(opts.db, h, date) : '';
   return `<div class="d2 listing" id="d2-root">${SPRITE}
 ${galleryHtml(h, { heading, area: addressLine, desc: heroDescHtml(h) })}
 ${bookBarHtml(fromHtml, dateLabel, qty)}
@@ -463,7 +482,7 @@ ${sheet}
 ${exploreBlock}
 ${detailsHtml({ ...opts, items, hasExplore })}
 </div></div>
-${hoursBandHtml(h, { ...opts, items })}
+${hoursBandHtml(h, { ...opts, items, hoursSpan })}
 ${policiesHtml(h)}
 ${goodToKnow(h)}
 <div class="d2-bar" role="region" aria-label="Book"><p>${fromHtml}</p><a class="d2-btn d2-bar-btn" href="#book" data-open="date">Check dates</a></div>
@@ -487,48 +506,71 @@ function offset(){
 offset();
 window.addEventListener('resize',offset);
 
-var gw=$('#d2-gw'),lb=$('#d2-lb');
-if(gw&&lb){
- var imgs=$$('img',gw),idx=0,from=null,shot=$('img',lb),cnt=$('#d2-lb-count');
- var dots=$$('.d2-dots i'),countBtn=$('#d2-count');
- var show=function(i){
+document.documentElement.classList.add('pass-b');
+var track=$('#g-track'),lb=$('#g-lb');
+if(track&&lb){
+ var imgs=$$('img',track),idx=0,from=null;
+ var lbTrack=$('#g-lb-track'),countBtn=$('#g-count'),allBtn=$('#g-all'),lbCount=$('#g-lb-count');
+ if(imgs.length) document.documentElement.setAttribute('data-n',String(imgs.length));
+ function paintCount(){
+  if(countBtn){var t=countBtn.querySelector('span');if(t) t.textContent=(idx+1)+' / '+imgs.length;
+   countBtn.setAttribute('aria-label','Photo '+(idx+1)+' of '+imgs.length+', view all photos');}
+  if(lbCount) lbCount.textContent=(idx+1)+' / '+imgs.length;
+ }
+ function preload(i){if(!imgs.length) return;var j=(i+imgs.length)%imgs.length;var src=imgs[j].currentSrc||imgs[j].src;if(!src) return;var im=new Image();im.src=src;}
+ function buildLb(){
+  if(!lbTrack) return;
+  lbTrack.innerHTML='';
+  imgs.forEach(function(img){var el=document.createElement('img');el.src=img.currentSrc||img.src;el.alt=img.alt||'';el.width=1200;el.height=900;lbTrack.appendChild(el);});
+ }
+ buildLb();
+ function show(i,scroll){
   if(!imgs.length) return;
   idx=(i+imgs.length)%imgs.length;
-  shot.src=imgs[idx].currentSrc||imgs[idx].src;
-  cnt.textContent=(idx+1)+' / '+imgs.length;
- };
- var openLb=function(i,el){
+  paintCount();
+  if(scroll!==false&&lbTrack){var w=lbTrack.clientWidth||1;lbTrack.scrollLeft=idx*w;}
+  preload(idx+1);
+ }
+ function openLb(i,el){
   from=el||document.activeElement;
-  show(i);
   if(!lb.open&&lb.showModal) lb.showModal();
-  var c=$('.d2-lb-close',lb); if(c) c.focus();
- };
-  imgs.forEach(function(img,i){img.addEventListener('click',function(){openLb(i,img)})});
-  if(countBtn) countBtn.addEventListener('click',function(){openLb(0,countBtn)});
- $('.d2-lb-prev',lb).addEventListener('click',function(){show(idx-1)});
- $('.d2-lb-next',lb).addEventListener('click',function(){show(idx+1)});
- $('.d2-lb-close',lb).addEventListener('click',function(){lb.close()});
- lb.addEventListener('close',function(){if(from&&from.focus) from.focus()});
+  document.body.classList.add('d2-lock');
+  show(i,true);
+  var c=$('.g-lb-close',lb); if(c) c.focus();
+ }
+ function closeLb(){
+  document.body.classList.remove('d2-lock');
+  if(lb.open) lb.close();
+ }
+ imgs.forEach(function(img,i){img.addEventListener('click',function(){openLb(i,img);});});
+ $$('.g-thumb').forEach(function(th){th.addEventListener('click',function(){openLb(parseInt(th.getAttribute('data-i'),10)||0,th);});});
+ if(countBtn) countBtn.addEventListener('click',function(){openLb(idx,countBtn);});
+ if(allBtn) allBtn.addEventListener('click',function(){openLb(0,allBtn);});
+ $('.g-lb-prev',lb).addEventListener('click',function(){show(idx-1);});
+ $('.g-lb-next',lb).addEventListener('click',function(){show(idx+1);});
+ $('.g-lb-close',lb).addEventListener('click',function(){closeLb();});
+ lb.addEventListener('close',function(){document.body.classList.remove('d2-lock');if(from&&from.focus) from.focus();});
+ lb.addEventListener('cancel',function(){document.body.classList.remove('d2-lock');});
  lb.addEventListener('keydown',function(e){
-  if(e.key==='ArrowRight'){e.preventDefault();show(idx+1)}
-  else if(e.key==='ArrowLeft'){e.preventDefault();show(idx-1)}
+  if(e.key==='ArrowRight'){e.preventDefault();show(idx+1);}
+  else if(e.key==='ArrowLeft'){e.preventDefault();show(idx-1);}
   else if(e.key==='Tab'){
-   var n=$$('button',lb).filter(function(b){return !b.disabled});
-   if(!n.length) return;
-   if(e.shiftKey&&document.activeElement===n[0]){e.preventDefault();n[n.length-1].focus()}
-   else if(!e.shiftKey&&document.activeElement===n[n.length-1]){e.preventDefault();n[0].focus()}
+   var buttons=$$('button',lb).filter(function(b){return !b.disabled&&b.offsetParent!==null;});
+   if(!buttons.length) return;
+   if(e.shiftKey&&document.activeElement===buttons[0]){e.preventDefault();buttons[buttons.length-1].focus();}
+   else if(!e.shiftKey&&document.activeElement===buttons[buttons.length-1]){e.preventDefault();buttons[0].focus();}
   }
  });
- var sync=function(){
-  var w=gw.clientWidth||1,i=Math.round(gw.scrollLeft/w);
+ if(lbTrack) lbTrack.addEventListener('scroll',function(){
+  var w=lbTrack.clientWidth||1,i=Math.round(lbTrack.scrollLeft/w);
+  if(i!==idx&&i>=0&&i<imgs.length){idx=i;paintCount();preload(idx+1);}
+ },{passive:true});
+ track.addEventListener('scroll',function(){
+  var w=track.clientWidth||1,i=Math.round(track.scrollLeft/w);
   if(i<0) i=0; if(i>=imgs.length) i=imgs.length-1;
-  dots.forEach(function(d,k){d.classList.toggle('on',k===i)});
-  if(countBtn){
-   var t=countBtn.querySelector('span'); if(t) t.textContent=(i+1)+' / '+imgs.length;
-   countBtn.setAttribute('aria-label','Photo '+(i+1)+' of '+imgs.length+', view all photos');
-  }
- };
- gw.addEventListener('scroll',sync,{passive:true});
+  idx=i; paintCount();
+ },{passive:true});
+ paintCount();
 }
 
 var desc=$('#d2-desc'),rm=$('#d2-rm');
@@ -591,10 +633,11 @@ if(!form||!book) return;
 var slug=${JSON.stringify(String(slug || ''))};
 var MIN=form.getAttribute('data-min'),MAX=form.getAttribute('data-max');
 var PEOPLE=parseInt(form.getAttribute('data-max-people'),10)||6;
-var closed={},hoursBy={};
+var closed={},hoursBy={},dayHrs={};
 var lastAvail=[];
 try{closed=JSON.parse(form.getAttribute('data-closed')||'{}')}catch(e){}
 try{hoursBy=JSON.parse(form.getAttribute('data-hours')||'{}')}catch(e){}
+try{dayHrs=JSON.parse(form.getAttribute('data-day-hours')||'{}')}catch(e){}
 var demo=form.getAttribute('data-demo')==='1';
 var WK=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var FULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -610,7 +653,7 @@ var hidden=document.createElement('input');
 hidden.type='hidden';hidden.name='date';hidden.value=form.getAttribute('data-date')||'';
 form.appendChild(hidden);
 var tiles=$$('input[name="pass"]',form);
-var qtyEl=$('#d2-qty'),go=$('#d2-go'),lateEl=$('#d2-late'),closedEl=$('#d2-closed');
+var qtyEl=$('#d2-qty'),go=$('#d2-go'),lateEl=$('#d2-late'),closedEl=$('#d2-closed'),hrsEl=$('#d2-hrs');
 var seq=0,soldAll=false,calOpen=false,viewY=0,viewM=0;
 var today=parse(MIN);viewY=today.y;viewM=today.m;
 $$('.d2-sb',form).forEach(function(b){b.hidden=false});
@@ -627,7 +670,6 @@ function qty(){var m=maxQty(),n=parseInt(qtyEl.value,10);if(!n||n<1)n=1;if(n>m)n
 function syncQtyCap(){
  var m=maxQty();qtyEl.max=String(Math.max(m,1));
  var q=qty();if(parseInt(qtyEl.value,10)!==q) qtyEl.value=q;
- var cap=$('#d2-cap'),p0=picked();if(cap) cap.hidden=!(p0&&unitCap(p0)<PEOPLE);
  var sq=$('#d2-side-qty');if(sq) sq.textContent=q+' (up to '+PEOPLE+' people)';
 }
 function note(el,text,show){el.textContent=text||'';el.hidden=!show}
@@ -651,10 +693,11 @@ function paint(){
  $$('.d2-d.cl',form).forEach(function(b){b.classList.remove('pk')});
  if(d&&closed[d]){var ck=$('.d2-d.cl[data-date="'+d+'"]',form);if(ck) ck.classList.add('pk')}
  var pr=$('#d2-passrow-t');if(pr&&p) pr.textContent=p.getAttribute('data-name')+' · '+p.getAttribute('data-label');
- if(p){
+ if(p&&d&&!soldAll){
   var price=parseFloat(p.getAttribute('data-price'))*q;
-  go.textContent=soldAll?'Book':('Book · '+money(price)+(demo?' (demo)':''));
+  go.textContent='Book · '+money(price)+(demo?' (demo)':'');
  }else go.textContent='Book';
+ if(hrsEl){var hs=d&&!closed[d]?(dayHrs[d]||''):'';hrsEl.textContent=hs?'Hours '+hs:'';hrsEl.hidden=!hs}
  var ready=!!(p&&d&&!closed[d]&&!soldAll);
  if(ready) go.removeAttribute('aria-disabled'); else go.setAttribute('aria-disabled','true');
  var pill=$('#d2-pill-t'),sd=$('#d2-side-date'),sq=$('#d2-side-qty');

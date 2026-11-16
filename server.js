@@ -36,7 +36,7 @@ const { DateHold } = require('./dateHold');
 const { sendBookingConfirmation, sendContactAlert, sendCancellation, bookingHasParking } = require('./notices');
 const { BookingCancel } = require('./cancelBooking');
 const { PauseBooked } = require('./pauseBooked');
-const { DESTINATIONS, destIcon, destinationBySlug } = require('./destinations');
+const { DESTINATIONS, destIcon, destinationBySlug, guestAreaName } = require('./destinations');
 const { SearchQuery } = require('./search');
 const seo = require('./seo');
 const compress = require('./compress');
@@ -51,7 +51,7 @@ const { GuestPrivacy } = require('./guestPrivacy');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
   hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST, dayPlan,
-  fmtTime, cancelNote, riskCard, riskText, swimNote, GuestCheckIn, FOOD_RULE, FREE_CANCEL, hotelLatePossible, lateWindow, amenitiesFrom,
+  fmtTime, cancelNote, riskCard, riskText, swimNote, GuestCheckIn, FOOD_RULE, FREE_CANCEL, hotelLatePossible, lateWindow, amenitiesFrom, dayHoursText,
   venueMissing, PICK_DATE_CANCEL, arrivalOptions, normalizeArrival, arrivalText,
 } = require('./offering');
 const app = express();
@@ -399,7 +399,13 @@ function page(title, body, opts = {}) {
   const deepHeader = !!(opts.logoOnDark || guestD2);
   const headerLogo = deepHeader ? logoLink('dark') : logoLink('light');
   const header = `<header class="hdr" id="site-hdr"><div class="wrap hdr-in">${headerLogo}${chrome.nav}${headerExtra}<div class="hdr-right">${right}</div>${chrome.sheet}</div></header>`;
-  return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  const htmlAttrs = [
+    'lang="en-AU"',
+    opts.htmlHero ? `data-hero="${esc(String(opts.htmlHero))}"` : '',
+    opts.htmlDataN != null && opts.htmlDataN !== '' ? `data-n="${esc(String(opts.htmlDataN))}"` : '',
+    opts.htmlClass ? `class="${esc(String(opts.htmlClass))}"` : '',
+  ].filter(Boolean).join(' ');
+  return `<!doctype html><html ${htmlAttrs}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 ${demoSite() ? '<div class="demo-banner">Demo site: listings are examples, no real bookings or payments.</div>' : ''}
 ${header}<main>${body}</main>
@@ -461,7 +467,7 @@ function exampleCard(h, date) {
   const facts = amenitiesFrom(h).filter(line => line !== h.age_policy).slice(0, 3);
   const limit = h.age_policy ? `<p class="ex-limit">${esc(h.age_policy)}</p>` : '';
   const href = `/h/${h.slug}${date ? '?date=' + encodeURIComponent(date) : ''}`;
-  return `<a class="ex" href="${href}">${img}<span class="tag">Example</span><h3>${esc(h.name)}</h3><p class="ex-area">${esc(h.area)}</p>${facts.length ? `<p class="ex-amen">${esc(facts.join(' · '))}</p>` : ''}<p class="ex-price">From ${money(from)}</p>${limit}</a>`;
+  return `<a class="ex" href="${href}">${img}<span class="tag">Example</span><h3>${esc(h.name)}</h3><p class="ex-area">${esc(guestAreaName(h.area))}</p>${facts.length ? `<p class="ex-amen">${esc(facts.join(' · '))}</p>` : ''}<p class="ex-price">From ${money(from)}</p>${limit}</a>`;
 }
 function homeQuickHtml() {
   const hotels = getHotels();
@@ -561,7 +567,7 @@ ${joined ? `<div class="wl-ok" role="status"><h3>You're on the list</h3><p>Thank
 <p>${CheckoutConsent.hotelNoticeHtml(contactMail())}</p>
 </div>
 <button class="btn" type="submit">Join the waitlist</button>
-</form></div></dialog>`, { analytics: true, home: true, index: true, guestD2: true, ...seo.pageCopy('home'), jsonld: seo.homeJsonLd(contactEmail()) });
+</form></div></dialog>`, { analytics: true, home: true, index: true, guestD2: true, htmlHero: 'B', ...seo.pageCopy('home'), jsonld: seo.homeJsonLd(contactEmail()) });
 }
 function searchHidden(params, skip) {
   const bits = [];
@@ -684,7 +690,7 @@ function searchCard(hotel, params, index, kidsChip) {
   if (params.want) query.push('want=' + encodeURIComponent(params.want));
   if (qty) query.push('qty=' + encodeURIComponent(String(qty)));
   const listing = '/h/' + hotel.slug + (query.length ? '?' + query.join('&') : '');
-  const area = hotel.area + (hotel.age_policy ? ' · ' + hotel.age_policy : '');
+  const area = guestAreaName(hotel.area) + (hotel.age_policy ? ' · ' + hotel.age_policy : '');
   const priceInner = offer.sold
     ? `Sold out on ${esc(nice(params.date))}`
     : `From ${money(offer.price)} <small>(demo)</small>${offer.activity ? ' · ' + esc(offer.activity) : ''}`;
@@ -951,7 +957,7 @@ function listingStep(h, date, qty, passCode) {
   const startDay = today(h);
   const maxDate = ymd(addDays(new Date(startDay + 'T12:00:00'), 90));
   const step = dayStepLinks({ slug: h.slug, date, minDate: startDay, maxDate, passCode, qty });
-  step.hours = date ? ListingPanel.dayHours(hoursLines(db, h), date) : '';
+  step.hours = date ? ListingPanel.dayHours(db, h, hoursLines(db, h), date) : '';
   return step;
 }
 app.get('/h/:slug', (req, res) => {
@@ -967,18 +973,23 @@ app.get('/h/:slug', (req, res) => {
   const items = loadInclusions(db, h.id);
   const foodLine = guestFoodLine(db, h);
   const closed = {};
+  const dayHours = {};
   const origin = new Date(startDay + 'T12:00:00');
   for (let i = 0; i <= 90; i++) {
     const d = ymd(addDays(origin, i));
-    const why = closureReason(db, h, d);
+    const why = closureReason(db, h, d, clockNow());
     if (why) closed[d] = String(why);
+    else {
+      const span = dayHoursText(db, h, d);
+      if (span) dayHours[d] = span;
+    }
   }
   const demo = Number(h.is_demo) === 1;
   const photo = h.photos[0] ? seo.absolute('/assets/photos/' + h.photos[0]) : seo.DEFAULT_IMAGE;
   const late = d => cancelNote(db, h, d, clockNow()) === ListingD2.LATE_NOTE;
   const passCode = String(req.query.pass || '').slice(0, 40);
   res.send(page(h.name, listingHtml({
-    h, date, minDate: startDay, maxDate, closed, passes, av, from, late,
+    h, date, minDate: startDay, maxDate, closed, dayHours, passes, av, from, late,
     included: items,
     groups: HotelAmenities.groups(db, h.id, { people: 1 }),
     addons: getAddons(h.id, true),
@@ -987,6 +998,7 @@ app.get('/h/:slug', (req, res) => {
     qty: req.query.qty,
     hold,
     explore: loadExplore(db, h.id),
+    db,
   }), {
     analytics: true,
     index: demo ? 'follow' : true,
@@ -998,6 +1010,8 @@ app.get('/h/:slug', (req, res) => {
     jsonld: seo.listingJsonLd(h, { from, image: photo }),
     css: '/listing-dir2.css',
     logoOnDark: true,
+    htmlClass: 'pass-b',
+    htmlDataN: (h.photos || []).length,
   }));
 });
 
@@ -1139,7 +1153,12 @@ function renderCheckout(query, res, extra = {}) {
   const demo = Number(h.is_demo) === 1;
   const hotelLabel = demo && !/\(Demo\)\s*$/i.test(h.name) ? `${seo.shortName(h.name)} (Demo)` : h.name;
   const passLabel = `${spotLabel(p)} × ${qty}`;
-  const includedBody = `${incLines.length ? `<ul class="co-inc-list">${incLines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : ''}${parkNote ? `<p class="pass-note">${esc(parkNote)}</p>` : ''}${accessBlock(forPass(db, p.id), { demo, compact: true })}`;
+  const planSpan = dayHoursText(db, h, date);
+  const passAreas = forPass(db, p.id).map(area => ({
+    ...area,
+    hours: Number(area.serves_food) ? area.hours : (planSpan || area.hours),
+  }));
+  const includedBody = `${incLines.length ? `<ul class="co-inc-list">${incLines.map(line => `<li>${esc(line.text)}</li>`).join('')}</ul>` : ''}${parkNote ? `<p class="pass-note">${esc(parkNote)}</p>` : ''}${accessBlock(passAreas.filter(area => !Number(area.serves_food)), { demo, compact: true })}`;
   const included = includedBody.trim() ? `<details class="co-inc"><summary>What's included</summary><div class="co-inc-body">${includedBody}</div></details>` : '';
   const rulesOpts = { ...hoursView(db, h, date), foodSentence: foodLine, checkout: true };
   const picked = new Set(v.addons.map(x => x.code));
@@ -1188,7 +1207,7 @@ ${fieldError(errors, 'arrival')}</label>
 ${PhotoAssets.imgTag(h.photos[0], { alt: demo ? 'Stock photo, not this hotel' : 'Photo of ' + seo.shortName(h.name), width: 640, height: 360, sizes: '640px' })}
 <div class="pad">
 <h2>${esc(hotelLabel)}</h2>
-<p class="muted small">${esc(h.area)}</p>
+<p class="muted small">${esc(guestAreaName(h.area))}</p>
 <dl><dt>Date</dt><dd class="co-fact"><span class="co-fact-val">${esc(nice(date))}</span>${dateChange}</dd><dt>Pass</dt><dd class="co-fact"><span class="co-fact-val co-pass-line">${esc(passLabel)} · ${esc(money(p.price * qty))} (demo)</span>${passChange}</dd><dt>Guests</dt><dd>${people}</dd>${extrasRow}</dl>
 ${included}
 <div class="bb-total"><span>Total</span><b class="co-total" id="co-total">${money(grand)}</b></div>

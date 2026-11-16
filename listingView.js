@@ -104,7 +104,12 @@ class ListingPanel {
     return `/h/${encodeURIComponent(slug)}?${params.toString()}#${opts.hash || 'passes'}`;
   }
 
-  static dayHours(lines, iso) {
+  static dayHours(db, hotel, lines, iso) {
+    if (db && hotel && iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+      const { dayHoursText } = require('./offering');
+      const span = dayHoursText(db, hotel, iso);
+      if (span) return span;
+    }
     if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso) || !Array.isArray(lines)) return '';
     const name = ListingPanel.DAY[new Date(iso + 'T12:00:00').getDay()];
     const row = lines.find(item => item.day === name);

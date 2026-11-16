@@ -243,14 +243,31 @@ function cdp(WS, wsUrl) {
           await new Promise(r => setTimeout(r, 250));
         }
         const other = go ? go.textContent.trim() : '';
-        return { one, two, other };
+        return { one, two, other, hasLounger: !!lounger, hasDaybed: !!daybed, daybedOn: !!(daybed && daybed.checked) };
       })()`,
     });
     const live = bookLive.result.value;
     assert.match(live.one, /^Book · \$/, 'Book label with one spot');
     assert.match(live.two, /^Book · \$/, 'Book label with two spots');
     assert.notStrictEqual(live.one, live.two, 'Book label updates when spots change');
-    if (live.other) assert.notStrictEqual(live.one, live.other, 'Book label updates when pass changes');
+    assert.ok(live.hasLounger && live.hasDaybed, 'fixture has a second pass (lounger and daybed) ' + JSON.stringify(live));
+    assert.ok(live.daybedOn, 'daybed pass picked');
+    assert.match(live.other, /^Book · \$/, 'Book label after pass change');
+    assert.notStrictEqual(live.two, live.other, 'Book label updates when pass changes');
+    assert.notStrictEqual(live.one, live.other, 'Book label differs from one lounger after pass change');
+    assert.match(live.two, /^Book · \$90(\\.00)? \(demo\)$/, 'doubled price at 2 spots');
+
+    await send('Page.navigate', { url: `http://127.0.0.1:${port}/h/saltwater-terrace?pass=lounger&qty=1` });
+    await new Promise(r => setTimeout(r, 1200));
+    const noDateRes = await send('Runtime.evaluate', {
+      returnByValue: true,
+      expression: `(() => {
+        const go = document.getElementById('d2-go');
+        return { label: go ? go.textContent.trim() : '', disabled: go ? go.getAttribute('aria-disabled') : '' };
+      })()`,
+    });
+    assert.strictEqual(noDateRes.result.value.label, 'Book', 'Book label with no date');
+    assert.strictEqual(noDateRes.result.value.disabled, 'true', 'Book disabled with no date');
 
     await send('Page.navigate', { url: `http://127.0.0.1:${port}/h/skyline-rooftop` });
     await new Promise(r => setTimeout(r, 1200));

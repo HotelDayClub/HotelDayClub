@@ -100,4 +100,13 @@ function destinationBySlug(slug) {
   return DESTINATIONS.find(d => d.slug === slug) || null;
 }
 
-module.exports = { DESTINATIONS, destIcon, destinationBySlug };
+function guestAreaName(area) {
+  const raw = String(area || '').trim();
+  if (!raw) return '';
+  for (const d of DESTINATIONS) {
+    if ((d.areas || []).includes(raw)) return d.name;
+  }
+  return raw;
+}
+
+module.exports = { DESTINATIONS, destIcon, destinationBySlug, guestAreaName };

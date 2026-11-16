@@ -16,6 +16,7 @@ All photos were downloaded on 21 Oct 2026 (AEDT) and stored locally in `assets/p
 | photos/tropical-resort.jpg | https://www.pexels.com/photo/pool-and-loungers-in-tropical-resort-yard-in-sunlight-5746250/ | Ryutaro Tsukata |
 | photos/glass-roof-pool.jpg | https://www.pexels.com/photo/view-of-a-pool-under-a-glass-roof-in-a-resort-12739423/ | Toni Berisha |
 | photos/indoor-spa-pool.jpg | https://www.pexels.com/photo/brown-and-white-hot-tub-6667423/ | Pavel Danilyuk |
+| photos/restaurant-view.jpg (downloaded 16 Nov 2026 (AEDT), cropped to 2:3 and resized to 1000x1500) | https://www.pexels.com/photo/chairs-and-table-on-terrace-under-mesh-roof-18030810/ | Matteo Milan |
 
 ## Unsplash: free under the Unsplash License (https://unsplash.com/license). Attribution isn't required but is given here.
 | File | Photo | Photographer |
