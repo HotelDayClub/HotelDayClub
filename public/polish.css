@@ -275,18 +275,3 @@ body.home .hotels-d1 .hotels-ph img{width:100%;height:100%;object-fit:cover}
 /* ---------- Listing and search: demo label tidy ---------- */
 .d2 .d2-hero-tag{white-space:nowrap}
 
-/* ---------- Every clickable card: lift and a slow image zoom ---------- */
-.ex,.dest-tile,.d2-card,.d2-ex-card,.search-page .ex{transition:transform .35s ease,box-shadow .35s ease}
-.ex img,.dest-tile img,.d2-ex-card img,.d2-card img{transition:transform 1.2s cubic-bezier(.2,.6,.2,1)}
-.search-page .ex .ph,.d2-ex-card,.d2-card picture{overflow:hidden}
-@media (hover:hover){
-  .ex:hover,.dest-tile:hover,.d2-ex-card:hover{transform:translateY(-4px)}
-  .search-page .ex:hover,.d2-ex-card:hover{box-shadow:var(--sh-2)}
-  .d2-card:hover{transform:translateY(-2px)}
-  .ex:hover img,.dest-tile:hover img,.d2-ex-card:hover img,.d2-card:hover img{transform:scale(1.05)}
-}
-@media (prefers-reduced-motion:reduce){
-  .ex,.dest-tile,.d2-card,.d2-ex-card,.ex img,.dest-tile img,.d2-ex-card img,.d2-card img,.faq-plus{transition:none}
-  .ex:hover,.dest-tile:hover,.d2-ex-card:hover,.d2-card:hover{transform:none}
-  .ex:hover img,.dest-tile:hover img,.d2-ex-card:hover img,.d2-card:hover img{transform:none}
-}

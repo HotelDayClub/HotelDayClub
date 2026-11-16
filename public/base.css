@@ -634,12 +634,22 @@ body.guest .login-card,.contact-card{background:var(--hdc-bg);border:1px solid v
 .small{font-size:.85rem}
 .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+a.ex .ex-ph,a.ex,.dest-tile,.d2-ex-card,.d2-card,article.ex .ph,.search-page .ex .ph{overflow:hidden}
+a.ex,a.dest-tile,a.d2-ex-card,a.d2-card,article.ex,.search-page .ex{transition:transform .35s ease,box-shadow .35s ease}
+a.ex img,a.dest-tile img,.d2-ex-card img,.d2-card img,article.ex .ph img,.search-page .ex .ph img{transition:transform .6s cubic-bezier(.2,.6,.2,1)}
 @media(hover:hover){
-  a.ex,a.dest-tile,a.d2-ex-card,a.d2-card,article.ex,.fh-d1 .fh-card{transition:transform .35s ease,box-shadow .35s ease}
-  a.ex img,a.dest-tile img,.d2-ex-card img,.d2-card img{transition:transform .6s cubic-bezier(.2,.6,.2,1)}
-  a.ex:hover,a.dest-tile:hover,.d2-ex-card:hover,.d2-card:hover,article.ex:hover{transform:translateY(-3px);box-shadow:var(--sh-2)}
-  a.ex:hover img,a.dest-tile:hover img,.d2-ex-card:hover img,.d2-card:hover img{transform:scale(1.04)}
+  a.ex:hover,a.dest-tile:hover,.d2-ex-card:hover,.d2-card:hover,article.ex:hover,.search-page .ex:hover,
+  a.ex:focus-visible,a.dest-tile:focus-visible,.d2-ex-card:focus-visible,.d2-card:focus-visible,article.ex:focus-within,.search-page .ex:focus-within{
+    transform:translateY(-3px);box-shadow:var(--sh-2)
+  }
+  a.ex:hover img,a.dest-tile:hover img,.d2-ex-card:hover img,.d2-card:hover img,article.ex:hover .ph img,.search-page .ex:hover .ph img,
+  a.ex:focus-visible img,a.dest-tile:focus-visible img,.d2-ex-card:focus-visible img,.d2-card:focus-visible img,article.ex:focus-within .ph img,.search-page .ex:focus-within .ph img{
+    transform:scale(1.04)
+  }
 }
 @media(prefers-reduced-motion:reduce){
-  a.ex,a.dest-tile,a.d2-ex-card,a.d2-card,article.ex,a.ex img,a.dest-tile img{transition:none!important;transform:none!important}
+  a.ex,a.dest-tile,a.d2-ex-card,a.d2-card,article.ex,.search-page .ex,
+  a.ex img,a.dest-tile img,.d2-ex-card img,.d2-card img,article.ex .ph img,.search-page .ex .ph img{transition:none!important}
+  a.ex:hover,a.dest-tile:hover,.d2-ex-card:hover,.d2-card:hover,article.ex:hover,.search-page .ex:hover,
+  a.ex:hover img,a.dest-tile:hover img,.d2-ex-card:hover img,.d2-card:hover img,article.ex:hover .ph img,.search-page .ex:hover .ph img{transform:none!important}
 }
