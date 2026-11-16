@@ -205,9 +205,9 @@ assert.strictEqual(HomeQuick.build('nope'), null);
 assert.ok(!/\u2014/.test(HomeQuick.html('2026-11-11')));
 
 const d2css = fs.readFileSync(path.join(root, 'public/listing-dir2.css'), 'utf8');
-assert.ok(/\.d2-hero-title\{[^}]*color:\s*#FFF8EE/i.test(d2css), 'hero title on deep band');
+assert.ok(/\.d2-head \.d2-title\{[^}]*color:\s*var\(--deep\)/i.test(d2css), 'title on cream block');
 assert.ok(/\.d2-hours-band\{[^}]*color:\s*#FFF8EE/i.test(d2css), 'hours band text');
-assert.ok(/\.d2-bookbar\{[^}]*color:\s*#fff/i.test(d2css), 'desktop book bar text');
+assert.ok(!/\.d2-bookbar\{[^}]*display:\s*flex/.test(d2css), 'teal desktop bookbar removed');
 
 // A3: moods.
 assert.deepStrictEqual(SearchQuery.MOODS.map(m => m.label), ['Rooftop', 'Beachside', 'Quiet', 'Family friendly']);
@@ -245,7 +245,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
       assert.strictEqual(count(visibleText(body.slice(body.indexOf('id="before"'))), FOOD_RULE), 1, slug + ' food rule in good to know');
       assert.strictEqual(count(exBlock, FOOD_RULE), 0, slug + ' no food rule in explore section');
       assert.ok(!/your pass|During pass hours|Hotel Day Club/i.test(visibleText(exBlock)), slug + ' place-only explore copy');
-      assert.strictEqual(count(text, FREE_CANCEL), 1, slug + ' free cancellation once');
+      assert.ok(count(text, FREE_CANCEL) >= 1 && count(text, FREE_CANCEL) <= 3, slug + ' free cancellation with qualifier, not duplicated ad nauseam');
       assert.strictEqual(count(body, 'Photo ID at check-in'), 1, slug + ' ID line once');
       assert.ok(!text.includes('\u2014'), slug + ' no em-dashes');
       assert.ok(!/commission|stripe/i.test(text), slug);

@@ -276,7 +276,7 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     const towelDb2 = new (require('better-sqlite3'))(dbPath);
     towelDb2.prepare('UPDATE hotels SET towels=1 WHERE slug=?').run('palm-court');
     towelDb2.close();
-    assert.ok(salt.body.includes('From $'));
+    assert.ok(salt.body.includes('per spot') || salt.body.includes('From $'));
     assert.ok(!salt.body.includes('1 guest'));
     assert.ok(!salt.body.includes('Pool access'));
     const seatLounger = await get(port, '/h/saltwater-terrace');

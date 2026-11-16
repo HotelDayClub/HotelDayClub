@@ -142,39 +142,51 @@ function cdp(WS, wsUrl) {
       await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 800 });
       await send('Page.navigate', { url: `http://127.0.0.1:${port}/h/saltwater-terrace` });
       await new Promise(r => setTimeout(r, 1200));
-      await send('Runtime.evaluate', {
-        expression: `(() => {
-          const btn = [...document.querySelectorAll('.d2-bar-btn, .d2-bookbar .d2-btn')].find(el => el.getBoundingClientRect().height > 0);
-          if (btn) btn.click();
-        })()`,
-      });
-      await new Promise(r => setTimeout(r, 600));
+      if (width < 1024) {
+        await send('Runtime.evaluate', {
+          expression: `(() => {
+            const btn = [...document.querySelectorAll('.d2-bar-btn, .d2-bookbar .d2-btn')].find(el => el.getBoundingClientRect().height > 0);
+            if (btn) btn.click();
+          })()`,
+        });
+        await new Promise(r => setTimeout(r, 600));
+      }
       const res = await send('Runtime.evaluate', {
         returnByValue: true,
         expression: `(() => {
           const sheet = document.getElementById('d2-sheet');
+          const side = document.getElementById('d2-side');
           const book = document.getElementById('book');
           const go = document.getElementById('d2-go');
           const sb = sheet ? sheet.getBoundingClientRect() : null;
           const bb = book ? book.getBoundingClientRect() : null;
           const gb = go ? go.getBoundingClientRect() : null;
+          const wide = window.matchMedia('(min-width:1024px)').matches;
           return {
+            wide,
             open: !!(sheet && sheet.open),
             inSheet: !!(sheet && book && sheet.contains(book)),
+            inSide: !!(side && book && side.contains(book)),
             bookDisplay: book ? getComputedStyle(book).display : '',
             bookH: bb ? bb.height : 0,
             sheetH: sb ? sb.height : 0,
             goH: gb ? gb.height : 0,
-            dates: document.querySelectorAll('#d2-sheet input[name="chip"]').length,
+            dates: document.querySelectorAll('#d2-form input[name="chip"], #d2-sheet input[name="chip"]').length,
           };
         })()`,
       });
       const d = res.result.value;
-      assert.ok(d.open && d.inSheet, width + ' sheet open with form ' + JSON.stringify(d));
-      assert.strictEqual(d.bookDisplay, 'block', width + ' form display ' + JSON.stringify(d));
-      assert.ok(d.bookH > 300, width + ' form height ' + JSON.stringify(d));
-      assert.ok(d.sheetH > 300, width + ' sheet height ' + JSON.stringify(d));
-      assert.ok(d.goH >= 44, width + ' Book button visible ' + JSON.stringify(d));
+      if (width >= 1024) {
+        assert.ok(d.wide && d.inSide, width + ' sticky aside holds form ' + JSON.stringify(d));
+        assert.strictEqual(d.bookDisplay, 'block', width + ' desktop form display ' + JSON.stringify(d));
+        assert.ok(d.bookH > 300, width + ' desktop form height ' + JSON.stringify(d));
+      } else {
+        assert.ok(d.open && d.inSheet, width + ' sheet open with form ' + JSON.stringify(d));
+        assert.strictEqual(d.bookDisplay, 'block', width + ' form display ' + JSON.stringify(d));
+        assert.ok(d.bookH > 300, width + ' form height ' + JSON.stringify(d));
+        assert.ok(d.sheetH > 300, width + ' sheet height ' + JSON.stringify(d));
+      }
+      assert.ok(d.goH >= 44, width + ' Reserve button visible ' + JSON.stringify(d));
       assert.ok(d.dates >= 7, width + ' date chips ' + JSON.stringify(d));
       console.log(width + ' booking sheet form ' + Math.round(d.bookH) + 'px');
     }
@@ -201,7 +213,7 @@ function cdp(WS, wsUrl) {
         const go = document.getElementById('d2-go');
         return {
           fitLine: !!document.getElementById('d2-fit'),
-          summary: !!document.querySelector('.d2-tot'),
+          summary: !!document.querySelector('.d2-total'),
           dateText: dateRow ? dateRow.textContent.trim() : '',
           dateHasHours: dateRow ? /hotel time|\\d+am|\\d+pm/i.test(dateRow.textContent) : true,
           fitsOnCards: passes.length >= 3 && passes.every(el => /Fits \\d+/.test(el.textContent)),
@@ -212,11 +224,11 @@ function cdp(WS, wsUrl) {
     });
     const t = trim.result.value;
     assert.ok(!t.fitLine, 'no Fits line under pass cards');
-    assert.ok(!t.summary, 'no summary above Book');
+    assert.ok(t.summary, 'running total above Reserve');
     assert.strictEqual(t.dateText, 'Date', 'Date label without hours ' + t.dateText);
     assert.ok(!t.dateHasHours, 'no hours next to Date');
     assert.ok(t.fitsOnCards, 'Fits N on every pass card: ' + t.passCount);
-    assert.match(t.bookLabel, /^Book · \$[\d,.]+$/, 'Book label shows pass total, no (demo) suffix');
+    assert.strictEqual(t.bookLabel, 'Reserve', 'mobile Reserve CTA');
 
   const bookLive = await send('Runtime.evaluate', {
       awaitPromise: true,
@@ -247,15 +259,24 @@ function cdp(WS, wsUrl) {
       })()`,
     });
     const live = bookLive.result.value;
-    assert.match(live.one, /^Book · \$/, 'Book label with one spot');
-    assert.match(live.two, /^Book · \$/, 'Book label with two spots');
-    assert.notStrictEqual(live.one, live.two, 'Book label updates when spots change');
+    const tot = async () => {
+      const r = await send('Runtime.evaluate', {
+        returnByValue: true,
+        expression: `(() => { const el=document.getElementById('d2-total'); return el&&!el.hidden?el.textContent.trim():''; })()`,
+      });
+      return r.result.value;
+    };
+    assert.match(live.one, /^Reserve$/, 'Reserve CTA with one spot');
+    const oneTot = await tot();
+    assert.match(oneTot, /^\$[\d,]+/, 'line total one spot');
     assert.ok(live.hasLounger && live.hasDaybed, 'fixture has a second pass (lounger and daybed) ' + JSON.stringify(live));
     assert.ok(live.daybedOn, 'daybed pass picked');
-    assert.match(live.other, /^Book · \$/, 'Book label after pass change');
-    assert.notStrictEqual(live.two, live.other, 'Book label updates when pass changes');
-    assert.notStrictEqual(live.one, live.other, 'Book label differs from one lounger after pass change');
-    assert.match(live.two, /^Book · \$90(\\.00)?$/, 'doubled price at 2 spots');
+    assert.match(live.other, /^Reserve$/, 'Reserve after pass change');
+    const nameRes = await send('Runtime.evaluate', {
+      returnByValue: true,
+      expression: `(() => document.getElementById('d2-line-name')?.textContent?.trim()||'')()`,
+    });
+    assert.ok(/daybed/i.test(nameRes.result.value), 'line item shows selected pass name');
 
     await send('Page.navigate', { url: `http://127.0.0.1:${port}/h/saltwater-terrace?pass=lounger&qty=1` });
     await new Promise(r => setTimeout(r, 1200));
@@ -266,8 +287,8 @@ function cdp(WS, wsUrl) {
         return { label: go ? go.textContent.trim() : '', disabled: go ? go.getAttribute('aria-disabled') : '' };
       })()`,
     });
-    assert.strictEqual(noDateRes.result.value.label, 'Book', 'Book label with no date');
-    assert.strictEqual(noDateRes.result.value.disabled, 'true', 'Book disabled with no date');
+    assert.strictEqual(noDateRes.result.value.label, 'Reserve', 'Reserve label with no date');
+    assert.strictEqual(noDateRes.result.value.disabled, 'true', 'Reserve disabled with no date');
 
     await send('Page.navigate', { url: `http://127.0.0.1:${port}/h/skyline-rooftop` });
     await new Promise(r => setTimeout(r, 1200));

@@ -76,7 +76,7 @@ function destinationForArea(area) {
 }
 
 function listingAreaSnippet(html) {
-  const m = html.match(/class="d2-hero-loc"[^>]*>([^<]+)</);
+  const m = html.match(/class="d2-loc"[^>]*>([^<]+)</);
   return m ? m[1].replace(/&amp;/g, '&').trim() : '';
 }
 

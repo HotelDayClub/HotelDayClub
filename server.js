@@ -1019,8 +1019,10 @@ app.get('/h/:slug', (req, res) => {
   const photo = h.photos[0] ? seo.absolute('/assets/photos/' + h.photos[0]) : seo.DEFAULT_IMAGE;
   const late = d => cancelNote(db, h, d, clockNow()) === ListingD2.LATE_NOTE;
   const passCode = String(req.query.pass || '').slice(0, 40);
+  const cancelText = date ? cancelNote(db, h, date, clockNow()) : FREE_CANCEL;
   res.send(page(h.name, listingHtml({
     h, date, minDate: startDay, maxDate, closed, dayHours, passes, av, from, late,
+  cancelText,
     included: items,
     groups: HotelAmenities.groups(db, h.id, { people: 1 }),
     addons: getAddons(h.id, true),

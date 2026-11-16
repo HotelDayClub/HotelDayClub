@@ -124,11 +124,13 @@ const CASES = [
           returnByValue: true,
           expression: `(async () => {
             const wait = ms => new Promise(r => setTimeout(r, ms));
-            const btn = [...document.querySelectorAll('.d2-bar-btn, .d2-bookbar .d2-btn')].find(el => el.getBoundingClientRect().height > 0);
+            const wide = window.matchMedia('(min-width:1024px)').matches;
+            const btn = wide ? null : [...document.querySelectorAll('.d2-bar-btn, .d2-bookbar .d2-btn')].find(el => el.getBoundingClientRect().height > 0);
             if (btn) btn.click();
             await wait(500);
             const sheet = document.getElementById('d2-sheet');
-            const hrs = () => sheet && sheet.querySelector('#d2-hrs');
+            const form = document.getElementById('d2-form');
+            const hrs = () => (form && form.querySelector('#d2-hrs')) || (sheet && sheet.querySelector('#d2-hrs'));
             const before = hrs() ? { hidden: hrs().hidden, text: hrs().textContent } : null;
             document.getElementById('d2-more').click();
             await wait(300);
@@ -142,11 +144,12 @@ const CASES = [
             await wait(700);
             const el = hrs();
             return {
-              open: !!(sheet && sheet.open),
+              wide,
+              open: wide ? true : !!(sheet && sheet.open),
               month: cal.querySelector('b') ? cal.querySelector('b').textContent : '',
               found: !!day,
               before,
-              inSheet: !!(el && sheet.contains(el)),
+              inSheet: !!(el && ((form && form.contains(el)) || (sheet && sheet.contains(el)))),
               hidden: el ? el.hidden : true,
               shown: el ? el.getBoundingClientRect().height > 0 : false,
               text: el ? el.textContent.trim() : '',
@@ -160,7 +163,7 @@ const CASES = [
         assert.deepStrictEqual(v.before, { hidden: true, text: '' }, 'no hours before a date is picked ' + tag);
         assert.ok(v.inSheet && !v.hidden && v.shown, 'hours line shown inside the sheet ' + tag);
         assert.strictEqual(v.text, c.hours, 'season hours in the sheet ' + tag);
-        assert.match(v.go, /^Book · \$[\d,.]+$/, 'Book label with price, no (demo) suffix ' + tag);
+        assert.strictEqual(v.go, 'Reserve', 'Reserve CTA ' + tag);
       }
       server.kill('SIGTERM');
       server = null;
