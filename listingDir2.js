@@ -218,14 +218,21 @@ ${descHtml}<button type="button" class="d2-rm text-link" id="d2-rm" aria-expande
 </header>`;
 }
 
-function mainFacilityFact(groups) {
-  const inc = (groups && groups.included) || [];
-  for (const row of inc) {
+function mainFacilityFact(h, groups) {
+  const g = groups || {};
+  const rows = [...(g.included || []), ...(g.optional || []), ...(g.onsite || [])];
+  const facilityRe = /pool|spa|gym|sauna|steam|lido|plunge|bathhouse/i;
+  for (const row of rows) {
     const label = String(row.label || '').trim();
-    const key = label.toLowerCase();
-    if (key.includes('pool') || key.includes('spa') || key.includes('gym')) return label;
+    if (label && facilityRe.test(label)) return label;
   }
-  return '';
+  const pf = policyFacts(h || {});
+  const pool = String(pf.pool || '').trim();
+  if (!pool || pool === 'Not set') return '';
+  if (facilityRe.test(pool)) return pool;
+  const heat = h && h.heated != null && h.heated !== '' ? (Number(h.heated) ? 'Heated' : 'Unheated') : '';
+  if (heat) return `${heat} ${pool.toLowerCase()} pool`;
+  return `${pool} pool`;
 }
 
 function hoursFactText(o) {
@@ -240,7 +247,7 @@ function hoursFactText(o) {
 
 function keyFactsHtml(h, o) {
   const hours = hoursFactText(o);
-  const facility = mainFacilityFact(o.groups);
+  const facility = mainFacilityFact(h, o.groups);
   const age = String(h.age_policy || '').trim();
   const cancel = String(o.cancelText || FREE_CANCEL).trim();
   const items = [
@@ -1120,4 +1127,4 @@ if(exSheet){
 </script>`;
 }
 
-module.exports = { listingHtmlD2, listingScriptD2, ListingD2, LATE_NOTE };
+module.exports = { listingHtmlD2, listingScriptD2, ListingD2, LATE_NOTE, galleryHtml, keyFactsHtml, mainFacilityFact };

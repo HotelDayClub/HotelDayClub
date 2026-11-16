@@ -658,5 +658,7 @@ a.ex img,a.dest-tile img,.d2-ex-card img,.d2-card img,article.ex .ph img,.search
   a.ex,a.dest-tile,a.d2-ex-card,a.d2-card,article.ex,.search-page .ex,
   a.ex img,a.dest-tile img,.d2-ex-card img,.d2-card img,article.ex .ph img,.search-page .ex .ph img{transition:none!important}
   a.ex:hover,a.dest-tile:hover,.d2-ex-card:hover,.d2-card:hover,article.ex:hover,.search-page .ex:hover,
-  a.ex:hover img,a.dest-tile:hover img,.d2-ex-card:hover img,.d2-card:hover img,article.ex:hover .ph img,.search-page .ex:hover .ph img{transform:none!important}
+  a.ex:focus-visible,a.dest-tile:focus-visible,.d2-ex-card:focus-visible,.d2-card:focus-visible,article.ex:focus-within,.search-page .ex:focus-within,
+  a.ex:hover img,a.dest-tile:hover img,.d2-ex-card:hover img,.d2-card:hover img,article.ex:hover .ph img,.search-page .ex:hover .ph img,
+  a.ex:focus-visible img,a.dest-tile:focus-visible img,.d2-ex-card:focus-visible img,.d2-card:focus-visible img,article.ex:focus-within .ph img,.search-page .ex:focus-within .ph img{transform:none!important}
 }
