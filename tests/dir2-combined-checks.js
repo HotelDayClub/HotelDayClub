@@ -172,7 +172,7 @@ const listingCss = fs.readFileSync(path.join(root, 'public/listing-dir2.css'), '
 assert.match(listingCss, /body:has\(\.d2\) \.d2\.listing\{padding:0/);
 assert.match(listingCss, /@media \(max-width:1023px\)[\s\S]*body:has\(\.d2\) \.d2-photos[\s\S]*padding-top:0/);
 assert.match(listingCss, /\.d2 \.g-thumb img\{[\s\S]*object-fit:\s*cover/);
-assert.match(listingCss, /\.d2 \.g-track img\{[\s\S]*object-fit:\s*contain/);
+assert.match(listingCss, /\.d2 \.g-track img\{[\s\S]*object-fit:\s*cover/);
 assert.match(listingCss, /\.g-lb-track img[\s\S]*object-fit:\s*contain/);
 assert.match(listingCss, /\.d2 \.g-track > img,\s*\.d2 \.g-track > picture\{/);
 assert.match(listingCss, /\.d2 \.g-track > \* \+ \*\{display:none!important\}/);
