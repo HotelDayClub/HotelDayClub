@@ -71,7 +71,9 @@ function visibleText(html) {
 }
 
 function cardNames(html) {
-  return [...html.matchAll(/<h3><a href="\/h\/([a-z-]+)[^"]*">/g)].map(m => m[1]);
+  const start = html.indexOf('class="list results"');
+  const block = start >= 0 ? html.slice(start, html.indexOf('class="note"', start)) : html;
+  return [...block.matchAll(/<a class="ex[^"]*" href="\/h\/([a-z0-9-]+)/g)].map(m => m[1]);
 }
 
 // A1-A2: pure helpers and home quick buttons.

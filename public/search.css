@@ -44,22 +44,31 @@ html.js .search-sum{display:flex}
 .search-page .rhead h1{margin:0}
 .search-page .cap-note{margin:8px 0 0;color:var(--hdc-secondary);font-size:14px;line-height:1.35}
 
-.search-page .ex{display:flex;flex-direction:column;min-width:0;background:var(--hdc-tint);border:1px solid var(--hdc-border);border-radius:20px;overflow:hidden;color:inherit;text-decoration:none}
-.search-page .ph{position:relative;aspect-ratio:4/3;background:var(--hdc-tint);overflow:hidden}
-.search-page .ph img{width:100%;height:100%;object-fit:cover;aspect-ratio:4/3;display:block}
-.search-page .ex .tag{position:absolute;top:12px;left:12px;margin:0;background:var(--hdc-sun);color:var(--hdc-navy)}
-.search-page .ex{height:100%}
-.search-page .bd{display:flex;flex-direction:column;gap:0;padding:12px 14px 14px;min-width:0;flex:1}
-.search-page .bd h3{margin:0;font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:600;line-height:1.2}
-.search-page .bd h3 a{color:var(--hdc-text);text-decoration:none}
-.search-page .bd h3 a:hover{text-decoration:underline;text-underline-offset:3px}
-.search-page .bd p{margin:4px 0 0}
-.search-page .ex-area{font-weight:650;color:var(--hdc-text)}
-.search-page .hrs{display:flex;align-items:center;gap:6px;color:var(--hdc-secondary);font-weight:650}
-.search-page .hrs svg{width:16px;height:16px;flex:0 0 auto}
-.search-page .ex-price{color:var(--hdc-text);font-weight:700}
-.search-page .ex-price small{font-weight:650;color:var(--hdc-secondary)}
+.search-page .list.results,.search-page .list.others{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:20px}
+.search-page .list.is-single{grid-template-columns:minmax(0,420px)}
+@media (max-width:699px){
+  .search-page .list.results,.search-page .list.others,.search-page .list.is-single{grid-template-columns:minmax(0,1fr);margin-top:10px;gap:16px}
+}
+@media (min-width:700px) and (max-width:1023px){
+  .search-page .list.results,.search-page .list.others{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .search-page .list.is-single{grid-template-columns:minmax(0,1fr)}
+}
+.search-page .ex{display:block;min-width:0;height:100%;background:transparent;border:0;border-radius:0;padding:0;overflow:visible;color:var(--hdc-text);text-decoration:none}
+.search-page .ex-ph{display:block;position:relative;border-radius:var(--r-card);overflow:hidden;background:var(--hdc-tint)}
+.search-page .ex-ph img,.search-page .ex-ph picture{width:100%;aspect-ratio:3/2;height:auto;object-fit:cover;display:block}
+.search-page .ex .tag{position:absolute;top:12px;left:12px;margin:0;background:var(--white);color:var(--hdc-text);font-size:11px;letter-spacing:.1em;padding:4px 10px;border-radius:999px}
+.search-page .ex-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:14px}
+.search-page .ex h3{margin:0;flex:1;min-width:0;font-family:Fraunces,Georgia,serif;font-size:22px;font-weight:500;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-page .ex-price{flex:none;white-space:nowrap;font:600 20px/1.2 var(--font-display);color:var(--hdc-text)}
+.search-page .ex-price small{font:400 13px var(--font-body);color:var(--hdc-secondary)}
+.search-page .ex p{margin:4px 0 0}
+.search-page .ex-area{font-weight:400;color:var(--hdc-secondary);font-size:15px}
+.search-page .ex-when{color:var(--hdc-secondary);font-weight:600;font-size:14px}
 .search-page .soldtxt{margin:8px 0 0;color:var(--hdc-rose-ink);font-weight:700}
+.search-page .ex-chips{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0;padding:0}
+.search-page .ex-chips li{background:var(--hdc-sun-soft);color:var(--hdc-text);border-radius:999px;padding:3px 10px;font-size:13px;line-height:1.4}
+.search-page .ex.is-sold .ex-ph img,.search-page .ex.is-sold .ex-ph picture{filter:grayscale(1);opacity:.85}
+.search-page .book-pill{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:44px;margin-top:12px;padding:0 18px;border:2px solid var(--hdc-primary);border-radius:999px;background:#fff;color:var(--hdc-primary);font-weight:700;font-size:15px;line-height:1}
 .terms{list-style:none;margin:8px 0 0;padding:0}
 .terms li{display:flex;align-items:flex-start;gap:6px;color:var(--hdc-text);font-size:13px;line-height:1.35}
 .terms svg{width:16px;height:16px;flex:0 0 auto;margin-top:1px;color:var(--hdc-primary)}
@@ -83,12 +92,6 @@ html.js .search-sum{display:flex}
 .day-more{flex:0 0 auto;width:44px;height:44px;padding:0;border-radius:999px}
 .day-more svg{width:18px;height:18px}
 .day-empty{margin:8px 0 0;color:var(--hdc-secondary)}
-.search-page .act{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:12px}
-.search-page .tlink{min-height:44px;display:inline-flex;align-items:center;color:var(--hdc-primary);font-weight:700;text-decoration:underline;text-underline-offset:3px}
-.search-page .tlink.fill{min-height:44px;display:inline-flex;align-items:center;justify-content:center;background:var(--hdc-primary);color:#fff;font-weight:700;text-decoration:none;border-radius:999px;padding:0 18px;flex:1}
-.search-page .tlink.fill:hover{background:var(--hdc-primary-hover,#08585A);color:#fff}
-.search-page .act .btn.quiet{min-height:44px;display:inline-flex;align-items:center;justify-content:center;background:#fff;color:var(--hdc-primary);border:2px solid var(--hdc-primary);border-radius:999px;padding:0 16px;font-weight:700;text-decoration:none;flex:0 0 auto}
-.search-page .act .btn.quiet:hover{background:var(--hdc-tint)}
 
 .sheet-bd{position:fixed;inset:0;z-index:60;background:rgba(0,52,76,.45)}
 .drawer,.ssheet{position:fixed;z-index:70;background:#fff;color:var(--hdc-text)}
@@ -158,7 +161,8 @@ body.lock{overflow:hidden}
   .srch-hero .bigsearch .seg,.srch-hero .bigsearch label.seg:first-of-type{flex:1 1 auto;width:100%;min-width:0}
   .srch-hero .bigsearch button[type="submit"]{width:100%}
   .drawer{top:auto;bottom:0;left:0;right:0;width:100%;height:90vh;max-height:90vh;overflow:hidden;border-radius:var(--r-card) 16px 0 0;box-shadow:0 -8px 32px rgba(0,52,76,.16)}
-  .search-page .bd h3{font-size:20px}
+  .search-page .ex h3{font-size:19px}
+  .search-page .ex-price{font-size:18px}
 }
 @media (max-width:760px){
   .search label,.bigsearch .seg span,.srch-hero .bigsearch .seg > span,.ssheet .bigsearch .seg > span,.bigsearch.is-compact .seg > span,.search-page .sbar .seg > label{font-size:12px}

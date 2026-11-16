@@ -678,10 +678,10 @@ function cardImage(photo, alt, index) {
   const base = String(photo).replace(/\.jpe?g$/i, '');
   const webpFile = path.join(__dirname, 'public', 'golden', 'img', 'cards', base + '.webp');
   const jpg = StaticAssets.assetUrl(`/assets/photos/${esc(photo)}`);
-  const attrs = `alt="${esc(alt)}" width="800" height="600" loading="${loading}" decoding="async"${priority}`;
+  const attrs = `alt="${esc(alt)}" width="600" height="400" loading="${loading}" decoding="async"${priority}`;
   if (fs.existsSync(webpFile)) {
     const webp = StaticAssets.assetUrl(`/golden/img/cards/${esc(base)}.webp`);
-    return `<picture><source type="image/webp" srcset="${webp} 800w" sizes="(min-width:600px) and (max-width:800px) 50vw, (max-width:699px) 100vw, 360px"><img src="${jpg}" ${attrs}></picture>`;
+    return `<picture><source type="image/webp" srcset="${webp} 600w" sizes="(min-width:600px) and (max-width:800px) 50vw, (max-width:699px) 100vw, 360px"><img src="${jpg}" ${attrs}></picture>`;
   }
   return `<img src="${jpg}" ${attrs}>`;
 }
@@ -715,26 +715,33 @@ function searchCard(hotel, params, index, kidsChip) {
   const openDay = params.date
     ? (days.pills.find(p => p.date === params.date && !p.closed) || days.pills.find(p => !p.closed))
     : days.pills.find(p => !p.closed);
-  const span = openDay ? `${nice(openDay.date)} · ${openDay.hours}` : '';
+  const span = openDay && !openDay.closed ? `${nice(openDay.date)} · ${openDay.hours}` : '';
   const query = [];
   if (params.date) query.push('date=' + encodeURIComponent(params.date));
   if (params.want) query.push('want=' + encodeURIComponent(params.want));
   if (qty) query.push('qty=' + encodeURIComponent(String(qty)));
   const listing = '/h/' + hotel.slug + (query.length ? '?' + query.join('&') : '');
+  const href = offer.sold && params.date ? '/h/' + hotel.slug + '#book' : listing + '#book';
   const area = guestAreaName(hotel.area) + (hotel.age_policy ? ' · ' + hotel.age_policy : '');
-  const priceInner = offer.sold
-    ? `Sold out on ${esc(nice(params.date))}`
-    : `From ${money(offer.price)}${offer.activity ? ' · ' + esc(offer.activity) : ''}`;
+  const facts = amenitiesFrom(hotel).filter(line => line !== hotel.age_policy).slice(0, 3);
+  const short = [];
+  for (const f of facts) {
+    if (f.length > 22 || short.join('').length + f.length > 34) continue;
+    short.push(f);
+  }
+  const chips = short.length ? `<ul class="ex-chips">${short.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : '';
   const price = offer.sold
-    ? `<p class="soldtxt">${priceInner}</p>`
-    : (span
-      ? `<div class="ex-row"><p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p><p class="ex-price">${priceInner}</p></div>`
-      : `<p class="ex-price">${priceInner}</p>`);
-  const book = offer.sold
-    ? `<a class="btn quiet" href="/h/${esc(hotel.slug)}#book">See other dates</a>`
-    : `<a class="btn quiet" href="${esc(listing)}#book">Book<span class="vh"> ${esc(displayName(hotel))}</span></a>`;
+    ? ''
+    : `<span class="ex-price"><small>from</small> ${money(offer.price)}</span>`;
+  const sold = offer.sold && params.date
+    ? `<p class="soldtxt">Sold out on ${esc(nice(params.date))}</p>`
+    : '';
+  const when = span ? `<p class="ex-when">${esc(span)}</p>` : '';
   const kids = kidsChip ? `<p class="kidchip">${FAMILY_ICON}<span>${esc(kidsChip)}</span></p>` : '';
-  return `<article class="ex${offer.sold ? ' is-sold' : ''}"><div class="ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></div><div class="bd"><h3><a href="${esc(listing)}">${esc(displayName(hotel))}</a></h3><p class="ex-area">${esc(area)}</p>${kids}${offer.sold && span ? `<p class="hrs">${CLOCK_ICON}<span>${esc(span)}</span></p>` : ''}${price}<div class="act"><a class="btn tlink fill" href="${esc(listing)}">View details</a>${book}</div></div></article>`;
+  const pill = offer.sold
+    ? '<span class="book-pill">See other dates</span>'
+    : `<span class="book-pill">Book<span class="vh"> ${esc(displayName(hotel))}</span></span>`;
+  return `<a class="ex${offer.sold ? ' is-sold' : ''}" href="${esc(href)}"><span class="ex-ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></span><span class="ex-top"><h3>${esc(displayName(hotel))}</h3>${price}</span>${sold}<p class="ex-area">${esc(area)}</p>${when}${chips}${kids}${pill}</a>`;
 }
 function radioGroup(name, options, current, klass) {
   const now = String(current || '');

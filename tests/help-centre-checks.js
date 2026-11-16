@@ -120,9 +120,9 @@ async function main() {
 
     const search = await get(port, '/search');
     assert.ok(!search.body.includes('class="ex-note">Demo</p>'));
-    assert.ok(search.body.includes('class="btn tlink fill"'));
-    assert.ok(search.body.includes('View details'));
-    assert.ok(search.body.includes('class="btn quiet"'));
+    assert.ok(search.body.includes('class="book-pill"'));
+    assert.ok(search.body.includes('>Book<span'));
+    assert.ok(!search.body.includes('View details'));
 
     const far = ymdAdd(20);
     const listing = await get(port, '/h/saltwater-terrace?date=' + encodeURIComponent(far));

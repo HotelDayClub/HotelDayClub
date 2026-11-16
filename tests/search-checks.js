@@ -72,8 +72,12 @@ function nestedAnchor(html) {
   }
   return depth !== 0;
 }
-function articles(html) {
-  return [...html.matchAll(/<article class="ex[\s\S]*?<\/article>/g)].map(m => m[0]);
+function cards(html) {
+  const marker = 'class="list results"';
+  const start = html.indexOf(marker);
+  assert.ok(start >= 0, 'results list');
+  const block = html.slice(start, html.indexOf('class="note"', start));
+  return [...block.matchAll(/<a class="ex[\s\S]*?<\/a>/g)].map(m => m[0]);
 }
 function selectOf(html, name) {
   const m = html.match(new RegExp(`<select[^>]*name="${name}"[\\s\\S]*?<\\/select>`));
@@ -266,11 +270,13 @@ assert.deepStrictEqual(closedParty.list, []);
     assert.ok(plain.body.includes('>Show 6 results</button>'));
     assert.ok(!/<button class="apply"[^>]*disabled/.test(plain.body));
     assert.ok(!plain.body.includes('Free cancellation up to 24h before access starts'));
-    assert.ok(plain.body.includes('View details'));
-    assert.ok(plain.body.includes('class="btn tlink fill"'));
-    assert.ok(plain.body.includes('class="btn quiet"'));
+    assert.ok(plain.body.includes('class="book-pill"'));
     assert.ok(plain.body.includes('>Book<span'));
-    assert.ok(plain.body.includes('class="hrs"'));
+    assert.ok(plain.body.includes('class="ex-when"'));
+    assert.ok(plain.body.includes('class="ex-chips"'));
+    assert.ok(plain.body.includes('class="ex-top"'));
+    assert.ok(!plain.body.includes('View details'));
+    assert.ok(!plain.body.includes('<article class="ex'));
     assert.ok(plain.body.includes('loading="eager"'));
     assert.ok(plain.body.includes('fetchpriority="high"'));
     assert.ok(plain.body.includes('loading="lazy"'));
@@ -283,7 +289,12 @@ assert.deepStrictEqual(closedParty.list, []);
     assert.ok(!moodRow.includes('Under $100'));
     assert.ok(!moodRow.includes('>Pool</a>'));
     assert.ok(!/show map|map view|leaflet|map-toggle/i.test(plain.body));
-    for (const card of articles(plain.body)) assert.ok(!nestedAnchor(card), card.slice(0, 80));
+    for (const card of cards(plain.body)) {
+      assert.ok(card.includes('class="ex-ph"'), card.slice(0, 80));
+      assert.strictEqual((card.match(/<a\b/g) || []).length, 1, 'single card link');
+      const inner = card.replace(/^<a\b[^>]*>/, '').replace(/<\/a>\s*$/, '');
+      assert.ok(!/<a\b/i.test(inner), 'no nested links');
+    }
     const drawer = plain.body.slice(plain.body.indexOf('id="filter-drawer"'), plain.body.indexOf('id="search-sheet"'));
     assert.ok(drawer.includes('Under $50'));
     assert.ok(!drawer.includes('Under $100'));
@@ -393,7 +404,8 @@ assert.deepStrictEqual(closedParty.list, []);
     assert.deepStrictEqual(names(filtered.body, 'results'), ['The Saltwater Terrace']);
     assert.ok(filtered.body.includes('class="list results is-single"'));
     assert.ok(filtered.body.includes('Eastern Beaches'));
-    assert.ok(filtered.body.includes('From $45 · Pool'));
+    assert.ok(filtered.body.includes('<small>from</small> $45'));
+    assert.ok(filtered.body.includes('#book'));
     assert.ok(!filtered.body.includes('<span class="kicker sand">Example listings</span>'));
     assert.ok(filtered.body.includes('>Clear all</a>'));
     assert.ok(filtered.body.includes('aria-label="Remove Pool"'));
@@ -501,11 +513,11 @@ assert.deepStrictEqual(closedParty.list, []);
     ]);
     assert.ok(sold.body.includes('Sold out on ' + nice(saturday)));
     assert.ok(sold.body.includes('See other dates'));
-    const palmCard = sold.body.slice(sold.body.indexOf('Palm Court Resort'), sold.body.indexOf('</article>', sold.body.indexOf('Palm Court Resort')));
+    const palmCard = sold.body.slice(sold.body.indexOf('Palm Court Resort'), sold.body.indexOf('</a>', sold.body.indexOf('Palm Court Resort')));
     assert.ok(palmCard.includes('class="soldtxt"'));
     assert.ok(!palmCard.includes('class="ex-price"'));
+    assert.ok(palmCard.includes('See other dates'));
     assert.ok(!sold.body.includes('Pay online'));
-    for (const card of articles(sold.body)) assert.ok(!nestedAnchor(card));
 
     const soloDb = new Database(dbPath);
     const soloId = soloDb.prepare(`INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status,is_demo,age_policy)
@@ -516,10 +528,10 @@ assert.deepStrictEqual(closedParty.list, []);
     const soloPage = await get(port, '/search?guests=3');
     assert.ok(names(soloPage.body, 'results').includes('Solo Laps'));
     const soloAt = soloPage.body.indexOf('Solo Laps');
-    const soloCard = soloPage.body.slice(soloPage.body.lastIndexOf('<article', soloAt), soloPage.body.indexOf('</article>', soloAt));
-    assert.ok(soloCard.includes('href="/h/solo-laps?qty=3"'), soloCard.slice(0, 400));
+    const soloCard = soloPage.body.slice(soloPage.body.lastIndexOf('<a class="ex"', soloAt), soloPage.body.indexOf('</a>', soloAt));
+    assert.ok(soloCard.includes('href="/h/solo-laps?qty=3#book"'), soloCard.slice(0, 400));
     const saltAt = soloPage.body.indexOf('The Saltwater Terrace');
-    const saltCard = soloPage.body.slice(soloPage.body.lastIndexOf('<article', saltAt), soloPage.body.indexOf('</article>', saltAt));
+    const saltCard = soloPage.body.slice(soloPage.body.lastIndexOf('<a class="ex"', saltAt), soloPage.body.indexOf('</a>', saltAt));
     assert.ok(!saltCard.includes('qty='));
     const soloListing = await get(port, '/h/solo-laps?qty=3');
     assert.strictEqual(soloListing.status, 200);
@@ -537,7 +549,8 @@ assert.deepStrictEqual(closedParty.list, []);
     assert.ok(searchCss.includes('width:400px'));
     assert.ok(searchCss.includes('min-height:44px'));
     assert.ok(searchCss.includes('prefers-reduced-motion'));
-    assert.ok(searchCss.includes('aspect-ratio:4/3'));
+    assert.ok(searchCss.includes('aspect-ratio:3/2'));
+    assert.ok(searchCss.includes('grid-template-columns:repeat(3'));
     assert.ok(searchCss.includes('max-height:90vh'));
     assert.ok(searchCss.includes('line-through'));
     const homeCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'golden', 'home.css'), 'utf8');
