@@ -103,12 +103,81 @@ function contrastRatio(fg, bg) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+
+function chromeBin() {
+  for (const bin of ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser']) {
+    if (fs.existsSync(bin)) return bin;
+  }
+  return '';
+}
+function socketCtor() {
+  if (typeof globalThis.WebSocket === 'function') return globalThis.WebSocket;
+  try {
+    const ws = require('ws');
+    return ws.WebSocket || ws;
+  } catch (err) {
+    return null;
+  }
+}
+function getJson(url) {
+  return new Promise((resolve, reject) => {
+    http.get(url, res => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        try { resolve(JSON.parse(Buffer.concat(chunks).toString())); } catch (e) { reject(e); }
+      });
+    }).on('error', reject);
+  });
+}
+async function waitJson(url) {
+  const started = Date.now();
+  for (;;) {
+    try { return await getJson(url); } catch (err) {
+      if (Date.now() - started > 20000) throw new Error('timeout ' + url);
+      await new Promise(r => setTimeout(r, 200));
+    }
+  }
+}
+function cdp(WS, wsUrl) {
+  return new Promise((resolve, reject) => {
+    const ws = new WS(wsUrl);
+    let id = 0;
+    const pending = new Map();
+    ws.addEventListener('message', event => {
+      const msg = JSON.parse(event.data);
+      if (!msg.id || !pending.has(msg.id)) return;
+      const { ok, bad } = pending.get(msg.id);
+      pending.delete(msg.id);
+      if (msg.error) bad(new Error(JSON.stringify(msg.error)));
+      else ok(msg.result);
+    });
+    ws.addEventListener('open', () => resolve({
+      ws,
+      send(method, params = {}, sessionId) {
+        return new Promise((ok, bad) => {
+          const msgId = ++id;
+          pending.set(msgId, { ok, bad });
+          const msg = { id: msgId, method, params };
+          if (sessionId) msg.sessionId = sessionId;
+          ws.send(JSON.stringify(msg));
+        });
+      },
+    }));
+    ws.addEventListener('error', reject);
+  });
+}
+
 const listingCss = fs.readFileSync(path.join(root, 'public/listing-dir2.css'), 'utf8');
 assert.match(listingCss, /body:has\(\.d2\) \.d2\.listing\{padding:0/);
 assert.match(listingCss, /@media \(max-width:1023px\)[\s\S]*body:has\(\.d2\) \.d2-photos[\s\S]*padding-top:0/);
 assert.match(listingCss, /\.d2 \.g-thumb img\{[\s\S]*object-fit:\s*cover/);
 assert.match(listingCss, /\.d2 \.g-track img\{[\s\S]*object-fit:\s*contain/);
 assert.match(listingCss, /\.g-lb-track img[\s\S]*object-fit:\s*contain/);
+assert.match(listingCss, /\.d2 \.g-track > img,\s*\.d2 \.g-track > picture\{/);
+assert.match(listingCss, /\.d2 \.g-track > \* \+ \*\{display:none!important\}/);
+assert.match(listingCss, /html\.pass-b \.d2-card img,[\s\S]*object-fit:\s*cover/);
+assert.ok(!/html\.pass-b[^{]*\.d2-card[^{]*\{[^}]*object-fit:\s*contain/.test(listingCss), 'pass-row thumbs use cover');
 const guestCss = fs.readFileSync(path.join(root, 'public/guest-d2.css'), 'utf8');
 assert.ok(guestCss.includes('search-page .ex .tag') && guestCss.includes('#FFF1E4') && guestCss.includes('#8A3B12'));
 assert.ok(!/search-page \.ex \.tag\{[^}]*background:transparent/.test(guestCss));
@@ -191,6 +260,12 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
       assert.ok(/href="\/refunds"/.test(body), slug);
       assert.ok(body.includes('Open in Google Maps') || body.includes('Map placeholder (demo)'), slug);
     }
+
+    const harbTrack = pages['harbourside-lido'].match(/id="g-track"[^>]*>([\s\S]*?)<\/div>/);
+    assert.ok(harbTrack, 'harbourside gallery track');
+    assert.match(harbTrack[1], /^<picture>[\s\S]*glass-roof-pool/);
+    assert.ok(harbTrack[1].includes('spa-steps.jpg'));
+    assert.strictEqual((harbTrack[1].match(/<img\b/g) || []).length, 4, 'four track photos');
 
     // A5: included amenities omit per-guest towel counts; towel chip is on the listing header.
     const saltText = visibleText(pages['saltwater-terrace']);
@@ -392,6 +467,85 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(!saltExplore.includes('Demo: no charge.'), 'no demo charge line in booking sheet');
     const saltHdr = saltExplore.slice(saltExplore.indexOf('<header'), saltExplore.indexOf('<main>'));
     assert.strictEqual((saltHdr.match(/<img[^>]+alt="Hotel Day Club"/g) || []).length, 1, 'one header logo');
+
+    const WS = socketCtor();
+    const bin = chromeBin();
+    if (!WS || !bin) {
+      if (process.env.CI) throw new Error('Chrome is required in CI for the listing gallery check');
+      console.log('dir2 combined: gallery browser check skipped (no WebSocket/Chrome)');
+    } else {
+      const debugPort = 9357;
+      const chromeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-dir2-chrome-'));
+      const chrome = spawn(bin, [
+        '--headless=new', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage',
+        `--remote-debugging-port=${debugPort}`, `--user-data-dir=${path.join(chromeDir, 'chrome')}`, 'about:blank',
+      ], { stdio: 'ignore' });
+      let session;
+      try {
+        const version = await waitJson(`http://127.0.0.1:${debugPort}/json/version`);
+        session = await cdp(WS, version.webSocketDebuggerUrl);
+        const { targetId } = await session.send('Target.createTarget', { url: 'about:blank' });
+        const { sessionId } = await session.send('Target.attachToTarget', { targetId, flatten: true });
+        const send = (method, params = {}) => session.send(method, params, sessionId);
+        await send('Page.enable');
+        await send('Runtime.enable');
+        for (const [width, height] of [[360, 780], [390, 844], [1440, 900]]) {
+          await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 800 });
+          await send('Page.navigate', { url: `http://127.0.0.1:${port}/h/harbourside-lido` });
+          await new Promise(r => setTimeout(r, 1400));
+          const res = await send('Runtime.evaluate', {
+            awaitPromise: true,
+            returnByValue: true,
+            expression: `(async () => {
+              const firstImg = document.querySelector('#g-track img');
+              if (firstImg && !(firstImg.complete && firstImg.naturalWidth)) {
+                await Promise.race([
+                  firstImg.decode ? firstImg.decode().catch(() => {}) : new Promise(r => {
+                    firstImg.addEventListener('load', r, { once: true });
+                    firstImg.addEventListener('error', r, { once: true });
+                  }),
+                  new Promise(r => setTimeout(r, 2000)),
+                ]);
+              }
+              const track = document.getElementById('g-track');
+              const slides = [...track.children].filter(el => el.tagName === 'PICTURE' || el.tagName === 'IMG');
+              const tb = track.getBoundingClientRect();
+              const vis = slides.filter(el => {
+                const cs = getComputedStyle(el);
+                if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+                const b = el.getBoundingClientRect();
+                const ox = Math.min(b.right, tb.right) - Math.max(b.left, tb.left);
+                const oy = Math.min(b.bottom, tb.bottom) - Math.max(b.top, tb.top);
+                return b.width > 0 && b.height > 0 && ox > Math.min(b.width, tb.width) * 0.5 && oy > Math.min(b.height, tb.height) * 0.5;
+              });
+              const first = vis[0] || null;
+              const img = first && (first.tagName === 'PICTURE' ? first.querySelector('img') : first);
+              return {
+                slideCount: slides.length,
+                visibleCount: vis.length,
+                currentSrc: img ? (img.currentSrc || img.src || '') : '',
+                firstTag: first ? first.tagName : '',
+                dataN: document.documentElement.getAttribute('data-n'),
+                firstW: first ? Math.round(first.getBoundingClientRect().width) : 0,
+                trackW: Math.round(tb.width),
+              };
+            })()`,
+          });
+          const v = res.result.value;
+          const tag = width + 'x' + height + ' ' + JSON.stringify(v);
+          assert.strictEqual(v.slideCount, 4, 'four gallery slides ' + tag);
+          assert.strictEqual(v.visibleCount, 1, 'one visible hero slide ' + tag);
+          assert.strictEqual(v.dataN, '4', 'data-n is 4 ' + tag);
+          assert.ok(/glass-roof-pool/.test(v.currentSrc), 'visible first slide is the hotel first photo ' + tag);
+          assert.ok(!/spa-steps/.test(v.currentSrc), 'visible first slide is not the second photo ' + tag);
+          assert.ok(v.firstW >= v.trackW - 2, 'first slide fills the track ' + tag);
+        }
+      } finally {
+        if (session) session.ws.close();
+        chrome.kill('SIGTERM');
+      }
+    }
+
   } finally {
     child.kill('SIGTERM');
   }
