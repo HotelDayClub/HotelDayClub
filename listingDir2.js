@@ -208,13 +208,14 @@ function passAlt(p, h) {
   return isDemo(h) ? `Example photo of a ${kind}, not this hotel` : `${kind} at ${shortName(h)}`;
 }
 
-function titleHeadHtml(h, heading, area, descHtml) {
+function titleHeadHtml(h, heading, area, descHtml, factsHtml) {
   const demo = isDemo(h);
   return `<header class="d2-head" id="d2-head">
 <p class="d2-loc">${esc(area)}</p>
 <h1 class="d2-title">${esc(heading)}</h1>
+${descHtml}
 ${demo ? '<p class="d2-demo-line">Fictional demo listing</p>' : ''}
-${descHtml}<button type="button" class="d2-rm text-link" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button>
+${factsHtml || ''}<button type="button" class="d2-rm text-link" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button>
 </header>`;
 }
 
@@ -338,9 +339,9 @@ function sheetHtml(o) {
   const passHours = dayHrs ? esc(dayHrs) : (hoursFactText({ date, hoursSpan: dayHrs, hourRows: o.hourRows }) || '');
   const fromMin = passes.length ? Math.min(...passes.map(p => Number(p.price))) : 0;
   const sheetScarcity = spotsLabel(spotsCount(o.av, date));
-  const sheetScarcityHtml = sheetScarcity
-    ? `<p class="d2-day-scarcity" id="d2-sheet-scarcity">${esc(sheetScarcity)}</p>`
-    : '<p class="d2-day-scarcity" id="d2-sheet-scarcity" hidden></p>';
+  const passScarcityHtml = sheetScarcity
+    ? `<p class="d2-pass-scarcity" id="d2-pass-scarcity">${esc(sheetScarcity)}</p>`
+    : '<p class="d2-pass-scarcity" id="d2-pass-scarcity" hidden></p>';
   const lineItem = pick
     ? `<p class="d2-line" id="d2-line-item"${date ? '' : ' hidden'}><span id="d2-line-name">${esc(pick.name)}</span> × <span id="d2-line-qty">${qty}</span> <span class="d2-line-pr" id="d2-line-pr">${date ? esc(ListingD2.priceText(h, linePrice)) : ''}</span></p>`
     : '<p class="d2-line" id="d2-line-item" hidden></p>';
@@ -355,6 +356,8 @@ function sheetHtml(o) {
     const thumb = passThumb(p, isDemo(h) ? 'Stock photo, not this hotel' : p.name).replace('width="88" height="88"', 'width="120" height="60"');
     return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${thumb}<b>${esc(p.name)}</b><span class="d2-pt-price">${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><span class="d2-pt-fits">${esc(ListingD2.fitsLine(p))}</span><i class="tk">${icon('tick')}</i></label>`;
   }).join('');
+  const dateLabelSticky = date ? ListingD2.label(date) : 'Choose a date';
+  const qtyLabelSticky = `${qty} (up to ${SearchQuery.BOOKING_SPOTS} people)`;
   const noJsDate = `<noscript><form class="d2-nojs" action="/h/${esc(encodeURIComponent(h.slug))}#book" method="get"><label>Another date<input type="date" name="date" min="${esc(o.today)}" max="${esc(maxDate)}" value="${esc(outside ? date : '')}"></label><input type="hidden" name="pass" value="${esc(pick ? pick.code : '')}"><input type="hidden" name="qty" value="${qty}"><button class="d2-btn out" type="submit">Use this date</button></form></noscript>`;
   return `<section class="d2-book" id="book" aria-labelledby="d2-book-h" tabindex="-1">
 <form class="d2-form" id="d2-form" action="/checkout" method="get" data-slug="${esc(h.slug)}" data-min="${esc(o.today)}" data-max="${esc(maxDate)}" data-date="${esc(date)}" data-qty="${qty}" data-demo="${isDemo(h) ? '1' : '0'}" data-closed="${esc(JSON.stringify(o.closed || {}))}" data-hours="${esc(JSON.stringify(ListingD2.hoursByWeekday(o.hourRows)))}" data-day-hours="${esc(JSON.stringify(o.dayHours || {}))}" data-max-people="${SearchQuery.BOOKING_SPOTS}" data-cancel="${esc(cancelLine)}">
@@ -368,21 +371,31 @@ ${holdHtml(o.hold)}
 <div class="d2-pp" role="radiogroup" aria-labelledby="d2-pass-lab">${tiles}</div>
 </div>
 <div class="d2-passrow" id="d2-passrow"${pick ? '' : ' hidden'}><span class="d2-lab">Pass <small id="d2-passrow-t"></small></span><button type="button" class="d2-mdb text-link" id="d2-change">Change</button></div>
-<div class="d2-lab d2-labrow"><span>Date</span><button type="button" class="d2-mdb text-link" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
+<div class="d2-sticky-stack">
+<button type="button" class="d2-field" id="d2-side-date" aria-haspopup="dialog" aria-expanded="false" aria-controls="d2-pop-date">
+<span class="d2-field-lab">Date</span><span class="d2-field-val" id="d2-side-date-t">${esc(dateLabelSticky)}</span>${icon('cal')}</button>
+<div class="d2-pop d2-pop-date" id="d2-pop-date" hidden role="dialog" aria-label="Choose a date">
+<div class="d2-lab d2-labrow"><span>Date</span><button type="button" class="d2-mdb text-link" id="d2-more" aria-expanded="false" aria-controls="d2-calbox">${icon('cal')}<span>More dates</span></button></div>
 <div class="d2-dates" id="d2-dates" role="group" aria-label="Date, next ${ListingD2.CHIPS} days">${days.map(chipHtml).join('')}${extra}</div>
 <div class="d2-cal" id="d2-calbox" hidden></div>
+</div>
+<button type="button" class="d2-field" id="d2-side-guests" aria-haspopup="dialog" aria-expanded="false" aria-controls="d2-pop-guests">
+<span class="d2-field-lab">Guests</span><span class="d2-field-val" id="d2-side-qty">${esc(qtyLabelSticky)}</span>${icon('down')}</button>
+<div class="d2-pop d2-pop-guests" id="d2-pop-guests" hidden role="dialog" aria-label="Number of spots">
+<span class="d2-lab" id="d2-spots-lab">Spots <small>up to ${SearchQuery.BOOKING_SPOTS} people</small></span>
+<div class="d2-step" role="group" aria-labelledby="d2-spots-lab"><button type="button" class="d2-sb" id="d2-qminus" aria-label="Fewer spots" hidden>${icon('minus')}</button><input class="d2-qty" id="d2-qty" name="qty" type="number" inputmode="numeric" min="1" max="${SearchQuery.BOOKING_SPOTS}" value="${qty}" aria-label="Spots"><button type="button" class="d2-sb" id="d2-qplus" aria-label="More spots" hidden>${icon('plus')}</button></div>
+</div>
+</div>
 <p class="d2-hrs" id="d2-hrs"${dayHrs ? '' : ' hidden'}>${dayHrs ? `Hours ${esc(dayHrs)}` : ''}</p>
 <p class="d2-note" id="d2-closed" role="status" hidden></p>
 <p class="d2-note warn" id="d2-late" role="status"${o.lateNote ? '' : ' hidden'}>${esc(o.lateNote || '')}</p>
 ${kids ? `<p class="d2-note kid" id="d2-kids"><b>Children</b> ${esc(kids)}</p>` : ''}
-<span class="d2-lab" id="d2-spots-lab">Spots <small>up to ${SearchQuery.BOOKING_SPOTS} people</small></span>
-<div class="d2-step" role="group" aria-labelledby="d2-spots-lab"><button type="button" class="d2-sb" id="d2-qminus" aria-label="Fewer spots" hidden>${icon('minus')}</button><input class="d2-qty" id="d2-qty" name="qty" type="number" inputmode="numeric" min="1" max="${SearchQuery.BOOKING_SPOTS}" value="${qty}" aria-label="Spots"><button type="button" class="d2-sb" id="d2-qplus" aria-label="More spots" hidden>${icon('plus')}</button></div>
 ${lineItem}
-<p class="d2-total"><span>Total before extras</span> <b id="d2-total"${date && pick ? '' : ' hidden'}>${date && pick ? esc(ListingD2.priceText(h, linePrice)) : ''}</b></p>
-${sheetScarcityHtml}
+<p class="d2-total"><span>Total</span> <b id="d2-total"${date && pick ? '' : ' hidden'}>${date && pick ? esc(ListingD2.priceText(h, linePrice)) : ''}</b></p>
 <button class="d2-btn d2-go" id="d2-go" type="submit"${disabled ? ' aria-disabled="true"' : ''}>${bookBtn}</button>
 <p class="d2-cancel-line" id="d2-cancel-line">${esc(cancelLine)}</p>
-<div class="d2-pass-hrs"${passHours ? '' : ' hidden'}><b>Pass hours</b><p id="d2-pass-hrs">${passHours}</p></div>
+<div class="d2-pass-hrs"${passHours ? '' : ' hidden'}><b>Pass hours</b><p id="d2-pass-hrs">${passHours}</p>${passScarcityHtml}</div>
+<p class="d2-day-scarcity" id="d2-sheet-scarcity"${sheetScarcity ? '' : ' hidden'}>${esc(sheetScarcity || '')}</p>
 </form>
 ${noJsDate}
 </section>`;
@@ -552,8 +565,7 @@ function listingHtmlD2(opts) {
   return `<div class="d2 listing" id="d2-root">${SPRITE}
 <div class="d2-page">
 ${galleryHtml(h, null)}
-${titleHeadHtml(h, heading, addressLine, headDesc)}
-${keyFactsHtml(h, factCtx)}
+${titleHeadHtml(h, heading, addressLine, headDesc, keyFactsHtml(h, factCtx))}
 ${bookBarHtml(fromHtml, dateLabel, qty, dayScarcity)}
 <div class="d2-tabs" id="d2-tabs"><div class="in"><nav aria-label="On this page"><a href="#passes" aria-current="true">Passes</a>${hasExplore ? '<a href="#explore">Explore</a>' : ''}<a href="#details">Details</a></nav><a class="d2-datebtn" href="#book" id="d2-pill" data-open="date">${icon('cal')}<span id="d2-pill-t">${esc(dateLabel)}</span></a></div></div>
 <div class="d2-layout">
@@ -590,6 +602,8 @@ function dayCountFromAvail(data){
 function paintScarcity(data){
  var day=spotsLabelFromCount(dayCountFromAvail(data));
  $$('.d2-day-scarcity',root).forEach(function(el){el.textContent=day;el.hidden=!day;});
+ var ph=$('#d2-pass-scarcity');
+ if(ph){ph.textContent=day;ph.hidden=!day;}
  var rows=data&&data.passes?data.passes:[];
  $$('.d2-card[data-pass]',root).forEach(function(card){
   var code=card.getAttribute('data-pass');
@@ -821,9 +835,9 @@ function paint(){
  });
  var ready=!!(p&&d&&!closed[d]&&!soldAll);
  if(ready) go.removeAttribute('aria-disabled'); else go.setAttribute('aria-disabled','true');
- var pill=$('#d2-pill-t'),sd=$('#d2-side-date'),sq=$('#d2-side-qty');
- var dl=d?label(d):'Any date';
- if(pill) pill.textContent=dl; if(sd) sd.textContent=dl;
+ var pill=$('#d2-pill-t'),sdt=$('#d2-side-date-t'),sq=$('#d2-side-qty');
+ var dl=d?label(d):'Choose a date';
+ if(pill) pill.textContent=dl; if(sdt) sdt.textContent=dl;
  if(sq) sq.textContent=q+' (up to '+PEOPLE+' people)';
  var minus=$('#d2-qminus'),plus=$('#d2-qplus');
  syncQtyCap();
@@ -870,8 +884,9 @@ function check(){
   .then(function(data){if(my===seq) applyAvail(data,d)})
   .catch(function(){});
 }
-function setDate(s,fromChip){
+ function setDate(s,fromChip){
  hidden.value=s||'';
+ if(isWide()) closeSidePops();
  var hold=$('#d2-hold');if(hold) hold.hidden=true;
  if(!s||closed[s]) resetTiles();
  if(!fromChip) chips.forEach(function(c){c.checked=(c.value===s)});
@@ -955,7 +970,8 @@ function toggleCal(on){
  calOpen=on;
  form.classList.toggle('is-more',on);
  cal.hidden=!on;
- $('#d2-dates').hidden=on;
+ if(isWide()) $('#d2-dates').hidden=false;
+ else $('#d2-dates').hidden=on;
  $('#d2-passrow').hidden=!on;
  moreBtn.setAttribute('aria-expanded',on?'true':'false');
  moreBtn.querySelector('span').textContent=on?'Next 14 days':'More dates';
@@ -968,7 +984,47 @@ function toggleCal(on){
  }
  paint();
 }
-moreBtn.addEventListener('click',function(){toggleCal(!calOpen)});
+moreBtn.addEventListener('click',function(e){e.stopPropagation();toggleCal(!calOpen)});
+var sideDateBtn=$('#d2-side-date'),sideGuestsBtn=$('#d2-side-guests');
+var popDate=$('#d2-pop-date'),popGuests=$('#d2-pop-guests');
+function closeSidePops(except){
+ [popDate,popGuests].forEach(function(el){
+  if(!el||el===except) return;
+  el.hidden=true;
+  var id=el.id,btn=$('[aria-controls="'+id+'"]',form);
+  if(btn) btn.setAttribute('aria-expanded','false');
+ });
+}
+function openSidePop(el){
+ if(!el||!isWide()) return;
+ closeSidePops(el);
+ el.hidden=false;
+ var btn=$('[aria-controls="'+el.id+'"]',form);
+ if(btn) btn.setAttribute('aria-expanded','true');
+ if(el===popDate){toggleCal(false);ensureChip(hidden.value);}
+ if(el===popGuests) toggleCal(false);
+}
+if(sideDateBtn) sideDateBtn.addEventListener('click',function(e){e.stopPropagation();if(isWide())openSidePop(popDate);});
+if(sideGuestsBtn) sideGuestsBtn.addEventListener('click',function(e){e.stopPropagation();if(isWide())openSidePop(popGuests);});
+function syncSidePops(){
+ if(!popDate||!popGuests) return;
+ if(isWide()){
+  popDate.hidden=true;popGuests.hidden=true;
+  if(sideDateBtn) sideDateBtn.setAttribute('aria-expanded','false');
+  if(sideGuestsBtn) sideGuestsBtn.setAttribute('aria-expanded','false');
+ }else{
+  popDate.hidden=false;popGuests.hidden=false;
+  toggleCal(false);
+ }
+}
+syncSidePops();
+window.addEventListener('resize',function(){syncSidePops();});
+document.addEventListener('click',function(e){
+ if(!isWide()) return;
+ if(e.target.closest('.d2-pop')||e.target.closest('.d2-field')) return;
+ closeSidePops();
+ toggleCal(false);
+});
 $('#d2-change').addEventListener('click',function(){toggleCal(false);var t=picked();if(t) t.focus()});
 var inChips=chips.filter(function(c){return c.value===hidden.value}).length>0;
 if(hidden.value&&!inChips&&!closed[hidden.value]) toggleCal(true);
@@ -1016,6 +1072,7 @@ function openSheet(o){
  if(isWide()){
   var side=$('#d2-side')||book;
   if(side&&side.scrollIntoView) side.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});
+  if(o.focus==='date') openSidePop(popDate);
   var dateChip=$('.d2-dates input:checked',form);
   if(o.focus==='date'&&dateChip) dateChip.focus();
   else if(picked()) picked().focus();

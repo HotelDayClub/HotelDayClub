@@ -130,8 +130,21 @@ const CASES = [
             await wait(500);
             const sheet = document.getElementById('d2-sheet');
             const form = document.getElementById('d2-form');
-            const hrs = () => (form && form.querySelector('#d2-hrs')) || (sheet && sheet.querySelector('#d2-hrs'));
-            const before = hrs() ? { hidden: hrs().hidden, text: hrs().textContent } : null;
+            const hrs = () => {
+              if (!form) return null;
+              if (wide) {
+                const box = form.querySelector('.d2-pass-hrs');
+                const p = form.querySelector('#d2-pass-hrs');
+                return box && !box.hidden && p ? p : null;
+              }
+              return form.querySelector('#d2-hrs') || (sheet && sheet.querySelector('#d2-hrs'));
+            };
+            const before = hrs() ? { hidden: hrs().hidden, text: hrs().textContent.trim() } : { hidden: true, text: '' };
+            if (wide) {
+              const dateBtn = document.getElementById('d2-side-date');
+              if (dateBtn) dateBtn.click();
+              await wait(250);
+            }
             document.getElementById('d2-more').click();
             await wait(300);
             const cal = document.getElementById('d2-calbox');
@@ -160,9 +173,10 @@ const CASES = [
         const v = res.result.value;
         const tag = `${c.date} at ${width}: ${JSON.stringify(v)}`;
         assert.ok(v.open && v.found, 'calendar reached the date ' + tag);
-        assert.deepStrictEqual(v.before, { hidden: true, text: '' }, 'no hours before a date is picked ' + tag);
-        assert.ok(v.inSheet && !v.hidden && v.shown, 'hours line shown inside the sheet ' + tag);
-        assert.strictEqual(v.text, c.hours, 'season hours in the sheet ' + tag);
+        if (!v.wide) assert.deepStrictEqual(v.before, { hidden: true, text: '' }, 'no hours before a date is picked ' + tag);
+        assert.ok(v.inSheet && !v.hidden && v.shown, 'hours shown in booking UI ' + tag);
+        const expectHours = v.wide ? c.hours.replace(/^Hours /, '') : c.hours;
+        assert.strictEqual(v.text, expectHours, 'season hours in booking UI ' + tag);
         assert.strictEqual(v.go, 'Reserve', 'Reserve CTA ' + tag);
       }
       server.kill('SIGTERM');

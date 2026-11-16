@@ -207,7 +207,8 @@ assert.strictEqual(HomeQuick.build('nope'), null);
 assert.ok(!/\u2014/.test(HomeQuick.html('2026-11-11')));
 
 const d2css = fs.readFileSync(path.join(root, 'public/listing-dir2.css'), 'utf8');
-assert.ok(/\.d2-head \.d2-title\{[^}]*color:\s*var\(--deep\)/i.test(d2css), 'title on cream block');
+assert.ok(/\.d2-head \.d2-title\{[^}]*color:\s*var\(--text\)/i.test(d2css), 'title ink on cream block');
+assert.ok(/\.d2-head \.d2-facts\{[^}]*border-top:\s*1px solid var\(--border\)/i.test(d2css), 'ruled facts row in title block');
 assert.ok(/\.d2-hours-band\{[^}]*color:\s*var\(--cream\)/i.test(d2css), 'hours band text');
 assert.ok(!/\.d2-bookbar\{[^}]*display:\s*flex/.test(d2css), 'teal desktop bookbar removed');
 

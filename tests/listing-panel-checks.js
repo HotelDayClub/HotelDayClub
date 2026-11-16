@@ -45,7 +45,9 @@ function get(port, urlPath) {
     assert.ok(page.body.includes('id="d2-side"'), 'sticky aside');
     assert.ok(page.body.includes('id="d2-sticky-from"'), 'sticky price');
     assert.ok(page.body.includes('>Reserve<'), 'Reserve CTA');
-    assert.ok(page.body.includes('Total before extras'), 'total line');
+    assert.ok(page.body.includes('id="d2-side-date"'), 'desktop DATE field');
+    assert.ok(page.body.includes('id="d2-side-guests"'), 'desktop GUESTS field');
+    assert.ok(page.body.includes('>Total<'), 'total line');
     assert.ok(page.body.includes(FREE_CANCEL) || page.body.includes('Free cancellation until'), 'cancel qualifier');
     assert.ok(page.body.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
     assert.ok(page.body.includes('class="d2-sel"'), 'pass select control');
