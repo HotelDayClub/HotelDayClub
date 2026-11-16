@@ -43,11 +43,17 @@ body:has(.d2) main{overflow-x:hidden}
   display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;background:#0A4F55
 }
 .d2 .g-track::-webkit-scrollbar{display:none}
-.d2 .g-track img{
+.d2 .g-track > img,
+.d2 .g-track > picture{
   flex:0 0 100%;width:100%;height:auto;aspect-ratio:3/2;max-width:none;
-  object-fit:contain;object-position:center;background:#0A4F55;
-  scroll-snap-align:start;display:block;cursor:zoom-in;border-radius:0
+  scroll-snap-align:start;display:block;cursor:zoom-in;border-radius:0;background:#0A4F55
 }
+.d2 .g-track img{
+  width:100%;height:auto;aspect-ratio:3/2;max-width:none;
+  object-fit:contain;object-position:center;background:#0A4F55;
+  display:block;cursor:zoom-in;border-radius:0
+}
+.d2 .g-track > picture img{height:100%}
 .d2 .g-thumb,.d2 .g-all{display:none}
 .d2-pill{position:absolute;background:var(--deep);color:#fff;font-size:14px;line-height:20px;padding:4px 10px;border-radius:999px;z-index:2}
 .d2-lbl{left:12px;top:12px}
@@ -380,12 +386,18 @@ dialog.d2-sheet[open] .d2-book,.js dialog.d2-sheet[open] .d2-book{display:block}
    grid-column:1;grid-row:1 / span 2;position:relative;overflow:hidden;border-radius:16px;
    min-width:0;width:100%;height:auto!important;aspect-ratio:auto;background:#0A4F55
  }
+ .d2 .g-track > img,
+ .d2 .g-track > picture{
+   position:absolute!important;inset:0;width:100%!important;height:100%!important;
+   flex:none!important;max-width:none!important;aspect-ratio:auto!important;
+   background:#0A4F55
+ }
  .d2 .g-track img{
    position:absolute!important;inset:0;width:100%!important;height:100%!important;
    flex:none!important;max-width:none!important;aspect-ratio:auto!important;
    object-fit:contain;object-position:center;background:#0A4F55
  }
- .d2 .g-track img+img{display:none!important}
+ .d2 .g-track > * + *{display:none!important}
  .d2 .g-thumb{
    display:block;grid-column:auto;margin:0;padding:0;border:0;border-radius:16px;overflow:hidden;
    background:#0A4F55;cursor:zoom-in;min-width:0;min-height:44px;width:100%;height:100%;position:relative
@@ -484,7 +496,7 @@ html.pass-b .d2-cards .d2-card:first-child{border-top:1px solid var(--border);pa
 html.pass-b .d2-card img,
 html.pass-b .d2-card picture,
 html.pass-b .d2-card picture img{
-  width:100%;height:auto;aspect-ratio:3/2;object-fit:contain;object-position:center;
+  width:100%;height:auto;aspect-ratio:3/2;object-fit:cover;object-position:center;
   background:#0A4F55;border-radius:0;display:block;max-width:none
 }
 html.pass-b .d2-card-body{padding:14px 16px 16px}
@@ -494,5 +506,5 @@ html.pass-b .d2-card-body{padding:14px 16px 16px}
   html.pass-b .d2-card.d2-row{grid-template-columns:40% 1fr;align-items:center}
   html.pass-b .d2-card img,
   html.pass-b .d2-card picture,
-  html.pass-b .d2-card picture img{height:100%;min-height:0;aspect-ratio:3/2;object-fit:contain}
+  html.pass-b .d2-card picture img{height:100%;min-height:0;aspect-ratio:3/2;object-fit:cover}
 }
