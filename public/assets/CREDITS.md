@@ -23,6 +23,7 @@ All photos were downloaded on 21 Oct 2026 (AEDT) and stored locally in `assets/p
 | photos/rooftop-city.jpg | https://unsplash.com/photos/bBn-2dwNly0 | bartosz wojciechowski (@bartoszw) |
 | photos/spa-steps.jpg | https://unsplash.com/photos/i1wR9DiCABc | Antonio Araujo (@antonioaaaraujo) |
 | photos/resort-palms.jpg | https://unsplash.com/photos/qDMY-BeGoLs | Long Chung (@chungj07) |
+| photos/restaurant-view.jpg (same source as golden/img/hero-lunch.jpg) | https://www.pexels.com/photo/38188725/ | Relaxing Journeys |
 
 The licence and photographer for each Pexels photo were read from its public page. The Unsplash licence lines ("Free to use under the Unsplash License") and photographers come from the public photo pages as indexed by search; unsplash.com blocked direct page fetches.
 **Before launch:** re-check each licence and replace these photos with images supplied by the hotel that is listed. Stock photos must never be shown as a real hotel's property. `kids-float.jpg` (Pexels 8094751, Roxanne Minnish) showed an identifiable child and has been removed. On startup the app drops that filename from every hotel's photos list and clears it on any pass that still points at it.

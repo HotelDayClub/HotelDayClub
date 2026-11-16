@@ -168,10 +168,11 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
       const text = visibleText(body);
       const gtkSlice = body.slice(body.indexOf('id="before"'));
       assert.strictEqual(count(visibleText(gtkSlice), FOOD_RULE), 1, slug + ' food rule once in good to know');
-      if (body.includes('d2-ex-food')) {
-        const exSlice = body.slice(body.indexOf('id="d2-explore-sheet"'), body.indexOf('</dialog>', body.indexOf('id="d2-explore-sheet"')));
-        assert.strictEqual(exSlice.split(FOOD_RULE).length - 1, 1, slug + ' food rule once in explore sheet');
-      }
+      const exBlock = body.slice(body.indexOf('id="explore"'), body.indexOf('id="details"'));
+      assert.strictEqual((body.match(new RegExp(FOOD_RULE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length, 1, slug + ' food rule once on page');
+      assert.strictEqual(count(visibleText(body.slice(body.indexOf('id="before"'))), FOOD_RULE), 1, slug + ' food rule in good to know');
+      assert.strictEqual(count(exBlock, FOOD_RULE), 0, slug + ' no food rule in explore section');
+      assert.ok(!/your pass|During pass hours|Hotel Day Club/i.test(visibleText(exBlock)), slug + ' place-only explore copy');
       assert.strictEqual(count(text, FREE_CANCEL), 1, slug + ' free cancellation once');
       assert.strictEqual(count(body, 'Photo ID at check-in'), 1, slug + ' ID line once');
       assert.ok(!text.includes('\u2014'), slug + ' no em-dashes');
@@ -377,11 +378,13 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(/--cream:\s*#FFF8EE/i.test(tokens) && /--apricot:\s*#F6A55F/i.test(tokens) && /--field:\s*#8A9A9F/i.test(tokens));
     const saltExplore = pages['saltwater-terrace'];
     assert.ok(saltExplore.includes('href="#explore">Pool bar'), 'pool bar links to explore');
-    assert.ok(saltExplore.includes('During pass hours, 10am\u20134pm'), 'pool bar hours on explore card');
+    assert.ok(saltExplore.includes('10am\u20134pm'), 'pool bar hours on explore card');
+    assert.ok(saltExplore.includes('class="d2-ex-chip">Not included</span>'), 'Not included chip on bar');
+    assert.strictEqual((saltExplore.match(/class="d2-ex-card"/g) || []).length, 4, 'saltwater four explore cards');
     const exSheetAt = saltExplore.indexOf('id="d2-explore-sheet"');
     const exSheetEnd = saltExplore.indexOf('</dialog>', exSheetAt);
     const exSheet = saltExplore.slice(exSheetAt, exSheetEnd > exSheetAt ? exSheetEnd : undefined);
-    assert.strictEqual(exSheet.split(FOOD_RULE).length - 1, 1, 'FOOD_RULE once in explore sheet');
+    assert.strictEqual(exSheet.split(FOOD_RULE).length - 1, 0, 'no FOOD_RULE in explore sheet');
     assert.ok(!saltExplore.includes('id="overview"'), 'no duplicate overview block');
     assert.ok(!saltExplore.includes('Demo: no charge.'), 'no demo charge line in booking sheet');
     const saltHdr = saltExplore.slice(saltExplore.indexOf('<header'), saltExplore.indexOf('<main>'));

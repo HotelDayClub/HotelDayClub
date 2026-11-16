@@ -103,13 +103,15 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
 
     const salt = await get(port, '/h/saltwater-terrace');
     assert.ok(salt.body.includes('href="#explore">Pool bar'), 'pool bar chip link');
-    assert.ok(salt.body.includes('During pass hours, 10am\u20134pm'), 'pool bar hours');
-    assert.ok(salt.body.includes('On site (not included)'), 'on site label');
+    assert.ok(salt.body.includes('10am\u20134pm'), 'pool bar hours');
+    assert.ok(salt.body.includes('class="d2-ex-chip">Not included</span>'), 'Not included chip');
+    assert.strictEqual((salt.body.match(/class="d2-ex-card"/g) || []).length, 4, 'four explore cards');
     const sheetStart = salt.body.indexOf('id="d2-explore-sheet"');
     const sheetEnd = salt.body.indexOf('</dialog>', sheetStart);
     const sheet = salt.body.slice(sheetStart, sheetEnd > sheetStart ? sheetEnd : undefined);
-    assert.ok(sheet.includes('A bar at the hotel, next to the pool.'), 'bar location line');
-    assert.strictEqual(sheet.split(FOOD_RULE).length - 1, 1, 'food rule once in explore sheet');
+    assert.ok(sheet.includes('Have a drink by the pool. Cocktails, coffee and light bites.'), 'pool bar copy');
+    assert.strictEqual(sheet.split(FOOD_RULE).length - 1, 0, 'no food rule in explore sheet');
+    assert.ok(sheet.includes('Lunch with a view'), 'restaurant card copy');
     assert.ok(sheet.includes('Where to check in'), 'check-in footer');
     assert.ok(salt.body.includes('loungers-snacks.jpg'), 'bar photo');
 

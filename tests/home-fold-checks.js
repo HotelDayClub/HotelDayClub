@@ -87,7 +87,7 @@ function cdp(WS, wsUrl) {
 const GUEST_D2_FOLD = {
   1024: { headline: true, search: true, assure: false },
   1280: { headline: true, search: true, assure: false },
-  1440: { headline: true, search: true, assure: true },
+  1440: { headline: true, search: true, assure: false },
 };
 
 const WS = socketCtor();
@@ -340,7 +340,11 @@ const bin = chromeBin();
       assert.ok(!data.kickerClipped, width + ' kicker clipped');
       assert.ok(data.seeH >= 44, width + ' see all ' + data.seeH);
       if (width === 360 || width === 390) {
-        assert.ok(data.exploreH2Top < data.inner * 1.2, width + ' explore h2 fold ' + data.exploreH2Top + ' vs ' + (data.inner * 1.2));
+        if (data.guestD2) {
+          assert.ok(data.searchBottom < data.inner, width + ' d2 hero search on fold ' + data.searchBottom);
+        } else {
+          assert.ok(data.exploreH2Top < data.inner * 1.2, width + ' explore h2 fold ' + data.exploreH2Top + ' vs ' + (data.inner * 1.2));
+        }
         assert.ok(data.freeCancelVisible, width + ' free cancellation subline');
       }
       if (width === 390 || width === 1024 || width === 1440) {
@@ -372,7 +376,7 @@ const bin = chromeBin();
       if (width === 390 || width === 1280) {
         assert.ok(data.heroBox && data.phBox, width + ' hero ph boxes');
         if (data.guestD2) {
-          assert.ok(data.phBox.height >= 150 && data.phBox.height <= 320, width + ' d2 photo strip ' + data.phBox.height);
+          assert.ok(data.phBox.height >= 400, width + ' d2 hero photo area ' + data.phBox.height);
         } else {
           assert.ok(Math.abs(data.phBox.height - data.heroBox.height) <= 2, width + ' hero ph fill ' + JSON.stringify({ hero: data.heroBox.height, ph: data.phBox.height }));
         }

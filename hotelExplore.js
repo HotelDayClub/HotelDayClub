@@ -1,5 +1,5 @@
 const { esc } = require('./util');
-const { FOOD_RULE, PHOTOS, safePhoto } = require('./offering');
+const { PHOTOS, safePhoto, dayHoursText } = require('./offering');
 const { PhotoAssets } = require('./photoAssets');
 const { icon } = require('./d2Icons');
 
@@ -14,51 +14,52 @@ const HOURS_MAX = 40;
 
 const DEMO_SEED = {
   'saltwater-terrace': {
-    intro: 'A short look at the main areas of this example hotel. Your pass covers the pool and seating during the hours below; the bar is on site and not included.',
+    intro: '',
     areas: [
-      { name: 'The Pool', line: 'Outdoor, heated', details: 'An outdoor heated pool. Access is during the hours on your pass. Towels, showers and change rooms are listed under Included in your pass.', hours: '10am–4pm', photo: 'infinity-palms.jpg', kind: 'pool' },
-      { name: 'The Terrace', line: 'Loungers, daybeds and cabanas around the pool', details: 'Sun loungers, daybeds and cabanas are booked as a day pass. How many people each one fits is listed on the pass.', hours: '10am–4pm', photo: 'hero-loungers.jpg', kind: 'other' },
-      { name: 'Pool bar', line: 'A bar at the hotel, next to the pool.', details: 'A bar at the hotel, next to the pool. ' + FOOD_RULE, hours: 'During pass hours, 10am–4pm', photo: 'loungers-snacks.jpg', kind: 'bar' },
+      { name: 'The Pool', line: 'Heated outdoor pool with loungers and ocean views.', details: 'Heated outdoor pool with loungers and ocean views.', hours: '', photo: 'infinity-palms.jpg', kind: 'pool' },
+      { name: 'The Terrace', line: 'Shaded deck with loungers and daybeds around the pool.', details: 'Shaded deck with loungers and daybeds around the pool.', hours: '', photo: 'hero-loungers.jpg', kind: 'other' },
+      { name: 'Pool bar', line: 'Have a drink by the pool. Cocktails, coffee and light bites.', details: 'Have a drink by the pool. Cocktails, coffee and light bites.', hours: '', photo: 'loungers-snacks.jpg', kind: 'bar' },
+      { name: 'Restaurant', line: 'Lunch with a view. Modern Australian, seafood and share plates.', details: 'Lunch with a view. Modern Australian, seafood and share plates.', hours: '12pm–3pm', photo: 'restaurant-view.jpg', kind: 'restaurant' },
     ],
   },
   'skyline-rooftop': {
-    intro: 'A short look at this example rooftop hotel. Your pass covers the pool during the hours below; the bar is on site and not included.',
+    intro: '',
     areas: [
-      { name: 'Rooftop pool', line: 'Heated pool with city views', details: 'A heated rooftop pool. Access is during the hours on your pass.', hours: '11am–4pm', photo: 'rooftop-city.jpg', kind: 'pool' },
-      { name: 'Pool deck', line: 'Loungers and chairs on the roof', details: 'Day passes include a lounger or pool chair on the deck.', hours: '11am–4pm', photo: 'hero-loungers.jpg', kind: 'other' },
-      { name: 'Rooftop bar', line: 'A bar on the roof', details: 'A bar on the roof. ' + FOOD_RULE, hours: 'During pass hours, 11am–4pm', photo: 'loungers-snacks.jpg', kind: 'bar' },
+      { name: 'Rooftop pool', line: 'Heated pool with city views and a breeze off the harbour.', details: 'Heated pool with city views and a breeze off the harbour.', hours: '', photo: 'rooftop-city.jpg', kind: 'pool' },
+      { name: 'Pool deck', line: 'Loungers and chairs on the roof around the pool.', details: 'Loungers and chairs on the roof around the pool.', hours: '', photo: 'hero-loungers.jpg', kind: 'other' },
+      { name: 'Rooftop bar', line: 'Cocktails and small plates with skyline views.', details: 'Cocktails and small plates with skyline views.', hours: '', photo: 'loungers-snacks.jpg', kind: 'bar' },
     ],
   },
   'harbourside-lido': {
-    intro: 'A short look at this example lido. Your pass covers the pool hall; the café is on site and not included.',
+    intro: '',
     areas: [
-      { name: 'Glass-roof pool', line: 'Light-filled indoor pool', details: 'A pool under a glass roof. Steam room and sauna access are listed under Included in your pass when your pass includes them.', hours: '9am–6pm', photo: 'glass-roof-pool.jpg', kind: 'pool' },
-      { name: 'Lido deck', line: 'Loungers beside the pool', details: 'Loungers around the pool hall are booked as a day pass.', hours: '9am–6pm', photo: 'indoor-spa-pool.jpg', kind: 'other' },
-      { name: 'Café', line: 'A café in the pool hall', details: 'A café in the pool hall. ' + FOOD_RULE, hours: 'During pass hours, 9am–6pm', photo: 'loungers-snacks.jpg', kind: 'cafe' },
+      { name: 'Glass-roof pool', line: 'Light-filled indoor pool under a glass roof.', details: 'Light-filled indoor pool under a glass roof.', hours: '', photo: 'glass-roof-pool.jpg', kind: 'pool' },
+      { name: 'Lido deck', line: 'Loungers beside the pool hall.', details: 'Loungers beside the pool hall.', hours: '', photo: 'indoor-spa-pool.jpg', kind: 'other' },
+      { name: 'Café', line: 'Coffee, pastries and light lunch in the pool hall.', details: 'Coffee, pastries and light lunch in the pool hall.', hours: '', photo: 'loungers-snacks.jpg', kind: 'cafe' },
     ],
   },
   'palm-court': {
-    intro: 'A short look at this example lagoon hotel. Your pass covers the pool and gardens during the hours below; the café is on site and not included.',
+    intro: '',
     areas: [
-      { name: 'Lagoon pool', line: 'Outdoor lagoon with shallow end', details: 'A lagoon pool ringed by palms. The shallow end suits families when children are welcome.', hours: '10am–5pm', photo: 'tropical-resort.jpg', kind: 'pool' },
-      { name: 'Garden terrace', line: 'Loungers and shade in the gardens', details: 'Loungers and daybeds in the palm gardens are booked as a day pass.', hours: '10am–5pm', photo: 'thatched-umbrellas.jpg', kind: 'other' },
-      { name: 'Pool café', line: 'A café beside the lagoon', details: 'A café beside the lagoon. ' + FOOD_RULE, hours: 'During pass hours, 10am–5pm', photo: 'loungers-snacks.jpg', kind: 'cafe' },
+      { name: 'Lagoon pool', line: 'Outdoor lagoon with palms and a shallow end for families.', details: 'Outdoor lagoon with palms and a shallow end for families.', hours: '', photo: 'tropical-resort.jpg', kind: 'pool' },
+      { name: 'Garden terrace', line: 'Loungers and shade in the palm gardens.', details: 'Loungers and shade in the palm gardens.', hours: '', photo: 'thatched-umbrellas.jpg', kind: 'other' },
+      { name: 'Pool café', line: 'Coffee and light bites beside the lagoon.', details: 'Coffee and light bites beside the lagoon.', hours: '', photo: 'loungers-snacks.jpg', kind: 'cafe' },
     ],
   },
   'manly-sands': {
-    intro: 'A short look at this example beachfront hotel. Your pass covers the pool during the hours below; the kiosk is on site and not included.',
+    intro: '',
     areas: [
-      { name: 'Magnesium pool', line: 'Outdoor pool steps from the beach', details: 'A magnesium pool beside the sand. Towels and showers are listed under Included in your pass.', hours: '10am–4pm', photo: 'infinity-palms.jpg', kind: 'pool' },
-      { name: 'Beach deck', line: 'Loungers and daybeds facing the water', details: 'Sun loungers and canopy daybeds are booked as a day pass.', hours: '10am–4pm', photo: 'daybed-canopy.jpg', kind: 'other' },
-      { name: 'Kiosk', line: 'A kiosk by the pool', details: 'A kiosk by the pool. ' + FOOD_RULE, hours: 'During pass hours, 10am–4pm', photo: 'loungers-snacks.jpg', kind: 'bar' },
+      { name: 'Magnesium pool', line: 'Outdoor pool steps from the beach.', details: 'Outdoor pool steps from the beach.', hours: '', photo: 'infinity-palms.jpg', kind: 'pool' },
+      { name: 'Beach deck', line: 'Loungers and daybeds facing the water.', details: 'Loungers and daybeds facing the water.', hours: '', photo: 'daybed-canopy.jpg', kind: 'other' },
+      { name: 'Kiosk', line: 'Drinks and snacks by the pool.', details: 'Drinks and snacks by the pool.', hours: '', photo: 'loungers-snacks.jpg', kind: 'bar' },
     ],
   },
   'bayview-spa': {
-    intro: 'A short look at this example bathhouse. Your pass covers the pools and bathhouse during the hours below.',
+    intro: '',
     areas: [
-      { name: 'Bathhouse', line: 'Hot and cold plunge pools', details: 'A calm bathhouse with hot and cold plunge. General entry covers the bathhouse and outdoor pool.', hours: '9am–4pm', photo: 'spa-steps.jpg', kind: 'spa' },
-      { name: 'Outdoor pool', line: 'Heated outdoor pool in the garden', details: 'A heated outdoor pool beside the garden. Cabanas are booked as a separate pass.', hours: '9am–4pm', photo: 'indoor-spa-pool.jpg', kind: 'pool' },
-      { name: 'Garden lounge', line: 'Quiet loungers in the garden', details: 'Loungers in the garden are included with general entry during your pass hours.', hours: '9am–4pm', photo: 'hero-loungers.jpg', kind: 'other' },
+      { name: 'Bathhouse', line: 'Hot and cold plunge pools in a calm bathhouse.', details: 'Hot and cold plunge pools in a calm bathhouse.', hours: '', photo: 'spa-steps.jpg', kind: 'spa' },
+      { name: 'Outdoor pool', line: 'Heated outdoor pool in the garden.', details: 'Heated outdoor pool in the garden.', hours: '', photo: 'indoor-spa-pool.jpg', kind: 'pool' },
+      { name: 'Garden lounge', line: 'Quiet loungers in the garden.', details: 'Quiet loungers in the garden.', hours: '', photo: 'hero-loungers.jpg', kind: 'other' },
     ],
   },
 };
@@ -108,6 +109,14 @@ function checkInLine(hotel) {
   return bit ? `${bit}.` : '';
 }
 
+function cardHours(db, hotel, card, date, today) {
+  const own = cleanCopy(card.hours);
+  if (own) return own;
+  const iso = date || today;
+  if (db && hotel && iso) return dayHoursText(db, hotel, iso);
+  return '';
+}
+
 function areaImg(file, alt) {
   if (!file) return '';
   return PhotoAssets.imgTag(file, { alt, width: 272, height: 160, sizes: '(max-width:390px) 272px, 260px', loading: 'lazy' });
@@ -121,20 +130,22 @@ class HotelExplore {
     return { intro: data.intro, areas };
   }
 
-  static sectionHtml(hotel, data) {
+  static sectionHtml(hotel, data, ctx = {}) {
     const vis = HotelExplore.visible(data);
     if (!vis) return '';
     const demo = Number(hotel.is_demo) === 1;
+    const { db, date, today } = ctx;
     const cards = vis.areas.map((a, i) => {
       const food = isBar(a.kind);
-      const note = food ? '<span class="d2-ex-tag">On site (not included)</span>' : '';
+      const note = food ? '<span class="d2-ex-chip">Not included</span>' : '';
+      const hrs = cardHours(db, hotel, a, date, today);
       return `<article class="d2-ex-card"${i === 0 ? ' id="d2-ex-first"' : ''}>
 ${areaImg(a.photo, demo ? 'Stock photo, not this hotel' : a.name)}
 <div class="d2-ex-body">
 <h3>${esc(a.name)}</h3>
 ${note}
 <p class="d2-ex-line">${esc(a.line)}</p>
-<p class="d2-ex-hrs">${esc(a.hours)}</p>
+${hrs ? `<p class="d2-ex-hrs">${esc(hrs)}</p>` : ''}
 <button type="button" class="sec-action d2-ex-open" data-open-explore aria-haspopup="dialog">See details<span class="sa-arr" aria-hidden="true">→</span></button>
 </div>
 </article>`;
@@ -143,16 +154,16 @@ ${note}
     const stock = demo ? '<p class="d2-ex-stock">Stock photos · not this hotel</p>' : '';
     return `<section class="d2-s" id="explore"><h2>Explore the hotel</h2>${tag}${stock}
 <div class="d2-ex-wrap" tabindex="0" aria-label="Hotel areas"><div class="d2-ex-row">${cards}</div></div>
-${HotelExplore.sheetHtml(hotel, vis.areas)}
+${HotelExplore.sheetHtml(hotel, vis.areas, ctx)}
 </section>`;
   }
 
-  static sheetRow(a, demo) {
+  static sheetRow(a, demo, ctx = {}) {
+    const { db, hotel, date, today } = ctx;
     const food = isBar(a.kind);
-    const note = food ? '<p class="d2-ex-sheet-note">On site (not included)</p>' : '';
-    const body = food
-      ? `<p>${esc(a.line)}</p><p class="d2-ex-food">${esc(FOOD_RULE)}</p><p class="d2-ex-hrs">${esc(a.hours)}</p>`
-      : `<p class="d2-ex-hrs">${esc(a.hours)}</p><p>${esc(a.details)}</p>`;
+    const note = food ? '<p class="d2-ex-sheet-note d2-ex-chip">Not included</p>' : '';
+    const hrs = cardHours(db, hotel, a, date, today);
+    const body = `<p>${esc(a.line)}</p>${hrs ? `<p class="d2-ex-hrs">${esc(hrs)}</p>` : ''}<p>${esc(a.details || a.line)}</p>`;
     return `<li class="d2-ex-sheet-item">
 ${areaImg(a.photo, demo ? 'Stock photo, not this hotel' : a.name)}
 <div>
@@ -163,9 +174,9 @@ ${body}
 </li>`;
   }
 
-  static sheetHtml(hotel, areas) {
+  static sheetHtml(hotel, areas, ctx = {}) {
     const demo = Number(hotel.is_demo) === 1;
-    const rows = areas.map(a => HotelExplore.sheetRow(a, demo)).join('');
+    const rows = areas.map(a => HotelExplore.sheetRow(a, demo, { ...ctx, hotel })).join('');
     const checkIn = checkInLine(hotel);
     const foot = checkIn ? `<p class="d2-ex-checkin"><b>Where to check in:</b> ${esc(checkIn)}</p>` : '';
     return `<dialog class="d2-sheet d2-ex-sheet" id="d2-explore-sheet" aria-labelledby="d2-explore-h">
@@ -182,7 +193,7 @@ ${foot}
   static form(hotel, data) {
     const areas = data.areas.length ? data.areas : [{ id: '', name: '', line: '', details: '', hours: '', photo: '', kind: 'pool', sort_order: 0 }];
     const photoOpts = file => `<option value="">No photo</option>${STOCK.map(f => `<option value="${esc(f)}"${file === f ? ' selected' : ''}>${esc(f)}</option>`).join('')}`;
-  const kindOpts = (sel) => [['pool', 'Pool'], ['spa', 'Spa'], ['gym', 'Gym'], ['bar', 'Bar'], ['restaurant', 'Restaurant'], ['cafe', 'Cafe'], ['other', 'Other']]
+    const kindOpts = (sel) => [['pool', 'Pool'], ['spa', 'Spa'], ['gym', 'Gym'], ['bar', 'Bar'], ['restaurant', 'Restaurant'], ['cafe', 'Cafe'], ['other', 'Other']]
       .map(([v, l]) => `<option value="${esc(v)}"${sel === v ? ' selected' : ''}>${esc(l)}</option>`).join('');
     const editors = areas.map((a, i) => `<div class="explore-edit" data-idx="${i}">
 <input type="hidden" name="card_id" value="${esc(a.id || '')}">
@@ -292,6 +303,19 @@ function saveExplore(db, hotelId, body) {
   return {};
 }
 
+function syncDemoExplore(db, hotelId, seed) {
+  const delAll = db.prepare('DELETE FROM hotel_explore_areas WHERE hotel_id=?');
+  const insArea = db.prepare('INSERT INTO hotel_explore_areas(hotel_id, sort_order, name, line, details, hours, photo, kind) VALUES (?,?,?,?,?,?,?,?)');
+  const updIntro = db.prepare('UPDATE hotels SET about_intro=? WHERE id=?');
+  db.transaction(() => {
+    updIntro.run(seed.intro || '', hotelId);
+    delAll.run(hotelId);
+    (seed.areas || []).forEach((a, sort) => {
+      insArea.run(hotelId, sort, a.name, a.line, a.details, a.hours || '', a.photo, a.kind);
+    });
+  })();
+}
+
 function ensureExplore(db) {
   const have = new Set(db.prepare('PRAGMA table_info(hotels)').all().map(c => c.name));
   if (!have.has('about_intro')) return;
@@ -305,13 +329,15 @@ function ensureExplore(db) {
       const h = db.prepare('SELECT id FROM hotels WHERE slug=? AND COALESCE(is_demo,0)=1').get(slug);
       if (!h) continue;
       if (count.get(h.id).n === 0) {
-        insIntro.run(seed.intro, slug);
+        insIntro.run(seed.intro || '', slug);
         seed.areas.forEach((a, sort) => {
-          insArea.run(h.id, sort, a.name, a.line, a.details, a.hours, a.photo, a.kind);
+          insArea.run(h.id, sort, a.name, a.line, a.details, a.hours || '', a.photo, a.kind);
         });
+      } else {
+        syncDemoExplore(db, h.id, seed);
       }
     }
   })();
 }
 
-module.exports = { HotelExplore, load, saveExplore, ensureExplore, checkInLine, DEMO_SEED, isBar, BAR_KINDS };
+module.exports = { HotelExplore, load, saveExplore, ensureExplore, checkInLine, DEMO_SEED, isBar, BAR_KINDS, cardHours };

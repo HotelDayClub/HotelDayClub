@@ -29,6 +29,7 @@ const PHOTOS = [
   ['thatched-umbrellas.jpg', 'Umbrellas'],
   ['loungers-snacks.jpg', 'Poolside'],
   ['infinity-palms.jpg', 'Palms and pool'],
+  ['restaurant-view.jpg', 'Restaurant'],
 ];
 
 const pad = n => String(n).padStart(2, '0');
@@ -122,6 +123,12 @@ function inSeason(hotel, date) {
   const a = hotel.season_start, b = hotel.season_end;
   return a <= b ? (d >= a && d <= b) : (d >= a || d <= b);
 }
+function dayHoursText(db, hotel, date) {
+  const plan = dayPlan(db, hotel, date);
+  if (!plan || !plan.open || !plan.opens) return '';
+  return `${fmtTime(plan.opens)}–${fmtTime(plan.effective || plan.closes)}`;
+}
+
 function dayPlan(db, hotel, date) {
   if (!hotel || !/^\d{4}-\d{2}-\d{2}$/.test(date || '')) return null;
   const rows = db.prepare('SELECT weekday, open, opens, closes FROM hotel_hours WHERE hotel_id=?').all(hotel.id);
@@ -902,7 +909,7 @@ function arrivalText(value, mode) {
 }
 
 module.exports = {
-  KINDS, PHOTOS, FOOD_RULE, FREE_CANCEL, fmtTime, parseTime, minutes, spotLabel, hoursSummary, dayPlan, dayClosure, closureReason,
+  KINDS, PHOTOS, FOOD_RULE, FREE_CANCEL, fmtTime, parseTime, minutes, spotLabel, hoursSummary, dayPlan, dayHoursText, dayClosure, closureReason,
   rulesLines, rulesText, rulesCard, amenitiesFrom, slugify, hoursFor, blankJoin, readForm,
   policyFacts, guardFacts, supervisionNote, childrenAllowed, venueMissing, PICK_DATE_CANCEL,
   writeOffering, saveOffering, offeringForm, echoForm, LIVE_LIST, safePhoto,

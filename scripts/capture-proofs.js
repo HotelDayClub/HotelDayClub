@@ -151,7 +151,9 @@ const OPEN_SHEET = `new Promise(function(done){
   }
 
   const pickPrep = OPEN_SHEET + `;var hid=document.querySelector('#book input[type="hidden"][name="date"]');if(hid)hid.value='';document.querySelectorAll('#d2-form .d2-d input').forEach(function(i){i.checked=false});['d2-late','d2-closed'].forEach(function(id){var el=document.getElementById(id);if(el){el.hidden=true;el.textContent='';}});var go=document.getElementById('d2-go');if(go)go.setAttribute('aria-disabled','true');${SHEET_PAINT}`;
+  await shot(ws, { url: `${base}/h/${listing}`, width: 360, height: 844, name: 'd2-sheet-pick-360.png', prep: pickPrep, awaitMs: 2000 });
   await shot(ws, { url: `${base}/h/${listing}`, width: 390, height: 844, name: 'd2-sheet-pick-390.png', prep: pickPrep, awaitMs: 2000 });
+  await shot(ws, { url: `${base}/h/${listing}`, width: 1440, height: 900, name: 'd2-sheet-pick-1440.png', prep: pickPrep, awaitMs: 2000 });
 
   const readyPrep = OPEN_SHEET + `;${SHEET_PAINT}`;
   await shot(ws, { url: `${base}/h/${listing}?pass=lounger&date=${when}&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-ready-390.png', prep: readyPrep, awaitMs: 2000 });
@@ -193,12 +195,36 @@ const OPEN_SHEET = `new Promise(function(done){
   const holdPrep = `${CLOSE_SHEET};window.scrollTo(0,0);var h=document.getElementById('d2-hold');if(h){h.hidden=false;h.scrollIntoView({block:'center'});}`;
   await shot(ws, { url: `${base}/h/skyline-rooftop?date=${beyond}&pass=chair&qty=1`, width: 390, height: 844, name: 'd2-banner-90day-390.png', prep: holdPrep, awaitMs: 2000 });
 
+  for (const [w, h] of [[390, 844], [1024, 800], [1280, 800], [1440, 900]]) {
+    await shot(ws, { url: `${base}/`, width: w, height: h, name: `home-hero-b-${w}.png`, prep: rv + scrollTop, awaitMs: 1600 });
+  }
+
+  const openLb = `new Promise(function(r){var b=document.getElementById('g-all')||document.getElementById('g-count');if(b)b.click();setTimeout(r,700)})`;
+  await shot(ws, { url: `${base}/h/${listing}`, width: 390, height: 844, name: 'gallery-390.png', prep: listingPrep, awaitMs: 1600 });
+  await shot(ws, { url: `${base}/h/${listing}`, width: 1440, height: 900, name: 'gallery-1440.png', prep: listingPrep, awaitMs: 1600 });
+  await shot(ws, { url: `${base}/h/${listing}`, width: 390, height: 844, name: 'gallery-viewer-390.png', prep: listingPrep + ';' + openLb, awaitMs: 2000 });
+
+  const exploreScroll = `window.scrollTo(0,document.getElementById('explore').offsetTop-80);`;
+  const passesScroll = `window.scrollTo(0,(document.getElementById('passes')||document.body).offsetTop-72);`;
+  await shot(ws, { url: `${base}/h/${listing}`, width: 390, height: 844, name: 'passes-b-390.png', prep: passesScroll, awaitMs: 1600 });
+  await shot(ws, { url: `${base}/h/${listing}`, width: 1440, height: 900, name: 'passes-b-1440.png', prep: passesScroll, awaitMs: 1600 });
+
+  const dec = '2026-12-15';
+  const decReadyPrep = OPEN_SHEET + `;${SHEET_PAINT}`;
+  await shot(ws, { url: `${base}/h/harbourside-lido?date=${dec}&pass=lounger&qty=1#book`, width: 390, height: 844, name: 'd2-sheet-harbourside-dec-390.png', prep: decReadyPrep, awaitMs: 2200 });
+  await shot(ws, { url: `${base}/h/harbourside-lido?date=${dec}&pass=lounger&qty=1#book`, width: 1440, height: 900, name: 'd2-sheet-harbourside-dec-1440.png', prep: decReadyPrep, awaitMs: 2200 });
+
+  const checkoutOpenInc = `new Promise(function(r){var d=document.querySelector('details.co-inc');if(d&&!d.open)d.querySelector('summary').click();window.scrollTo(0,d?d.offsetTop-40:0);setTimeout(r,400)})`;
+  await shot(ws, { url: `${base}/checkout?hotel=harbourside-lido&date=${dec}&pass=lounger&qty=1`, width: 390, height: 844, name: 'checkout-inc-dec-390.png', prep: checkoutOpenInc, awaitMs: 2000 });
+  await shot(ws, { url: `${base}/checkout?hotel=harbourside-lido&date=${dec}&pass=lounger&qty=1`, width: 1440, height: 900, name: 'checkout-inc-dec-1440.png', prep: checkoutOpenInc, awaitMs: 2000 });
+
+  await shot(ws, { url: `${base}/search`, width: 390, height: 844, name: 'search-area-names-390.png', prep: scrollTop, awaitMs: 1600 });
+
   await shot(ws, { url: `${base}/`, width: 390, height: 844, name: 'p2a-home-quick-390.png', prep: rv + scrollTop });
   await shot(ws, { url: `${base}/search?mood=family`, width: 390, height: 844, name: 'p2b-search-mood-family-390.png', prep: scrollTop });
 
-  const exploreScroll = `window.scrollTo(0,document.getElementById('explore').offsetTop-80);`;
-  for (const [w, h, hotel] of [[360, 844, listing], [390, 844, listing], [1024, 800, listing], [1440, 900, listing], [390, 844, 'harbourside-lido'], [1440, 900, 'harbourside-lido']]) {
-    await shot(ws, { url: `${base}/h/${hotel}`, width: w, height: h, name: `d2-explore-section-${w}-${hotel === listing ? 'saltwater' : 'harbourside'}.png`, prep: exploreScroll, awaitMs: 1600 });
+  for (const [w, h, hotel, extra] of [[360, 844, listing, ''], [390, 844, listing, ''], [1024, 800, listing, ''], [1440, 900, listing, ''], [390, 844, 'harbourside-lido', `?date=${dec}`], [1440, 900, 'harbourside-lido', `?date=${dec}`]]) {
+    await shot(ws, { url: `${base}/h/${hotel}${extra}`, width: w, height: h, name: `d2-explore-section-${w}-${hotel === listing ? 'saltwater' : 'harbourside'}.png`, prep: exploreScroll, awaitMs: 1600 });
   }
   const exploreOpen = `new Promise(function(r){var b=document.querySelector('[data-open-explore]');if(b)b.click();setTimeout(r,500)})`;
   await shot(ws, { url: `${base}/h/${listing}`, width: 390, height: 844, name: 'd2-sheet-explore-390.png', prep: exploreOpen, awaitMs: 1800 });
