@@ -4,6 +4,7 @@ const { HotelClock, hotelZone } = require('./calendar');
 const { spotLabel } = require('./offering');
 const { share, isDemoHotel } = require('./analytics');
 const { displayName } = require('./hotelName');
+const BookingGuests = require('./bookingGuests');
 const mailer = require('./mailer');
 const { safeEqual } = require('./passwords');
 const brand = require('./brand');
@@ -139,6 +140,56 @@ function statementTotals(db, hotelId, month) {
     guests: row.guests,
     payout,
   };
+}
+
+function newBookingFor(db, code, opts = {}) {
+  const row = db.prepare(`SELECT b.*, p.name pass, p.holds, h.name hotel_name, h.slug
+    FROM bookings b
+    JOIN pass_types p ON p.id=b.pass_type_id
+    JOIN hotels h ON h.id=b.hotel_id
+    WHERE b.code=? AND b.status!='cancelled'`).get(code);
+  if (!row) return null;
+  const hotel = db.prepare('SELECT * FROM hotels WHERE id=?').get(row.hotel_id);
+  const [b] = BookingGuests.attach([row], BookingGuests.loadMap(db, [row.id]));
+  const head = BookingGuests.headlineHtml(b, hotel, new Date());
+  const seat = spotLabel({ name: b.pass, holds: b.holds });
+  const origin = String(opts.origin || '').replace(/\/$/, '');
+  const dash = origin ? `${origin}/hotel` : '/hotel';
+  const namesUnder = head.others ? head.others.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+  const subject = `New booking · ${nice(b.date)} · ${head.title}`;
+  const text = [
+    displayName(hotel),
+    subject,
+    `Date: ${nice(b.date)}`,
+    `Guest: ${head.title}`,
+    namesUnder ? `Also: ${namesUnder}` : '',
+    `Pass: ${seat} × ${b.qty}`,
+    `Code: ${b.code}`,
+    `Dashboard: ${dash}`,
+  ].filter(Boolean).join('\n');
+  const html = `<p style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45;color:${brand['hdc-text']};"><b>${esc(head.title)}</b></p>
+${head.others ? `<p style="margin:0 0 12px;font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:1.4;color:${brand['hdc-secondary']};">${head.others}</p>` : ''}
+<p style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45;color:${brand['hdc-text']};">${esc(nice(b.date))} · ${esc(seat)} × ${b.qty}<br><span style="color:${brand['hdc-secondary']};">Booking ${esc(b.code)}</span></p>
+<p style="margin:16px 0 0;"><a href="${esc(dash)}" style="font-family:Helvetica,Arial,sans-serif;font-size:15px;color:${brand['hdc-primary']};">Open dashboard</a></p>`;
+  return { to: hotelRecipient(hotel), subject, text, html, hotel };
+}
+
+async function sendNewBooking(db, code, opts = {}) {
+  if (!enabled()) return { skipped: true, reason: 'disabled' };
+  const built = newBookingFor(db, code, opts);
+  if (!built || !built.hotel) return { skipped: true };
+  if (skipsHotel(built.hotel)) return { skipped: true, reason: 'demo' };
+  const to = hotelRecipient(built.hotel);
+  if (!to) return { skipped: true, reason: 'no-recipient' };
+  return deliver(db, built.hotel, {
+    kind: 'new_booking',
+    ref: code,
+    idempotencyKey: `hotel-new:${code}`,
+    to,
+    subject: built.subject,
+    text: built.text,
+    html: built.html,
+  });
 }
 
 function nightBeforeFor(db, hotel, now = new Date(), opts = {}) {
@@ -383,6 +434,8 @@ module.exports = {
   verifyCronSecret,
   skipsHotel,
   hotelRecipient,
+  newBookingFor,
+  sendNewBooking,
   nightBeforeFor,
   statementFor,
   statementTotals,

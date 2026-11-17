@@ -1531,6 +1531,12 @@ app.post('/book', async (req, res) => {
   } catch (err) {
     console.error('booking confirmation email failed code=' + code);
   }
+  try {
+    const origin = `${req.protocol}://${req.get('host') || 'localhost'}`;
+    await HotelMail.sendNewBooking(db, code, { origin });
+  } catch (err) {
+    console.error('hotel new-booking email failed code=' + code);
+  }
   res.redirect(303, '/booking/' + code);
 });
 
@@ -2918,6 +2924,14 @@ app.get('/about', (req, res) => {
 <p class="contact-kicker">About</p>
 <h1 class="l-title">Hotel Day Club</h1>
 <p class="lead">We help people book a few hours at a hotel pool, spa or gym without staying overnight.</p>
+<section class="about-commit" aria-labelledby="about-commit-h">
+<h2 id="about-commit-h" class="about-commit-h">What we hold ourselves to</h2>
+<ul class="about-commit-list">
+<li><b>Clear rules on the page.</b> Example listings show hours, age rules and what is included before you book. Hotels can pause a day or cap spots from their dashboard.</li>
+<li><b>Your details for this booking only.</b> Checkout records your consent, and we share your name and contact details with the hotel for check-in. We do not sell demo bookings or take payment on this site.</li>
+<li><b>Honest labels.</b> This demo keeps fictional hotels, stock photos and Example tags so nothing is mistaken for a real venue.</li>
+</ul>
+</section>
 <div class="legal-doc about-copy">
 <p>Hotel Day Club is a simple way to use a hotel's wellness spaces on quieter days. If you live nearby, you can swim, relax or work out when the hotel has room to spare.</p>
 <p>Hotels set their own hours, prices and how many day guests they take. They earn from capacity that might otherwise sit empty. Overnight guests always come first.</p>

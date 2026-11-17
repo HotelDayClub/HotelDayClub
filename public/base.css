@@ -427,7 +427,8 @@ dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:14px 0}dt{col
 .ftr-in{display:flex;flex-direction:column;gap:14px}
 .demo-banner{background:var(--cream);color:var(--hdc-secondary);font-size:.78rem;line-height:1.35;text-align:center;padding:6px 16px}
 .legal-links{display:flex;justify-content:center;gap:14px;margin-top:18px;font-size:.88rem}
-.privacy-note{font-size:.88rem;color:var(--hdc-outline);margin:0 0 14px}
+.privacy-note{font-size:.88rem;color:var(--hdc-secondary);margin:0 0 14px}
+.privacy-note a{color:var(--hdc-primary);text-decoration:underline;text-underline-offset:3px}
 .legal-page{padding-bottom:48px}
 .legal-grid{display:grid;gap:8px 36px;align-items:start}
 .legal-toc p{margin:0 0 4px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--hdc-secondary)}

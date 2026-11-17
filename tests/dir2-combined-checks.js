@@ -182,6 +182,7 @@ assert.match(listingCss, /\.g-lb-track img[\s\S]*object-fit:\s*contain/);
 assert.match(listingCss, /\.d2 \.g-track > img,\s*\.d2 \.g-track > picture\{/);
 assert.match(listingCss, /\.d2 \.g-track > \* \+ \*\{display:none!important\}/);
 assert.match(listingCss, /html\.pass-b \.d2-card img,[\s\S]*object-fit:\s*cover/);
+assert.match(listingCss, /html\.pass-b \.d2-card\.d2-row\{[\s\S]*max-height:\s*176px/);
 assert.ok(!/html\.pass-b[^{]*\.d2-card[^{]*\{[^}]*object-fit:\s*contain/.test(listingCss), 'pass-row thumbs use cover');
 const guestCss = fs.readFileSync(path.join(root, 'public/guest-d2.css'), 'utf8');
 assert.ok(guestCss.includes('search-page .ex .tag') && guestCss.includes('var(--hdc-sun-soft)') && guestCss.includes('var(--hdc-rose-ink)'));
@@ -270,7 +271,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
 
     const harbTrack = pages['harbourside-lido'].match(/id="g-track"[^>]*>([\s\S]*?)<\/div>/);
     assert.ok(harbTrack, 'harbourside gallery track');
-    assert.match(harbTrack[1], /^<picture>[\s\S]*glass-roof-pool/);
+    assert.match(harbTrack[1], /^<picture>[\s\S]*rooftop-city/);
     assert.ok(harbTrack[1].includes('spa-steps.jpg'));
     assert.strictEqual((harbTrack[1].match(/<img\b/g) || []).length, 4, 'four track photos');
 
@@ -550,7 +551,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
           assert.strictEqual(v.slideCount, 4, 'four gallery slides ' + tag);
           assert.strictEqual(v.visibleCount, 1, 'one visible hero slide ' + tag);
           assert.strictEqual(v.dataN, '4', 'data-n is 4 ' + tag);
-          assert.ok(/glass-roof-pool/.test(v.currentSrc), 'visible first slide is the hotel first photo ' + tag);
+          assert.ok(/rooftop-city/.test(v.currentSrc), 'visible first slide is the hotel first photo ' + tag);
           assert.ok(!/spa-steps/.test(v.currentSrc), 'visible first slide is not the second photo ' + tag);
           assert.ok(v.firstW >= v.trackW - 2, 'first slide fills the track ' + tag);
         }

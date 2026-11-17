@@ -80,6 +80,12 @@ assert.ok(st.text.includes('Your payout'));
 assert.ok(!/%/.test(st.text + st.html));
 assert.ok(!/\bcommission\b/i.test(st.text + st.html));
 
+const bookCode = insertBooking({ hotelId: liveHotel.id, passId: liveHotel.pass, date: '2026-11-20', total: 40, party: 1, name: 'Alex Rivera' });
+const newBk = HotelMail.newBookingFor(db, bookCode, { origin: 'http://127.0.0.1:3030' });
+assert.ok(newBk.subject.includes('New booking'));
+assert.ok(newBk.text.includes('Alex Rivera'));
+assert.ok(newBk.text.includes(bookCode));
+assert.ok(!/\bcommission\b/i.test(newBk.text + newBk.html));
 const demoRow = db.prepare('SELECT * FROM hotels WHERE id=?').get(demoHotel.id);
 assert.strictEqual(HotelMail.skipsHotel(demoRow), true);
 assert.strictEqual(HotelMail.skipsHotel(liveRow), false);
@@ -97,13 +103,27 @@ mailer.sendMail = async payload => {
 
 (async () => {
   const forceNow = new Date('2026-11-12T07:30:00Z');
+  const demoBook = insertBooking({ hotelId: demoHotel.id, passId: demoHotel.pass, date: '2026-11-21', total: 40, party: 1, name: 'Demo Person' });
+  assert.strictEqual((await HotelMail.sendNewBooking(db, demoBook)).reason, 'disabled');
+  process.env.HOTEL_MAIL_ENABLED = '1';
+  assert.strictEqual((await HotelMail.sendNewBooking(db, demoBook)).skipped, true);
+  const liveBook = insertBooking({ hotelId: liveHotel.id, passId: liveHotel.pass, date: '2026-11-22', total: 40, party: 1, name: 'Live Booker' });
+  mailer.sendMail = async payload => {
+    sent.push(payload);
+    return { ok: true, skipped: false };
+  };
+  const liveSend = await HotelMail.sendNewBooking(db, liveBook, { origin: 'http://127.0.0.1:3030' });
+  assert.ok(!liveSend.skipped, JSON.stringify(liveSend));
+  assert.ok(sent.some(m => m.subject.includes('New booking') && m.subject.includes('Live Booker')));
+
   sent = [];
   const tick = await HotelMail.tick(db, { now: forceNow, force: true, signOps: () => 'cron-tok' });
   assert.ok(tick.sent >= 1, 'tick sent ' + JSON.stringify(tick));
   assert.ok(sent.some(m => m.subject.includes('Guest list')), 'night-before sent');
   assert.ok(sent.some(m => m.subject.includes('statement') || m.subject.includes('Statement')), 'statement sent');
   assert.ok(!sent.some(m => /@demo\.test/.test(m.to)), 'demo hotel not mailed');
-  assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM hotel_mail_log WHERE hotel_id=?').get(liveHotel.id).n, sent.length);
+  const logged = db.prepare('SELECT COUNT(*) n FROM hotel_mail_log WHERE hotel_id=?').get(liveHotel.id).n;
+  assert.ok(logged >= sent.length, 'hotel_mail_log has tick sends');
 
   mailer.sendMail = origSend;
 

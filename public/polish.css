@@ -184,6 +184,10 @@ body.home .hotels-d1 h2{font-size:clamp(30px,3vw,42px);margin-top:12px}
 body.home .hotels-d1 .btn{margin-top:28px}
 body.home .hotels-d1 .hotels-ph{display:block;min-height:280px}
 body.home .hotels-d1 .hotels-ph img{width:100%;height:100%;object-fit:cover}
+body.guest.about-page .about-commit{margin:28px 0 24px;padding:20px 18px;border:1px solid var(--hdc-border);border-radius:var(--r-card);background:#fff}
+body.guest.about-page .about-commit-h{font-family:var(--font-display);font-size:clamp(1.35rem,2.5vw,1.75rem);margin:0 0 14px}
+body.guest.about-page .about-commit-list{list-style:none;padding:0;margin:0;display:grid;gap:14px}
+body.guest.about-page .about-commit-list li{line-height:1.45;color:var(--hdc-text)}
 @media (max-width:800px){
   body.home .hotels.hotels-d1{grid-template-columns:1fr;margin:0 auto;border-radius:var(--r-card)}
   body.home .hotels-d1 .hotels-copy{padding:32px 24px}
@@ -247,7 +251,11 @@ body.home .hotels-d1 .hotels-ph img{width:100%;height:100%;object-fit:cover}
 .fh-d1 .fh-enquiry h2{color:var(--white);font-size:clamp(32px,3.6vw,48px);margin:0 0 14px}
 .fh-d1 .fh-enquiry-copy p{color:var(--hdc-soft);max-width:30rem;line-height:1.55;margin:0 0 10px}
 .fh-d1 .fh-mail{margin-top:20px;font-size:15px}
-.fh-d1 .fh-mail a{color:var(--white)}
+.fh-d1 .fh-mail a{color:var(--white);text-decoration:underline;text-underline-offset:3px}
+.fh-d1 .fh-steps{margin:16px 0 0;padding:0 0 0 1.25rem;display:grid;gap:12px;max-width:40rem}
+.fh-d1 .fh-steps li{line-height:1.45}
+.fh-d1 .fh-day-job{margin-top:16px;max-width:40rem}
+.fh-d1 .fh-how a{text-decoration:underline;text-underline-offset:3px}
 .fh-form-card{background:var(--white);color:var(--hdc-text);border-radius:20px;padding:24px}
 .fh-form .fl{display:block;margin:0 0 14px}
 .fh-form .fl > span{display:block;font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--hdc-secondary);margin-bottom:6px}

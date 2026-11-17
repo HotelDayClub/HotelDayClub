@@ -537,10 +537,21 @@ html.pass-b .d2-card picture img{
 }
 html.pass-b .d2-card-body{padding:14px 16px 16px}
 @media (min-width:1024px){
-  html.pass-b .d2-cards{gap:16px}
+  html.pass-b .d2-cards{gap:12px}
   html.pass-b .d2-card,
-  html.pass-b .d2-card.d2-row{grid-template-columns:minmax(112px,40%) 1fr;align-items:center}
+  html.pass-b .d2-card.d2-row{
+    grid-template-columns:132px minmax(0,1fr);
+    align-items:stretch;
+    max-height:176px;
+    min-height:0
+  }
   html.pass-b .d2-card img,
   html.pass-b .d2-card picture,
-  html.pass-b .d2-card picture img{height:100%;min-height:0;aspect-ratio:1/1;object-fit:cover}
+  html.pass-b .d2-card picture img{
+    width:132px;height:132px;max-height:132px;aspect-ratio:auto;object-fit:cover
+  }
+  html.pass-b .d2-card-body{padding:10px 14px 12px;display:flex;flex-direction:column;justify-content:center;min-width:0}
+  html.pass-b .d2-card-body p,
+  html.pass-b .d2-card-desc{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  html.pass-b .d2-card .d2-sel{min-height:40px;margin-top:8px;padding:0 12px;font-size:14px}
 }

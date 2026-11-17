@@ -179,7 +179,7 @@ function cookie(res) {
     assert.ok(homeCss.includes('prefers-reduced-motion:reduce'));
     assert.ok(homeCss.includes('.media.motion .layer,.media.motion .shimmer{animation:none}'));
     assert.ok(!homeCss.includes('feTurbulence') && !homeCss.includes('filter:'));
-    for (const photo of ['infinity-ocean.jpg', 'rooftop-city.jpg', 'glass-roof-pool.jpg', 'tropical-resort.jpg', 'daybed-canopy.jpg', 'cabana-drapes.jpg']) {
+    for (const photo of ['infinity-ocean.jpg', 'rooftop-city.jpg', 'rooftop-city.jpg', 'beach-resort-pool.jpg', 'daybed-canopy.jpg', 'spa-steps.jpg']) {
       const webp = photo.replace(/\.jpg$/, '.webp');
       assert.ok(home.body.includes('/golden/img/cards/' + webp), photo);
       assert.ok(fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'photos', photo)), photo);

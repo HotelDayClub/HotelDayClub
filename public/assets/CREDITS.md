@@ -67,4 +67,6 @@ WebP and smaller mobile copies sit beside those JPEGs. The on-page chip says "St
 | File | Source | Notes |
 |---|---|---|
 | golden/img/fh-loungers.jpg, fh-loungers-sm.jpg (and .webp) | Cropped from photos/hero-loungers.jpg (Pexels, Quang Nguyen Vinh, link above) | A hotel sign in the frame is blurred. Also used in the homepage hotels banner. |
-| golden/img/fh-dashboard.jpg (and .webp) | Screenshot of this site's hotel dashboard, logged in as a fictional demo hotel | Sample data only. Cropped above the guest list, so no guest names. Labelled as sample data on the page. |
+| golden/img/fh-dashboard.jpg (and .webp) | Screenshot of `/hotel` as demo-saltwater, captured 17 Nov 2026 | Sample data only. Cropped to `.dash-main`. Labelled as sample data on the page. |
+| golden/img/fh-checkin.jpg (and .webp) | Screenshot of `/hotel/checkin` as demo-saltwater, captured 17 Nov 2026 | Sample data only. Cropped to `.checkin-page`. |
+| golden/img/fh-guestlist.jpg (and .webp) | Screenshot of `/hotel/today-list?view=checkin` as demo-saltwater, captured 17 Nov 2026 | Sample data only. Cropped to today's guest list. |

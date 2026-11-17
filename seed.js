@@ -215,13 +215,13 @@ const hotels = [
   ['skyline-rooftop', 'Skyline Rooftop Hotel (Demo)', 'North Sydney', DEMO_INTROS['skyline-rooftop'].tagline, DEMO_INTROS['skyline-rooftop'].blurb,
    ['rooftop-city.jpg', 'hero-loungers.jpg', 'daybed-canopy.jpg', 'cabana-drapes.jpg'], ['Heated pool', 'Rooftop', 'City views', 'Daybeds', 'Gym access'], 'demo-skyline'],
   ['harbourside-lido', 'Harbourside Lido (Demo)', 'CBD & Harbour', DEMO_INTROS['harbourside-lido'].tagline, DEMO_INTROS['harbourside-lido'].blurb,
-   ['glass-roof-pool.jpg', 'spa-steps.jpg', 'indoor-spa-pool.jpg', 'hero-loungers.jpg'], ['Indoor heated pool', 'Sauna', 'Steam room', 'Spa treatments', 'Robes'], 'demo-harbourside'],
+   ['rooftop-city.jpg', 'spa-steps.jpg', 'glass-roof-pool.jpg', 'hero-loungers.jpg'], ['Indoor heated pool', 'Sauna', 'Steam room', 'Spa treatments', 'Robes'], 'demo-harbourside'],
   ['palm-court', 'Palm Court Resort (Demo)', 'Parramatta', DEMO_INTROS['palm-court'].tagline, DEMO_INTROS['palm-court'].blurb,
-   ['tropical-resort.jpg', 'resort-palms.jpg', 'thatched-umbrellas.jpg'], ['Lagoon pool', 'Kid-friendly', 'Free parking', 'Shade umbrellas', 'Café'], 'demo-palmcourt'],
+   ['beach-resort-pool.jpg', 'resort-palms.jpg', 'thatched-umbrellas.jpg'], ['Lagoon pool', 'Kid-friendly', 'Free parking', 'Shade umbrellas', 'Café'], 'demo-palmcourt'],
   ['manly-sands', 'Manly Sands House (Demo)', 'Northern Beaches', DEMO_INTROS['manly-sands'].tagline, DEMO_INTROS['manly-sands'].blurb,
    ['daybed-canopy.jpg', 'thatched-umbrellas.jpg', 'infinity-palms.jpg', 'beach-resort-pool.jpg'], ['Magnesium pool', 'Beachside', 'Daybeds', 'Kiosk', 'Towels included'], 'demo-manly'],
   ['bayview-spa', 'Bayview Spa Hotel (Demo)', 'Eastern Suburbs', DEMO_INTROS['bayview-spa'].tagline, DEMO_INTROS['bayview-spa'].blurb,
-   ['cabana-drapes.jpg', 'indoor-spa-pool.jpg', 'spa-steps.jpg', 'loungers-snacks.jpg'], ['Heated pool', 'Hot & cold plunge', 'Cabanas', 'Adults only (18+)', 'Robes'], 'demo-bayview'],
+   ['spa-steps.jpg', 'cabana-drapes.jpg', 'loungers-snacks.jpg', 'daybed-canopy.jpg'], ['Heated pool', 'Hot & cold plunge', 'Cabanas', 'Adults only (18+)', 'Robes'], 'demo-bayview'],
 ];
 const insH = db.prepare('INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status,is_demo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
 const insB = db.prepare('INSERT INTO blocked_dates(hotel_id,date,reason) VALUES (?,?,?)');

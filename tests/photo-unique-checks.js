@@ -18,6 +18,7 @@ function dirHashes(dir, ext) {
 }
 
 dirHashes(path.join(root, 'public', 'assets', 'photos'), '.jpg');
+dirHashes(path.join(root, 'public', 'assets', 'photos'), '.webp');
 dirHashes(path.join(root, 'public', 'golden', 'img', 'cards'), '.webp');
 
 console.log('photo-unique-checks passed');
