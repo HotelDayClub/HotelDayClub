@@ -222,7 +222,7 @@ body.home .hotels-d1 .hotels-ph img{width:100%;height:100%;object-fit:cover}
 .fh-figs span{display:block;margin-top:6px;color:var(--hdc-secondary);font-size:15px}
 .fh.fh-d1 > section.wrap{padding-block:var(--section)}
 .fh.fh-d1 > section.fh-figs{padding-block:calc(var(--section) / 2);padding-inline:0}
-.fh.fh-d1 > section.fh-pilot{padding-block:var(--section);padding-inline:0}
+.fh.fh-d1 > section.fh-enquiry{padding-block:var(--section);padding-inline:0}
 .fh.fh-d1 > section.fh-login-row{padding-block:calc(var(--section) / 2)}
 .fh-d1 .fh-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin:32px 0 0}
 .fh-d1 .fh-card{background:var(--white);border:1px solid var(--hdc-border);border-radius:20px;padding:28px 24px}
@@ -241,11 +241,11 @@ body.home .hotels-d1 .hotels-ph img{width:100%;height:100%;object-fit:cover}
 .fh-dots i{width:9px;height:9px;border-radius:50%;background:var(--hdc-border)}
 .fh-frame img{display:block;width:100%;height:auto}
 .fh-shot figcaption{margin-top:10px;font-size:13px;color:var(--hdc-secondary)}
-.fh-d1 .fh-pilot{background:var(--hdc-deep);color:var(--white);margin:0;padding:0}
-.fh-pilot-in{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,26rem);gap:48px;align-items:start}
-.fh-d1 .fh-pilot .fh-kicker{color:var(--hdc-sun)}
-.fh-d1 .fh-pilot h2{color:var(--white);font-size:clamp(32px,3.6vw,48px);margin:0 0 14px}
-.fh-d1 .fh-pilot-copy p{color:var(--hdc-soft);max-width:30rem;line-height:1.55;margin:0 0 10px}
+.fh-d1 .fh-enquiry{background:var(--hdc-deep);color:var(--white);margin:0;padding:0}
+.fh-enquiry-in{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,26rem);gap:48px;align-items:start}
+.fh-d1 .fh-enquiry .fh-kicker{color:var(--hdc-sun)}
+.fh-d1 .fh-enquiry h2{color:var(--white);font-size:clamp(32px,3.6vw,48px);margin:0 0 14px}
+.fh-d1 .fh-enquiry-copy p{color:var(--hdc-soft);max-width:30rem;line-height:1.55;margin:0 0 10px}
 .fh-d1 .fh-mail{margin-top:20px;font-size:15px}
 .fh-d1 .fh-mail a{color:var(--white)}
 .fh-form-card{background:var(--white);color:var(--hdc-text);border-radius:20px;padding:24px}
@@ -267,7 +267,7 @@ body.home .hotels-d1 .hotels-ph img{width:100%;height:100%;object-fit:cover}
 .fh-login-box .fh-login{margin-top:8px;background:var(--white)}
 .fh-login-box .fh-login h2{display:none}
 @media (max-width:900px){
-  .fh-hero,.fh-dash,.fh-pilot-in,.fh-shot-row{grid-template-columns:1fr;gap:28px}
+  .fh-hero,.fh-dash,.fh-enquiry-in,.fh-shot-row{grid-template-columns:1fr;gap:28px}
   .fh-figs ul{grid-template-columns:repeat(2,minmax(0,1fr))}
   .fh-figs li,.fh-figs li:first-child{padding:16px 12px;border-left:0;border-top:1px solid var(--hdc-border)}
   .fh-figs li:nth-child(-n+2){border-top:0}

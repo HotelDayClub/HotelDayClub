@@ -42,7 +42,7 @@ assert.ok(!/body\.home #explore\{padding-top:/.test(polish), 'explore extra top 
 
 assertPaddingBlock(ruleBlock(polish, '.fh.fh-d1 > section.wrap'), 'for-hotels sections');
 assert.match(ruleBlock(polish, '.fh.fh-d1 > section.fh-figs'), /padding-block:calc\(var\(--section\) \/ 2\)/, 'for-hotels figs strip');
-assertPaddingBlock(ruleBlock(polish, '.fh.fh-d1 > section.fh-pilot'), 'for-hotels pilot');
-assert.match(ruleBlock(polish, '.fh-pilot-in'), /^(?!.*padding-(top|bottom):)/s, 'pilot inner no extra vertical padding');
+assertPaddingBlock(ruleBlock(polish, '.fh.fh-d1 > section.fh-enquiry'), 'for-hotels enquiry');
+assert.match(ruleBlock(polish, '.fh-enquiry-in'), /^(?!.*padding-(top|bottom):)/s, 'enquiry inner no extra vertical padding');
 
 console.log('section-rhythm-checks passed');

@@ -1760,8 +1760,8 @@ ${check('Pause a day or block dates yourself')}
 <figcaption>Sample guest list from the demo. Figures are fictional.</figcaption></figure>
 </div>
 </section>
-<section class="fh-pilot" id="enquiry"><div class="wrap fh-pilot-in">
-<div class="fh-pilot-copy">
+<section class="fh-enquiry" id="enquiry"><div class="wrap fh-enquiry-in">
+<div class="fh-enquiry-copy">
 <h2>See if it suits the hotel.</h2>
 <p>Send us a note and we will walk you through how it would work for your hotel.</p>
 <p>Hotels are invited. There is no sign-up form.</p>
