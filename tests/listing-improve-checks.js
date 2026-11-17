@@ -166,6 +166,7 @@ const html = listingHtml({
 });
 assert.ok(html.indexOf('id="passes"') < html.indexOf('id="details"'), 'passes before details in main column');
 assert.ok(html.indexOf('id="d2-side"') > html.indexOf('id="passes"'), 'sticky aside follows passes block');
+assert.ok(html.indexOf('d2-layout') < html.indexOf('id="d2-head"'), 'title block sits inside listing layout beside booking card');
 assert.ok(html.includes('id="book"'));
 assert.ok(!html.includes('CANCEL-SENTINEL'), 'the late notice is shown only from the availability reply');
 const freeN = html.split(FREE_CANCEL).length - 1;
