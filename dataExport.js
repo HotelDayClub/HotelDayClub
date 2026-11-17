@@ -11,7 +11,7 @@ const BOOKING_COLUMNS = [
 ];
 
 const HOTEL_BOOKING_COLUMNS = [
-  'date', 'booking_code', 'guest_name', 'pass', 'guests', 'expected_arrival', 'status', 'gross_sales', 'paid_to_you',
+  'date', 'booking_code', 'guest_name', 'guest_names', 'pass', 'guests', 'expected_arrival', 'status', 'gross_sales', 'paid_to_you',
 ];
 
 const HOTEL_COLUMNS = [

@@ -707,7 +707,7 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(!/\b\d+ a day\b/.test(checkout.body));
     const fields = new URLSearchParams({
       hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '2', price: '1',
-      name: 'Alex Citizen', email: 'alex-extra@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
+      name: 'Alex Citizen', guest_2: 'Sam Citizen', email: 'alex-extra@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
     });
     fields.append('addon', 'gym');
     fields.append('addon', 'parking');

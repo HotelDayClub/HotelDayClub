@@ -106,7 +106,7 @@ class CheckoutConsent {
   }
 
   static groupHtml() {
-    return '<b>Group and children.</b> I am 18 or over. I have shown this risk warning and the rules to everyone on my booking. If children are on the booking, I am, or a named adult on this booking is, responsible for actively supervising each child at all times.';
+    return '<b>Group and children.</b> I am 18 or over. I have shown this risk warning and the rules to everyone named on my booking. If children are on the booking, I am, or a named adult on this booking is, responsible for actively supervising each child at all times.';
   }
 
   static termsHtml() {
@@ -169,13 +169,14 @@ class ConsentLog {
     return body[key] === '1' || body[key] === 'on';
   }
 
-  static write(db, bookingId, { at, ip, marketing, rulesText }) {
+  static write(db, bookingId, { at, ip, marketing, rulesText, guestNames }) {
     const versions = LegalVersions.current();
     const rulesVersion = this.rulesVersion(rulesText);
+    const guestsJson = guestNames && guestNames.length ? JSON.stringify(guestNames) : null;
     db.prepare(`INSERT INTO consent_log(
       booking_id, kind, policy_version, consented_at, ip,
-      terms_version, refunds_version, rules_version, risk_version, privacy_version, marketing
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(
+      terms_version, refunds_version, rules_version, risk_version, privacy_version, marketing, guest_names
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(
       bookingId,
       'acceptance',
       versions.terms,
@@ -187,6 +188,7 @@ class ConsentLog {
       versions.risk,
       versions.privacy,
       marketing ? 1 : 0,
+      guestsJson,
     );
   }
 

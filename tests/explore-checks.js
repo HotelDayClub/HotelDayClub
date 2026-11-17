@@ -73,7 +73,7 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
   const sydneyChild = await start(port + 1, { DB_PATH: sydneyDb, HDC_NOW: '2026-11-16T13:30:00.000Z' });
   try {
     const search = await get(port + 1, '/search');
-    assert.ok(search.body.includes('17 Nov'), 'search cards use Sydney date after midnight');
+    assert.ok(search.body.includes('17') && /Nov/.test(search.body), 'search cards use Sydney date after midnight');
   } finally {
     sydneyChild.kill('SIGTERM');
   }

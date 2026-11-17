@@ -119,7 +119,7 @@ const csv = hotelBookingsCsv([
   { date: '2026-11-04', booking_code: 'HDC-3', guest_name: 'Jo', pass: 'Chair', guests: 1, expected_arrival: null, status: 'confirmed', gross_sales: 40 },
 ]);
 const lines = csv.split('\r\n');
-assert.strictEqual(lines[0], 'date,booking_code,guest_name,pass,guests,expected_arrival,status,gross_sales,paid_to_you');
+assert.strictEqual(lines[0], 'date,booking_code,guest_name,guest_names,pass,guests,expected_arrival,status,gross_sales,paid_to_you');
 assert.ok(lines[1].includes(`"'=Mia"`));
 assert.ok(lines[1].includes('"11:00"'));
 assert.ok(lines[2].includes('"Not sure"'));

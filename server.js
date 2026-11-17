@@ -50,6 +50,8 @@ const { PhotoAssets } = require('./photoAssets');
 const { bookingsCsv, hotelsCsv, hotelBookingsCsv } = require('./dataExport');
 const { GuestPrivacy } = require('./guestPrivacy');
 const HotelMail = require('./hotelMail');
+const { displayName } = require('./hotelName');
+const BookingGuests = require('./bookingGuests');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
   hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST, dayPlan,
@@ -57,6 +59,9 @@ const {
   venueMissing, PICK_DATE_CANCEL, arrivalOptions, normalizeArrival, arrivalText,
 } = require('./offering');
 const app = express();
+app.disable('x-powered-by');
+const { securityHeaders } = require('./securityHeaders');
+app.use(securityHeaders);
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3030;
 const SECRET = resolveCookieSecret();
@@ -495,9 +500,6 @@ function exampleCard(h, date) {
   const chips = short.length ? `<ul class="ex-chips">${short.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : '';
   return `<a class="ex" href="${href}"><span class="ex-ph">${img}<span class="tag">Example</span></span><span class="ex-top"><h3>${esc(displayName(h))}</h3><span class="ex-price"><small>from</small> ${money(from)}</span></span><p class="ex-area">${esc(sub)}</p>${chips}</a>`;
 }
-function displayName(h) {
-  return String((h && h.name) || '').replace(/\s*\(Demo\)\s*$/i, '');
-}
 const { faqPlusDetail } = require('./faqUi');
 const FAQ_PLUS = (q, a) => faqPlusDetail(q, a);
 function homePopularHtml() {
@@ -706,9 +708,9 @@ function dayPillsHtml(hotel, selected, qty) {
     }
     const stop = !given && (pill.selected || !selectedOpen);
     if (stop) given = true;
-    const pressed = pill.selected ? ' aria-pressed="true" aria-current="date"' : ' aria-pressed="false"';
+    const cur = pill.selected ? ' aria-current="date"' : '';
     const qtyBit = qty ? '&qty=' + encodeURIComponent(String(qty)) : '';
-    return `<a class="daypill${pill.selected ? ' on' : ''}" href="/h/${esc(hotel.slug)}?date=${esc(pill.date)}${qtyBit}"${pressed} tabindex="${stop ? '0' : '-1'}"><b>${esc(pill.label)}</b><span>${esc(pill.hours)}</span></a>`;
+    return `<a class="daypill${pill.selected ? ' on' : ''}" href="/h/${esc(hotel.slug)}?date=${esc(pill.date)}${qtyBit}"${cur} tabindex="${stop ? '0' : '-1'}"><b>${esc(pill.label)}</b><span>${esc(pill.hours)}</span></a>`;
   }).join('');
   return `<div class="days"><div class="day-row" role="group" aria-label="Days for ${esc(hotel.name)}">${items}</div><button type="button" class="day-more ibtn" aria-label="More days for ${esc(hotel.name)}" hidden>${MORE_ICON}</button></div>`;
 }
@@ -837,7 +839,8 @@ function searchPage(query) {
   const heroKeep = hiddenField('mood', params.mood) + hiddenField('want', params.want) + hiddenField('price', params.price) + hiddenField('age', params.age) + hiddenField('sort', params.sort);
   const mood = result.moods.map(m => {
     const href = SearchQuery.href({ ...params, mood: m.on ? '' : m.id });
-    return `<a class="ichip mood" href="${esc(href)}" aria-pressed="${m.on ? 'true' : 'false'}" data-key="mood" data-value="${esc(m.id)}">${m.on ? TICK_ICON : ''}${esc(m.label)}</a>`;
+    const cur = m.on ? ' aria-current="true"' : '';
+    return `<a class="ichip mood" href="${esc(href)}"${cur} data-key="mood" data-value="${esc(m.id)}">${m.on ? TICK_ICON : ''}${esc(m.label)}</a>`;
   }).join('');
   const summary = SearchQuery.summary(params);
   const pillTitle = SearchQuery.pillWhen(params);
@@ -933,7 +936,7 @@ ${empty || `<div class="${resultClass}">${cards}</div>`}${others}
 <div class="ssheet-body"></div>
 </div>
 </div>
-<script>(function(){var c=document.querySelector('.ichips');var on=c&&c.querySelector('.mood[aria-pressed="true"]');if(on)c.scrollLeft=Math.max(0,on.offsetLeft-120)})();</script>`;
+<script>(function(){var c=document.querySelector('.ichips');var on=c&&c.querySelector('.mood[aria-current="true"]');if(on)c.scrollLeft=Math.max(0,on.offsetLeft-120)})();</script>`;
   return page(result.heading, body, {
     titleReady: true,
     documentTitle: result.title,
@@ -1199,14 +1202,34 @@ function issueBookToken(existing) {
   bookHolds.set(token, { pending: false, code: '', at: now });
   return token;
 }
-function bookFieldErrors(body) {
-  const errors = {};
-  if (!String(body.name || '').trim()) errors.name = 'Enter your name.';
+function bookFieldErrors(body, party = 1) {
+  const errors = { ...BookingGuests.fieldErrors(body, party) };
   if (!/^\S+@\S+\.\S+$/.test(String(body.email || '').trim())) errors.email = 'Enter a valid email.';
   if (String(body.phone || '').replace(/\D/g, '').length < 8) errors.phone = 'Enter a mobile number.';
   const ticked = key => body[key] === '1' || body[key] === 'on';
   if (!ticked('accept')) errors.accept = 'Tick the box above to continue.';
   return errors;
+}
+function checkoutGuestFields(party, draft, errors) {
+  const n = Math.max(1, Math.floor(Number(party) || 1));
+  if (n <= 1) return '';
+  let html = '';
+  for (let i = 2; i <= n; i++) {
+    const key = `guest_${i}`;
+    const val = draft[key] || draft[`guest${i}`] || '';
+    const err = errors && errors[key] ? ` aria-invalid="true" aria-describedby="err-${key}"` : '';
+    html += `<label class="fl">Guest ${i} full name<input name="${key}" required autocomplete="name" placeholder="Full name" value="${esc(val)}"${err}>${fieldError(errors, key)}</label>`;
+  }
+  return html;
+}
+function enrichBookings(rows) {
+  const ids = (rows || []).map(r => r.id);
+  const map = BookingGuests.loadMap(db, ids);
+  return BookingGuests.attach(rows, map);
+}
+function guestListLine(b, hotel, now) {
+  const { title, others } = BookingGuests.headlineHtml(b, hotel, now);
+  return `<b>${esc(title)}</b>${others}`;
 }
 function fieldError(errors, key) {
   return errors && errors[key] ? `<p class="field-error" id="err-${key}">${esc(errors[key])}</p>` : '';
@@ -1304,6 +1327,7 @@ ${['hotel', 'date', 'qty'].map(k => `<input type="hidden" name="${k}" value="${e
 ${extra.formError ? `<div class="alert" role="alert">${esc(extra.formError)}</div>` : ''}
 <section class="co-card"><h2><span class="co-step">${steps.details}</span> Your details</h2>
 <label class="fl">Full name<input name="name" required autocomplete="name" placeholder="Alex Citizen" value="${esc(draft.name || '')}" ${errors.name ? 'aria-invalid="true" aria-describedby="err-name"' : ''}>${fieldError(errors, 'name')}</label>
+${checkoutGuestFields(people, draft, errors)}
 <div class="two"><label class="fl">Email<input name="email" type="email" required autocomplete="email" placeholder="alex@example.com" value="${esc(draft.email || '')}" ${errors.email ? 'aria-invalid="true" aria-describedby="err-email"' : ''}>${fieldError(errors, 'email')}</label>
 <label class="fl">Mobile<input name="phone" type="tel" required pattern="[0-9+ \\-\\(\\)]{8,}" autocomplete="tel" placeholder="0412 345 678" value="${esc(draft.phone || '')}" ${errors.phone ? 'aria-invalid="true" aria-describedby="err-phone"' : ''}>${fieldError(errors, 'phone')}</label></div>
 </section>
@@ -1432,9 +1456,9 @@ app.post('/book', async (req, res) => {
     }
     hold.pending = true;
   }
-  const errors = bookFieldErrors(b);
   let code, v, arrivalValue = 'unsure', arrivalBlocked = false;
   v = validate(b);
+  const errors = bookFieldErrors(b, v.people || 1);
   if (!v.err && v.h) {
     const checked = checkedArrival(v.h, v.date, b.arrival);
     if (checked.malformed || checked.status === 400) {
@@ -1451,7 +1475,8 @@ app.post('/book', async (req, res) => {
     if (v.err) return renderCheckout(b, res, { draft: b, errors, token, status: 409, formError: v.err });
     return renderCheckout(b, res, { draft: b, errors, token, status: 409 });
   }
-  const name = String(b.name || '').trim();
+  const guestNames = BookingGuests.namesFromBody(b, v.people);
+  const name = guestNames[0] || '';
   const email = String(b.email || '').trim();
   const phone = String(b.phone || '').trim();
   db.transaction(() => {
@@ -1479,7 +1504,8 @@ app.post('/book', async (req, res) => {
     const info = db.prepare(`INSERT INTO bookings(code,short_code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,party,rules_ack_at,rules_text,marketing_opt_in,terms_ack_at,risk_ack_at,risk_text,cancel_note,expected_arrival,terms_version,refunds_version,privacy_version,risk_version,consent_at,consent_ip,created_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?,?,datetime('now'),datetime('now'),?,?,?,?,?,?,?,?,?,datetime('now'))`)
       .run(code, shortCode, v.h.id, v.p.id, v.date, v.qty, v.p.price, v.p.price * v.qty + v.addonTotal, name, email, phone, v.people, rulesSnapshot, marketingOn, riskText(v.h), note, arrivalValue, versions.terms, versions.refunds, versions.privacy, versions.risk, consentAt, consentIp);
-    ConsentLog.write(db, info.lastInsertRowid, { at: consentAt, ip: consentIp, marketing: marketingOn === 1, rulesText: rulesSnapshot });
+    BookingGuests.save(db, info.lastInsertRowid, guestNames);
+    ConsentLog.write(db, info.lastInsertRowid, { at: consentAt, ip: consentIp, marketing: marketingOn === 1, rulesText: rulesSnapshot, guestNames });
     const insAdd = db.prepare('INSERT INTO booking_addons(booking_id,addon_id,name,qty,unit_price,total) VALUES (?,?,?,?,?,?)');
     for (const ad of v.addons) insAdd.run(info.lastInsertRowid, ad.id, ad.name, ad.qty, ad.price, ad.line);
   }).immediate();
@@ -1589,16 +1615,18 @@ app.get('/booking/:code', async (req, res) => {
   const view = hoursView(db, hotel, b.date);
   const when = view.span || view.hoursLine;
   const party = b.party || b.qty * (b.holds || 1);
+  const guestNames = BookingGuests.listForBooking(db, b.id);
   const note = b.cancel_note || cancelNote(db, hotel, b.date, b.created_at || undefined);
   const hasParking = bookingHasParking(db, b.id, hotel.id);
   bookingPrivate(res);
   res.send(page(cancelled ? 'Booking cancelled' : 'Booking confirmed', bookingPageBody({
-    b,
+    b: { ...b, hotel: displayName(b.hotel) },
     hotel,
     qr,
     adds,
     when,
     party,
+    guestNames,
     note,
     lines: includedLines(loadInclusions(db, hotel.id), party),
     areas: forPass(db, b.pass_type_id),
@@ -1777,6 +1805,17 @@ ${check('Pause a day or block dates yourself')}
 <figcaption>Sample guest list from the demo. Figures are fictional.</figcaption></figure>
 </div>
 </section>
+<section class="wrap fh-how" id="how-hotel">
+<p class="fh-kicker">Partnership</p>
+<h2>How it works for your hotel</h2>
+<ol class="fh-steps">
+<li><b>Talk to us.</b> We walk you through it and agree terms in your hotel agreement.</li>
+<li><b>We set up your listing with you:</b> your passes, prices, spots and hours. You can pause a day or block dates yourself.</li>
+<li><b>Guests book online.</b> You get the guest list by email the night before.</li>
+<li><b>On the day,</b> your front desk checks each booking in by QR code or by name, and points the guests to the pool. Guests buy any food and drink from you.</li>
+</ol>
+<p class="fh-day-job">On the day, the only job is check-in at the front desk. Each month you get a statement of your bookings.</p>
+</section>
 <section class="fh-enquiry" id="enquiry"><div class="wrap fh-enquiry-in">
 <div class="fh-enquiry-copy">
 <h2>See if it suits the hotel.</h2>
@@ -1917,7 +1956,7 @@ function contactLine(b) {
   return `<div class="muted small">${esc(b.email)} · ${esc(b.phone)}</div>`;
 }
 function hotelRows(rows, { hotel, adminCancel }) {
-  rows = withNotes(rows);
+  rows = withNotes(enrichBookings(rows));
   if (hotel && !adminCancel) rows = GuestPrivacy.presentAll(rows, hotel);
   return rows;
 }
@@ -1927,8 +1966,8 @@ const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel
   const cell = b => arrival ? `<td>${arrival === 'detail' ? `Expected arrival: ${arrivalCell(b.expected_arrival, 'detail')}` : arrivalCell(b.expected_arrival, 'short')}</td>` : '';
   const versionLine = b => versions ? ConsentLog.adminLine(b) : '';
   return rows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th>${hotelCol ? '<th>Hotel</th>' : ''}<th>Date</th><th>Guest</th>${head}<th>Seating</th><th>Spots</th><th>Total</th><th>Status</th></tr></thead><tbody>
-${rows.map(b => `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(b.hotel)}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(b.guest_name)}</b> ${parkingTag(b)}${contactLine(b)}${versionLine(b)}</td>${cell(b)}${seatCell(b)}<td>${b.qty}</td><td>${money(b.total)}</td>
-<td>${statusCell(b, { checkin, redirect, day, compact: true, adminCancel, hotel })}${noteBits(b, hotel, adminCancel)}${logForm(b, redirect, log)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No guests.</p>';
+${rows.map(b => { const g = BookingGuests.headlineHtml(b, hotel, clockNow()); return `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(displayName(b.hotel))}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(g.title)}</b>${g.others} ${parkingTag(b)}${contactLine(b)}${versionLine(b)}</td>${cell(b)}${seatCell(b)}<td>${b.qty}</td><td>${money(b.total)}</td>
+<td>${statusCell(b, { checkin, redirect, day, compact: true, adminCancel, hotel })}${noteBits(b, hotel, adminCancel)}${logForm(b, redirect, log)}</td></tr>`; }).join('')}</tbody></table></div>` : '<p class="muted">No guests.</p>';
 };
 const BQ = `SELECT b.*, p.name pass, p.holds, h.name hotel, (SELECT group_concat(ba.name || ' × ' || ba.qty, ', ') FROM booking_addons ba WHERE ba.booking_id=b.id) addons, (SELECT 1 FROM booking_addons ba JOIN addons a ON a.id=ba.addon_id WHERE ba.booking_id=b.id AND a.code='parking') parking_addon, (SELECT mode FROM inclusions i WHERE i.hotel_id=b.hotel_id AND i.code='parking') parking_mode FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id JOIN hotels h ON h.id=b.hotel_id`;
 function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false, hotel = null } = {}) {
@@ -1944,7 +1983,8 @@ function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel
       ? `<p>Expected arrival: ${arrivalCell(b.expected_arrival, 'detail')}</p>`
       : `<p class="muted small">Arrival: ${arrivalCell(b.expected_arrival, 'short')}</p>`;
     const versionLine = versions ? ConsentLog.adminLine(b) : '';
-    return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(b.guest_name)}</b> ${parkingTag(b)}<div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(b.hotel) : ''} · ${esc(nice(b.date))}</div>${versionLine}</div><b>${money(b.total)}</b></div>
+    const g = BookingGuests.headlineHtml(b, hotel, clockNow());
+    return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(g.title)}</b>${g.others} ${parkingTag(b)}<div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(displayName(b.hotel)) : ''} · ${esc(nice(b.date))}</div>${versionLine}</div><b>${money(b.total)}</b></div>
 <p>${esc(label)} × ${b.qty} · ${party} ${party === 1 ? 'person' : 'people'}</p>${arrivalLine}${rules}${adds}${noteBits(b, hotel, adminCancel)}${action}${logForm(b, redirect, log)}</article>`;
   }).join('')}</div>`;
 }
@@ -1978,7 +2018,11 @@ app.get('/hotel/bookings.csv', hotelAuth, (req, res) => {
     COALESCE(b.party, b.qty * COALESCE(p.holds, 1)) AS guests, b.expected_arrival, b.status, b.total AS gross_sales
     FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id
     WHERE b.hotel_id=? ORDER BY b.date, b.id`).all(req.hotel.id);
-  sendCsv(res, 'bookings.csv', hotelBookingsCsv(GuestPrivacy.presentAll(withNotes(rows), req.hotel)));
+  const shaped = GuestPrivacy.presentAll(withNotes(enrichBookings(rows)), req.hotel).map(row => ({
+    ...row,
+    guest_names: BookingGuests.csvNames(row.guest_names, row.contact_hidden),
+  }));
+  sendCsv(res, 'bookings.csv', hotelBookingsCsv(shaped));
 });
 function bookingDayState(b, hotel) {
   const day = hotelToday(hotel);
@@ -1997,6 +2041,7 @@ function checkinLookup(hotel, code) {
   if (!b && short) b = db.prepare(`${BQ} WHERE b.short_code=?`).get(short);
   if (!b) return { st: 'missing', code: c || short };
   if (Number(b.hotel_id) !== Number(hotel.id)) return { st: 'other', code: b.short_code || b.code };
+  b = enrichBookings([b])[0];
   return { st: bookingDayState(b, hotel), b, code: b.code, at: b.checked_in_at ? HotelClock.clock(hotel, b.checked_in_at) : '' };
 }
 function checkinSearch(hotel, raw) {
@@ -2013,9 +2058,10 @@ function checkinSearch(hotel, raw) {
       OR (${GuestPrivacy.contactGate()} AND (
         lower(b.guest_name) LIKE ? OR lower(b.email) LIKE ?
         OR (? != '' AND replace(replace(replace(replace(replace(b.phone,' ',''),'-',''),'(',''),')',''),'+','') LIKE ?)
+        ${BookingGuests.searchGuestSql('b')}
       ))
     ) ORDER BY CASE WHEN b.date=? THEN 0 WHEN b.date>? THEN 1 ELSE 2 END, b.date, b.guest_name LIMIT 40`)
-    .all(hotel.id, like, short, short, GuestPrivacy.cutoff(hotel), like, like, digits, phoneLike, day, day);
+    .all(hotel.id, like, short, short, GuestPrivacy.cutoff(hotel), like, like, digits, phoneLike, like, day, day);
 }
 const checkinHits = new Map();
 function checkinLimited(ip) {
@@ -2041,7 +2087,8 @@ function checkinCard(info, hotel) {
   if (!info || !info.code) return '';
   if (info.st === 'missing') return `<div class="scan-status bad" role="status"><b>Not found</b><span>No booking ${esc(info.code)} at this hotel.</span></div>`;
   if (info.st === 'other') return `<div class="scan-status bad" role="status"><b>Another hotel</b><span>This booking is for another hotel.</span></div>`;
-  const b = GuestPrivacy.present(withNotes([info.b])[0], hotel);
+  const b = GuestPrivacy.present(withNotes(enrichBookings([info.b]))[0], hotel);
+  const g = BookingGuests.headlineHtml(b, hotel, clockNow());
   const pass = `${spotLabel({ name: b.pass, holds: b.holds })} × ${b.qty}`;
   const note = checkinStatusText(info, hotel);
   const tone = info.st === 'ready' ? 'valid' : info.st === 'used' ? 'used' : 'bad';
@@ -2049,7 +2096,7 @@ function checkinCard(info, hotel) {
     ? `<form method="post" action="/hotel/checkin"><input type="hidden" name="code" value="${esc(info.code)}"><input type="hidden" name="confirm" value="1"><input type="hidden" name="r" value="/hotel/checkin">${arrivedField(b)}<button class="btn btn-navy btn-checkin">Check in</button></form>`
     : '';
   const statusLabel = info.st === 'ready' ? 'Confirmed' : info.st === 'used' ? checkedInLabel(b, hotel) : info.st === 'cancel' ? 'Cancelled' : 'Confirmed';
-  return `<article class="checkin-card scan-status ${tone}"><p class="eyebrow-s">Booking ${esc(b.short_code || info.code)}</p><h2>${esc(b.guest_name)} ${parkingTag(b)}</h2><dl><dt>Pass</dt><dd>${esc(pass)}</dd><dt>Qty</dt><dd>${b.qty}</dd><dt>Date</dt><dd>${esc(nice(b.date))}</dd><dt>Arrival</dt><dd>${arrivalCell(b.expected_arrival, 'short')}</dd><dt>Status</dt><dd>${esc(statusLabel)}</dd></dl><p>${esc(note)}</p>${button}</article>`;
+  return `<article class="checkin-card scan-status ${tone}"><p class="eyebrow-s">Booking ${esc(b.short_code || info.code)}</p><h2>${esc(g.title)}${g.others} ${parkingTag(b)}</h2><dl><dt>Pass</dt><dd>${esc(pass)}</dd><dt>Qty</dt><dd>${b.qty}</dd><dt>Date</dt><dd>${esc(nice(b.date))}</dd><dt>Arrival</dt><dd>${arrivalCell(b.expected_arrival, 'short')}</dd><dt>Status</dt><dd>${esc(statusLabel)}</dd></dl><p>${esc(note)}</p>${button}</article>`;
 }
 function checkinResultCard(b, hotel) {
   const info = { st: bookingDayState(b, hotel), b, code: b.code, at: b.checked_in_at ? HotelClock.clock(hotel, b.checked_in_at) : '' };

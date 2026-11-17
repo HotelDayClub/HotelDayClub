@@ -306,6 +306,13 @@ async function main() {
     assert.ok(!hotels.body.includes('scrypt$'));
     assert.ok(!hotels.body.includes('security-hotel-test'));
     assert.ok(!hotels.body.toLowerCase().includes('password'));
+    const home = await get(port, '/');
+    assert.ok(home.headers['content-security-policy']);
+    assert.strictEqual(home.headers['x-powered-by'], undefined);
+    const httpsHome = await get(port, '/', { 'X-Forwarded-Proto': 'https' });
+    assert.ok(httpsHome.headers['strict-transport-security']);
+    const plainHome = await get(port, '/');
+    assert.strictEqual(plainHome.headers['strict-transport-security'], undefined);
   } finally {
     child.kill();
   }

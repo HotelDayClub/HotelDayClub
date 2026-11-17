@@ -81,7 +81,7 @@ function listingAreaSnippet(html) {
 }
 
 function searchCardAreaSnippet(html, slug) {
-  const re = new RegExp(`<a class="ex[^"]*" href="/h/${slug}[^"]*"[\\s\\S]*?class="ex-area"[^>]*>([^<]+)<`);
+  const re = new RegExp(`<a class="ex[^"]*"[\\s\\S]*?(?:href="/h/${slug}"|data-slug="${slug}")[\\s\\S]*?class="ex-area"[^>]*>([^<]+)<`);
   const m = html.match(re);
   if (!m) return '';
   return m[1].replace(/&amp;/g, '&').split(' · ')[0].trim();

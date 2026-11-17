@@ -122,6 +122,13 @@ CREATE TABLE IF NOT EXISTS consent_log(
   marketing INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_consent_log_booking ON consent_log(booking_id);
+CREATE TABLE IF NOT EXISTS booking_guests(
+  id INTEGER PRIMARY KEY,
+  booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL,
+  full_name TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_booking_guests_booking ON booking_guests(booking_id);
 CREATE TABLE IF NOT EXISTS closure_alerts(
   id INTEGER PRIMARY KEY,
   hotel_id INTEGER,
@@ -185,6 +192,7 @@ ensureCols('consent_log', [
   ['risk_version', 'TEXT'],
   ['privacy_version', 'TEXT'],
   ['marketing', 'INTEGER'],
+  ['guest_names', 'TEXT'],
 ]);
 ensureCols('contact_messages', [['alert_tries', 'INTEGER NOT NULL DEFAULT 0'], ['alert_state', 'TEXT'], ['marketing_opt_in', 'INTEGER DEFAULT 0']]);
 ensureCols('waitlist', [['marketing_opt_in', 'INTEGER DEFAULT 0']]);

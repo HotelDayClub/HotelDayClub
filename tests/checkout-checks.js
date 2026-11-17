@@ -399,7 +399,7 @@ function makeForm(opts = {}) {
     assert.strictEqual(booked.status, 303, booked.body.slice(0, 300));
     const done = await get(port, booked.headers.location);
     assert.strictEqual(done.status, 200);
-    assert.ok(done.body.includes('<h1>Your demo booking</h1>'));
+    assert.ok(/<h1>You(?:&#39;|'|')re booked<\/h1>/.test(done.body));
     assert.ok(done.body.includes('function clearCheckoutMemory()'));
     assert.ok(done.body.includes("indexOf('hdc-checkout:')"));
     assert.ok(done.body.includes('sessionStorage.removeItem(key)'));

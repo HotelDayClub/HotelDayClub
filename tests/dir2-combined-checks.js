@@ -73,7 +73,10 @@ function visibleText(html) {
 function cardNames(html) {
   const start = html.indexOf('class="list results"');
   const block = start >= 0 ? html.slice(start, html.indexOf('class="note"', start)) : html;
-  return [...block.matchAll(/<a class="ex[^"]*" href="\/h\/([a-z0-9-]+)/g)].map(m => m[1]);
+  return [...block.matchAll(/<a class="ex[^"]*"[^>]*>/g)].map(tag => {
+    const slug = tag[0].match(/data-slug="([a-z0-9-]+)"/) || tag[0].match(/href="\/h\/([a-z0-9-]+)/);
+    return slug ? slug[1] : null;
+  }).filter(Boolean);
 }
 
 // A1-A2: pure helpers and home quick buttons.
@@ -382,7 +385,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.strictEqual(count(family.body, 'class="kidchip"'), 1, 'children chip on the part-day hotel only');
     const kidAt = family.body.indexOf('class="kidchip"');
     assert.ok(family.body.lastIndexOf('/h/manly-sands', kidAt) > family.body.lastIndexOf('/h/palm-court', kidAt));
-    assert.ok(family.body.includes('aria-pressed="true" data-key="mood" data-value="family"'));
+    assert.ok(family.body.includes('aria-current="true" data-key="mood" data-value="family"'));
     const quiet = await get(port, '/search?mood=quiet');
     assert.deepStrictEqual(cardNames(quiet.body), ['bayview-spa']);
     const roof = await get(port, '/search?mood=rooftop');
@@ -411,7 +414,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     // A13: ticket.
     const ticketDate = ymd(addDays(new Date(today + 'T12:00:00'), 30));
     const fields = {
-      hotel: 'saltwater-terrace', date: ticketDate, pass: 'daybed', qty: '1', name: 'Alex Citizen', email: 'ticket@example.com', phone: '0412345678',
+      hotel: 'saltwater-terrace', date: ticketDate, pass: 'daybed', qty: '1', name: 'Alex Citizen', guest_2: 'Sam Citizen', email: 'ticket@example.com', phone: '0412345678',
       rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
     };
     const params = new URLSearchParams(fields);
@@ -443,7 +446,8 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(t.includes(GuestCheckIn.line().replace(/'/g, '&#39;')));
     assert.ok(t.includes('you can&#39;t charge anything to a room.'));
     assert.ok(tt.includes('accepted at checkout'));
-    assert.ok(!tt.includes('Alex Citizen') && !tt.includes('ticket@example.com'));
+    assert.ok(tt.includes('Alex Citizen') && tt.includes('Sam Citizen'));
+    assert.ok(!tt.includes('ticket@example.com'));
     assert.ok(!tt.includes('\u2014'));
     assert.ok(t.includes('content="noindex'));
     assert.ok(t.includes('/booking-ticket.css'));

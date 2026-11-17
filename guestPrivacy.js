@@ -25,7 +25,8 @@ class GuestPrivacy {
 
   static present(row, hotel, now = new Date()) {
     if (!row || !hotel || !this.pastWindow(row.date, hotel, now) || this.keepsContact(row)) return row;
-    return { ...row, guest_name: this.NAME, email: '', phone: '', contact_hidden: true };
+    const guest_names = row.guest_names && row.guest_names.length ? row.guest_names.map(() => this.NAME) : undefined;
+    return { ...row, guest_name: this.NAME, guest_names, email: '', phone: '', contact_hidden: true };
   }
 
   static presentAll(rows, hotel, now = new Date()) {

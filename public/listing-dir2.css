@@ -82,7 +82,7 @@ body:has(.d2) main{overflow-x:clip}
 .d2-tabs nav{display:flex;gap:20px}
 .d2-tabs nav a{display:flex;align-items:center;min-height:52px;font-weight:700;font-size:16px;color:var(--sec);text-decoration:none;border-bottom:3px solid transparent}
 .d2-tabs nav a[aria-current]{color:var(--text);border-color:var(--teal)}
-.d2-datebtn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--field);background:#fff;color:var(--text)!important;font:600 15px var(--d2-body);text-decoration:none}
+.d2-datebtn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--field);background:#fff;color:var(--text)!important;font:600 15px var(--d2-body);text-decoration:none;white-space:nowrap;flex:none}
 .d2-datebtn .d2ic{width:18px;height:18px;color:var(--teal)}
 
 .d2-col{max-width:800px;margin:0 auto;padding:0 16px}

@@ -168,14 +168,14 @@ body.home .faq-d1 details p{margin:0 0 18px;max-width:40rem}
 @media (max-width:800px){body.home .faq-d1{grid-template-columns:1fr;gap:16px} body.home .faq-d1 summary{font-size:18px;padding:14px 0}}
 
 /* ---------- Home waitlist band (M3) ---------- */
-body.home .wl-band{background:var(--hdc-deep);color:var(--white);width:100%}
+body.home .wl-band{background:var(--hdc-deep);color:var(--white);width:100%;margin-bottom:var(--section)}
 body.home .wl-band-in{max-width:1200px;margin:0 auto;text-align:center}
 body.home .wl-band h2{color:var(--white);margin:0 0 8px;font-size:clamp(28px,3vw,40px)}
 body.home .wl-band .wl-lead{color:var(--hdc-soft);max-width:36rem;margin:0 auto 20px;line-height:1.5}
 body.home .wl-inline{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;margin:0}
 body.home .wl-inline .wl-email{flex:1 1 220px;max-width:320px;margin:0}
 body.home .wl-inline input[type="email"]{width:100%;min-height:48px;border:1px solid var(--hdc-border);border-radius:var(--r-pill);padding:0 16px;font-size:16px}
-body.home .wl-inline .btn{min-height:48px;border-radius:var(--r-pill);background:var(--hdc-primary);color:var(--white)}
+body.home .wl-inline .btn{min-height:48px;border-radius:var(--r-pill);background:var(--hdc-rose);color:var(--hdc-navy);font-weight:700}
 
 /* ---------- Home hotels banner with a photo ---------- */
 body.home .hotels.hotels-d1{display:grid;grid-template-columns:1fr 1fr;align-items:stretch;gap:0;padding:0;overflow:hidden;width:100%;max-width:var(--max,1200px);margin:0 auto;border-radius:var(--r-card);background:var(--hdc-deep)}
