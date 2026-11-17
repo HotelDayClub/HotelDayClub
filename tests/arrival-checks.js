@@ -102,7 +102,7 @@ assert.strictEqual(malformed.error, ARRIVAL_LIST_ERROR);
 assert.strictEqual(arrivalText('11:00', 'estimate'), '11am–12pm (estimate)');
 assert.strictEqual(arrivalText('unsure', 'estimate'), 'Not sure');
 assert.strictEqual(arrivalText(null, 'estimate'), '');
-assert.strictEqual(arrivalText(null, 'short'), '—');
+assert.strictEqual(arrivalText(null, 'short'), 'Not set');
 assert.strictEqual(arrivalText('11:00', 'short'), '11 am');
 assert.strictEqual(arrivalText('11:00', 'detail'), "11am–12pm (guest's estimate)");
 assert.strictEqual(arrivalText('unsure', 'csv'), 'Not sure');

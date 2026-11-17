@@ -901,11 +901,11 @@ function arrivalText(value, mode) {
     const phrase = arrivalWindowPhrase(value);
     return phrase ? `${phrase} (estimate)` : '';
   }
-  if (missing) return '—';
+  if (missing) return mode === 'short' || mode === 'detail' ? 'Not set' : '';
   if (value === 'unsure') return 'Not sure';
-  if (mode === 'short') return arrivalHourWords(value) || '—';
+  if (mode === 'short') return arrivalHourWords(value) || 'Not set';
   const phrase = arrivalWindowPhrase(value);
-  return phrase ? `${phrase} (guest's estimate)` : '—';
+  return phrase ? `${phrase} (guest's estimate)` : 'Not set';
 }
 
 module.exports = {
