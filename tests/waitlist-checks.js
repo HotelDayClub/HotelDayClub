@@ -197,7 +197,7 @@ function cookie(res) {
     assert.ok(hotels.body.includes('A quiet pool'));
     assert.ok(hotels.body.includes('gym'));
     assert.ok(hotels.body.includes('Australia'));
-    assert.ok(hotels.body.includes('A short pilot'));
+    assert.ok(hotels.body.includes('walk you through how it would work for your hotel'));
     assert.ok(hotels.body.includes('Talk to us'));
     assert.ok(hotels.body.includes('mailto:hello@hoteldayclub.com.au?subject=Hotel%20Day%20Club%20-%20partnership%20enquiry'));
     assert.ok(!/75%|25%|partner hotel/i.test(hotels.body));

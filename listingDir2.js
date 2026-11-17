@@ -570,11 +570,11 @@ function listingHtmlD2(opts) {
   return `<div class="d2 listing" id="d2-root">${SPRITE}
 <div class="d2-page">
 ${galleryHtml(h, null)}
+<div class="d2-layout">
+<div class="d2-main">
 ${titleHeadHtml(h, heading, addressLine, headDesc, keyFactsHtml(h, factCtx))}
 ${bookBarHtml(fromHtml, dateLabel, qty, dayScarcity)}
 <div class="d2-tabs" id="d2-tabs"><div class="in"><nav aria-label="On this page"><a href="#passes" aria-current="true">Passes</a>${hasExplore ? '<a href="#explore">Explore</a>' : ''}<a href="#details">Details</a></nav><a class="d2-datebtn" href="#book" id="d2-pill" data-open="date">${icon('cal')}<span id="d2-pill-t">${esc(dateLabel)}</span></a></div></div>
-<div class="d2-layout">
-<div class="d2-main">
 <section class="d2-s" id="passes"><h2>Passes</h2><p class="d2-muted">Price per spot.${demo ? ' Example photos.' : ''}</p>
 <div class="d2-pass-groups">${sections}</div>
 </section>
