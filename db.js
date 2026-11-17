@@ -143,6 +143,17 @@ CREATE TABLE IF NOT EXISTS hotel_explore_areas(
   kind TEXT NOT NULL DEFAULT 'other'
 );
 CREATE INDEX IF NOT EXISTS idx_hotel_explore_hotel ON hotel_explore_areas(hotel_id);
+CREATE TABLE IF NOT EXISTS hotel_mail_log(
+  id INTEGER PRIMARY KEY,
+  hotel_id INTEGER NOT NULL REFERENCES hotels(id),
+  kind TEXT NOT NULL,
+  ref TEXT NOT NULL,
+  sent_at TEXT NOT NULL DEFAULT (datetime('now')),
+  recipient TEXT NOT NULL DEFAULT '',
+  idempotency_key TEXT,
+  UNIQUE(hotel_id, kind, ref)
+);
+CREATE INDEX IF NOT EXISTS idx_hotel_mail_log_hotel ON hotel_mail_log(hotel_id, kind, ref);
 `);
 // Adds a column only when it is missing, so this is safe to run on every boot.
 function ensureCols(table, cols) {
