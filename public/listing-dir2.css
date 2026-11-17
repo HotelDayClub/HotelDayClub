@@ -398,7 +398,7 @@ dialog.d2-sheet[open] .d2-book,.js dialog.d2-sheet[open] .d2-book{display:block}
  .d2-main > .d2-tabs{margin-top:0}
  .d2-main > .d2-tabs .in{margin:0;max-width:none;justify-content:space-between;padding:0}
  .d2-facts{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px 20px}
- .d2-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:32px;align-items:start}
+ .d2-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:32px;align-items:start;margin-top:24px}
  .d2-side{display:block;position:sticky;top:calc(var(--d2-top,64px) + var(--d2-tabs-h,53px) + 24px);align-self:start;z-index:25}
  .js .d2-side .d2-book{display:block!important;margin-top:0;box-shadow:0 8px 24px rgba(23,50,58,.12)}
  .d2-bookbar{display:none!important}
