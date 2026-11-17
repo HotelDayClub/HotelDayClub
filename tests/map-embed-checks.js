@@ -96,7 +96,7 @@ try {
   const src = MapEmbed.src(salt);
   assert.strictEqual(src, `https://www.google.com/maps/embed/v1/place?key=${KEY}&q=-33.8915%2C151.2767`);
   const set = section(salt);
-  const iframe = `<iframe class="map-embed" title="Map of The Saltwater Terrace (Demo)" src="${src.replace(/&/g, '&amp;')}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>`;
+  const iframe = `<iframe class="map-embed" title="Map of The Saltwater Terrace" src="${src.replace(/&/g, '&amp;')}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>`;
   assert.ok(set.includes(iframe), iframe);
   assert.ok(set.includes('loading="lazy"'));
   assert.ok(set.includes('referrerpolicy="no-referrer-when-downgrade"'));

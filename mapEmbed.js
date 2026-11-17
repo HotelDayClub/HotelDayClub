@@ -36,7 +36,7 @@ class MapEmbed {
   static html(hotel) {
     const src = MapEmbed.src(hotel);
     if (!src) return '';
-    const name = String((hotel && hotel.name) || '').trim() || 'this hotel';
+    const name = String((hotel && hotel.name) || '').trim().replace(/\s*\(Demo\)\s*$/, '') || 'this hotel';
     return `<iframe class="map-embed" title="${esc('Map of ' + name)}" src="${esc(src)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>`;
   }
 
