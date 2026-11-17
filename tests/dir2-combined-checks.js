@@ -271,8 +271,8 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
 
     const harbTrack = pages['harbourside-lido'].match(/id="g-track"[^>]*>([\s\S]*?)<\/div>/);
     assert.ok(harbTrack, 'harbourside gallery track');
-    assert.match(harbTrack[1], /^<picture>[\s\S]*rooftop-deck/);
-    assert.ok(harbTrack[1].includes('glass-roof-pool.jpg'));
+    assert.match(harbTrack[1], /^<picture>[\s\S]*glass-roof-pool/);
+    assert.ok(harbTrack[1].includes('spa-loungers.jpg'));
     assert.strictEqual((harbTrack[1].match(/<img\b/g) || []).length, 4, 'four track photos');
 
     // A5: included amenities omit per-guest towel counts; towel chip is on the listing header.
@@ -551,8 +551,8 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
           assert.strictEqual(v.slideCount, 4, 'four gallery slides ' + tag);
           assert.strictEqual(v.visibleCount, 1, 'one visible hero slide ' + tag);
           assert.strictEqual(v.dataN, '4', 'data-n is 4 ' + tag);
-          assert.ok(/rooftop-deck/.test(v.currentSrc), 'visible first slide is the hotel first photo ' + tag);
-          assert.ok(!/glass-roof-pool/.test(v.currentSrc), 'visible first slide is not the second photo ' + tag);
+          assert.ok(/glass-roof-pool/.test(v.currentSrc), 'visible first slide is the hotel first photo ' + tag);
+          assert.ok(!/spa-loungers/.test(v.currentSrc), 'visible first slide is not the second photo ' + tag);
           assert.ok(v.firstW >= v.trackW - 2, 'first slide fills the track ' + tag);
         }
       } finally {

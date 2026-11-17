@@ -366,7 +366,7 @@ function makeForm(opts = {}) {
       hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '1', book_token: token,
       name: 'Alex Citizen', email: 'not-an-email', phone: '0412', risk: '1', rules: '1', terms: '1', group: '1', share: '1',
     });
-    assert.strictEqual(partial.status, 409);
+    assert.strictEqual(partial.status, 400);
     assert.ok(partial.body.includes('Tick the box above to continue.'));
     assert.ok(!/name="accept"[^>]*\schecked/.test(partial.body));
     assert.ok(!/name="marketing"[^>]*\schecked/.test(partial.body));
@@ -380,7 +380,7 @@ function makeForm(opts = {}) {
       name: 'Alex Citizen', email: 'still-bad', phone: '0412345678',
       accept: '1',
     });
-    assert.strictEqual(ready.status, 409);
+    assert.strictEqual(ready.status, 400);
     assert.ok(!ready.body.includes('aria-disabled="true"'));
     assert.strictEqual((ready.body.match(/class="co-reason"[^>]*hidden/g) || []).length, 3);
     const reasons = [...ready.body.matchAll(/<p class="co-reason"[^>]*>([^<]*)<\/p>/g)];

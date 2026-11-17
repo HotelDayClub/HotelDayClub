@@ -266,7 +266,7 @@ body.guest.about-page .about-commit-list li{line-height:1.45;color:var(--hdc-tex
 .fh-form .fh-submit:hover{background:var(--hdc-hover)}
 .fh-form .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 .fh-d1 .fh-notice{color:var(--hdc-secondary);font-size:12px;line-height:1.45;margin:14px 0 0}
-.fh-d1 .fh-notice a{color:var(--hdc-primary)}
+.fh-d1 .fh-notice a{color:var(--hdc-primary);text-decoration:underline;text-underline-offset:2px}
 .fh-sent h3{font:500 24px/1.2 var(--font-display);margin:0 0 6px}
 .fh-d1 .fh-sent p{color:var(--hdc-secondary);margin:0}
 .fh-form-card .alert{margin:0 0 14px}

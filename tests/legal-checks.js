@@ -652,7 +652,7 @@ function start(port, extra = {}) {
     assert.ok(checkout.body.includes('noindex'));
 
     const missing = await post(port, '/book', { hotel: 'skyline-rooftop', date: freeSky.date, pass: 'chair', qty: '1', name: 'Alex Citizen', email: 'alex@example.com', phone: '0412345678', rules: '1' });
-    assert.strictEqual(missing.status, 409);
+    assert.strictEqual(missing.status, 400);
     assert.ok(missing.body.includes('Tick the box above to continue.'));
 
     const live = new Database(dbPath);

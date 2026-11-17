@@ -143,6 +143,8 @@ function prepGuestData(db) {
       }
     }
   }
+  const others = db.prepare("SELECT id FROM bookings WHERE hotel_id=? AND date<>?").all(h.id, day);
+  for (const row of others) purgeBooking(db, row.id);
   console.log('fh-shot data:', day, 'bookings', left);
   return { day, hotelId: h.id };
 }
@@ -270,21 +272,41 @@ const loginJs = `(function(){
   await wsSend(ws, { method: 'Runtime.evaluate', params: { expression: loginJs, awaitPromise: true } });
   await new Promise(r => setTimeout(r, 600));
 
+  const dashClip = `(() => {
+    const main = document.querySelector('.dash-main');
+    if (!main) throw new Error('missing .dash-main');
+    if (/\\b[Gg]ross\\b/.test(main.textContent)) throw new Error('dashboard still shows gross');
+    const r = main.getBoundingClientRect();
+    return { x: Math.max(0, r.x), y: Math.max(0, r.y), width: r.width, height: Math.min(r.height, ${TARGET_H}) };
+  })()`;
   const dashBuf = await captureViewport(ws, `${base}/hotel`, {
-    beforeShot: `(() => {
-      window.scrollTo(0, 0);
-      if (document.getElementById('sold-warn')) throw new Error('dashboard still has sold-warn');
-      return true;
-    })()`,
+    viewportW: 1280,
+    viewH: 1100,
+    clipH: TARGET_H,
+    beforeShot: 'window.scrollTo(0,0);',
+    clipExpr: dashClip,
   });
   await saveViewportJpeg(dashBuf, 'fh-dashboard');
 
+  const hotelClip = `(() => {
+    const main = document.querySelector('.dash-main');
+    if (!main) throw new Error('missing .dash-main');
+    const r = main.getBoundingClientRect();
+    return { x: Math.max(0, r.x), y: Math.max(0, r.y), width: r.width, height: Math.min(r.height, ${TARGET_H}) };
+  })()`;
   const checkinBuf = await captureViewport(ws, `${base}/hotel/checkin`, {
+    viewportW: 1280,
+    viewH: 1100,
+    clipH: TARGET_H,
     beforeShot: 'window.scrollTo(0,0);',
+    clipExpr: hotelClip,
   });
   await saveViewportJpeg(checkinBuf, 'fh-checkin');
 
   const listBuf = await captureViewport(ws, `${base}/hotel#today`, {
+    viewportW: 1280,
+    viewH: 1200,
+    clipH: TARGET_H,
     beforeShot: `(() => {
       const el = document.getElementById('today');
       if (!el) throw new Error('missing #today');
@@ -298,6 +320,7 @@ const loginJs = `(function(){
       if (!el.textContent.includes('Casey L.') || !/\\+ 2 guests/.test(el.textContent)) throw new Error('missing Casey L. + 2 guests headline');
       return true;
     })()`,
+    clipExpr: hotelClip,
   });
   const gap = await firstContentRow(listBuf);
   if (gap > 110) throw new Error(`guestlist capture has ${gap}px top gap`);

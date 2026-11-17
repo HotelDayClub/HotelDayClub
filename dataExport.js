@@ -1,4 +1,5 @@
 const { csvCell } = require('./waitlist');
+const { share } = require('./commission');
 const { arrivalText } = require('./offering');
 const { HotelClock } = require('./calendar');
 
@@ -11,7 +12,7 @@ const BOOKING_COLUMNS = [
 ];
 
 const HOTEL_BOOKING_COLUMNS = [
-  'date', 'booking_code', 'guest_name', 'guest_names', 'pass', 'guests', 'expected_arrival', 'status', 'gross_sales', 'paid_to_you',
+  'date', 'booking_code', 'guest_name', 'guest_names', 'pass', 'guests', 'expected_arrival', 'status', 'paid_to_you',
 ];
 
 const HOTEL_COLUMNS = [
@@ -37,11 +38,16 @@ function hotelsCsv(rows) {
 }
 
 function hotelBookingsCsv(rows) {
-  return toCsv(HOTEL_BOOKING_COLUMNS, rows.map(row => ({
-    ...row,
-    expected_arrival: arrivalText(row.expected_arrival, 'csv'),
-    paid_to_you: row.paid_to_you == null || row.paid_to_you === '' ? '' : row.paid_to_you,
-  })));
+  return toCsv(HOTEL_BOOKING_COLUMNS, rows.map(row => {
+    const payout = row.paid_to_you != null && row.paid_to_you !== ''
+      ? row.paid_to_you
+      : share(row.total || 0).payout;
+    return {
+      ...row,
+      expected_arrival: arrivalText(row.expected_arrival, 'csv'),
+      paid_to_you: payout,
+    };
+  }));
 }
 
 module.exports = { BOOKING_COLUMNS, HOTEL_COLUMNS, HOTEL_BOOKING_COLUMNS, bookingsCsv, hotelsCsv, hotelBookingsCsv };

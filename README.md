@@ -11,9 +11,13 @@ npm start            # http://localhost:3030, or the port in PORT. Seeds demo da
 npm run seed         # optional reset: deletes the SQLite file and recreates it with 6 demo hotels and about 270 sample bookings. Do not run this on Render.
 npm run restore -- /path/to/hdc-YYYY-MM-DD-HHmm.sqlite   # stop the server first. See "Restore a backup" below.
 npm run bg           # runs in the background on http://localhost:3030, with an auto-restart loop (log: server.log)
-npm test             # Playwright end-to-end test; it also refreshes screenshots/
+npm test             # Playwright end-to-end test (screenshots are local-only, not committed)
 npm run check        # all Node checks in tests/*-checks.js (layout checks need Chrome locally)
 npm run check:layout # pass-row and search card height smoke tests only (same as tests/layout-checks.js)
+```
+
+### Security headers
+HTML responses set Content-Security-Policy, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, Referrer-Policy, and Permissions-Policy. Strict-Transport-Security is sent when the request is HTTPS (`x-forwarded-proto: https`). `X-Powered-By` is disabled. Some inline styles still use `unsafe-inline` in CSP; moving them behind nonces is a noted follow-up.
 ```
 Run `npm run seed` before each pitch to reset the data. Sample bookings are dated relative to today.
 
@@ -64,7 +68,7 @@ Each new contact-form message also emails the contact address (`CONTACT_EMAIL`, 
 ### Hotel operations email (off by default)
 Hotel mail is **disabled unless you turn it on**. Set `HOTEL_MAIL_ENABLED` to `true` or `1` on the host (it is unset in git and defaults to off). When enabled, the app can send:
 
-- **Night-before guest list** (about 19:00 in each hotel's timezone)
+- **Night-before guest list** (from 18:00 to midnight local hotel time on the evening before; `HOTEL_LIST_SEND_AT` overrides the hour)
 - **Monthly statement** (about 09:00 on the 1st of each month, for the previous month)
 - **New booking alert** to the hotel when a guest finishes checkout (also respects the enabled flag; demo hotels are skipped)
 
@@ -167,9 +171,9 @@ What still has to be done by hand:
 4. **Real auth:** hotel staff accounts with password reset, roles, and a second factor. Demo hotel passwords are scrypt hashes checked with a constant-time compare. Admin is still one shared password, with a per-address lockout, and there is no two-factor step.
 5. **Email** confirmations and contact-form alerts already send through Resend when `RESEND_API_KEY` and `MAIL_FROM` are set on the host. SMS is still to do. The check-in page already scans a booking QR with the phone camera. `/hotel/email-preview` only shows the night-before guest list.
 6. Legal: replace the draft pages in `legal/` with signed terms, a privacy policy, waivers and age checks. Then set `LEGAL_PAGES_INDEXABLE` to `true` on Render so `/privacy`, `/terms`, `/refunds` and `/risk` can be indexed. Use real hotel photos and names only after that hotel has agreed to be listed. Get trade mark clearance for the name.
-7. Ops: timezone handling (it currently uses the server's local time), rate limiting and CSRF tokens. Nightly SQLite backups and `GET /healthz` are in place once `DATA_DIR` is set. See the persistent-disk steps above. A personal-data inventory is in `docs/data-inventory.md`.
+7. Ops: rate limiting and CSRF tokens. Guest and hotel civil times use each hotel's stored timezone (or state) with Sydney as the fallback; CI runs `npm run check` with and without `TZ`. Nightly SQLite backups and `GET /healthz` are in place once `DATA_DIR` is set. See the persistent-disk steps above. A personal-data inventory is in `docs/data-inventory.md`.
 
 ## Screenshots
-`screenshots/{home,listing,checkout,confirmation,hotel-dashboard,admin}-{desktop,mobile}.png` (refreshed by `npm test`; not committed in this repo).
+Playwright can write `screenshots/{home,listing,checkout,confirmation,hotel-dashboard,admin}-{desktop,mobile}.png` when you run `npm test`; those files are not committed.
 
 For-hotels product shots live in `public/golden/img/fh-*.jpg` (regenerate with `node scripts/capture-fh-shots.js` when the hotel UI changes; needs Chrome and `DEMO_HOTEL_PASSWORD`).

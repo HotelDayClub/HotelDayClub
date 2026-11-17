@@ -207,7 +207,7 @@ async function main() {
 
     const page = await get(port, salt.headers.location, { 'X-Forwarded-For': '203.0.113.11' });
     assert.strictEqual(page.status, 200);
-    assert.ok(!page.body.includes('Persis Guest'));
+    assert.ok(page.body.includes('Persis Guest') || page.body.includes('Persis'), 'booking ticket lists guest names');
     assert.ok(!page.body.includes('persist-guest@example.com'));
     assert.ok(!page.body.includes('0412000111'));
     assert.ok(page.body.includes('Saltwater'));

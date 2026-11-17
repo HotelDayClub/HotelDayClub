@@ -113,18 +113,19 @@ assert.strictEqual(BOOKING_COLUMNS[BOOKING_COLUMNS.indexOf('party') + 1], 'expec
 assert.strictEqual(HOTEL_BOOKING_COLUMNS[HOTEL_BOOKING_COLUMNS.indexOf('guests') + 1], 'expected_arrival');
 const adminHeader = bookingsCsv([{ code: 'HDC-1', party: 2, expected_arrival: 'unsure' }]).split('\r\n')[0].split(',');
 assert.strictEqual(adminHeader[adminHeader.indexOf('party') + 1], 'expected_arrival');
+const { share } = require('../commission');
 const csv = hotelBookingsCsv([
-  { date: '2026-11-02', booking_code: 'HDC-1', guest_name: '=Mia', pass: 'Daybed', guests: 2, expected_arrival: '11:00', status: 'confirmed', gross_sales: 80 },
-  { date: '2026-11-03', booking_code: 'HDC-2', guest_name: 'Sam', pass: 'Chair', guests: 1, expected_arrival: 'unsure', status: 'confirmed', gross_sales: 40 },
-  { date: '2026-11-04', booking_code: 'HDC-3', guest_name: 'Jo', pass: 'Chair', guests: 1, expected_arrival: null, status: 'confirmed', gross_sales: 40 },
+  { date: '2026-11-02', booking_code: 'HDC-1', guest_name: '=Mia', pass: 'Daybed', guests: 2, expected_arrival: '11:00', status: 'confirmed', total: 80 },
+  { date: '2026-11-03', booking_code: 'HDC-2', guest_name: 'Sam', pass: 'Chair', guests: 1, expected_arrival: 'unsure', status: 'confirmed', total: 40 },
+  { date: '2026-11-04', booking_code: 'HDC-3', guest_name: 'Jo', pass: 'Chair', guests: 1, expected_arrival: null, status: 'confirmed', total: 40 },
 ]);
 const lines = csv.split('\r\n');
-assert.strictEqual(lines[0], 'date,booking_code,guest_name,guest_names,pass,guests,expected_arrival,status,gross_sales,paid_to_you');
+assert.strictEqual(lines[0], 'date,booking_code,guest_name,guest_names,pass,guests,expected_arrival,status,paid_to_you');
 assert.ok(lines[1].includes(`"'=Mia"`));
 assert.ok(lines[1].includes('"11:00"'));
 assert.ok(lines[2].includes('"Not sure"'));
 assert.ok(lines[3].includes('"1","","confirmed"'));
-assert.ok(lines[1].includes(',"80",""'), 'empty paid_to_you cell');
+assert.ok(lines[1].includes(`"${share(80).payout}"`), 'paid_to_you computed');
 assert.ok(!lines[1].includes('\u2014'));
 
 const mailed = bookingNotice({

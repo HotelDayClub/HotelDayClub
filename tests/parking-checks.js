@@ -339,7 +339,7 @@ async function live() {
     assert.ok(!warn(under.body).includes(`${nice(passDate)} is`));
     bookSpots(liveDb, salt.id, pass.id, passDate, 1, 'HDC-TOP');
     const over = await get(port, '/hotel', { Cookie: jar });
-    const passLine = `Sun lounger is ${Math.round(goal * 100 / pass.daily_cap)}% sold on ${nice(passDate)}.`;
+    const passLine = `Sun lounger is nearly full on ${nice(passDate)} (${goal} of ${pass.daily_cap}).`;
     assert.ok(warn(over.body).includes(passLine), warn(over.body));
     const home = await get(port, '/', { 'X-Forwarded-For': '203.0.113.50' });
     const analytics = await get(port, '/hotel/analytics', { Cookie: jar });
@@ -356,11 +356,11 @@ async function live() {
     assert.ok(!warn(dayUnder.body).includes(`${nice(dayDate)} is`));
     bookSpots(liveDb, salt.id, pass.id, dayDate, 1, 'HDC-DAYX');
     const dayOver = await get(port, '/hotel', { Cookie: jar });
-    assert.ok(warn(dayOver.body).includes(`${nice(dayDate)} is 80% sold.`), warn(dayOver.body));
-    assert.ok(!warn(dayOver.body).includes(`sold on ${nice(dayDate)}`));
+    assert.ok(warn(dayOver.body).includes(`${nice(dayDate)} is nearly full (8 of 10 spots).`), warn(dayOver.body));
+    assert.ok(!warn(dayOver.body).includes(`% sold`));
     const checkinAfter = await get(port, '/hotel/checkin', { Cookie: jar });
     assert.ok(!checkinAfter.body.includes('id="sold-warn"'));
-    assert.ok(!checkinAfter.body.includes(`${nice(dayDate)} is 80% sold.`));
+    assert.ok(!checkinAfter.body.includes(`${nice(dayDate)} is nearly full`));
     console.log('parking live checks passed');
   } finally {
     liveDb.close();

@@ -144,7 +144,7 @@ function bookingPageBody(v) {
   const shownCode = v.shownCode || b.short_code || b.code;
   const stub = cancelled
     ? `<div class="tk-off">This booking is cancelled, so the QR code is no longer shown and it won't check you in.</div><p class="tk-ref">Booking ref<b id="tk-code">${esc(shownCode)}</b></p>`
-    : `${demo ? '<span class="ex">Example QR (demo)</span>' : ''}<div class="tk-qrbox"><img class="qr" src="${v.qr}" alt="QR code for booking ${esc(b.code)}" width="160" height="160"></div>
+    : `<p class="tk-stub-lbl">SHOW AT RECEPTION</p>${demo ? '<span class="ex">Example QR (demo)</span>' : ''}<div class="tk-qrbox"><img class="qr" src="${v.qr}" alt="QR code for booking ${esc(b.code)}" width="160" height="160"></div>
 <p class="tk-ref">Booking ref<b id="tk-code">${esc(shownCode)}</b></p>
 <button class="tk-copy js-only" type="button" data-copy="${esc(shownCode)}" aria-describedby="tk-code">${COPY_ICON}Copy booking ref</button>
 <span class="tk-copied" role="status"></span>`;
@@ -166,7 +166,7 @@ ${adds}
     ? ''
     : `<div class="tk-notes">
 <article class="tk-note" aria-labelledby="tk-bring-h"><h2 id="tk-bring-h">What to bring</h2><ul class="tk-chips">${TicketView.bringChips(hotel).map(c => `<li class="tk-chip${c.on ? ' inc' : ''}">${CHECK_ICON}${esc(c.text)}</li>`).join('')}</ul></article>
-<article class="tk-note" aria-labelledby="tk-cancel-h"><h2 id="tk-cancel-h">Cancellation</h2><p class="tk-cx${late ? ' late' : ''}">${esc(note)}</p></article>
+<article class="tk-note" aria-labelledby="tk-cancel-h"><h2 id="tk-cancel-h">${!cancelled && /free cancellation/i.test(note) ? 'Free cancellation' : 'Cancellation'}</h2><p class="tk-cx${late ? ' late' : ''}">${esc(note)}${!cancelled && v.mayCancel ? ' Manage or cancel from this page. <a href="#manage">Manage booking</a>' : ''}</p></article>
 <article class="tk-note" aria-labelledby="tk-food-h"><h2 id="tk-food-h">Food and drink</h2><p>${esc(FOOD_RULE)}</p></article>
 </div>`;
   const manage = cancelled
@@ -177,7 +177,8 @@ ${adds}
   const contact = esc(operatorEmail());
   const parking = !cancelled && v.parkingHtml ? `<details class="tk-dd"><summary><span>Parking</span>${CHEVRON}</summary>${v.parkingHtml}</details>` : '';
   const when = consentStamp(b, hotel);
-  const consent = when ? `<p>${esc(`Terms, Cancellation & Refund Policy, hotel rules and risk warning: accepted at checkout ${when}.`)}</p>` : '';
+  const nameList = (v.guestNames && v.guestNames.length) ? v.guestNames.filter(Boolean).join(', ') : '';
+  const consent = when ? `<p>${esc(`Terms, Cancellation & Refund Policy, hotel rules and risk warning: accepted at checkout ${when}.${nameList ? ` Guest names on this booking: ${nameList}.` : ''}`)}</p>` : '';
   const rows = `<details class="tk-dd"><summary><span>At reception</span>${CHEVRON}</summary><p>${esc(GuestCheckIn.line())}</p></details>
 <details class="tk-dd"><summary><span>${esc(TicketView.safetyLine(hotel))}</span>${CHEVRON}</summary>
 <p>${esc(swimNote(hotel))}</p>

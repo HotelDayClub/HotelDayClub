@@ -17,7 +17,6 @@ const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const PHOTOS = [
   ['hero-loungers.jpg', 'Loungers'],
   ['rooftop-city.jpg', 'Rooftop'],
-  ['rooftop-deck.jpg', 'Rooftop deck'],
   ['infinity-ocean.jpg', 'Infinity pool'],
   ['clifftop-ocean.jpg', 'Ocean pool'],
   ['glass-roof-pool.jpg', 'Indoor pool'],

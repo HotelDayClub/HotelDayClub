@@ -106,7 +106,7 @@ function mainText(html) {
     assert.ok(body.includes('Towels included'));
     assert.ok(!body.includes('Towels: 2 provided'));
     assert.strictEqual(body.split(FOOD_RULE).length - 1, 1);
-    assert.ok(/<article class="tk-note"[^>]*><h2 id="tk-cancel-h">Cancellation<\/h2><p class="tk-cx">Free cancellation until \d{1,2} am, .+\(hotel time\)\.<\/p><\/article>/.test(body));
+    assert.ok(/<article class="tk-note"[^>]*><h2 id="tk-cancel-h">Free cancellation<\/h2><p class="tk-cx">Free cancellation until \d{1,2} am, .+\(hotel time\)\. Manage or cancel from this page\. <a href="#manage">Manage booking<\/a><\/p><\/article>/.test(body));
     assert.ok(body.includes('Manage or cancel'));
     assert.ok(body.includes('Demo: nothing is charged or refunded.'));
     assert.ok(body.includes('<summary><span>At reception</span>'));

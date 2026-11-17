@@ -76,7 +76,7 @@ function start(port) {
     const consent = db.prepare('SELECT guest_names FROM consent_log WHERE booking_id=?').get(row.id);
     assert.ok(consent.guest_names && consent.guest_names.includes('Tom Lee'));
     const bad = await post(port, { ...base, guest_2: 'Tom' });
-    assert.ok(bad.status === 409 || bad.status === 303);
+    assert.strictEqual(bad.status, 400);
   } finally {
     child.kill('SIGTERM');
   }

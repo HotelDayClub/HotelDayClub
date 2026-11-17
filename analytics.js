@@ -174,7 +174,7 @@ function tick(date, range) {
   return esc(String(d.getDate()));
 }
 function peakDay(days) {
-  return days.reduce((best, day) => (day.gross > best.gross ? day : best), days[0]);
+  return days.reduce((best, day) => (day.payout > best.payout ? day : best), days[0]);
 }
 function bars(days, { range, heightFor, barClass, caption, foot }) {
   return `<div class="vchart-wrap"${range > 7 ? ' tabindex="0"' : ''}><div class="vchart${range > 7 ? ' scroll' : ' fit'}" role="img" aria-label="${esc(caption)}">${days.map(day => {
@@ -196,17 +196,17 @@ function exampleNote(report) {
 }
 function renderAnalytics(report) {
   const peak = report.days.length ? peakDay(report.days) : null;
-  const revenueCaption = !peak || peak.gross === 0
-    ? `Gross revenue by day from ${nice(report.start)} to ${nice(report.end)}. No revenue in this period.`
-    : `Gross revenue by day from ${nice(report.start)} to ${nice(report.end)}. The highest day is ${peak.label} at ${money(peak.gross)}. Total gross is ${money(report.gross)}.`;
+  const revenueCaption = !peak || peak.payout === 0
+    ? `Your payout by day from ${nice(report.start)} to ${nice(report.end)}. No bookings in this period.`
+    : `Your payout by day from ${nice(report.start)} to ${nice(report.end)}. The highest day is ${peak.label} at ${money(peak.payout)}.`;
   const fillCaption = report.fill.rate == null
-    ? 'No open days in this period, so there is no fill rate.'
-    : `Fill rate by day. ${report.fill.spots} of ${report.fill.cap} spots were booked on ${report.fill.openDays} open day${report.fill.openDays === 1 ? '' : 's'}, ${pct(report.fill.rate)} of the cap. Closed days are hatched.`;
+    ? 'No open days in this period.'
+    : `Spots booked by day. ${report.fill.spots} of ${report.fill.cap} spots on ${report.fill.openDays} open day${report.fill.openDays === 1 ? '' : 's'}. Closed days are hatched.`;
   const revenueChart = bars(report.days, {
     range: report.range,
     heightFor: day => {
-      const max = peak ? peak.gross : 0;
-      return max > 0 ? (day.gross / max) * 100 : 0;
+      const max = peak ? peak.payout : 0;
+      return max > 0 ? (day.payout / max) * 100 : 0;
     },
     barClass: () => '',
     caption: revenueCaption,
@@ -221,9 +221,9 @@ function renderAnalytics(report) {
   });
   const rangeNav = RANGES.map(n => `<a href="/hotel/analytics?range=${n}"${n === report.range ? ' aria-current="page"' : ''}>Last ${n} days</a>`).join('');
   const passBody = report.byPass.length
-    ? hbars(report.byPass, row => row.bookings, row => spotLabel(row), row => `${row.bookings} booking${row.bookings === 1 ? '' : 's'} · ${money(row.gross)}`)
+    ? hbars(report.byPass, row => row.bookings, row => spotLabel(row), row => `${row.bookings} booking${row.bookings === 1 ? '' : 's'} · ${row.spots} spots`)
     : '<p class="an-note">No seating types yet.</p>';
-  const dailyRows = report.days.map(day => `<tr><td>${esc(day.label)}</td><td>${day.bookings}</td><td>${money(day.gross)}</td><td>${money(day.payout)}</td><td>${day.open ? day.spots : '—'}</td><td>${day.open ? day.cap : 'Closed'}</td><td>${day.fill == null ? '—' : pct(day.fill)}</td></tr>`).join('');
+  const dailyRows = report.days.map(day => `<tr><td>${esc(day.label)}</td><td>${day.bookings}</td><td>${money(day.payout)}</td><td>${day.open ? day.spots : '—'}</td><td>${day.open ? day.cap : 'Closed'}</td><td>${day.cancellations}</td></tr>`).join('');
   const badge = report.example ? '<p class="example-badge">Example data</p>' : '';
   const note = report.example ? `<p class="example-note">${exampleNote(report)}</p>` : '';
   const conversionSmall = report.views > 0
@@ -236,40 +236,40 @@ ${note}
 <nav class="range-pick" aria-label="Date range">${rangeNav}</nav>
 <div class="stats three">
 <div class="stat"><span>Bookings</span><b>${report.bookings.toLocaleString('en-AU')}</b><small>${report.spots.toLocaleString('en-AU')} spots. Cancelled visits are not included.</small></div>
-<div class="stat"><span>Gross revenue</span><b>${money(report.gross)}</b><small>Seating and add-ons on confirmed visits.</small></div>
+<div class="stat"><span>Guests</span><b>${report.spots.toLocaleString('en-AU')}</b><small>Spots counted on confirmed visits.</small></div>
 <div class="stat payout"><span>Your payout</span><b>${money(report.payout)}</b><small>Totals for confirmed visits in this period.</small></div>
 </div>
-<section class="panel"><h2 class="ph2">Revenue over time</h2>
-<p class="an-note">Each bar is gross revenue for that day. Your payout is shown for the same days. A hatched bar is a day the pool is closed. Amounts for every day are in the table below.</p>
+<section class="panel"><h2 class="ph2">Payout over time</h2>
+<p class="an-note">Each bar is your payout for that day. A hatched bar is a day the pool is closed. Amounts for every day are in the table below.</p>
 ${revenueChart}
 ${report.range > 7 ? '<p class="an-note">Scroll sideways to see each day. Amounts are in the table below.</p>' : ''}</section>
-<section class="panel"><h2 class="ph2">Fill rate</h2>
-<p class="an-lead an-fill">${report.fill.rate == null ? 'No open days in this period.' : `<b>${pct(report.fill.rate)}</b> full · ${report.fill.spots.toLocaleString('en-AU')} of ${report.fill.cap.toLocaleString('en-AU')} spots on ${report.fill.openDays} open day${report.fill.openDays === 1 ? '' : 's'}`}</p>
-<p class="an-note">Fill rate compares spots booked with that day's cap. The cap is the total of your seating limits, or a lower number if you capped that day. A full bar is 100%. Closed days are hatched and left out of the percentage.</p>
+<section class="panel"><h2 class="ph2">Spots booked</h2>
+<p class="an-lead an-fill">${report.fill.rate == null ? 'No open days in this period.' : `<b>${report.fill.spots.toLocaleString('en-AU')}</b> of ${report.fill.cap.toLocaleString('en-AU')} spots on ${report.fill.openDays} open day${report.fill.openDays === 1 ? '' : 's'}`}</p>
+<p class="an-note">Each bar compares spots booked with that day's cap. The cap is the total of your seating limits, or a lower number if you capped that day. Closed days are hatched.</p>
 ${fillChart}</section>
 <section class="panel"><h2 class="ph2">Each day</h2>
-<div class="an-table-scroll"><table class="tbl"><caption class="sr-only">Daily bookings, gross revenue, payout, spots, cap and fill rate</caption><thead><tr><th scope="col">Date</th><th scope="col">Bookings</th><th scope="col">Gross</th><th scope="col">Your payout</th><th scope="col">Spots</th><th scope="col">Cap</th><th scope="col">Fill</th></tr></thead><tbody>${dailyRows}</tbody></table></div></section>
+<div class="an-table-scroll"><table class="tbl"><caption class="sr-only">Daily bookings, payout, spots, cap and cancellations</caption><thead><tr><th scope="col">Date</th><th scope="col">Bookings</th><th scope="col">Your payout</th><th scope="col">Spots</th><th scope="col">Cap</th><th scope="col">Cancellations</th></tr></thead><tbody>${dailyRows}</tbody></table></div></section>
 <div class="an-grid">
 <section class="panel"><h2 class="ph2">By pass type</h2>
-<p class="an-note">Confirmed bookings for each seating type. The amount is the booking total, including add-ons.</p>
+<p class="an-note">Confirmed bookings for each seating type.</p>
 ${passBody}</section>
 <section class="panel"><h2 class="ph2">By day of week</h2>
 <p class="an-note">Confirmed bookings by the weekday of the visit, not the day the guest booked.</p>
-${hbars(report.byWeekday, row => row.bookings, row => row.label, row => `${row.bookings} booking${row.bookings === 1 ? '' : 's'} · ${money(row.gross)}`)}</section>
+${hbars(report.byWeekday, row => row.bookings, row => row.label, row => `${row.bookings} booking${row.bookings === 1 ? '' : 's'}`)}</section>
 </div>
 <section class="panel"><h2 class="ph2">Cancellations, refunds and no-shows</h2>
 <div class="stats three">
-<div class="stat"><span>Cancellations</span><b>${report.cancellations.toLocaleString('en-AU')}</b><small>${money(report.cancellationValue)} in cancelled bookings. Not included in revenue or fill.</small></div>
-<div class="stat"><span>Refunds</span><b>${report.refunds.toLocaleString('en-AU')}</b><small>${money(report.refundValue)} returned. Already included in the cancellation count. A late cancellation may not be refunded.</small></div>
-<div class="stat"><span>No-shows</span><b>${report.noShows.toLocaleString('en-AU')}</b><small>Marked from the guest list. The booking stays confirmed, so it still counts as revenue.</small></div>
+<div class="stat"><span>Cancellations</span><b>${report.cancellations.toLocaleString('en-AU')}</b><small>Cancelled visits in this period. Not included in payout totals.</small></div>
+<div class="stat"><span>Refunds</span><b>${report.refunds.toLocaleString('en-AU')}</b><small>Already included in the cancellation count. A late cancellation may not be refunded.</small></div>
+<div class="stat"><span>No-shows</span><b>${report.noShows.toLocaleString('en-AU')}</b><small>Marked from the guest list. The booking stays confirmed.</small></div>
 </div></section>
 <section class="panel"><h2 class="ph2">Listing views</h2>
 <div class="stats">
 <div class="stat"><span>Listing views</span><b>${report.views.toLocaleString('en-AU')}</b><small>Opens of your public page in this period.</small></div>
-<div class="stat payout"><span>View to booking</span><b>${pct(report.conversion)}</b><small>${conversionSmall}</small></div>
+<div class="stat payout"><span>View to booking</span><b>${report.views > 0 ? `${report.bookings} of ${report.views}` : '—'}</b><small>${conversionSmall}</small></div>
 </div>
 <p class="an-note">A listing view is counted on the server when someone opens your public page. Only a daily total is stored. Names, email addresses, phone numbers and IP addresses are not. Refreshing the page counts again. This is not a count of unique people.</p>
-<p class="an-note">View to booking is confirmed bookings in this period divided by listing views in the same period. A guest may look on one day and book another, so this is a simple ratio, not a path for each person.</p>
+<p class="an-note">View to booking counts confirmed bookings in this period against listing views in the same period. A guest may look on one day and book another, so this is a simple count, not a path for each person.</p>
 </section>
 </div>`;
 }

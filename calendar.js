@@ -1,4 +1,5 @@
 const { ymd, addDays } = require('./util');
+const { displayName } = require('./hotelName');
 const { dayPlan, fmtTime, cancelNote, displayCancelNote, FOOD_RULE } = require('./offering');
 
 // Civil access times use the hotel's stored timezone, or its stored state, or a
@@ -161,7 +162,7 @@ function icsEscape(value) {
 
 function bookingIcs(b, hotel, window) {
   const where = String((hotel && (hotel.address || hotel.area)) || '').trim();
-  const summary = 'Day pass at ' + ((hotel && hotel.name) || 'Hotel Day Club');
+  const summary = 'Day pass at ' + (hotel ? displayName(hotel) : 'Hotel Day Club');
   const description = eventFacts(b, hotel, window);
   const lines = [
     'BEGIN:VCALENDAR',
@@ -271,7 +272,7 @@ function passCalendarLink(booking, hotel, window) {
   if (!window || !window.start || !window.end) return '';
   const where = String((hotel && (hotel.address || hotel.area)) || '').trim();
   return googleCalendarUrl({
-    title: 'Day pass at ' + ((hotel && hotel.name) || 'Hotel Day Club'),
+    title: 'Day pass at ' + (hotel ? displayName(hotel) : 'Hotel Day Club'),
     start: window.start,
     end: window.end,
     details: eventFacts(booking, hotel, window),

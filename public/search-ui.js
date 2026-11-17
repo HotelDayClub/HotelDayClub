@@ -393,6 +393,10 @@
       card.dataset.pinBound = '1';
       card.addEventListener('mouseenter', function () { setPinHighlight(card.getAttribute('data-slug')); });
       card.addEventListener('mouseleave', function () { setPinHighlight(''); });
+      card.addEventListener('focusin', function () { setPinHighlight(card.getAttribute('data-slug')); });
+      card.addEventListener('focusout', function (ev) {
+        if (!ev.relatedTarget || !card.contains(ev.relatedTarget)) setPinHighlight('');
+      });
     });
   }
   function ensureMap() {
@@ -427,6 +431,16 @@
             markersBySlug[p.slug] = { marker: m, pin: p };
             m.on('mouseover', function () { if (isWide()) setPinHighlight(p.slug); });
             m.on('mouseout', function () { if (isWide()) setPinHighlight(''); });
+            m.on('click', function () {
+              if (!isWide() || !p.slug || !live) return;
+              setPinHighlight(p.slug);
+              var card = live.querySelector('.ex[data-slug="' + p.slug + '"]');
+              if (card) {
+                var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                card.focus({ preventScroll: true });
+                card.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+              }
+            });
           }
           bounds.push([p.lat, p.lng]);
         });

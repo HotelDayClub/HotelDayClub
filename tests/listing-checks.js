@@ -675,7 +675,7 @@ assert.ok(sevenPhotos.includes('1 / 7'));
       hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '1', book_token: token,
       name: 'Alex Citizen', email: 'not-an-email', phone: '0412', rules: '1',
     });
-    assert.strictEqual(kept.status, 409);
+    assert.strictEqual(kept.status, 400);
     assert.ok(kept.body.includes('value="Alex Citizen"'));
     assert.ok(kept.body.includes('Enter a valid email.'));
     assert.ok(kept.body.includes('Enter a mobile number.'));

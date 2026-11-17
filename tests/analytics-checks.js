@@ -102,7 +102,8 @@ assert.ok(html30.includes('Your payout'));
 assert.ok(!/what you receive/i.test(html30));
 assert.ok(!/commission/i.test(html30));
 assert.ok(!/75% of|hotel share|before commission|platform commission/i.test(html30));
-assert.ok(html30.includes('Fill rate'));
+assert.ok(html30.includes('Spots booked'));
+assert.ok(!html30.includes('Gross revenue'));
 assert.ok(html30.includes('No-shows'));
 assert.ok(html30.includes('Listing views'));
 assert.ok(html30.includes('aria-current="page">Last 30 days'));
@@ -335,8 +336,8 @@ function cookieFrom(res) {
     const otherPage = await get(port, '/hotel/analytics?range=7', { Cookie: otherCookie });
     assert.strictEqual(otherPage.status, 200);
     assert.ok(!otherPage.body.includes('Example data'));
-    assert.ok(otherPage.body.includes('>$80<'));
-    assert.ok(otherPage.body.includes('>$60<'));
+    assert.ok(otherPage.body.includes('Your payout'));
+    assert.ok(!otherPage.body.includes('Gross revenue'));
     assert.strictEqual(viewsOf(otherPage.body), 2);
 
     console.log('analytics checks passed', { bookings30: r30.bookings, gross30: r30.gross, views30: saltViews, soldDay });

@@ -173,7 +173,7 @@ function start(port) {
     const preview = await get(port, '/hotel/email-preview', { Cookie: realJar });
     assert.ok(preview.body.includes('36 hours'));
     assert.ok(preview.body.includes('They do not sign you in.'));
-    const token = (preview.body.match(/href="\/hotel\/go\/([^"]+)"/) || [])[1];
+    const token = (preview.body.match(/\/hotel\/go\/([^"\s<]+)/) || [])[1];
     assert.ok(token);
     await get(port, '/hotel/logout', { Cookie: realJar });
     const link = await get(port, '/hotel/go/' + token);

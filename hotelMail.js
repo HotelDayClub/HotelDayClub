@@ -68,10 +68,11 @@ function guestLine(row) {
   return `${row.guest_name} · ${row.code} · ${seat} × ${row.qty}${extra}`;
 }
 
-function guestLineHtml(row) {
+function guestLineHtml(row, hotel, now) {
+  const head = BookingGuests.headlineHtml(row, hotel, now);
   const seat = esc(spotLabel({ name: row.pass, holds: row.holds }));
   const extra = row.addons ? ` · ${esc(row.addons)}` : '';
-  return `<li style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45;color:${brand['hdc-text']};"><b>${esc(row.guest_name)}</b> <span style="color:${brand['hdc-secondary']};">${esc(row.code)} · ${seat} × ${row.qty}${extra}</span></li>`;
+  return `<li style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45;color:${brand['hdc-text']};"><b>${esc(head.title)}</b>${head.others ? `<br><span style="color:${brand['hdc-secondary']};font-size:14px;">${head.others}</span>` : ''} <span style="color:${brand['hdc-secondary']};">${esc(row.code)} · ${seat} × ${row.qty}${extra}</span></li>`;
 }
 
 function capChoices(db, hotel) {
@@ -96,11 +97,24 @@ function localParts(hotel, now = new Date()) {
   return parts;
 }
 
+function listSendHour() {
+  const raw = String(process.env.HOTEL_LIST_SEND_AT || '').trim();
+  if (!raw) return NIGHT_BEFORE_HOUR;
+  const h = parseInt(raw, 10);
+  return Number.isFinite(h) && h >= 0 && h <= 23 ? h : NIGHT_BEFORE_HOUR;
+}
+
 function inSendWindow(hotel, now, hour) {
   const parts = localParts(hotel, now);
   const h = Number(parts.hour);
   const m = Number(parts.minute);
   return h === hour && m < 5;
+}
+
+function inNightBeforeWindow(hotel, now) {
+  const parts = localParts(hotel, now);
+  const h = Number(parts.hour);
+  return h >= listSendHour() && h <= 23;
 }
 
 function monthRef(parts) {
@@ -128,22 +142,27 @@ function statementTotals(db, hotelId, month) {
   if (!bounds) return null;
   const row = db.prepare(`SELECT COUNT(b.id) bookings,
       COALESCE(SUM(COALESCE(b.party, b.qty * COALESCE(p.holds, 1))),0) guests,
-      COALESCE(SUM(b.total),0) gross
+      COALESCE(SUM(b.qty),0) spots,
+      COALESCE(SUM(b.total),0) sales
     FROM bookings b
     JOIN pass_types p ON p.id=b.pass_type_id
     WHERE b.hotel_id=? AND b.status!='cancelled' AND b.date>=? AND b.date<=?`).get(hotelId, bounds.start, bounds.end);
-  const payout = share(row.gross).payout;
+  const cancellations = db.prepare(`SELECT COUNT(*) n FROM bookings WHERE hotel_id=? AND status='cancelled' AND date>=? AND date<=?`).get(hotelId, bounds.start, bounds.end).n;
+  const payout = share(row.sales).payout;
   return {
     month,
     label: bounds.label,
     bookings: row.bookings,
     guests: row.guests,
+    spots: row.spots,
+    cancellations,
     payout,
   };
 }
 
 function newBookingFor(db, code, opts = {}) {
-  const row = db.prepare(`SELECT b.*, p.name pass, p.holds, h.name hotel_name, h.slug
+  const row = db.prepare(`SELECT b.*, p.name pass, p.holds, h.name hotel_name, h.slug,
+    (SELECT group_concat(ba.name || ' × ' || ba.qty, ', ') FROM booking_addons ba WHERE ba.booking_id=b.id) addons
     FROM bookings b
     JOIN pass_types p ON p.id=b.pass_type_id
     JOIN hotels h ON h.id=b.hotel_id
@@ -164,12 +183,13 @@ function newBookingFor(db, code, opts = {}) {
     `Guest: ${head.title}`,
     namesUnder ? `Also: ${namesUnder}` : '',
     `Pass: ${seat} × ${b.qty}`,
+    b.addons ? `Add-ons: ${b.addons}` : '',
     `Code: ${b.code}`,
     `Dashboard: ${dash}`,
   ].filter(Boolean).join('\n');
   const html = `<p style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45;color:${brand['hdc-text']};"><b>${esc(head.title)}</b></p>
 ${head.others ? `<p style="margin:0 0 12px;font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:1.4;color:${brand['hdc-secondary']};">${head.others}</p>` : ''}
-<p style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45;color:${brand['hdc-text']};">${esc(nice(b.date))} · ${esc(seat)} × ${b.qty}<br><span style="color:${brand['hdc-secondary']};">Booking ${esc(b.code)}</span></p>
+<p style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45;color:${brand['hdc-text']};">${esc(nice(b.date))} · ${esc(seat)} × ${b.qty}${b.addons ? `<br>${esc(b.addons)}` : ''}<br><span style="color:${brand['hdc-secondary']};">Booking ${esc(b.code)}</span></p>
 <p style="margin:16px 0 0;"><a href="${esc(dash)}" style="font-family:Helvetica,Arial,sans-serif;font-size:15px;color:${brand['hdc-primary']};">Open dashboard</a></p>`;
   return { to: hotelRecipient(hotel), subject, text, html, hotel };
 }
@@ -194,7 +214,8 @@ async function sendNewBooking(db, code, opts = {}) {
 
 function nightBeforeFor(db, hotel, now = new Date(), opts = {}) {
   const visitDate = HotelClock.offset(hotel, 1, now);
-  const rows = GuestPrivacy.presentAll(withNotes(db, db.prepare(BOOKING_SQL).all(hotel.id, visitDate)), hotel, now);
+  const rawRows = withNotes(db, db.prepare(BOOKING_SQL).all(hotel.id, visitDate));
+  const rows = BookingGuests.attach(GuestPrivacy.presentAll(rawRows, hotel, now), BookingGuests.loadMap(db, rawRows.map(r => r.id)));
   const spots = rows.reduce((sum, b) => sum + b.qty, 0);
   const name = displayName(hotel);
   const visitLabel = nice(visitDate);
@@ -208,7 +229,7 @@ function nightBeforeFor(db, hotel, now = new Date(), opts = {}) {
     ? `${rows.length} booking${rows.length === 1 ? '' : 's'} · ${spots} spots`
     : 'No day-pass guests tomorrow.';
   const guestText = rows.length ? rows.map(guestLine).join('\n') : '';
-  const guestHtml = rows.length ? `<ul style="margin:12px 0 0;padding:0 0 0 18px;">${rows.map(guestLineHtml).join('')}</ul>` : `<p style="margin:12px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:15px;color:${brand['hdc-secondary']};">No day-pass guests tomorrow.</p>`;
+  const guestHtml = rows.length ? `<ul style="margin:12px 0 0;padding:0 0 0 18px;">${rows.map(r => guestLineHtml(r, hotel, now)).join('')}</ul>` : `<p style="margin:12px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:15px;color:${brand['hdc-secondary']};">No day-pass guests tomorrow.</p>`;
 
   const subject = `Guest list for ${visitLabel} at ${name}`;
   const text = [
@@ -271,14 +292,19 @@ function statementFor(db, hotel, month, now = new Date()) {
   const bookingLabel = `${totals.bookings} booking${totals.bookings === 1 ? '' : 's'}`;
   const guestLabel = `${totals.guests} guest${totals.guests === 1 ? '' : 's'}`;
   const subject = `Your statement for ${totals.label} · ${name}`;
+  const spotLabel = `${totals.spots} spot${totals.spots === 1 ? '' : 's'}`;
+  const cancelLabel = `${totals.cancellations} cancellation${totals.cancellations === 1 ? '' : 's'}`;
   const text = [
     'Hotel Day Club',
     '',
     `Monthly statement · ${name}`,
     '',
+    'Statement of bookings. Payments are not yet processed through Hotel Day Club.',
     totals.label,
     bookingLabel,
     guestLabel,
+    spotLabel,
+    cancelLabel,
     `Your payout: ${money(totals.payout)}`,
     '',
     'Open the dashboard for booking details.',
@@ -289,10 +315,13 @@ function statementFor(db, hotel, month, now = new Date()) {
 <p style="margin:0 0 8px;font-size:20px;font-weight:800;color:${brand['hdc-navy']};">Hotel Day Club</p>
 <h1 style="margin:0 0 8px;font-size:19px;color:${brand['hdc-navy']};">Monthly statement</h1>
 <p style="margin:0 0 4px;font-size:15px;"><b>${esc(name)}</b></p>
+<p style="margin:0 0 8px;font-size:14px;color:${brand['hdc-secondary']};">Statement of bookings. Payments are not yet processed through Hotel Day Club.</p>
 <p style="margin:0 0 12px;font-size:15px;color:${brand['hdc-secondary']};">${esc(totals.label)}</p>
 <table role="presentation" cellpadding="0" cellspacing="0" style="font-size:15px;line-height:1.6;">
 <tr><td style="padding:2px 16px 2px 0;color:${brand['hdc-secondary']};">Bookings</td><td><b>${totals.bookings}</b></td></tr>
 <tr><td style="padding:2px 16px 2px 0;color:${brand['hdc-secondary']};">Guests</td><td><b>${totals.guests}</b></td></tr>
+<tr><td style="padding:2px 16px 2px 0;color:${brand['hdc-secondary']};">Spots</td><td><b>${totals.spots}</b></td></tr>
+<tr><td style="padding:2px 16px 2px 0;color:${brand['hdc-secondary']};">Cancellations</td><td><b>${totals.cancellations}</b></td></tr>
 <tr><td style="padding:2px 16px 2px 0;color:${brand['hdc-secondary']};">Your payout</td><td><b>${esc(money(totals.payout))}</b></td></tr>
 </table>
 </body></html>`;
@@ -302,6 +331,8 @@ function statementFor(db, hotel, month, now = new Date()) {
     label: totals.label,
     bookings: totals.bookings,
     guests: totals.guests,
+    spots: totals.spots,
+    cancellations: totals.cancellations,
     payout: totals.payout,
     name,
     to: hotelRecipient(hotel),
@@ -316,27 +347,21 @@ function statementFor(db, hotel, month, now = new Date()) {
 
 function statementPreviewHtml(st) {
   if (!st) return '<p class="muted">Pick a valid month.</p>';
+  const spots = st.spots != null ? st.spots : 0;
+  const cancels = st.cancellations != null ? st.cancellations : 0;
   return `<article class="email-card"><p class="muted small">To ${esc(st.to || 'no address on file')} · ${esc(st.name)}</p>
 <h2>Monthly statement</h2>
+<p class="muted">Statement of bookings. Payments are not yet processed through Hotel Day Club.</p>
 <p class="muted">${esc(st.label)}</p>
-<p>${st.bookings} booking${st.bookings === 1 ? '' : 's'} · ${st.guests} guest${st.guests === 1 ? '' : 's'}</p>
+<p>${st.bookings} booking${st.bookings === 1 ? '' : 's'} · ${st.guests} guest${st.guests === 1 ? '' : 's'} · ${spots} spot${spots === 1 ? '' : 's'} · ${cancels} cancellation${cancels === 1 ? '' : 's'}</p>
 <p>Your payout: <b>${esc(money(st.payout))}</b></p>
 <p class="muted small">Totals are for confirmed visits in this month.</p></article>`;
 }
 
 function nightBeforePreviewHtml(mail, recipient) {
-  const capLinks = (mail.capTokens.length ? mail.capTokens : mail.caps.map(n => ({ n, token: '' })))
-    .map(c => c.token ? `<a class="btn btn-line" href="/hotel/go/${esc(c.token)}">Cap at ${c.n}</a>` : `<span class="btn btn-line">Cap at ${c.n}</span>`).join('');
-  const pause = mail.pauseToken ? `<a class="btn btn-navy" href="/hotel/go/${esc(mail.pauseToken)}">Pause tomorrow</a>` : '';
-  const list = mail.rows.length
-    ? `<ul class="email-guests">${mail.rows.map(b => `<li><b>${esc(b.guest_name)}</b> <span class="muted">${esc(b.code)} · ${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}${b.addons ? ' · ' + esc(b.addons) : ''}</span></li>`).join('')}</ul>`
-    : '<p class="muted">No day-pass guests tomorrow.</p>';
-  return `<article class="email-card"><p class="muted small">To ${esc(recipient || mail.to || 'no address on file')} · ${esc(mail.name)}</p>
-<h2>Tomorrow at the pool</h2>
-<p>${mail.bookings} booking${mail.bookings === 1 ? '' : 's'} · ${mail.spots} spots</p>
-${list}
-<div class="email-acts">${pause}${capLinks}<a class="btn btn-line" href="/hotel/print?date=${esc(mail.visitDate)}">Print this list</a></div>
-</article>`;
+  if (!mail) return '<p class="muted">No preview.</p>';
+  const inner = String(mail.html || '').replace(/^[\s\S]*<body[^>]*>/i, '').replace(/<\/body>[\s\S]*$/i, '');
+  return `<article class="email-card email-card-sent"><p class="muted small">To ${esc(recipient || mail.to || 'no address on file')} · ${esc(mail.name)} · same HTML as sent</p>${inner}</article>`;
 }
 
 function alreadySent(db, hotelId, kind, ref) {
@@ -380,7 +405,7 @@ async function tick(db, opts = {}) {
     const hotel = { ...raw };
     if (skipsHotel(hotel)) continue;
     const parts = localParts(hotel, now);
-    const dueNight = force || inSendWindow(hotel, now, NIGHT_BEFORE_HOUR);
+    const dueNight = force || inNightBeforeWindow(hotel, now);
     if (dueNight) {
       const payload = nightBeforeFor(db, hotel, now, { signOps, origin });
       if (payload.to && !alreadySent(db, hotel.id, payload.kind, payload.ref)) {
