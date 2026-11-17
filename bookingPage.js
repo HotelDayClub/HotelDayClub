@@ -1,4 +1,5 @@
 const { esc, money, nice } = require('./util');
+const { displayName } = require('./hotelName');
 const { ShortCode } = require('./shortCode');
 const { CheckoutFlow } = require('./checkout');
 const { HotelClock, hotelZone } = require('./calendar');
@@ -98,13 +99,24 @@ class TicketView {
   }
 }
 
+function guestPeopleLabel(v) {
+  const n = Math.max(1, Math.floor(Number(v.party) || 1));
+  return n === 1 ? '1 person' : `${n} people`;
+}
+
+function guestNamesBlock(names) {
+  const list = (names || []).filter(Boolean);
+  if (list.length <= 1) return '';
+  return `<p class="tk-guests"><span class="muted">Guests:</span> ${list.map(n => esc(n)).join(', ')}</p>`;
+}
+
 function hotelRow(b, v) {
   const dirs = MapEmbed.directionsUrl(v.hotel || {}) || v.mapHref || '';
   const link = dirs && !(v.b.status === 'cancelled')
     ? `<a class="tk-dir" href="${esc(dirs)}" target="_blank" rel="noopener">${NAV_ICON}Directions</a>`
     : '';
   const area = `${b.area}, Australia`;
-  return `<div class="tk-hot">${photoHtml(b)}<div><b>${esc(b.hotel)}</b><span>${esc(area)}</span></div>${link}</div>`;
+  return `<div class="tk-hot">${photoHtml(b)}<div><b>${esc(displayName(b.hotel))}</b><span>${esc(area)}</span></div>${link}</div>`;
 }
 
 function bookingPageBody(v) {
@@ -114,14 +126,16 @@ function bookingPageBody(v) {
   const demo = demoSite() || Number(hotel.is_demo) === 1;
   const heading = cancelled
     ? 'This demo booking is cancelled.'
-    : (demoSite() ? 'Your demo booking' : "You're booked in.");
-  const chip = cancelled ? 'Cancelled' : (b.checked_in_at && v.status ? v.status : 'Confirmed');
+    : (demoSite() ? "You're booked" : "You're booked in.");
+  const chip = cancelled
+    ? 'Cancelled'
+    : (b.checked_in_at && v.status ? v.status : (demoSite() ? 'Confirmed · demo' : 'Confirmed'));
   const passText = `${b.pass}${Number(b.qty) > 1 ? ` \u00d7 ${b.qty}` : ''}`;
   const facts = [
     ['Date', TicketView.dayLabel(b.date)],
     ['Access', v.when || ''],
     ['Pass', passText],
-    ['Guests', String(v.party)],
+    ['Guests', guestPeopleLabel(v)],
   ].filter(row => row[1]);
   const arrival = arrivalText(b.expected_arrival, 'estimate');
   const adds = (v.adds || []).length
@@ -139,16 +153,22 @@ function bookingPageBody(v) {
 ${hotelRow(b, v)}
 <dl class="tk-facts">${facts.map(([k, val]) => `<div><dt>${esc(k)}</dt><dd>${esc(val)}</dd></div>`).join('')}</dl>
 ${arrival ? `<p class="tk-arr">Expected arrival: ${esc(arrival)}</p>` : ''}
+${guestNamesBlock(v.guestNames)}
 ${adds}
 </div>
 <div class="tk-perf" aria-hidden="true"><i></i><i></i></div>
 <div class="tk-stub">${stub}</div>
 </article>`;
-  const action = cancelled ? '' : `<a class="tk-btn" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">${CAL_ICON}Add to calendar</a>`;
-  const bring = cancelled ? '' : `<section class="tk-bring" aria-labelledby="tk-bring-h"><h2 id="tk-bring-h">What to bring</h2><ul class="tk-chips">${TicketView.bringChips(hotel).map(c => `<li class="tk-chip${c.on ? ' inc' : ''}">${CHECK_ICON}${esc(c.text)}</li>`).join('')}</ul><p class="tk-food">${esc(FOOD_RULE)}</p></section>`;
-  const food = cancelled ? `<p class="tk-food">${esc(FOOD_RULE)}</p>` : '';
+  const action = cancelled ? '' : `<a class="tk-cal" href="/booking/${encodeURIComponent(b.code)}/calendar.ics">${CAL_ICON}Add to calendar</a>`;
   const note = cancelled ? 'This demo booking is cancelled.' : displayCancelNote(v.note);
   const late = !cancelled && TicketView.isLate(note);
+  const notes = cancelled
+    ? ''
+    : `<div class="tk-notes">
+<article class="tk-note" aria-labelledby="tk-bring-h"><h2 id="tk-bring-h">What to bring</h2><ul class="tk-chips">${TicketView.bringChips(hotel).map(c => `<li class="tk-chip${c.on ? ' inc' : ''}">${CHECK_ICON}${esc(c.text)}</li>`).join('')}</ul></article>
+<article class="tk-note" aria-labelledby="tk-cancel-h"><h2 id="tk-cancel-h">Cancellation</h2><p class="tk-cx${late ? ' late' : ''}">${esc(note)}</p></article>
+<article class="tk-note" aria-labelledby="tk-food-h"><h2 id="tk-food-h">Food and drink</h2><p>${esc(FOOD_RULE)}</p></article>
+</div>`;
   const manage = cancelled
     ? ''
     : `<details class="tk-manage" id="manage"><summary>Manage or cancel${CHEVRON}</summary>${v.mayCancel
@@ -169,10 +189,9 @@ ${consent}
   return `<div class="tk">
 <div class="tk-st" role="status" aria-live="polite"><div class="tk-mk" aria-hidden="true">${cancelled ? CROSS : TICK}</div><h1>${esc(heading)}</h1><span class="tk-ok${cancelled ? ' is-off' : ''}">${chip}</span></div>
 ${ticket}
-<div class="tk-row2">${action ? `<div class="tk-act">${action}</div>` : ''}${bring}</div>
-${food}
+${action ? `<div class="tk-act">${action}</div>` : ''}
+${notes}
 <section class="tk-more">
-<p class="tk-cx${late ? ' late' : ''}">${esc(note)}</p>
 ${manage}
 <p class="tk-dm">Demo: nothing is charged or refunded.</p>
 ${cancelled ? '' : `<p class="tk-dm">${esc(confirmationBlurb())}</p>`}

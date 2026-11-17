@@ -422,12 +422,13 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     const ticket = await get(port, booked.headers.location);
     const t = ticket.body;
     const tt = visibleText(t);
-    assert.ok(t.includes('<h1>Your demo booking</h1>'));
+    assert.ok(t.includes('<h1>You&#39;re booked</h1>'));
     assert.ok(t.includes('class="tk-ticket"'));
-    assert.ok(/<span class="tk-ok">Confirmed<\/span>/.test(t));
+    assert.ok(/<span class="tk-ok">Confirmed · demo<\/span>/.test(t));
+    assert.ok(t.includes('class="tk-notes"'));
     assert.ok(t.includes('id="tk-code"'));
     assert.ok(t.includes('<dt>Pass</dt><dd>Daybed</dd>'));
-    assert.ok(t.includes('<dt>Guests</dt><dd>2</dd>'));
+    assert.ok(t.includes('<dt>Guests</dt><dd>2 people</dd>'));
     assert.ok(/Fitness centre access \u00d7 2/.test(tt), tt);
     assert.ok(/<span>Parking<\/span>/.test(t));
     assert.ok(!/Parking \u00d7 1/.test(tt));
@@ -435,7 +436,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(!t.includes('Towels: 2 provided'));
     assert.strictEqual(count(tt, FOOD_RULE), 1);
     assert.ok(tt.includes('Free cancellation until'));
-    assert.strictEqual(count(t, 'class="tk-btn"'), 1, 'one filled button');
+    assert.ok(t.includes('class="tk-cal"'));
     assert.ok(tt.includes('Example QR (demo)'));
     assert.ok(tt.includes('Demo: nothing is charged or refunded.'));
     assert.ok(tt.includes('No payment was taken and no real booking exists.'));
