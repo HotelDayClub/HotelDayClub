@@ -751,7 +751,7 @@ function searchCard(hotel, params, index, kidsChip) {
   const pill = offer.sold
     ? '<span class="book-pill">See other dates</span>'
     : `<span class="book-pill">Book<span class="vh"> ${esc(displayName(hotel))}</span></span>`;
-  return `<a class="ex${offer.sold ? ' is-sold' : ''}" href="${esc(href)}"><span class="ex-ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></span><span class="ex-top"><h3>${esc(displayName(hotel))}</h3>${price}</span>${sold}<p class="ex-area">${esc(area)}</p>${when}${chips}${kids}${pill}</a>`;
+  return `<a class="ex${offer.sold ? ' is-sold' : ''}" data-slug="${esc(hotel.slug)}" href="${esc(href)}"><span class="ex-ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></span><span class="ex-bd"><span class="ex-top"><h3>${esc(displayName(hotel))}</h3>${price}</span>${sold}<p class="ex-area">${esc(area)}</p>${when}${chips}${kids}${pill}</span></a>`;
 }
 function radioGroup(name, options, current, klass) {
   const now = String(current || '');
@@ -854,16 +854,32 @@ function searchPage(query) {
     const q = [];
     if (params.date) q.push('date=' + encodeURIComponent(params.date));
     if (params.want) q.push('want=' + encodeURIComponent(params.want));
-  if (params.guests) q.push('qty=' + encodeURIComponent(String(params.guests)));
+    if (params.guests) q.push('qty=' + encodeURIComponent(String(params.guests)));
     const href = '/h/' + h.slug + (q.length ? '?' + q.join('&') : '');
-    return { lat, lng, name: displayName(h), area: guestAreaName(h.area), href };
+    const on = result.dateOf(h) || params.date;
+    const offer = cardOffer(h, on, params.want);
+    return {
+      lat,
+      lng,
+      slug: h.slug,
+      name: displayName(h),
+      area: guestAreaName(h.area),
+      href,
+      price: offer.sold ? null : offer.price,
+      priceLabel: offer.sold ? '' : money(offer.price),
+    };
   }).filter(Boolean);
   const mapToggle = mapPins.length
     ? `<div class="view-toggle" role="group" aria-label="Results view"><button type="button" class="view-btn is-on" id="search-view-list" aria-pressed="true">List</button><button type="button" class="view-btn" id="search-view-map" aria-pressed="false">Map</button></div>`
     : '';
-  const mapBlock = mapPins.length
-    ? `<script type="application/json" id="search-map-data">${JSON.stringify(mapPins).replace(/</g, '\\u003c')}</script><div class="search-map-wrap" id="search-map-wrap" hidden><div id="search-map" class="search-map" role="region" aria-label="Map of listings"></div></div>`
+  const mapScript = mapPins.length
+    ? `<script type="application/json" id="search-map-data">${JSON.stringify(mapPins).replace(/</g, '\\u003c')}</script>`
     : '';
+  const mapPane = mapPins.length
+    ? `<div class="search-map-wrap" id="search-map-wrap" hidden><div id="search-map" class="search-map" role="region" aria-label="Map of listings"></div></div>`
+    : '';
+  const splitOpen = mapPins.length ? '<div class="search-split">' : '';
+  const splitClose = mapPins.length ? '</div>' : '';
   const resetHref = SearchQuery.href({ date: params.date });
   const wantRadios = radioGroup('want', [{ value: '', label: 'Any' }].concat(WANTS.filter(w => w.id).map(w => ({ value: w.id, label: w.name }))), params.want, 'fchip');
   const priceRadios = radioGroup('price', [{ value: '', label: 'Any price' }].concat(result.priceChoices.map(n => ({ value: String(n), label: 'Under $' + n }))), params.price ? String(params.price) : '', 'ropt');
@@ -893,13 +909,13 @@ ${keepSort}
 <button type="button" class="search-sum" aria-haspopup="dialog" aria-controls="search-sheet" aria-label="Edit search: ${esc(pillSub)}"><span class="t"><b>${esc(pillTitle)}</b><small>${esc(pillSub)}</small></span><span class="go" aria-hidden="true">${FIND_ICON}</span></button>
 <div class="toolrow">${mapToggle}<button type="button" class="fbtn" id="filters-btn" aria-haspopup="dialog" aria-controls="filter-drawer" aria-expanded="false">${FILTER_ICON}<span>Filters</span>${badge}</button><div class="ichips" role="group" aria-label="Mood">${mood}</div>
 <form class="sort-form" action="/search" method="get">${searchHidden(params, 'sort')}<label class="sort-label"><span class="sort-name">Sort</span><select class="hdc-pick" name="sort" aria-label="Sort listings" onchange="this.form.submit()">${sortOptions}</select></label><noscript><button type="submit">Sort</button></noscript></form></div>
-${mapBlock}
-<div data-live><div class="rhead cnt"><h1 id="search-count" role="status" aria-live="polite">${esc(countHeading)}</h1>${params.mood ? `<a class="mclear" href="${esc(SearchQuery.href({ ...params, mood: '' }))}">Clear</a>` : ''}</div>
+${mapScript}
+${splitOpen}<div class="search-main" data-live><div class="rhead cnt"><h1 id="search-count" role="status" aria-live="polite">${esc(countHeading)}</h1>${params.mood ? `<a class="mclear" href="${esc(SearchQuery.href({ ...params, mood: '' }))}">Clear</a>` : ''}</div>
 ${params.guestsCapped ? '<p class="cap-note" role="status">Up to 6 people per booking.</p>' : ''}
 ${chips ? `<div class="chips" aria-label="Active filters">${chips}${clear}</div>` : ''}
 ${empty || `<div class="${resultClass}">${cards}</div>`}${others}
 <p class="note">Fictional example hotels. ${LinkStyles.textLink('/guides', 'Read the day pass guides')}.</p>
-</div>
+</div>${mapPane}${splitClose}
 <div class="sheet-bd" data-close-drawer hidden></div>
 <form id="filter-drawer" class="drawer" action="/search" method="get" role="dialog" aria-modal="true" aria-labelledby="filters-h" hidden>
 <div class="dh"><h2 id="filters-h" tabindex="-1">Filters</h2><a class="tlink" href="${esc(resetHref)}">Reset</a><button class="ibtn" type="button" data-close-drawer aria-label="Close filters">Close</button></div>
