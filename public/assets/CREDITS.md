@@ -15,13 +15,13 @@ On 17 Nov 2026 (AEDT) listing gallery masters in `photos/*.jpg` were centre-crop
 | photos/spa-loungers.jpg | https://www.pexels.com/photo/comfortable-tiled-loungers-in-contemporary-wellness-center-in-daylight-7031707/ | Max Vakhtbovych |
 | photos/hotel-gym.jpg | https://www.pexels.com/photo/modern-gym-with-dumbbells-and-benches-40371837/ | 大 董 |
 | photos/glass-roof-pool.jpg | https://www.pexels.com/photo/interior-of-empty-pool-in-building-7174400/ | Max Vakhtbovych |
-| photos/restaurant-view.jpg | https://www.pexels.com/photo/white-and-brown-wooden-table-and-chairs-1267320/ | Quang Nguyen Vinh |
-| photos/coastal-deck-pool.jpg (17 Nov 2026 (AEDT)) | https://www.pexels.com/photo/3286157/ | Valeriya Kobzar |
-| photos/harbour-twilight-pool.jpg (17 Nov 2026 (AEDT)) | https://www.pexels.com/photo/1571468/ | Ivan Babydov |
-| photos/pool-lane-morning.jpg (17 Nov 2026 (AEDT)) | https://www.pexels.com/photo/261043/ | Gratisography |
-| photos/spa-sauna-room.jpg (17 Nov 2026 (AEDT)) | https://www.pexels.com/photo/6431279/ | Max Vakhtbovych |
-| photos/rooftop-daybed-pool.jpg (17 Nov 2026 (AEDT)) | https://www.pexels.com/photo/2034335/ | Scott Webb |
-| photos/lagoon-garden-pool.jpg (17 Nov 2026 (AEDT)) | https://www.pexels.com/photo/1457842/ | Max Vakhtbovych |
+| photos/restaurant-view.jpg | https://www.pexels.com/photo/white-and-brown-wooden-table-and-chairs-1267320/ | ELEVATE |
+| photos/coastal-deck-pool.jpg | https://www.pexels.com/photo/3680282/ | Alexandra Karnasopoulos |
+| photos/harbour-twilight-pool.jpg | https://www.pexels.com/photo/31817160/ | Ahmet ÇÖTÜR |
+| photos/pool-lane-morning.jpg | https://www.pexels.com/photo/19073612/ | Jan van der Wolf |
+| photos/spa-sauna-room.jpg | https://www.pexels.com/photo/8092430/ | Max Vakhtbovych |
+| photos/sea-terrace-pool.jpg | https://www.pexels.com/photo/16248179/ | Josh Hild |
+| photos/terrace-pool.jpg | https://www.pexels.com/photo/261327/ | Pixabay |
 
 **Before launch:** re-check each licence and replace these photos with images supplied by the hotel that is listed. Stock photos must never be shown as a real hotel's property. `kids-float.jpg` (Pexels 8094751, Roxanne Minnish) showed an identifiable child and has been removed. On startup the app drops that filename from every hotel's photos list and clears it on any pass that still points at it.
 
@@ -30,32 +30,22 @@ On 17 Nov 2026 (AEDT) listing gallery masters in `photos/*.jpg` were centre-crop
 - Fonts: Fraunces, Inter and Caveat (SIL Open Font License), self-hosted in `public/golden/fonts/` from Google Fonts. DM Sans is no longer requested.
 
 ## Golden Hour homepage media
-Checked 23 October 2026. These files are generic stock. They are not photographs of the fictional example hotels.
-
-WebP copies of the same files sit beside the JPEGs. Example-listing cards use resized WebP copies in `golden/img/cards/`, made from the licensed listing photos above. Pass photos in `photos/seats/` are smaller WebP crops of those same credited files (lounger, daybed, cabana, chair, glass-roof pool, infinity pool). They are example photos, not the fictional hotels.
-
-### Pexels License
-https://www.pexels.com/license/ was readable: photos and videos are free to use, including commercially; attribution is not required; you may modify them. You may not sell unaltered copies, imply endorsement, or redistribute them on another stock platform.
-
-Homepage hero stills, cropped to 16:9. They are example photos, not partner venues.
+These files are generic stock. They are not photographs of the fictional example hotels.
 
 | File | Photo | Photographer |
 |---|---|---|
 | golden/img/hero-swim.jpg | https://www.pexels.com/photo/30975492/ | Yulius Santoso |
-| golden/img/gym-sm.jpg (8 am gym) | https://www.pexels.com/photo/man-holding-barbell-1552242/ | Leon Ardho |
-| golden/img/pool-lane-morning.jpg | https://www.pexels.com/photo/261043/ | Gratisography |
-| golden/img/rooftop-daybed-pool.jpg | https://www.pexels.com/photo/2034335/ | Scott Webb |
-| golden/img/spa-sauna-room.jpg | https://www.pexels.com/photo/6431279/ | Max Vakhtbovych |
-| golden/img/lagoon-garden-pool.jpg | https://www.pexels.com/photo/1457842/ | Max Vakhtbovych |
-| golden/img/hero-lunch.jpg (not used on the homepage) | https://www.pexels.com/photo/38188725/ | Relaxing Journeys |
-
-WebP and smaller mobile copies sit beside those JPEGs. The on-page chip says "Stock media · example only". Attribution is optional under the Pexels licence. The footer photographer credit was removed on 26 Oct 2026.
+| golden/img/gym-sm.jpg | https://www.pexels.com/photo/man-holding-barbell-1552242/ | Leon Mart |
+| golden/img/pool-lane-morning.jpg | https://www.pexels.com/photo/19073612/ | Jan van der Wolf |
+| golden/img/terrace-pool.jpg | https://www.pexels.com/photo/261327/ | Pixabay |
+| golden/img/spa-sauna-room.jpg | https://www.pexels.com/photo/8092430/ | Max Vakhtbovych |
+| golden/img/sea-terrace-pool.jpg | https://www.pexels.com/photo/16248179/ | Josh Hild |
 
 ## For hotels page
 
 | File | Source | Notes |
 |---|---|---|
-| golden/img/fh-loungers.jpg, fh-loungers-sm.jpg (and .webp) | https://www.pexels.com/photo/3385041/ | Homepage hotels banner and For hotels hero. Distinct from listing hero-loungers stock. |
-| golden/img/fh-dashboard.jpg (and .webp) | Screenshot of `/hotel` as demo-saltwater, captured 17 Nov 2026 (AEDT) | Sample data only. Cropped to `.dash-main` (no header, banner or scrollbar). |
-| golden/img/fh-checkin.jpg (and .webp) | Screenshot of `/hotel/checkin` as demo-saltwater, captured 17 Nov 2026 (AEDT) | Sample data only. Cropped to `.dash-main`. |
-| golden/img/fh-guestlist.jpg (and .webp) | Screenshot of `/hotel` Today's guests as demo-saltwater, captured 17 Nov 2026 (AEDT) | Cropped to `.dash-main`. Multi-guest headline (Casey L. + 2 guests with names). |
+| golden/img/fh-loungers.jpg, fh-loungers-sm.jpg (and .webp) | https://www.pexels.com/photo/36651201/ | Adrien Olichon. Homepage hotels banner and For hotels hero. |
+| golden/img/fh-dashboard.jpg (and .webp) | Screenshot of `/hotel` as demo-saltwater | Cropped to `.dash-main`. |
+| golden/img/fh-checkin.jpg (and .webp) | Screenshot of `/hotel/checkin` as demo-saltwater | Cropped to `.dash-main`. |
+| golden/img/fh-guestlist.jpg (and .webp) | Screenshot of `/hotel` `#today` as demo-saltwater | Cropped to `#today` within `.dash-main`. |

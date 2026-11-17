@@ -39,13 +39,16 @@ async function sampleTopStrip(abs) {
   const hashes = [];
   for (const name of shots) {
     const base = name.replace(/\.jpg$/, '');
-    assert.strictEqual(meta[base] && meta[base].source, 'dash-main', base + ' capture meta');
+    const src = meta[base] && meta[base].source;
+    const ok = base === 'fh-guestlist' ? src === 'dash-main#today' : src === 'dash-main';
+    assert.ok(ok, base + ' capture meta source ' + src);
 
     const abs = path.join(imgDir, name);
     assert.ok(fs.existsSync(abs), name + ' exists');
     const fileMeta = await sharp(abs).metadata();
     assert.strictEqual(fileMeta.width, 1600, name + ' width');
-    assert.ok(fileMeta.height >= 420 && fileMeta.height <= 1200, name + ' height ' + fileMeta.height);
+    const minH = base === 'fh-guestlist' ? 280 : 420;
+    assert.ok(fileMeta.height >= minH && fileMeta.height <= 1200, name + ' height ' + fileMeta.height);
     assert.notStrictEqual(fileMeta.height, 735, name + ' must not be legacy 1600×735 viewport grab');
 
     const strip = await sampleTopStrip(abs);

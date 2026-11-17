@@ -28,8 +28,8 @@ const PHOTOS = [
   ['harbour-twilight-pool.jpg', 'Harbour pool at dusk'],
   ['pool-lane-morning.jpg', 'Morning pool lane'],
   ['spa-sauna-room.jpg', 'Sauna and steam'],
-  ['rooftop-daybed-pool.jpg', 'Rooftop daybed'],
-  ['lagoon-garden-pool.jpg', 'Garden lagoon pool'],
+  ['terrace-pool.jpg', 'Terrace pool'],
+  ['sea-terrace-pool.jpg', 'Sea terrace pool'],
 ];
 
 const pad = n => String(n).padStart(2, '0');

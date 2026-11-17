@@ -132,23 +132,24 @@ function prepGuestData(db) {
   console.log('fh-shot data:', day, 'bookings', keep.length);
 }
 
-async function saveMainShot(buf, outBase, clipMeta) {
+async function saveMainShot(buf, outBase, clipMeta, metaSource = 'dash-main') {
   const metaIn = await sharp(buf).metadata();
   const jpg = path.join(outDir, `${outBase}.jpg`);
   const webp = path.join(outDir, `${outBase}.webp`);
   await sharp(buf).resize(TARGET_W, null, { withoutEnlargement: false }).jpeg({ quality: 90 }).toFile(jpg);
   const final = await sharp(jpg).metadata();
   if (final.width !== TARGET_W) throw new Error(`${outBase} width ${final.width}`);
-  if (final.height < 420 || final.height > 1200) throw new Error(`${outBase} height ${final.height} out of range`);
+  const minH = outBase === 'fh-guestlist' ? 280 : 420;
+  if (final.height < minH || final.height > 1200) throw new Error(`${outBase} height ${final.height} out of range`);
   if (final.height === 735 && metaIn.height >= 700 && metaIn.height <= 750) {
     throw new Error(`${outBase} looks like a fixed viewport grab (${final.height}px)`);
   }
   await sharp(jpg).webp({ quality: 82 }).toFile(webp);
-  meta[outBase] = { source: 'dash-main', width: final.width, height: final.height, ...clipMeta };
+  meta[outBase] = { source: metaSource, width: final.width, height: final.height, ...clipMeta };
   console.log('wrote', jpg, `${final.width}x${final.height}`);
 }
 
-async function captureDashMain(ws, url, { beforeShot, outBase } = {}) {
+async function captureDashMain(ws, url, { beforeShot, outBase, clipSelector, metaSource = 'dash-main' } = {}) {
   await wsSend(ws, { method: 'Emulation.setScrollbarsHidden', params: { hidden: true } });
   await wsSend(ws, { method: 'Page.navigate', params: { url } });
   await waitStyled(ws);
@@ -179,17 +180,24 @@ async function captureDashMain(ws, url, { beforeShot, outBase } = {}) {
     method: 'Emulation.setDeviceMetricsOverride',
     params: { width: viewW, height: viewH, deviceScaleFactor: 1, mobile: false },
   });
-  const layout2 = await wsSend(ws, {
-    method: 'Runtime.evaluate',
-    params: {
-      returnByValue: true,
-      expression: `(() => {
+  const clipExpr = clipSelector
+    ? `(() => {
+        const main = document.querySelector('.dash-main');
+        const el = document.querySelector(${JSON.stringify(clipSelector)});
+        if (!main || !el) throw new Error('clip target missing');
+        if (!main.contains(el)) throw new Error('clip outside dash-main');
+        const r = el.getBoundingClientRect();
+        return { x: r.left, y: r.top, width: r.width, height: Math.min(r.height, 920) };
+      })()`
+    : `(() => {
         const main = document.querySelector('.dash-main');
         const r = main.getBoundingClientRect();
         const h = Math.min(main.scrollHeight, 920);
         return { x: r.left, y: r.top, width: r.width, height: h };
-      })()`,
-    },
+      })()`;
+  const layout2 = await wsSend(ws, {
+    method: 'Runtime.evaluate',
+    params: { returnByValue: true, expression: clipExpr },
   });
   const clip = layout2.result.value;
   const cap = await wsSend(ws, {
@@ -203,7 +211,7 @@ async function captureDashMain(ws, url, { beforeShot, outBase } = {}) {
     },
   });
   const buf = Buffer.from(cap.data, 'base64');
-  await saveMainShot(buf, outBase, { clipWidth: Math.round(clip.width), clipHeight: Math.round(clip.height) });
+  await saveMainShot(buf, outBase, { clipWidth: Math.round(clip.width), clipHeight: Math.round(clip.height) }, metaSource);
 }
 
 const loginJs = `(function(){
@@ -270,13 +278,15 @@ const loginJs = `(function(){
   });
   await captureDashMain(ws, `${base}/hotel#today`, {
     beforeShot: `(() => {
-      window.scrollTo(0,0);
       const el = document.getElementById('today');
       if (!el) throw new Error('missing #today');
       if (!el.querySelector('.guest-others')) throw new Error('missing guest names');
       if (!el.textContent.includes('Casey L.')) throw new Error('missing Casey L.');
+      el.scrollIntoView({ block: 'start', behavior: 'instant' });
       return true;
     })()`,
+    clipSelector: '#today',
+    metaSource: 'dash-main#today',
     outBase: 'fh-guestlist',
   });
 

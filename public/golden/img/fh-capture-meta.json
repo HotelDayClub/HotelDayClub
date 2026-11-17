@@ -14,10 +14,10 @@
     "clipHeight": 920
   },
   "fh-guestlist": {
-    "source": "dash-main",
+    "source": "dash-main#today",
     "width": 1600,
-    "height": 918,
-    "clipWidth": 1604,
-    "clipHeight": 920
+    "height": 657,
+    "clipWidth": 1532,
+    "clipHeight": 629
   }
 }

@@ -567,10 +567,10 @@ ${reassureStrip(false, { home: true })}
 <section data-rv><span class="kicker sand">Plan your day</span><h2>A hotel day, your way</h2>
 <p class="home-note">One example day. The hotel sets the hours.</p>
 <div class="day">
-${slot('gym-sm', 'Hotel gym with free weights', '8 am', 'Swim &amp; gym', 'A gym session, then laps before the city wakes up.')}
-${slot('rooftop-daybed-pool', 'Rooftop pool with daybeds', '12 pm', 'Daybed by the pool', 'Stretch out in the shade.')}
-${slot('spa-sauna-room', 'Modern sauna and steam room', '3 pm', 'Spa afternoon', 'Steam, sauna, a treatment if the hotel offers one.')}
-${slot('lagoon-garden-pool', 'Garden pool in the late afternoon light', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
+${slot('gym-sm', 'Two people training with battle ropes in a gym', '8 am', 'Swim &amp; gym', 'A gym session, then laps before the city wakes up.')}
+${slot('terrace-pool', 'Rectangular terrace pool with red loungers under blue sky', '12 pm', 'Daybed by the pool', 'Stretch out in the shade.')}
+${slot('spa-sauna-room', 'Warm-lit wooden sauna room with benches and bucket', '3 pm', 'Spa afternoon', 'Steam, sauna, a treatment if the hotel offers one.')}
+${slot('sea-terrace-pool', 'Terrace pool with loungers overlooking the sea', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
 </div></section>
 <section id="destinations" data-rv><div class="sec-row"><div><span class="kicker sand">Explore by destination</span><h2>Where to spend the day</h2></div>${LinkStyles.sectionAction('/search', 'All destinations')}</div>
 ${destTiles}
@@ -593,7 +593,7 @@ ${FAQ_PLUS('Can I cancel?', 'Yes. Free cancellation up to 24 hours before your a
 <div class="hp" aria-hidden="true"><label>Company website<input name="company_website" tabindex="-1" autocomplete="off" value=""></label></div>
 <label class="wl-email"><span class="sr-only">Email</span><input name="email" type="email" required autocomplete="email" maxlength="254" placeholder="you@example.com"></label>
 <button class="btn" type="submit">Join the waitlist</button></form></div></section>
-<div class="hotels hotels-d1" id="hotels"><div class="hotels-copy"><span class="kicker">For hotels</span><h2>A quiet pool, put to use.</h2><p>List spare pool, gym and spa capacity. You set the hours, prices and guest numbers.</p><a class="btn" href="/for-hotels">Talk to us</a></div><picture class="hotels-ph"><source type="image/webp" srcset="/golden/img/fh-loungers-sm.webp"><img src="/golden/img/fh-loungers-sm.jpg" alt="Sun loungers and umbrellas beside a hotel pool" width="800" height="534" loading="lazy" decoding="async"></picture></div>
+<div class="hotels hotels-d1" id="hotels"><div class="hotels-copy"><span class="kicker">For hotels</span><h2>A quiet pool, put to use.</h2><p>List spare pool, gym and spa capacity. You set the hours, prices and guest numbers.</p><a class="btn" href="/for-hotels">Talk to us</a></div><picture class="hotels-ph"><source type="image/webp" srcset="/golden/img/fh-loungers-sm.webp"><img src="/golden/img/fh-loungers-sm.jpg" alt="Rooftop pool with pergolas and loungers, city towers behind" width="800" height="534" loading="lazy" decoding="async"></picture></div>
 <noscript><style>#waitlist{display:block;position:static;margin:24px auto 40px}</style></noscript>
 <dialog id="waitlist" aria-labelledby="wl-title" data-open="${openWait ? '1' : '0'}"><div class="wl-in">
 <button type="button" class="wl-x" data-close>Close</button>
@@ -1779,7 +1779,7 @@ ${field('Work email', 'email', 'type="email" required maxlength="254" autocomple
 <p class="fh-lead">Hotel Day Club is for hotels in Australia. Local guests book your pool, gym or spa for the day, on the days you choose. They do not need a room.</p>
 <p class="fh-cta"><a class="btn btn-coral" href="#enquiry">Talk to us</a><a class="text-link" href="#dashboard">See how it works<span aria-hidden="true"> ↓</span></a></p>
 </div>
-<picture class="fh-hero-ph"><source type="image/webp" srcset="/golden/img/fh-loungers-sm.webp 800w, /golden/img/fh-loungers.webp 1400w" sizes="(max-width:800px) 100vw, 560px"><img src="/golden/img/fh-loungers.jpg" alt="Sun loungers and umbrellas beside a hotel pool" width="1400" height="934" fetchpriority="high" decoding="async"></picture>
+<picture class="fh-hero-ph"><source type="image/webp" srcset="/golden/img/fh-loungers-sm.webp 800w, /golden/img/fh-loungers.webp 1400w" sizes="(max-width:800px) 100vw, 560px"><img src="/golden/img/fh-loungers.jpg" alt="Rooftop pool with pergolas and loungers, city towers behind" width="1400" height="934" fetchpriority="high" decoding="async"></picture>
 </section>
 <section class="fh-figs" aria-label="At a glance"><ul class="wrap">
 ${fig('$0', 'to list, no monthly fee')}
