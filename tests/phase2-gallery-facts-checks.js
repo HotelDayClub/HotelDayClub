@@ -161,12 +161,13 @@ async function assertGalleryPill(port, slug, anchor, needIntersect) {
   const WS = socketCtor();
   const bin = chromeBin();
   if (!WS || !bin) return;
-  const debugPort = 9358;
+  const debugPort = 9300 + Math.floor(Math.random() * 400);
   const chromeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-pgf-chrome-'));
   const chrome = spawn(bin, [
     '--headless=new', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage',
     `--remote-debugging-port=${debugPort}`, `--user-data-dir=${path.join(chromeDir, 'chrome')}`, 'about:blank',
   ], { stdio: 'ignore' });
+  await new Promise(r => setTimeout(r, 800));
   let session;
   try {
     const version = await waitJson(`http://127.0.0.1:${debugPort}/json/version`);
