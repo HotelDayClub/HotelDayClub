@@ -37,13 +37,13 @@ class CheckoutFlow {
   static extraValue(addons) {
     const rows = addons || [];
     if (!rows.length) return 'None';
-    return rows.map(ad => `${ad.name} × ${ad.qty} · ${money(ad.line)} (demo)`).join(', ');
+    return rows.map(ad => `${ad.name} × ${ad.qty} · ${money(ad.line)}`).join(', ');
   }
 
   static extraHtml(addons) {
     const rows = addons || [];
     if (!rows.length) return 'None';
-    return rows.map(ad => `${esc(ad.name)} × ${ad.qty} · <span class="co-nowrap">${esc(money(ad.line))} (demo)</span>`).join(', ');
+    return rows.map(ad => `${esc(ad.name)} × ${ad.qty} · <span class="co-nowrap">${esc(money(ad.line))}</span>`).join(', ');
   }
 
   static clearFunction() {

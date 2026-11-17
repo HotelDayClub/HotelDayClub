@@ -253,7 +253,7 @@ async function live() {
     const [visit] = await openDates(port, 1);
     const checkout = await get(port, '/checkout?hotel=saltwater-terrace&date=' + visit + '&pass=lounger&qty=1', { 'X-Forwarded-For': '203.0.113.43' });
     assert.ok(checkout.body.includes('Confirm booking'));
-    assert.ok(checkout.body.includes('(demo)'));
+    assert.ok(checkout.body.includes('Prices include GST. Demo only.'));
     assert.ok(!/stripe/i.test(checkout.body));
 
     const walk = await bookGuest(port, { hotel: 'saltwater-terrace', date: visit, pass: 'lounger', email: 'walk@example.com' });

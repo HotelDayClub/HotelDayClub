@@ -163,7 +163,7 @@ function makeForm(opts = {}) {
   assert.ok(CheckoutConsent.checkoutMarketingText().includes('by email'));
   assert.ok(!CheckoutConsent.checkoutMarketingText().includes('SMS'));
   assert.strictEqual(CheckoutFlow.extraValue([]), 'None');
-  assert.strictEqual(CheckoutFlow.extraValue([{ name: 'Parking', qty: 1, line: 18 }]), 'Parking × 1 · $18 (demo)');
+  assert.strictEqual(CheckoutFlow.extraValue([{ name: 'Parking', qty: 1, line: 18 }]), 'Parking × 1 · $18');
   assert.ok(CheckoutFlow.changeLink('#extras', 'extras').includes('aria-label="Change extras"'));
 
   const memory = memorySandbox();
@@ -244,13 +244,14 @@ function makeForm(opts = {}) {
     assert.strictEqual(checkout.status, 200);
     const body = checkout.body;
     assert.ok(!body.includes('\u2014'));
-    assert.ok(body.includes('<h1 class="l-title">Book your day (demo)</h1>'));
+    assert.ok(body.includes('<h1 class="l-title">Book your day</h1>'));
+    assert.ok(body.includes('Demo site. No card is charged and no real booking is created.'));
     assert.ok(body.includes('<span class="co-step">1</span> Your details'));
     assert.ok(body.includes('<span class="co-step">2</span> Arrival'));
     assert.ok(body.includes('<span class="co-step">3</span> Add extras'));
     assert.ok(body.includes('<span class="co-step">4</span> Payment'));
     assert.ok(body.includes('<span class="co-step">5</span> Before you book'));
-    const label = 'Confirm booking · $45 (demo)';
+    const label = 'Confirm booking · $45';
     assert.strictEqual(body.split(label).length - 1, 3);
     assert.strictEqual((body.match(/class="btn btn-coral co-btn/g) || []).length, 3);
     assert.strictEqual((body.match(/aria-disabled="true"/g) || []).length, 3);
@@ -262,7 +263,9 @@ function makeForm(opts = {}) {
     const tickHints = (body.match(/Tick the (?:box above|terms box) to continue\./g) || []).length;
     assert.ok(tickHints >= 4, 'disabled confirm hints ' + tickHints);
     assert.ok(!body.includes('Tick the 5 boxes'));
-    assert.ok(body.includes('<span class="co-fact-val co-pass-line">Sun lounger × 1 · $45 (demo)</span>'));
+    assert.ok(body.includes('<span class="co-fact-val co-pass-line">Sun lounger × 1 · $45</span>'));
+    assert.ok(!body.includes('(Demo)'), 'checkout hotel heading drops demo suffix');
+    assert.ok(!/<co-pass-line>[^<]*\(demo\)/i.test(body), 'checkout pass line has no (demo)');
     assert.ok(body.includes(`href="/h/saltwater-terrace?date=${when}&amp;pass=lounger&amp;qty=1#book"`));
     assert.ok(body.includes(`href="/h/saltwater-terrace?date=${when}#book"`));
     assert.ok(body.includes('href="#extras"'));

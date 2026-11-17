@@ -631,7 +631,7 @@ function start(port, extra = {}) {
     assert.ok(!checkout.body.includes('name="rules"'));
     assert.ok(!checkout.body.includes('name="group"') && checkout.body.includes('Group and children'));
     assert.ok(!checkout.body.includes('name="share"'));
-    assert.ok(checkout.body.includes('We share them, with your booking details, with Skyline Rooftop Hotel (Demo)'));
+    assert.ok(checkout.body.includes('We share them, with your booking details, with Skyline Rooftop Hotel so it can check you in'));
     assert.ok(!checkout.body.includes('I agree to Hotel Day Club sharing'));
     assert.ok(checkout.body.includes('Send me hot-day alerts and offers by email. I can unsubscribe at any time.'));
     assert.ok(!checkout.body.includes('email/SMS'));
