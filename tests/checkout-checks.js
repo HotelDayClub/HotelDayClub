@@ -163,7 +163,7 @@ function makeForm(opts = {}) {
   assert.ok(CheckoutConsent.checkoutMarketingText().includes('by email'));
   assert.ok(!CheckoutConsent.checkoutMarketingText().includes('SMS'));
   assert.strictEqual(CheckoutFlow.extraValue([]), 'None');
-  assert.strictEqual(CheckoutFlow.extraValue([{ name: 'Parking', qty: 1, line: 18 }]), 'Parking × 1 · $18 (demo)');
+  assert.strictEqual(CheckoutFlow.extraValue([{ name: 'Parking', qty: 1, line: 18 }]), 'Parking × 1 · $18');
   assert.ok(CheckoutFlow.changeLink('#extras', 'extras').includes('aria-label="Change extras"'));
 
   const memory = memorySandbox();
@@ -207,26 +207,34 @@ function makeForm(opts = {}) {
   try {
     const Database = require('better-sqlite3');
     const live = new Database(dbPath);
-    const hotel = live.prepare("SELECT id FROM hotels WHERE slug='saltwater-terrace'").get();
-    let when = '';
-    for (let i = 3; i < 24 && !when; i++) {
-      const day = new Date();
-      day.setDate(day.getDate() + i);
-      const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-      if (!live.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?').get(hotel.id, iso)) when = iso;
-    }
-    const saltHotel = live.prepare("SELECT * FROM hotels WHERE slug='saltwater-terrace'").get();
-  const bayHotel = live.prepare("SELECT * FROM hotels WHERE slug='bayview-spa'").get();
+    const saltRow = live.prepare("SELECT id FROM hotels WHERE slug='saltwater-terrace'").get();
+    const hotel = saltRow;
+    const bayHotel = live.prepare("SELECT * FROM hotels WHERE slug='bayview-spa'").get();
     live.prepare("UPDATE hotels SET kids_hours='Children until 2pm' WHERE slug='skyline-rooftop'").run();
     const skylineHotel = live.prepare("SELECT * FROM hotels WHERE slug='skyline-rooftop'").get();
-    live.close();
-    assert.ok(when);
-
-    for (const [slug, pass, hotel] of [
+    const saltHotel = live.prepare("SELECT * FROM hotels WHERE slug='saltwater-terrace'").get();
+    const slots = [
       ['saltwater-terrace', 'lounger', saltHotel],
       ['bayview-spa', 'entry', bayHotel],
       ['skyline-rooftop', 'chair', skylineHotel],
-    ]) {
+    ];
+    let when = '';
+    findWhen: for (let i = 3; i < 24; i++) {
+      const day = new Date();
+      day.setDate(day.getDate() + i);
+      const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+      if (live.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?').get(saltRow.id, iso)) continue;
+      for (const [slug, pass] of slots) {
+        const probe = await get(port, `/checkout?hotel=${slug}&date=${encodeURIComponent(iso)}&pass=${pass}&qty=1`);
+        if (probe.status !== 200) continue findWhen;
+      }
+      when = iso;
+      break;
+    }
+    live.close();
+    assert.ok(when, 'open checkout date for demo hotels');
+
+    for (const [slug, pass, hotel] of slots) {
       const riskPage = await get(port, `/checkout?hotel=${slug}&date=${encodeURIComponent(when)}&pass=${pass}&qty=1`);
       assert.strictEqual(riskPage.status, 200, slug + ' checkout risk');
       assertCheckoutRiskMatchesStored(hotel, riskPage.body);
@@ -236,13 +244,14 @@ function makeForm(opts = {}) {
     assert.strictEqual(checkout.status, 200);
     const body = checkout.body;
     assert.ok(!body.includes('\u2014'));
-    assert.ok(body.includes('<h1 class="l-title">Book your day (demo)</h1>'));
+    assert.ok(body.includes('<h1 class="l-title">Book your day</h1>'));
+    assert.ok(body.includes('Demo site. No card is charged and no real booking is created.'));
     assert.ok(body.includes('<span class="co-step">1</span> Your details'));
     assert.ok(body.includes('<span class="co-step">2</span> Arrival'));
     assert.ok(body.includes('<span class="co-step">3</span> Add extras'));
     assert.ok(body.includes('<span class="co-step">4</span> Payment'));
     assert.ok(body.includes('<span class="co-step">5</span> Before you book'));
-    const label = 'Confirm booking · $45 (demo)';
+    const label = 'Confirm booking · $45';
     assert.strictEqual(body.split(label).length - 1, 3);
     assert.strictEqual((body.match(/class="btn btn-coral co-btn/g) || []).length, 3);
     assert.strictEqual((body.match(/aria-disabled="true"/g) || []).length, 3);
@@ -254,7 +263,9 @@ function makeForm(opts = {}) {
     const tickHints = (body.match(/Tick the (?:box above|terms box) to continue\./g) || []).length;
     assert.ok(tickHints >= 4, 'disabled confirm hints ' + tickHints);
     assert.ok(!body.includes('Tick the 5 boxes'));
-    assert.ok(body.includes('<span class="co-fact-val co-pass-line">Sun lounger × 1 · $45 (demo)</span>'));
+    assert.ok(body.includes('<span class="co-fact-val co-pass-line">Sun lounger × 1 · $45</span>'));
+    assert.ok(!body.includes('(Demo)'), 'checkout hotel heading drops demo suffix');
+    assert.ok(!/<co-pass-line>[^<]*\(demo\)/i.test(body), 'checkout pass line has no (demo)');
     assert.ok(body.includes(`href="/h/saltwater-terrace?date=${when}&amp;pass=lounger&amp;qty=1#book"`));
     assert.ok(body.includes(`href="/h/saltwater-terrace?date=${when}#book"`));
     assert.ok(body.includes('href="#extras"'));

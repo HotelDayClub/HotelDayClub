@@ -126,6 +126,10 @@ function start(port) {
     assert.strictEqual(dash.status, 200);
     assert.ok(dash.body.includes('content="noindex, nofollow"'));
     assert.ok(!dash.body.includes(secret));
+    assert.ok(!dash.body.includes('\u2014'), 'hotel dashboard avoids em-dashes');
+    const todayList = await get(port, '/hotel/today-list', { Cookie: jar });
+    assert.ok(todayList.status === 200);
+    assert.ok(!todayList.body.includes('\u2014'), 'today-list avoids em-dashes');
 
     const evilLogin = await post(port, '/hotel/login', { user: 'demo-saltwater', pass: secret }, { Origin: 'https://evil.example', 'X-Forwarded-For': '203.0.113.91' });
     assert.strictEqual(evilLogin.status, 403);

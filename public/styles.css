@@ -43,7 +43,7 @@ h3{font-weight:700;font-size:1.05rem;letter-spacing:-.01em}
 
 /* Hero */
 .hero{padding:18px 0 0}
-.hero-card{position:relative;border-radius:28px;overflow:hidden;min-height:440px;display:flex;align-items:flex-end;background:#0B2545 center/cover no-repeat}
+.hero-card{position:relative;border-radius:28px;overflow:hidden;min-height:440px;display:flex;align-items:flex-end;background:var(--hdc-navy) center/cover no-repeat}
 .hero-card::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,37,69,.05) 0%,rgba(11,37,69,.15) 40%,rgba(11,37,69,.72) 100%)}
 .hero-copy{position:relative;padding:28px 24px 96px;color:#fff;max-width:760px}
 .hero-copy h1{color:#fff;text-shadow:0 2px 24px rgba(0,0,0,.25)}
@@ -219,7 +219,7 @@ footer{background:var(--soft);border-top:1px solid var(--line);margin-top:64px;p
 .hiw-img{border-radius:28px;overflow:hidden;aspect-ratio:4/3;position:relative}
 .hiw-img img{width:100%;height:100%;object-fit:cover}
 .pass{position:absolute;right:16px;bottom:16px;width:230px;background:#fff;border-radius:18px;box-shadow:var(--sh-3);padding:14px}
-.pass .qr{width:84px;height:84px;margin:10px auto;border-radius:8px;background:conic-gradient(#0B2545 25%,#fff 0 50%,#0B2545 0 75%,#fff 0) 0 0/14px 14px;border:6px solid #fff;outline:1px solid var(--line)}
+.pass .qr{width:84px;height:84px;margin:10px auto;border-radius:8px;background:conic-gradient(var(--hdc-navy) 25%,#fff 0 50%,var(--hdc-navy) 0 75%,#fff 0) 0 0/14px 14px;border:6px solid #fff;outline:1px solid var(--line)}
 .pass .r{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-top:4px}
 .pass .r b{color:var(--ink)}
 .tl{display:grid;grid-template-columns:1fr;gap:20px}

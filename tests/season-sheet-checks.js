@@ -124,12 +124,27 @@ const CASES = [
           returnByValue: true,
           expression: `(async () => {
             const wait = ms => new Promise(r => setTimeout(r, ms));
-            const btn = [...document.querySelectorAll('.d2-bar-btn, .d2-bookbar .d2-btn')].find(el => el.getBoundingClientRect().height > 0);
+            const wide = window.matchMedia('(min-width:1024px)').matches;
+            const btn = wide ? null : [...document.querySelectorAll('.d2-bar-btn, .d2-bookbar .d2-btn')].find(el => el.getBoundingClientRect().height > 0);
             if (btn) btn.click();
             await wait(500);
             const sheet = document.getElementById('d2-sheet');
-            const hrs = () => sheet && sheet.querySelector('#d2-hrs');
-            const before = hrs() ? { hidden: hrs().hidden, text: hrs().textContent } : null;
+            const form = document.getElementById('d2-form');
+            const hrs = () => {
+              if (!form) return null;
+              if (wide) {
+                const box = form.querySelector('.d2-pass-hrs');
+                const p = form.querySelector('#d2-pass-hrs');
+                return box && !box.hidden && p ? p : null;
+              }
+              return form.querySelector('#d2-hrs') || (sheet && sheet.querySelector('#d2-hrs'));
+            };
+            const before = hrs() ? { hidden: hrs().hidden, text: hrs().textContent.trim() } : { hidden: true, text: '' };
+            if (wide) {
+              const dateBtn = document.getElementById('d2-side-date');
+              if (dateBtn) dateBtn.click();
+              await wait(250);
+            }
             document.getElementById('d2-more').click();
             await wait(300);
             const cal = document.getElementById('d2-calbox');
@@ -142,11 +157,12 @@ const CASES = [
             await wait(700);
             const el = hrs();
             return {
-              open: !!(sheet && sheet.open),
+              wide,
+              open: wide ? true : !!(sheet && sheet.open),
               month: cal.querySelector('b') ? cal.querySelector('b').textContent : '',
               found: !!day,
               before,
-              inSheet: !!(el && sheet.contains(el)),
+              inSheet: !!(el && ((form && form.contains(el)) || (sheet && sheet.contains(el)))),
               hidden: el ? el.hidden : true,
               shown: el ? el.getBoundingClientRect().height > 0 : false,
               text: el ? el.textContent.trim() : '',
@@ -157,10 +173,11 @@ const CASES = [
         const v = res.result.value;
         const tag = `${c.date} at ${width}: ${JSON.stringify(v)}`;
         assert.ok(v.open && v.found, 'calendar reached the date ' + tag);
-        assert.deepStrictEqual(v.before, { hidden: true, text: '' }, 'no hours before a date is picked ' + tag);
-        assert.ok(v.inSheet && !v.hidden && v.shown, 'hours line shown inside the sheet ' + tag);
-        assert.strictEqual(v.text, c.hours, 'season hours in the sheet ' + tag);
-        assert.match(v.go, /^Book · \$[\d,.]+$/, 'Book label with price, no (demo) suffix ' + tag);
+        if (!v.wide) assert.deepStrictEqual(v.before, { hidden: true, text: '' }, 'no hours before a date is picked ' + tag);
+        assert.ok(v.inSheet && !v.hidden && v.shown, 'hours shown in booking UI ' + tag);
+        const expectHours = v.wide ? c.hours.replace(/^Hours /, '') : c.hours;
+        assert.strictEqual(v.text, expectHours, 'season hours in booking UI ' + tag);
+        assert.strictEqual(v.go, 'Reserve', 'Reserve CTA ' + tag);
       }
       server.kill('SIGTERM');
       server = null;

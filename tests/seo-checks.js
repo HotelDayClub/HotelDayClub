@@ -26,8 +26,8 @@ for (const g of seo.GUIDES) {
   assert.ok(seo.fullTitle(g.title).length <= 60, g.title);
   assert.ok(g.description.length <= 155, g.description);
 }
-assert.strictEqual(seo.listingTitle('The Saltwater Terrace (Demo)'), 'The Saltwater Terrace (Demo) day pass · Hotel Day Club');
-assert.ok(seo.listingTitle('The Saltwater Terrace (Demo)').includes('(Demo)'));
+assert.strictEqual(seo.listingTitle('The Saltwater Terrace (Demo)'), 'The Saltwater Terrace day pass · Hotel Day Club');
+assert.ok(!seo.listingTitle('The Saltwater Terrace (Demo)').includes('(Demo)'));
 assert.ok(!seo.listingTitle('A real hotel').includes('(Demo)'));
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-seo-'));
@@ -135,9 +135,9 @@ function alts(html, where) {
     const homeFooter = home.slice(home.indexOf('<footer'));
     assert.ok(homeHeader.includes('src="/assets/hdc-lockup-light.svg"') || homeHeader.includes('hdc-lockup-dark.svg'));
     if (home.includes('class="guest-d2"') || home.includes('guest-d2')) {
-      assert.ok(homeHeader.includes('hdc-lockup-dark.svg'), 'guest D2 home uses dark lockup on deep header');
-      assert.strictEqual((homeHeader.match(/<img[^>]+alt="Hotel Day Club"/g) || []).length, 1, 'guest D2 home header one logo');
-      assert.ok(!homeHeader.includes('hdc-lockup-light.svg'), 'guest D2 home header no duplicate light lockup');
+      assert.ok(homeHeader.includes('hdc-lockup-dark.svg'), 'guest D2 home includes dark lockup for hero header');
+      assert.ok(homeHeader.includes('hdc-lockup-light.svg'), 'guest D2 home includes light lockup for solid header');
+      assert.strictEqual((homeHeader.match(/<img[^>]+alt="Hotel Day Club"/g) || []).length, 2, 'guest D2 home header dual logos');
     } else {
       assert.ok(!homeHeader.includes('hdc-lockup-dark.svg'), 'home header uses light lockup only');
       assert.ok(home.includes('src="/assets/hdc-lockup-light.svg"'));
@@ -221,14 +221,15 @@ function alts(html, where) {
     }
     await assertLocalAssets(home, 'home');
     const hotelsPage = text(await get(port, '/for-hotels'));
-    assert.ok(hotelsPage.includes('src="/assets/hdc-lockup-light.svg"'));
-    assert.ok(hotelsPage.includes('src="/assets/hdc-lockup-dark.svg"'));
+    const fhHdr = hotelsPage.slice(hotelsPage.indexOf('<header'), hotelsPage.indexOf('<main>'));
+    assert.ok(fhHdr.includes('src="/assets/hdc-lockup-light.svg"'));
+    assert.ok(!fhHdr.includes('src="/assets/hdc-lockup-dark.svg"'), 'for-hotels header light lockup only');
     await assertLocalAssets(hotelsPage, 'for-hotels');
     const listingPage = text(await get(port, '/h/saltwater-terrace'));
     const listHdr = listingPage.slice(listingPage.indexOf('<header'), listingPage.indexOf('<main>'));
     assert.strictEqual((listHdr.match(/<img[^>]+alt="Hotel Day Club"/g) || []).length, 1, 'listing header one logo');
-    assert.ok(listHdr.includes('hdc-lockup-dark.svg'), 'listing dark lockup');
-    assert.ok(!listHdr.includes('hdc-lockup-light.svg'), 'listing no light lockup');
+    assert.ok(listHdr.includes('hdc-lockup-light.svg'), 'listing light lockup');
+    assert.ok(!listHdr.includes('hdc-lockup-dark.svg'), 'listing no dark lockup');
     await assertLocalAssets(listingPage, 'listing');
 
     const map = text(await get(port, '/sitemap.xml'));
@@ -363,7 +364,7 @@ function alts(html, where) {
     assert.ok(!faq.includes('\u2014'));
     const faqPage = ld(faq).find(n => n['@type'] === 'FAQPage');
     assert.ok(faqPage);
-    const visibleQa = [...faq.matchAll(/<summary>([^<]*)<\/summary><p>([\s\S]*?)<\/p>/g)];
+    const visibleQa = [...faq.matchAll(/<summary><span>([^<]*)<\/span>[\s\S]*?<\/summary><p>([\s\S]*?)<\/p>/g)];
     assert.strictEqual(faqPage.mainEntity.length, visibleQa.length);
     const decode = s => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
     faqPage.mainEntity.forEach((item, i) => {

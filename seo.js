@@ -1,4 +1,5 @@
 const { esc } = require('./util');
+const { faqPlusDetail } = require('./faqUi');
 const brand = require('./brand');
 
 const ORIGIN = 'https://www.hoteldayclub.com.au';
@@ -33,6 +34,12 @@ const PAGES = {
     path: '/contact',
     title: 'Contact us',
     description: 'Send a message to Hotel Day Club about a booking, a change, a cancellation or a hotel in Australia. We\'ll reply by email.',
+  },
+  about: {
+    path: '/about',
+    title: 'About Hotel Day Club',
+    crumb: 'About',
+    description: 'What Hotel Day Club is: hotel pool and gym day passes in Australia for locals on quieter days, with founding hotels launching first.',
   },
   privacy: {
     path: '/privacy',
@@ -157,8 +164,7 @@ function shortName(name) {
 
 function listingTitle(name, demo) {
   const raw = String(name || '');
-  const mark = demo || /\(Demo\)\s*$/i.test(raw);
-  const lead = shortName(raw) + (mark ? ' (Demo)' : '') + ' day pass';
+  const lead = shortName(raw) + ' day pass';
   return fullTitle(lead);
 }
 
@@ -375,20 +381,22 @@ function faqItems(mailHtml, mailText) {
     { q: 'Who can book, and can children come?', html: "The person booking needs to be 18 or over. Each hotel sets its own age rules and kids' hours. They are on the listing and in the risk warning before you confirm. An adult on the booking supervises each child." },
     { q: 'What do I accept at checkout?', html: 'The key risk points are shown on the page, with the full risk warning, the hotel\'s rules and the group rules in a section you can open. One required box confirms you are 18 or over and accept the <a href="/terms">Customer Terms</a>, the <a href="/refunds">Cancellation and Refund Policy</a>, the hotel\'s rules and the risk warning. The collection notice explains how your details are shared with the hotel. Hot-day alerts by email are a separate box, left unticked, and are not required.' },
     { q: 'What are the hours?', html: 'Each hotel sets its own hours. A day pass is not sold past the time a room-guests-only period starts. Late access, where a hotel offers it, starts only after that period ends and stops when the pool closes.' },
-    { q: 'What should I bring?', html: 'Swimwear, and sunscreen if the pool is outdoors. The listing says if a towel is included and if photo ID is required.' },
+    { q: 'What should I bring?', html: 'Towels are included with every pass by default. If a hotel opts out, the listing shows Bring your own towel. Photo ID when the listing says it is required. Swimwear, and sunscreen if the pool is outdoors.' },
     { q: 'Do you show ratings or reviews?', html: 'No. Listings say New. This site does not publish star ratings or review counts.' },
     { q: 'How do I contact you?', html: `Email ${mailHtml} for a booking, a complaint, or a privacy request.`, text: `Email ${mailText} for a booking, a complaint, or a privacy request.` },
   ];
 }
 
 function faqHtml(mailHtml) {
-  const blocks = faqItems(mailHtml).map(item => `<details><summary>${esc(item.q)}</summary><p>${item.html}</p></details>`).join('\n');
-  return `<div class="wrap sec"><h1 class="l-title">Hotel day pass questions</h1>
+  const blocks = faqItems(mailHtml).map(item => faqPlusDetail(item.q, item.html)).join('\n');
+  return `<div class="wrap sec narrow faq-page">
+<p class="contact-kicker">Good to know</p>
+<h1 class="l-title">Hotel day pass questions</h1>
 <p class="lead">Short answers, in line with the <a href="/terms">customer terms</a> and the <a href="/refunds">cancellation and refund policy</a>.</p>
-<div class="faq">
+<div class="faq faq-page-list">
 ${blocks}
 </div>
-<p>Cancel in your booking link or email ${mailHtml} with your booking code.</p></div>`;
+<p class="faq-foot">Cancel in your booking link or email ${mailHtml} with your booking code.</p></div>`;
 }
 
 function faqJsonLd(mailText) {

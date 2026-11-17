@@ -102,7 +102,7 @@ assert.strictEqual(malformed.error, ARRIVAL_LIST_ERROR);
 assert.strictEqual(arrivalText('11:00', 'estimate'), '11am–12pm (estimate)');
 assert.strictEqual(arrivalText('unsure', 'estimate'), 'Not sure');
 assert.strictEqual(arrivalText(null, 'estimate'), '');
-assert.strictEqual(arrivalText(null, 'short'), '—');
+assert.strictEqual(arrivalText(null, 'short'), 'Not set');
 assert.strictEqual(arrivalText('11:00', 'short'), '11 am');
 assert.strictEqual(arrivalText('11:00', 'detail'), "11am–12pm (guest's estimate)");
 assert.strictEqual(arrivalText('unsure', 'csv'), 'Not sure');
@@ -124,7 +124,8 @@ assert.ok(lines[1].includes(`"'=Mia"`));
 assert.ok(lines[1].includes('"11:00"'));
 assert.ok(lines[2].includes('"Not sure"'));
 assert.ok(lines[3].includes('"1","","confirmed"'));
-assert.ok(lines[1].includes('"$—"'));
+assert.ok(lines[1].includes(',"80",""'), 'empty paid_to_you cell');
+assert.ok(!lines[1].includes('\u2014'));
 
 const mailed = bookingNotice({
   demo: true,

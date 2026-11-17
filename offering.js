@@ -724,7 +724,7 @@ function spotCard(s, index, locked) {
 <label class="fl">People it holds<input name="holds" type="number" min="1" max="12" value="${s.holds || 1}" required></label>
 <label class="fl">Price (AUD)<input name="price" type="number" min="0" step="1" value="${s.price ?? ''}" required></label>
 <label class="fl">Each day<input name="cap" type="number" min="0" step="1" data-code="${esc(s.code || '')}" value="${s.daily_cap ?? ''}" required></label>
-<label class="fl">Photo<select name="photo"><option value="">No photo</option>${PHOTOS.map(([f, l]) => `<option value="${f}" ${s.photo === f ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+<label class="fl">Photo<select name="photo"><option value="">No photo</option>${PHOTOS.map(([f, l]) => `<option value="${f}" ${s.photo === f ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="muted small">Use landscape photos (wider than tall) so they fill the listing gallery.</span></label>
 </div>
 <label class="fl">Description<input name="spot_desc" maxlength="180" value="${esc(s.description || '')}" placeholder="What is included with this spot"></label>
 <label class="tick"><input type="checkbox" name="featured" value="${index}" ${s.featured ? 'checked' : ''}> Show a Most popular label. You choose this. It is not a count of bookings.</label></div>`;
@@ -901,11 +901,11 @@ function arrivalText(value, mode) {
     const phrase = arrivalWindowPhrase(value);
     return phrase ? `${phrase} (estimate)` : '';
   }
-  if (missing) return '—';
+  if (missing) return mode === 'short' || mode === 'detail' ? 'Not set' : '';
   if (value === 'unsure') return 'Not sure';
-  if (mode === 'short') return arrivalHourWords(value) || '—';
+  if (mode === 'short') return arrivalHourWords(value) || 'Not set';
   const phrase = arrivalWindowPhrase(value);
-  return phrase ? `${phrase} (guest's estimate)` : '—';
+  return phrase ? `${phrase} (guest's estimate)` : 'Not set';
 }
 
 module.exports = {

@@ -126,7 +126,8 @@ function expectDays(html, days) {
 
     const ready = await get(port, `/checkout?hotel=hold-pool&date=${open}&pass=lounger&qty=1`);
     assert.strictEqual(ready.status, 200);
-    assert.ok(ready.body.includes('Book your day (demo)'));
+    assert.ok(ready.body.includes('Book your day'));
+    assert.ok(ready.body.includes('Demo site. No card is charged'));
     console.log('date hold checks passed');
   } finally {
     child.kill('SIGTERM');

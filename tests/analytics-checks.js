@@ -99,7 +99,7 @@ assert.strictEqual(normalRange('90'), 90);
 const html30 = renderAnalytics(r30);
 assert.ok(html30.includes('Example data'));
 assert.ok(html30.includes('Your payout'));
-assert.ok(html30.includes('What you receive'));
+assert.ok(!/what you receive/i.test(html30));
 assert.ok(!/commission/i.test(html30));
 assert.ok(!/75% of|hotel share|before commission|platform commission/i.test(html30));
 assert.ok(html30.includes('Fill rate'));
@@ -212,7 +212,7 @@ assert.notStrictEqual(pinned.views, utcDay.views);
 const css = fs.readFileSync(path.join(__dirname, '../public/app.css'), 'utf8');
 assert.ok(css.includes('font-family:Inter'));
 assert.ok(!css.includes('fonts.googleapis.com'));
-assert.ok(css.includes('.example-badge{display:inline-flex') && css.includes('background:#0B2545;color:#fff'));
+assert.ok(css.includes('.example-badge{display:inline-flex') && css.includes('background:var(--hdc-navy);color:#fff'));
 assert.ok(css.includes('@media(max-width:599px)'));
 
 db.close();
@@ -283,7 +283,8 @@ function cookieFrom(res) {
     assert.ok(page.body.includes('href="/hotel/analytics?range=7"'));
     assert.ok(page.body.includes('href="/hotel/analytics?range=90"'));
     assert.ok(!/guest rating|average rating|star rating/i.test(page.body));
-    assert.ok(page.body.includes('What you receive'));
+    assert.ok(page.body.includes('Your payout'));
+    assert.ok(!/what you receive/i.test(page.body));
     assert.ok(!/commission/i.test(page.body));
     assert.ok(!/75% of|hotel share|before commission|platform commission/i.test(page.body));
     const settings = await get(port, '/hotel/settings', { Cookie: cookie });

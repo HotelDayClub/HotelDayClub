@@ -10,6 +10,7 @@ const { PhotoAssets } = require('./photoAssets');
 const { SPRITE, icon } = require('./d2Icons');
 const { ListingPanel } = require('./listingView');
 const { HotelExplore } = require('./hotelExplore');
+const { spotsCount, spotsLabel, passSpotsLabel } = require('./listingScarcity');
 
 const WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -207,14 +208,62 @@ function passAlt(p, h) {
   return isDemo(h) ? `Example photo of a ${kind}, not this hotel` : `${kind} at ${shortName(h)}`;
 }
 
-function heroCopyHtml(h, heading, area, descHtml) {
+function titleHeadHtml(h, heading, area, descHtml, factsHtml) {
   const demo = isDemo(h);
-  return `<div class="d2-hero-copy" id="d2-hero-copy"><div class="d2-hero-in">
-<p class="d2-hero-loc">${esc(area)}</p>
-<h1 class="d2-hero-title">${esc(heading)}</h1>
-${demo ? '<span class="d2-hero-tag">Fictional demo listing</span>' : ''}
-${descHtml}<button type="button" class="d2-rm text-link" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button>
-</div></div>`;
+  return `<header class="d2-head" id="d2-head">
+<p class="d2-loc">${esc(area)}</p>
+<h1 class="d2-title">${esc(heading)}</h1>
+${descHtml}
+${demo ? '<p class="d2-demo-line">Fictional demo listing</p>' : ''}
+${factsHtml || ''}<button type="button" class="d2-rm text-link" id="d2-rm" aria-expanded="false" aria-controls="d2-desc" hidden>Read more</button>
+</header>`;
+}
+
+function mainFacilityFact(h, groups) {
+  const g = groups || {};
+  const rows = [...(g.included || []), ...(g.optional || []), ...(g.onsite || [])];
+  const facilityRe = /pool|spa|gym|sauna|steam|lido|plunge|bathhouse/i;
+  for (const row of rows) {
+    const label = String(row.label || '').trim();
+    if (label && facilityRe.test(label)) return label;
+  }
+  const pf = policyFacts(h || {});
+  const pool = String(pf.pool || '').trim();
+  if (pool && pool !== 'Not set' && facilityRe.test(pool)) return pool;
+  const setting = String((h && h.setting) || '').trim();
+  const heated = h && h.heated != null && h.heated !== '' ? Number(h.heated) : null;
+  const heat = heated === 1 ? 'Heated' : heated === 0 ? 'Unheated' : '';
+  const place = /indoor/i.test(setting) ? 'indoor' : /outdoor/i.test(setting) ? 'outdoor' : '';
+  if (place && heat) return `${heat} ${place} pool`;
+  if (place) return `${place.charAt(0).toUpperCase() + place.slice(1)} pool`;
+  if (heat) return `${heat} pool`;
+  if (pool && pool !== 'Not set') return pool;
+  return '';
+}
+
+function hoursFactText(o) {
+  const date = o.date || '';
+  if (date && o.hoursSpan) return o.hoursSpan;
+  const groups = ListingD2.hourGroups(o.hourRows || []);
+  const open = groups.filter(g => g.time && g.time !== 'Closed');
+  if (open.length === 1) return open[0].time;
+  if (open.length) return 'Varies by day';
+  return '';
+}
+
+function keyFactsHtml(h, o) {
+  const hours = hoursFactText(o);
+  const facility = mainFacilityFact(h, o.groups);
+  const age = String(h.age_policy || '').trim();
+  const cancel = String(o.cancelText || FREE_CANCEL).trim();
+  const items = [
+    hours ? { ico: 'clock', label: 'Hours', text: hours } : null,
+    facility ? { ico: 'pool', label: 'Included', text: facility } : null,
+    age ? { ico: 'people', label: 'Ages', text: age } : null,
+    cancel ? { ico: 'check', label: 'Cancel', text: cancel } : null,
+  ].filter(Boolean).slice(0, 4);
+  if (!items.length) return '';
+  return `<ul class="d2-facts" aria-label="Key facts">${items.map(it => `<li><span class="d2-fact-ico" aria-hidden="true">${icon(it.ico)}</span><span class="d2-fact-txt"><span class="d2-fact-lab">${esc(it.label)}</span><span class="d2-fact-val">${esc(it.text)}</span></span></li>`).join('')}</ul>`;
 }
 
 function heroDescHtml(h) {
@@ -241,15 +290,22 @@ function galleryHtml(h, hero) {
   const viewAll = n > 1 ? `<button type="button" class="g-all" id="g-all">${icon('photo')}Show all photos</button>` : '';
   const track = n > 0 ? `<div class="g-track" id="g-track" role="group" aria-label="Photos, swipe for more" tabindex="0">${strip}</div>` : '';
   const grid = n > 0 ? `<div class="g-grid">${track}${credit}${count}${thumbs}${viewAll}</div>` : '';
-  const copy = hero ? heroCopyHtml(h, hero.heading, hero.area, hero.desc) : '';
-  return `<div class="d2-photos g-wrap${n < 2 ? ' d2-solo' : ''}"><div class="d2-hero">${grid}${copy}</div></div>
+  return `<div class="d2-photos g-wrap${n < 2 ? ' d2-solo' : ''}"><div class="d2-hero">${grid}</div></div>
 <dialog class="g-lb" id="g-lb" role="dialog" aria-modal="true" aria-label="Photos"><div class="g-lb-bar"><p id="g-lb-count" aria-live="polite">1 / ${n || 1}</p><button type="button" class="g-lb-close" aria-label="Close">${icon('x')}</button></div><div class="g-lb-stage"><button type="button" class="g-lb-prev" aria-label="Previous photo">${icon('arrow', 'flip')}</button><div class="g-lb-track" id="g-lb-track"></div><button type="button" class="g-lb-next" aria-label="Next photo">${icon('arrow')}</button></div></dialog>`;
 }
 
 function passCard(p, h, items, opts) {
   const desc = String(p.description || '').trim();
   const href = ListingD2.cardHref(h.slug, p, { date: opts.date, qty: opts.qty });
-  return `<a class="d2-card d2-row" href="${esc(href)}" data-pass="${esc(p.code)}">${passRowPhoto(p, passAlt(p, h))}<div class="d2-card-body"><div class="d2-card-top"><b class="n">${esc(p.name)}</b><p class="pr">From ${priceHtml(h, p.price)}</p></div>${desc ? `<p>${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p))}</p></div></a>`;
+  const scarcity = passSpotsLabel(opts.av, opts.date, p.code);
+  const scarcityHtml = scarcity
+    ? `<span class="d2-spots-left">${esc(scarcity)}</span>`
+    : '<span class="d2-spots-left" hidden></span>';
+  const on = opts.pick && opts.pick.code === p.code;
+  const btn = on
+    ? `<span class="d2-sel on" aria-hidden="true">${icon('tick')} Selected</span>`
+    : `<span class="d2-sel">${icon('check')} Select</span>`;
+  return `<a class="d2-card d2-row${on ? ' is-on' : ''}" href="${esc(href)}" data-pass="${esc(p.code)}">${passRowPhoto(p, passAlt(p, h))}<div class="d2-card-body"><div class="d2-card-top"><b class="n">${esc(p.name)}</b><p class="pr">${priceHtml(h, p.price)}</p>${scarcityHtml}</div>${desc ? `<p class="d2-card-desc">${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p))}</p>${btn}</div></a>`;
 }
 
 function chipHtml(c) {
@@ -281,8 +337,19 @@ function sheetHtml(o) {
   const outside = Boolean(date && !chosen && ListingD2.parts(date) && date >= o.today && date <= maxDate && !(o.closed && o.closed[date]));
   const extra = outside ? chipHtml({ date, wd: WEEK[ListingD2.parts(date).wd], day: ListingD2.parts(date).d, label: ListingD2.label(date), today: false, closed: false, late: Boolean(o.lateNote), on: true }) : '';
   const dayHrs = date && !(o.closed && o.closed[date]) ? ((o.dayHours && o.dayHours[date]) || '') : '';
-  const bookBtn = (pick && date) ? `Book · ${esc(ListingD2.priceText(h, pick.price * qty))}` : 'Book';
+  const linePrice = pick && date ? pick.price * qty : 0;
+  const bookBtn = (pick && date) ? 'Reserve' : 'Reserve';
   const disabled = !pick || !date;
+  const cancelLine = date && o.lateNote ? o.lateNote : String(o.cancelText || FREE_CANCEL).trim();
+  const passHours = dayHrs ? esc(dayHrs) : (hoursFactText({ date, hoursSpan: dayHrs, hourRows: o.hourRows }) || '');
+  const fromMin = passes.length ? Math.min(...passes.map(p => Number(p.price))) : 0;
+  const sheetScarcity = spotsLabel(spotsCount(o.av, date));
+  const passScarcityHtml = sheetScarcity
+    ? `<p class="d2-pass-scarcity" id="d2-pass-scarcity">${esc(sheetScarcity)}</p>`
+    : '<p class="d2-pass-scarcity" id="d2-pass-scarcity" hidden></p>';
+  const lineItem = pick
+    ? `<p class="d2-line" id="d2-line-item"${date ? '' : ' hidden'}><span id="d2-line-name">${esc(pick.name)}</span> × <span id="d2-line-qty">${qty}</span> <span class="d2-line-pr" id="d2-line-pr">${date ? esc(ListingD2.priceText(h, linePrice)) : ''}</span></p>`
+    : '<p class="d2-line" id="d2-line-item" hidden></p>';
   const out = p => {
     if (!date || (o.closed && o.closed[date])) return false;
     const row = (o.av || []).find(r => r.code === p.code);
@@ -294,28 +361,46 @@ function sheetHtml(o) {
     const thumb = passThumb(p, isDemo(h) ? 'Stock photo, not this hotel' : p.name).replace('width="88" height="88"', 'width="120" height="60"');
     return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${thumb}<b>${esc(p.name)}</b><span class="d2-pt-price">${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><span class="d2-pt-fits">${esc(ListingD2.fitsLine(p))}</span><i class="tk">${icon('tick')}</i></label>`;
   }).join('');
+  const dateLabelSticky = date ? ListingD2.label(date) : 'Choose a date';
+  const qtyLabelSticky = `${qty} (up to ${SearchQuery.BOOKING_SPOTS} people)`;
   const noJsDate = `<noscript><form class="d2-nojs" action="/h/${esc(encodeURIComponent(h.slug))}#book" method="get"><label>Another date<input type="date" name="date" min="${esc(o.today)}" max="${esc(maxDate)}" value="${esc(outside ? date : '')}"></label><input type="hidden" name="pass" value="${esc(pick ? pick.code : '')}"><input type="hidden" name="qty" value="${qty}"><button class="d2-btn out" type="submit">Use this date</button></form></noscript>`;
   return `<section class="d2-book" id="book" aria-labelledby="d2-book-h" tabindex="-1">
-<form class="d2-form" id="d2-form" action="/checkout" method="get" data-slug="${esc(h.slug)}" data-min="${esc(o.today)}" data-max="${esc(maxDate)}" data-date="${esc(date)}" data-qty="${qty}" data-demo="${isDemo(h) ? '1' : '0'}" data-closed="${esc(JSON.stringify(o.closed || {}))}" data-hours="${esc(JSON.stringify(ListingD2.hoursByWeekday(o.hourRows)))}" data-day-hours="${esc(JSON.stringify(o.dayHours || {}))}" data-max-people="${SearchQuery.BOOKING_SPOTS}">
+<form class="d2-form" id="d2-form" action="/checkout" method="get" data-slug="${esc(h.slug)}" data-min="${esc(o.today)}" data-max="${esc(maxDate)}" data-date="${esc(date)}" data-qty="${qty}" data-demo="${isDemo(h) ? '1' : '0'}" data-closed="${esc(JSON.stringify(o.closed || {}))}" data-hours="${esc(JSON.stringify(ListingD2.hoursByWeekday(o.hourRows)))}" data-day-hours="${esc(JSON.stringify(o.dayHours || {}))}" data-max-people="${SearchQuery.BOOKING_SPOTS}" data-cancel="${esc(cancelLine)}">
 <input type="hidden" name="hotel" value="${esc(h.slug)}">
 <div class="d2-grab" aria-hidden="true"></div>
 <div class="d2-top"><h2 id="d2-book-h">Book a pass</h2><button type="button" class="d2-x" id="d2-close" aria-label="Close" hidden>${icon('x')}</button></div>
+<p class="d2-sticky-from">from <b id="d2-sticky-from">${esc(money(fromMin))}</b> per spot</p>
 ${holdHtml(o.hold)}
 <div class="d2-passblock" id="d2-passblock">
 <span class="d2-lab" id="d2-pass-lab">Pass</span>
 <div class="d2-pp" role="radiogroup" aria-labelledby="d2-pass-lab">${tiles}</div>
 </div>
-<div class="d2-passrow" id="d2-passrow" hidden><span class="d2-lab">Pass <small id="d2-passrow-t"></small></span><button type="button" class="d2-mdb text-link" id="d2-change">Change</button></div>
-<div class="d2-lab d2-labrow"><span>Date</span><button type="button" class="d2-mdb text-link" id="d2-more" aria-expanded="false" aria-controls="d2-calbox" hidden>${icon('cal')}<span>More dates</span></button></div>
+<div class="d2-passrow" id="d2-passrow"${pick ? '' : ' hidden'}><span class="d2-lab">Pass <small id="d2-passrow-t"></small></span><button type="button" class="d2-mdb text-link" id="d2-change">Change</button></div>
+<div class="d2-sticky-stack">
+<button type="button" class="d2-field" id="d2-side-date" aria-haspopup="dialog" aria-expanded="false" aria-controls="d2-pop-date">
+<span class="d2-field-lab">Date</span><span class="d2-field-val" id="d2-side-date-t">${esc(dateLabelSticky)}</span>${icon('cal')}</button>
+<div class="d2-pop d2-pop-date" id="d2-pop-date" hidden role="dialog" aria-label="Choose a date">
+<div class="d2-lab d2-labrow"><span>Date</span><button type="button" class="d2-mdb text-link" id="d2-more" aria-expanded="false" aria-controls="d2-calbox">${icon('cal')}<span>More dates</span></button></div>
 <div class="d2-dates" id="d2-dates" role="group" aria-label="Date, next ${ListingD2.CHIPS} days">${days.map(chipHtml).join('')}${extra}</div>
 <div class="d2-cal" id="d2-calbox" hidden></div>
+</div>
+<button type="button" class="d2-field" id="d2-side-guests" aria-haspopup="dialog" aria-expanded="false" aria-controls="d2-pop-guests">
+<span class="d2-field-lab">Guests</span><span class="d2-field-val" id="d2-side-qty">${esc(qtyLabelSticky)}</span>${icon('down')}</button>
+<div class="d2-pop d2-pop-guests" id="d2-pop-guests" hidden role="dialog" aria-label="Number of spots">
+<span class="d2-lab" id="d2-spots-lab">Spots <small>up to ${SearchQuery.BOOKING_SPOTS} people</small></span>
+<div class="d2-step" role="group" aria-labelledby="d2-spots-lab"><button type="button" class="d2-sb" id="d2-qminus" aria-label="Fewer spots" hidden>${icon('minus')}</button><input class="d2-qty" id="d2-qty" name="qty" type="number" inputmode="numeric" min="1" max="${SearchQuery.BOOKING_SPOTS}" value="${qty}" aria-label="Spots"><button type="button" class="d2-sb" id="d2-qplus" aria-label="More spots" hidden>${icon('plus')}</button></div>
+</div>
+</div>
 <p class="d2-hrs" id="d2-hrs"${dayHrs ? '' : ' hidden'}>${dayHrs ? `Hours ${esc(dayHrs)}` : ''}</p>
 <p class="d2-note" id="d2-closed" role="status" hidden></p>
 <p class="d2-note warn" id="d2-late" role="status"${o.lateNote ? '' : ' hidden'}>${esc(o.lateNote || '')}</p>
 ${kids ? `<p class="d2-note kid" id="d2-kids"><b>Children</b> ${esc(kids)}</p>` : ''}
-<span class="d2-lab" id="d2-spots-lab">Spots <small>up to ${SearchQuery.BOOKING_SPOTS} people</small></span>
-<div class="d2-step" role="group" aria-labelledby="d2-spots-lab"><button type="button" class="d2-sb" id="d2-qminus" aria-label="Fewer spots" hidden>${icon('minus')}</button><input class="d2-qty" id="d2-qty" name="qty" type="number" inputmode="numeric" min="1" max="${SearchQuery.BOOKING_SPOTS}" value="${qty}" aria-label="Spots"><button type="button" class="d2-sb" id="d2-qplus" aria-label="More spots" hidden>${icon('plus')}</button></div>
+${lineItem}
+<p class="d2-total"><span>Total</span> <b id="d2-total"${date && pick ? '' : ' hidden'}>${date && pick ? esc(ListingD2.priceText(h, linePrice)) : ''}</b></p>
 <button class="d2-btn d2-go" id="d2-go" type="submit"${disabled ? ' aria-disabled="true"' : ''}>${bookBtn}</button>
+<p class="d2-cancel-line" id="d2-cancel-line">${esc(cancelLine)}</p>
+<div class="d2-pass-hrs"${passHours ? '' : ' hidden'}><b>Pass hours</b><p id="d2-pass-hrs">${passHours}</p>${passScarcityHtml}</div>
+<p class="d2-day-scarcity" id="d2-sheet-scarcity"${sheetScarcity ? '' : ' hidden'}>${esc(sheetScarcity || '')}</p>
 </form>
 ${noJsDate}
 </section>`;
@@ -423,9 +508,12 @@ function detailsHtml(o) {
   return `<section class="d2-s" id="details"><h2>Details</h2>${location}${included3}</section>`;
 }
 
-function bookBarHtml(fromHtml, dateLabel, qty) {
+function bookBarHtml(fromHtml, dateLabel, qty, dayScarcity) {
+  const scarcity = dayScarcity
+    ? `<p class="d2-day-scarcity">${esc(dayScarcity)}</p>`
+    : '<p class="d2-day-scarcity" hidden></p>';
   return `<div class="d2-bookbar" role="region" aria-label="Book"><div class="d2-bookbar-in">
-<p class="d2-bookbar-price">${fromHtml}</p>
+<p class="d2-bookbar-price">${fromHtml}</p>${scarcity}
 <a class="d2-fake" href="#book" data-open="date"><span id="d2-bar-date">${esc(dateLabel)}</span>${icon('cal')}</a>
 <a class="d2-fake" href="#book" data-open="spots"><span id="d2-bar-qty">${qty} (up to ${SearchQuery.BOOKING_SPOTS} people)</span>${icon('down')}</a>
 <a class="d2-btn" href="#book" data-open="date">Check dates</a>
@@ -460,33 +548,46 @@ function listingHtmlD2(opts) {
   const pick = ListingD2.pickPass(passes, opts.passCode);
   const lateNote = date && typeof opts.late === 'function' && opts.late(date) ? (opts.lateNote || ListingD2.LATE_NOTE) : '';
   const from = passes.length ? Math.min(...passes.map(p => Number(p.price))) : 0;
-  const cardOpts = { date, qty };
+  const av = opts.av;
+  const cardOpts = { date, qty, av, pick };
+  const dayScarcity = spotsLabel(spotsCount(av, date));
   const sections = ListingD2.passGroups(passes).map(g => `<h3 class="d2-group">${esc(g.title)}</h3><div class="d2-cards">${g.passes.map(p => passCard(p, h, items, cardOpts)).join('')}</div>`).join('');
-  const sheet = sheetHtml({ ...opts, items, passes, days, pick, date, qty, today, maxDate, closed, lateNote });
-  const dateLabel = date ? ListingD2.label(date) : 'Any date';
+  const factCtx = { ...opts, date, hoursSpan: '' };
+  const hoursSpan = opts.db && date ? dayHoursText(opts.db, h, date) : '';
+  factCtx.hoursSpan = hoursSpan;
+  const sheet = sheetHtml({ ...opts, items, passes, days, pick, date, qty, today, maxDate, closed, lateNote, av, hoursSpan });
+  const dateLabel = date ? ListingD2.label(date) : 'Choose a date';
   const fromHtml = `From <b>${esc(money(from))}</b>`;
+  const mobileScarcity = dayScarcity
+    ? `<p class="d2-day-scarcity">${esc(dayScarcity)}</p>`
+    : '<p class="d2-day-scarcity" hidden></p>';
   const addressLine = guestAreaName(h.area);
   const exploreData = opts.explore || null;
   const exploreCtx = { db: opts.db, date: date || '', today: opts.minDate || opts.today || '' };
   const exploreBlock = HotelExplore.sectionHtml(h, exploreData, exploreCtx);
   const hasExplore = Boolean(HotelExplore.visible(exploreData));
-  const hoursSpan = opts.db && date ? dayHoursText(opts.db, h, date) : '';
+  const headDesc = heroDescHtml(h);
   return `<div class="d2 listing" id="d2-root">${SPRITE}
-${galleryHtml(h, { heading, area: addressLine, desc: heroDescHtml(h) })}
-${bookBarHtml(fromHtml, dateLabel, qty)}
+<div class="d2-page">
+${galleryHtml(h, null)}
+${titleHeadHtml(h, heading, addressLine, headDesc, keyFactsHtml(h, factCtx))}
+${bookBarHtml(fromHtml, dateLabel, qty, dayScarcity)}
 <div class="d2-tabs" id="d2-tabs"><div class="in"><nav aria-label="On this page"><a href="#passes" aria-current="true">Passes</a>${hasExplore ? '<a href="#explore">Explore</a>' : ''}<a href="#details">Details</a></nav><a class="d2-datebtn" href="#book" id="d2-pill" data-open="date">${icon('cal')}<span id="d2-pill-t">${esc(dateLabel)}</span></a></div></div>
-<div class="d2-layout"><div class="d2-col">
+<div class="d2-layout">
+<div class="d2-main">
 <section class="d2-s" id="passes"><h2>Passes</h2><p class="d2-muted">Price per spot.${demo ? ' Example photos.' : ''}</p>
 <div class="d2-pass-groups">${sections}</div>
-${sheet}
 </section>
 ${exploreBlock}
 ${detailsHtml({ ...opts, items, hasExplore })}
-</div></div>
 ${hoursBandHtml(h, { ...opts, items, hoursSpan })}
 ${policiesHtml(h)}
 ${goodToKnow(h)}
-<div class="d2-bar" role="region" aria-label="Book"><p>${fromHtml}</p><a class="d2-btn d2-bar-btn" href="#book" data-open="date">Check dates</a></div>
+</div>
+<aside class="d2-side" id="d2-side" aria-label="Booking">${sheet}</aside>
+</div>
+</div>
+<div class="d2-bar" role="region" aria-label="Book"><div class="d2-bar-l"><p>${fromHtml}</p>${mobileScarcity}</div><a class="d2-btn d2-bar-btn" href="#book" data-open="date">Check dates</a></div>
 </div>
 ${listingScriptD2(h.slug)}`;
 }
@@ -497,6 +598,26 @@ function listingScriptD2(slug) {
 var root=document.getElementById('d2-root');
 if(!root) return;
 var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function spotsLabelFromCount(n){n=Math.floor(Number(n));if(n<1||n>5)return '';return n+' spot'+(n===1?'':'s')+' left';}
+function dayCountFromAvail(data){
+ if(!data||!data.date)return null;
+ if(data.day_left!=null&&data.day_left!=='')return Math.max(0,Math.floor(Number(data.day_left)));
+ return (data.passes||[]).reduce(function(s,p){if(p.blocked||p.past)return s;return s+Math.max(0,Math.floor(Number(p.remaining)||0))},0);
+}
+function paintScarcity(data){
+ var day=spotsLabelFromCount(dayCountFromAvail(data));
+ $$('.d2-day-scarcity',root).forEach(function(el){el.textContent=day;el.hidden=!day;});
+ var ph=$('#d2-pass-scarcity');
+ if(ph){ph.textContent=day;ph.hidden=!day;}
+ var rows=data&&data.passes?data.passes:[];
+ $$('.d2-card[data-pass]',root).forEach(function(card){
+  var code=card.getAttribute('data-pass');
+  var row=rows.filter(function(x){return x.code===code})[0];
+  var lab=row?spotsLabelFromCount(row.remaining):'';
+  var sp=card.querySelector('.d2-spots-left');
+  if(sp){sp.textContent=lab;sp.hidden=!lab;}
+ });
+}
 function $(s,r){return (r||document).querySelector(s)}
 function $$(s,r){return [].slice.call((r||document).querySelectorAll(s))}
 function offset(){
@@ -694,16 +815,34 @@ function paint(){
  $$('.d2-d.cl',form).forEach(function(b){b.classList.remove('pk')});
  if(d&&closed[d]){var ck=$('.d2-d.cl[data-date="'+d+'"]',form);if(ck) ck.classList.add('pk')}
  var pr=$('#d2-passrow-t');if(pr&&p) pr.textContent=p.getAttribute('data-name')+' · '+p.getAttribute('data-label');
+ var lineItem=$('#d2-line-item'),lineQty=$('#d2-line-qty'),linePr=$('#d2-line-pr'),lineName=$('#d2-line-name'),totEl=$('#d2-total'),passHrs=$('#d2-pass-hrs'),passHrsBox=passHrs&&passHrs.closest('.d2-pass-hrs');
  if(p&&d&&!soldAll){
   var price=parseFloat(p.getAttribute('data-price'))*q;
-  go.textContent='Book · '+money(price);
- }else go.textContent='Book';
+  if(lineName) lineName.textContent=p.getAttribute('data-name');
+  if(lineQty) lineQty.textContent=q;
+  if(linePr) linePr.textContent=money(price);
+  if(lineItem) lineItem.hidden=false;
+  if(totEl){totEl.textContent=money(price);totEl.hidden=false;}
+  go.textContent='Reserve';
+ }else{
+  if(lineItem) lineItem.hidden=true;
+  if(totEl) totEl.hidden=true;
+  go.textContent='Reserve';
+ }
  if(hrsEl){var hs=d&&!closed[d]?(dayHrs[d]||''):'';hrsEl.textContent=hs?'Hours '+hs:'';hrsEl.hidden=!hs}
+ if(passHrs){var phs=d&&!closed[d]?(dayHrs[d]||''):'';passHrs.textContent=phs;passHrsBox.hidden=!phs}
+ $$('.d2-card[data-pass]',root).forEach(function(card){
+  var code=card.getAttribute('data-pass');
+  var sel=card.querySelector('.d2-sel');
+  var on=p&&p.value===code;
+  card.classList.toggle('is-on',!!on);
+  if(sel){sel.classList.toggle('on',!!on);sel.innerHTML=on?'<svg class="d2ic" aria-hidden="true"><use href="#d2-tick"/></svg> Selected':'<svg class="d2ic" aria-hidden="true"><use href="#d2-check"/></svg> Select';}
+ });
  var ready=!!(p&&d&&!closed[d]&&!soldAll);
  if(ready) go.removeAttribute('aria-disabled'); else go.setAttribute('aria-disabled','true');
- var pill=$('#d2-pill-t'),sd=$('#d2-side-date'),sq=$('#d2-side-qty');
- var dl=d?label(d):'Any date';
- if(pill) pill.textContent=dl; if(sd) sd.textContent=dl;
+ var pill=$('#d2-pill-t'),sdt=$('#d2-side-date-t'),sq=$('#d2-side-qty');
+ var dl=d?label(d):'Choose a date';
+ if(pill) pill.textContent=dl; if(sdt) sdt.textContent=dl;
  if(sq) sq.textContent=q+' (up to '+PEOPLE+' people)';
  var minus=$('#d2-qminus'),plus=$('#d2-qplus');
  syncQtyCap();
@@ -731,11 +870,14 @@ function applyAvail(data,s){
   var next=tiles.filter(function(t){return !t.disabled})[0];
   if(next) next.checked=true;
  }
- if(!any){soldAll=true;note(closedEl,'Sold out on '+label(s)+'. Pick another day.',true)}
- else if(!closed[s]) closedEl.hidden=true;
- var late=/can.t be cancelled for free/.test(data.cancel||'');
- note(lateEl,late?data.cancel:'',late);
- paint();
+  if(!any){soldAll=true;note(closedEl,'Sold out on '+label(s)+'. Pick another day.',true)}
+  else if(!closed[s]) closedEl.hidden=true;
+  var late=/can.t be cancelled for free/.test(data.cancel||'');
+  note(lateEl,late?data.cancel:'',late);
+  var cancelEl=$('#d2-cancel-line');
+  if(cancelEl&&data.cancel) cancelEl.textContent=data.cancel;
+  paintScarcity(Object.assign({date:s},data));
+  paint();
 }
 function check(){
  var d=hidden.value;
@@ -747,17 +889,19 @@ function check(){
   .then(function(data){if(my===seq) applyAvail(data,d)})
   .catch(function(){});
 }
-function setDate(s,fromChip){
+ function setDate(s,fromChip){
  hidden.value=s||'';
+ if(isWide()) closeSidePops();
  var hold=$('#d2-hold');if(hold) hold.hidden=true;
  if(!s||closed[s]) resetTiles();
  if(!fromChip) chips.forEach(function(c){c.checked=(c.value===s)});
  soldAll=false;
  if(s&&closed[s]) showClosed(s); else closedEl.hidden=true;
- if(!s||closed[s]) note(lateEl,'',false);
- else if(chips.filter(function(c){return c.value===s&&c.getAttribute('data-late')==='1'}).length===0) note(lateEl,'',false);
- paint();
- check();
+  if(!s||closed[s]) note(lateEl,'',false);
+  else if(chips.filter(function(c){return c.value===s&&c.getAttribute('data-late')==='1'}).length===0) note(lateEl,'',false);
+  if(!s||closed[s]) paintScarcity({date:'',passes:[]});
+  paint();
+  check();
  if(calOpen) renderCal();
 }
 function bindChip(c){c.addEventListener('change',function(){if(c.checked) setDate(c.value,true)})}
@@ -831,7 +975,8 @@ function toggleCal(on){
  calOpen=on;
  form.classList.toggle('is-more',on);
  cal.hidden=!on;
- $('#d2-dates').hidden=on;
+ if(isWide()) $('#d2-dates').hidden=false;
+ else $('#d2-dates').hidden=on;
  $('#d2-passrow').hidden=!on;
  moreBtn.setAttribute('aria-expanded',on?'true':'false');
  moreBtn.querySelector('span').textContent=on?'Next 14 days':'More dates';
@@ -844,13 +989,55 @@ function toggleCal(on){
  }
  paint();
 }
-moreBtn.addEventListener('click',function(){toggleCal(!calOpen)});
+moreBtn.addEventListener('click',function(e){e.stopPropagation();toggleCal(!calOpen)});
+var sideDateBtn=$('#d2-side-date'),sideGuestsBtn=$('#d2-side-guests');
+var popDate=$('#d2-pop-date'),popGuests=$('#d2-pop-guests');
+function closeSidePops(except){
+ [popDate,popGuests].forEach(function(el){
+  if(!el||el===except) return;
+  el.hidden=true;
+  var id=el.id,btn=$('[aria-controls="'+id+'"]',form);
+  if(btn) btn.setAttribute('aria-expanded','false');
+ });
+}
+function openSidePop(el){
+ if(!el||!isWide()) return;
+ closeSidePops(el);
+ el.hidden=false;
+ var btn=$('[aria-controls="'+el.id+'"]',form);
+ if(btn) btn.setAttribute('aria-expanded','true');
+ if(el===popDate){toggleCal(false);ensureChip(hidden.value);}
+ if(el===popGuests) toggleCal(false);
+}
+if(sideDateBtn) sideDateBtn.addEventListener('click',function(e){e.stopPropagation();if(isWide())openSidePop(popDate);});
+if(sideGuestsBtn) sideGuestsBtn.addEventListener('click',function(e){e.stopPropagation();if(isWide())openSidePop(popGuests);});
+function syncSidePops(){
+ if(!popDate||!popGuests) return;
+ if(isWide()){
+  popDate.hidden=true;popGuests.hidden=true;
+  if(sideDateBtn) sideDateBtn.setAttribute('aria-expanded','false');
+  if(sideGuestsBtn) sideGuestsBtn.setAttribute('aria-expanded','false');
+ }else{
+  popDate.hidden=false;popGuests.hidden=false;
+  toggleCal(false);
+ }
+}
+syncSidePops();
+window.addEventListener('resize',function(){syncSidePops();});
+document.addEventListener('click',function(e){
+ if(!isWide()) return;
+ if(e.target.closest('.d2-pop')||e.target.closest('.d2-field')) return;
+ closeSidePops();
+ toggleCal(false);
+});
 $('#d2-change').addEventListener('click',function(){toggleCal(false);var t=picked();if(t) t.focus()});
 var inChips=chips.filter(function(c){return c.value===hidden.value}).length>0;
 if(hidden.value&&!inChips&&!closed[hidden.value]) toggleCal(true);
 
 var sheet=null,opener=null;
+function isWide(){return window.matchMedia('(min-width:1024px)').matches}
 function ensureSheet(){
+ if(isWide()) return null;
  if(sheet) return sheet;
  sheet=document.createElement('dialog');
  sheet.className='d2-sheet';
@@ -886,8 +1073,18 @@ function selectPass(code){
 }
 function openSheet(o){
  o=o||{};
- var s=ensureSheet();
  if(o.pass) selectPass(o.pass);
+ if(isWide()){
+  var side=$('#d2-side')||book;
+  if(side&&side.scrollIntoView) side.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});
+  if(o.focus==='date') openSidePop(popDate);
+  var dateChip=$('.d2-dates input:checked',form);
+  if(o.focus==='date'&&dateChip) dateChip.focus();
+  else if(picked()) picked().focus();
+  return;
+ }
+ var s=ensureSheet();
+ if(!s) return;
  if(!s.open&&s.showModal) s.showModal();
  document.documentElement.classList.add('d2-lock');
  book.scrollTop=0;s.scrollTop=0;
@@ -897,6 +1094,12 @@ function openSheet(o){
  if(target){target.setAttribute('tabindex','-1');target.focus()}
 }
 document.addEventListener('click',function(e){
+ var card=e.target.closest('a.d2-card[data-pass]');
+ if(card){
+  e.preventDefault();
+  selectPass(card.getAttribute('data-pass'));
+  return;
+ }
  var a=e.target.closest('a[href*="#book"]');
  if(!a||e.defaultPrevented||e.metaKey||e.ctrlKey||e.shiftKey) return;
  var u;try{u=new URL(a.href,location.href)}catch(err){return}
@@ -986,4 +1189,4 @@ if(exSheet){
 </script>`;
 }
 
-module.exports = { listingHtmlD2, listingScriptD2, ListingD2, LATE_NOTE };
+module.exports = { listingHtmlD2, listingScriptD2, ListingD2, LATE_NOTE, galleryHtml, keyFactsHtml, mainFacilityFact };

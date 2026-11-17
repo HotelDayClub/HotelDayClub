@@ -242,6 +242,11 @@ const WAIT_SHEET = `new Promise(function(done){
 
   await shot(ws, { url: `${base}/search`, width: 390, height: 844, name: 'search-area-names-390.png', prep: scrollTop, awaitMs: 1600 });
 
+  const openFaq = `new Promise(function(r){var d=document.querySelector('.faq-page-list details,.faq-list details');if(d&&!d.open)d.querySelector('summary').click();setTimeout(r,500);})`;
+  await shot(ws, { url: `${base}/faq`, width: 390, height: 844, name: 'p2c-faq-390.png', prep: scrollTop + ';' + openFaq, full: true, awaitMs: 2000 });
+  await shot(ws, { url: `${base}/contact`, width: 390, height: 844, name: 'p2c-contact-390.png', prep: scrollTop, awaitMs: 1600 });
+  await shot(ws, { url: `${base}/how-it-works`, width: 390, height: 844, name: 'p2c-hiw-390.png', prep: scrollTop, full: true, awaitMs: 2000 });
+
   await shot(ws, { url: `${base}/`, width: 390, height: 844, name: 'p2a-home-quick-390.png', prep: homeScroll, awaitMs: 2000 });
   await shot(ws, { url: `${base}/search?mood=family`, width: 390, height: 844, name: 'p2b-search-mood-family-390.png', prep: scrollTop });
 

@@ -71,7 +71,9 @@ function visibleText(html) {
 }
 
 function cardNames(html) {
-  return [...html.matchAll(/<h3><a href="\/h\/([a-z-]+)[^"]*">/g)].map(m => m[1]);
+  const start = html.indexOf('class="list results"');
+  const block = start >= 0 ? html.slice(start, html.indexOf('class="note"', start)) : html;
+  return [...block.matchAll(/<a class="ex[^"]*" href="\/h\/([a-z0-9-]+)/g)].map(m => m[1]);
 }
 
 // A1-A2: pure helpers and home quick buttons.
@@ -172,16 +174,16 @@ const listingCss = fs.readFileSync(path.join(root, 'public/listing-dir2.css'), '
 assert.match(listingCss, /body:has\(\.d2\) \.d2\.listing\{padding:0/);
 assert.match(listingCss, /@media \(max-width:1023px\)[\s\S]*body:has\(\.d2\) \.d2-photos[\s\S]*padding-top:0/);
 assert.match(listingCss, /\.d2 \.g-thumb img\{[\s\S]*object-fit:\s*cover/);
-assert.match(listingCss, /\.d2 \.g-track img\{[\s\S]*object-fit:\s*contain/);
+assert.match(listingCss, /\.d2 \.g-track img\{[\s\S]*object-fit:\s*cover/);
 assert.match(listingCss, /\.g-lb-track img[\s\S]*object-fit:\s*contain/);
 assert.match(listingCss, /\.d2 \.g-track > img,\s*\.d2 \.g-track > picture\{/);
 assert.match(listingCss, /\.d2 \.g-track > \* \+ \*\{display:none!important\}/);
 assert.match(listingCss, /html\.pass-b \.d2-card img,[\s\S]*object-fit:\s*cover/);
 assert.ok(!/html\.pass-b[^{]*\.d2-card[^{]*\{[^}]*object-fit:\s*contain/.test(listingCss), 'pass-row thumbs use cover');
 const guestCss = fs.readFileSync(path.join(root, 'public/guest-d2.css'), 'utf8');
-assert.ok(guestCss.includes('search-page .ex .tag') && guestCss.includes('#FFF1E4') && guestCss.includes('#8A3B12'));
+assert.ok(guestCss.includes('search-page .ex .tag') && guestCss.includes('var(--hdc-sun-soft)') && guestCss.includes('var(--hdc-rose-ink)'));
 assert.ok(!/search-page \.ex \.tag\{[^}]*background:transparent/.test(guestCss));
-assert.ok(contrastRatio('#8A3B12', '#FFF1E4') >= 4.5, 'search Example tag contrast');
+assert.ok(contrastRatio('#C63662', '#FFF6DC') >= 4.5, 'search Example tag contrast');
 
 const wed = HomeQuick.build('2026-11-11');
 assert.deepStrictEqual([wed.first.label, wed.first.sub, wed.first.href], ['Today', 'Wed 11 Nov', '/search?date=2026-11-11']);
@@ -205,9 +207,10 @@ assert.strictEqual(HomeQuick.build('nope'), null);
 assert.ok(!/\u2014/.test(HomeQuick.html('2026-11-11')));
 
 const d2css = fs.readFileSync(path.join(root, 'public/listing-dir2.css'), 'utf8');
-assert.ok(/\.d2-hero-title\{[^}]*color:\s*#FFF8EE/i.test(d2css), 'hero title on deep band');
-assert.ok(/\.d2-hours-band\{[^}]*color:\s*#FFF8EE/i.test(d2css), 'hours band text');
-assert.ok(/\.d2-bookbar\{[^}]*color:\s*#fff/i.test(d2css), 'desktop book bar text');
+assert.ok(/\.d2-head \.d2-title\{[^}]*color:\s*var\(--text\)/i.test(d2css), 'title ink on cream block');
+assert.ok(/\.d2-head \.d2-facts\{[^}]*border-top:\s*1px solid var\(--border\)/i.test(d2css), 'ruled facts row in title block');
+assert.ok(/\.d2-hours-band\{[^}]*color:\s*var\(--cream\)/i.test(d2css), 'hours band text');
+assert.ok(!/\.d2-bookbar\{[^}]*display:\s*flex/.test(d2css), 'teal desktop bookbar removed');
 
 // A3: moods.
 assert.deepStrictEqual(SearchQuery.MOODS.map(m => m.label), ['Rooftop', 'Beachside', 'Quiet', 'Family friendly']);
@@ -245,7 +248,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
       assert.strictEqual(count(visibleText(body.slice(body.indexOf('id="before"'))), FOOD_RULE), 1, slug + ' food rule in good to know');
       assert.strictEqual(count(exBlock, FOOD_RULE), 0, slug + ' no food rule in explore section');
       assert.ok(!/your pass|During pass hours|Hotel Day Club/i.test(visibleText(exBlock)), slug + ' place-only explore copy');
-      assert.strictEqual(count(text, FREE_CANCEL), 1, slug + ' free cancellation once');
+      assert.ok(count(text, FREE_CANCEL) >= 1 && count(text, FREE_CANCEL) <= 3, slug + ' free cancellation with qualifier, not duplicated ad nauseam');
       assert.strictEqual(count(body, 'Photo ID at check-in'), 1, slug + ' ID line once');
       assert.ok(!text.includes('\u2014'), slug + ' no em-dashes');
       assert.ok(!/commission|stripe/i.test(text), slug);

@@ -45,8 +45,8 @@ assert.ok(whereRule, 'where segment text rule');
 assert.ok(whereRule[0].includes('overflow:visible'));
 assert.ok(whereRule[0].includes('text-overflow:clip'));
 assert.ok(!whereRule[0].includes('ellipsis'));
-assert.ok(homeCss.includes('#627377'));
-assert.ok(fs.readFileSync(path.join(root, 'public/pickers.css'), 'utf8').includes('#627377'));
+assert.ok(homeCss.includes('var(--hdc-secondary)'));
+assert.ok(fs.readFileSync(path.join(root, 'public/pickers.css'), 'utf8').includes('var(--hdc-secondary)'));
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-b8-'));
 const dbPath = path.join(dir, 'daypass.db');

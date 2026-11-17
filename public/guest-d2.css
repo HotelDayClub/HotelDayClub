@@ -1,26 +1,18 @@
-/* D2 guest chrome: home, search and ticket (deep header, white lockup, outlined controls). */
-body.guest-d2{background:var(--cream,#FFF8EE)}
-body.guest-d2 .hdr{background:var(--deep,#0B6E6F);border-bottom:0;box-shadow:none}
-body.guest-d2 .hdr .wrap{max-width:none}
-body.guest-d2 .hdr img.logo-light{display:none}
-body.guest-d2 .hdr img.logo-dark{display:block}
-body.guest-d2 .hdr-nav a{color:#fff}
-body.guest-d2 .hdr-nav a:hover{background:rgba(255,255,255,.12);color:#fff}
-body.guest-d2 .hdr .pill{border-color:rgba(255,255,255,.55);color:#fff;background:transparent}
-body.guest-d2 .hdr .ibtn{border-color:#8FB6B4;color:#fff;background:transparent}
+/* D2 guest: search mood and legacy hero B (header rules live in base.css). */
+body.guest-d2{background:var(--cream,var(--cream))}
 body.guest-d2 .msheet a.pill{background:var(--hdc-rose);color:var(--hdc-navy);border:0}
 @media (max-width:374px){body.guest-d2 .hdr .logo img{height:28px}}
 
 /* Home D2 hero option B (html[data-hero="B"]): taller photo, centred teal card */
-html[data-hero] body.home.guest-d2 .hero.hero-d2{display:flex;flex-direction:column;position:relative;min-height:0;overflow:visible;background:var(--deep,#0A4F55);box-sizing:border-box;padding:240px 0 16px}
+html[data-hero] body.home.guest-d2 .hero.hero-d2{display:flex;flex-direction:column;position:relative;min-height:0;overflow:visible;background:var(--deep,var(--hdc-deep));box-sizing:border-box;padding:240px 0 16px}
 html[data-hero] body.home.guest-d2 .hero.hero-d2 .ph{position:absolute;inset:0;z-index:0;height:auto;min-height:100%;flex:none;pointer-events:none}
 html[data-hero] body.home.guest-d2 .hero.hero-d2 .ph .credit{pointer-events:auto}
 html[data-hero] body.home.guest-d2 .hero.hero-d2 .ph:after{display:none}
 html[data-hero] body.home.guest-d2 .hero.hero-d2 .media{position:absolute;inset:0;height:100%;width:100%;overflow:hidden}
 html[data-hero] body.home.guest-d2 .hero.hero-d2 .media img,html[data-hero] body.home.guest-d2 .hero.hero-d2 .layer,html[data-hero] body.home.guest-d2 .hero.hero-d2 picture.layer img{width:100%;height:100%;object-fit:cover;object-position:25% 45%}
 html[data-hero] body.home.guest-d2 .hero.hero-d2 .credit{top:12px;right:12px;left:auto;bottom:auto;transform:none;z-index:2}
-html[data-hero] body.home.guest-d2 .hero.hero-d2 .copy{position:relative;z-index:1;grid-column:unset;grid-row:unset;box-sizing:border-box;background:var(--deep,#0A4F55);border-radius:24px;box-shadow:0 10px 28px rgba(10,31,36,.28);margin-left:auto;margin-right:auto}
-html[data-hero] body.home.guest-d2 .hero.hero-d2 .copy .kicker{font-size:14px;line-height:1.4;letter-spacing:.16em;color:var(--hdc-soft,#DDF1EE);text-shadow:none;overflow:visible;white-space:normal;margin:0}
+html[data-hero] body.home.guest-d2 .hero.hero-d2 .copy{position:relative;z-index:1;grid-column:unset;grid-row:unset;box-sizing:border-box;background:var(--deep,var(--hdc-deep));border-radius:var(--r-card);box-shadow:0 10px 28px rgba(10,31,36,.28);margin-left:auto;margin-right:auto}
+html[data-hero] body.home.guest-d2 .hero.hero-d2 .copy .kicker{font-size:14px;line-height:1.4;letter-spacing:.16em;color:var(--hdc-soft,var(--hdc-soft));text-shadow:none;overflow:visible;white-space:normal;margin:0}
 html[data-hero] body.home.guest-d2 .hero.hero-d2 .hero-line{color:#fff;text-shadow:none;margin:8px 0 16px;font-size:clamp(40px,10vw,56px);line-height:1.05}
 html[data-hero] body.home.guest-d2 .hero.hero-d2 .clock{display:none}
 body.home.guest-d2 .hero.hero-d2 .times{display:none}
@@ -35,19 +27,19 @@ html[data-hero="B"] body.home.guest-d2 .hero.hero-d2 .copy{width:calc(100% - 48p
 @media (min-width:1440px){html[data-hero] body.home.guest-d2 .hero.hero-d2{padding-top:400px;padding-bottom:24px}
 html[data-hero="B"] body.home.guest-d2 .hero.hero-d2 .copy{max-width:44rem}}
 @media (max-width:360px){html[data-hero="B"] body.home.guest-d2 .hero.hero-d2 .copy{width:calc(100% - 16px);padding:20px 12px 20px}}
-body.home.guest-d2 .hero .search{background:#fff;border:1px solid var(--hdc-border);border-radius:16px;padding:6px;max-width:100%;width:100%}
-body.home.guest-d2 .hero .search button[type="submit"]{background:var(--teal,#0B6E6F);color:#fff}
-body.home.guest-d2 .hero .search button[type="submit"]:hover{background:var(--deep,#08585A);color:#fff}
+body.home.guest-d2 .hero .search{background:#fff;border:1px solid var(--hdc-border);border-radius:var(--r-card);padding:6px;max-width:100%;width:100%}
+body.home.guest-d2 .hero .search button[type="submit"]{background:var(--teal,var(--hdc-primary));color:#fff}
+body.home.guest-d2 .hero .search button[type="submit"]:hover{background:var(--deep,var(--hdc-hover));color:#fff}
 body.home.guest-d2 .qb small{font-family:Fraunces,Georgia,serif;font-weight:600}
 
 /* Search mood cards */
-body.guest-d2 .search-page .ex{border-radius:16px;background:#fff}
-body.guest-d2 .search-page .ex .tag{position:absolute;top:12px;left:12px;background:#FFF1E4;border:0;color:#8A3B12;text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;padding:4px 10px;border-radius:6px}
+body.guest-d2 .search-page .ex{border-radius:var(--r-card);background:#fff}
+body.guest-d2 .search-page .ex .tag{position:absolute;top:12px;left:12px;background:var(--hdc-sun-soft);border:0;color:var(--hdc-rose-ink);text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;padding:4px 10px;border-radius:var(--r-ctl)}
 body.guest-d2 .search-page .ex .bd h3{font-family:Fraunces,Georgia,serif;font-size:20px;line-height:1.2}
 body.guest-d2 .search-page .ex-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;flex-wrap:wrap}
 body.guest-d2 .search-page .ex-row .hrs{margin:0;font-size:14px;color:var(--hdc-secondary);font-weight:600;display:inline-flex;align-items:center;gap:6px}
 body.guest-d2 .search-page .ex-row .ex-price{margin:0;font-size:16px;font-weight:700;white-space:nowrap}
 body.guest-d2 .search-page .kidchip{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:4px 10px;border-radius:999px;background:var(--hdc-tint);font-size:14px;font-weight:600;color:var(--deep)}
-body.guest-d2 .search-page .ichip{border:1px solid #8A9A9F}
-body.guest-d2 .search-page .toolrow{background:var(--cream,#FFF8EE)}
+body.guest-d2 .search-page .ichip{border:1px solid var(--field)}
+body.guest-d2 .search-page .toolrow{background:var(--cream,var(--cream))}
 body.guest-d2 .srch-hero .bigsearch button[type="submit"]{background:var(--teal);color:#fff}

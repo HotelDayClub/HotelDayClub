@@ -40,7 +40,7 @@ function hotelBookingsCsv(rows) {
   return toCsv(HOTEL_BOOKING_COLUMNS, rows.map(row => ({
     ...row,
     expected_arrival: arrivalText(row.expected_arrival, 'csv'),
-    paid_to_you: row.paid_to_you == null || row.paid_to_you === '' ? '$—' : row.paid_to_you,
+    paid_to_you: row.paid_to_you == null || row.paid_to_you === '' ? '' : row.paid_to_you,
   })));
 }
 

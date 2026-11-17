@@ -334,4 +334,70 @@
     syncMore();
   });
   syncMore();
+
+  var mapDataEl = document.getElementById('search-map-data');
+  var mapWrap = document.getElementById('search-map-wrap');
+  var live = document.querySelector('[data-live]');
+  var btnList = document.getElementById('search-view-list');
+  var btnMap = document.getElementById('search-view-map');
+  var mapInst = null;
+  function loadLeaflet(done) {
+    if (window.L) { done(); return; }
+    var s = document.createElement('script');
+    s.src = '/vendor/leaflet/leaflet.js';
+    s.onload = done;
+    document.head.appendChild(s);
+  }
+  function setSearchView(mode) {
+    if (!mapWrap || !live) return;
+    var mapOn = mode === 'map';
+    mapWrap.hidden = !mapOn;
+    live.hidden = mapOn;
+    if (btnList) { btnList.classList.toggle('is-on', !mapOn); btnList.setAttribute('aria-pressed', mapOn ? 'false' : 'true'); }
+    if (btnMap) { btnMap.classList.toggle('is-on', mapOn); btnMap.setAttribute('aria-pressed', mapOn ? 'true' : 'false'); }
+    if (!mapOn) return;
+    loadLeaflet(function () {
+      if (!mapInst && mapDataEl) {
+        var pins = JSON.parse(mapDataEl.textContent || '[]');
+        var el = document.getElementById('search-map');
+        if (!el || !pins.length) return;
+        mapInst = window.L.map(el, { scrollWheelZoom: true });
+        window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        }).addTo(mapInst);
+        var bounds = [];
+        function mapPinIcon() {
+          return window.L.divIcon({
+            className: 'srch-map-pin',
+            html: '<span class="srch-map-pin-dot" aria-hidden="true"></span>',
+            iconSize: [28, 36],
+            iconAnchor: [14, 36],
+            popupAnchor: [0, -34],
+          });
+        }
+        pins.forEach(function (p) {
+          var m = window.L.marker([p.lat, p.lng], {
+            icon: mapPinIcon(),
+            alt: p.name,
+            title: p.name,
+          }).addTo(mapInst);
+          var link = document.createElement('a');
+          link.href = p.href;
+          link.innerHTML = '<b></b><br><span></span>';
+          link.querySelector('b').textContent = p.name;
+          link.querySelector('span').textContent = p.area;
+          m.bindPopup(link);
+          bounds.push([p.lat, p.lng]);
+        });
+        if (bounds.length === 1) mapInst.setView(bounds[0], 12);
+        else if (bounds.length) mapInst.fitBounds(bounds, { padding: [28, 28] });
+      }
+      if (mapInst) mapInst.invalidateSize();
+    });
+  }
+  if (mapDataEl && btnMap && btnList) {
+    btnList.addEventListener('click', function () { setSearchView('list'); });
+    btnMap.addEventListener('click', function () { setSearchView('map'); });
+  }
 })();

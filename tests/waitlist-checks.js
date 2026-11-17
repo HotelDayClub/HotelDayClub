@@ -93,6 +93,10 @@ function cookie(res) {
     const home = await get(port, '/');
     assert.strictEqual(home.status, 200);
     assert.ok(home.body.includes('Join the waitlist'));
+    assert.ok(home.body.includes('id="waitlist-band"'));
+    assert.ok(home.body.includes('class="wl-inline"'));
+    assert.match(home.body, /wl-inline[\s\S]*<input[^>]+name="role"[^>]+value="guest"/);
+    assert.match(home.body, /wl-inline[\s\S]*name="company_website"/);
     const homeCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'golden', 'home.css'), 'utf8');
     assert.ok(homeCss.includes('.wl input:not([type="radio"]):not([type="checkbox"])'), 'text fields must not size radios');
     assert.ok(homeCss.includes('.wl-choice:has(input:checked)'), 'selected role needs a visible state');
@@ -223,6 +227,9 @@ function cookie(res) {
     const hiw = await get(port, '/how-it-works');
     assert.ok(hiw.body.includes('href="/for-hotels"'));
     assert.ok(!hiw.body.includes('href="/hotel/join"'));
+    assert.ok(home.body.includes('class="dest-tiles dt-n6"'), 'six listed destinations use mosaic grid');
+    const polish = fs.readFileSync(path.join(__dirname, '..', 'public', 'polish.css'), 'utf8');
+    assert.match(polish, /dest-tiles\.dt-n6 \.dt-big\{grid-row:span 3\}/);
     assert.ok(home.body.includes('Explore by destination'));
     assert.ok(home.body.includes('<h2>Where to spend the day</h2>'));
     assert.ok(/href="\/destinations\/sydney"[\s\S]*?Sydney CBD[\s\S]*?1 example listing/.test(home.body));

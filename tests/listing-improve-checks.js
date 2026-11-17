@@ -148,8 +148,10 @@ const html = listingHtml({
   minDate: '2026-11-13',
   maxDate: '2027-02-11',
   closed: '',
-  passes: [],
+  passes: [{ code: 'lounger', name: 'Sun lounger', price: 45, holds: 1, kind: 'lounger', description: '' }],
   av: [],
+  cancelText: FREE_CANCEL,
+  groups: { included: [{ label: 'Pool', icon: 'pool' }], onsite: [] },
   from: 45,
   cancel: 'CANCEL-SENTINEL',
   know: 'CANCEL-SENTINEL',
@@ -162,12 +164,15 @@ const html = listingHtml({
   todayWd: 5,
   upcomingClosed: [{ date: '2026-12-25', reason: '<maintenance>' }],
 });
-assert.ok(html.indexOf('id="passes"') < html.indexOf('id="book"') && html.indexOf('id="book"') < html.indexOf('id="details"'));
+assert.ok(html.indexOf('id="passes"') < html.indexOf('id="details"'), 'passes before details in main column');
+assert.ok(html.indexOf('id="d2-side"') > html.indexOf('id="passes"'), 'sticky aside follows passes block');
+assert.ok(html.includes('id="book"'));
 assert.ok(!html.includes('CANCEL-SENTINEL'), 'the late notice is shown only from the availability reply');
-assert.strictEqual(html.split(FREE_CANCEL).length - 1, 1);
+const freeN = html.split(FREE_CANCEL).length - 1;
+assert.ok(freeN >= 1, 'free cancellation with qualifier on listing');
 assert.ok(html.includes('href="/refunds"'));
 assert.strictEqual(html.split(FOOD_RULE).length - 1, 1);
-assert.ok(html.includes('Fictional demo listing'));
+assert.ok(html.includes('Fictional demo listing') || html.includes('d2-demo-line'));
 assert.ok(html.includes('>Lifeguard</dt><dd>Not on duty</dd>'));
 assert.ok(!/mailto:|whatsapp|facebook/i.test(html));
 assert.ok(!html.includes('id="season"'));

@@ -31,7 +31,7 @@ assert.ok(reason && /Friday/i.test(reason), 'closure uses weekday name: ' + reas
 
 function start(port) {
   return new Promise((resolve, reject) => {
-    const child = spawn('node', ['server.js'], {
+    const child = spawn(process.execPath, ['server.js'], {
       cwd: path.join(__dirname, '..'),
       env: { ...process.env, PORT: String(port) },
       stdio: ['ignore', 'pipe', 'pipe'],

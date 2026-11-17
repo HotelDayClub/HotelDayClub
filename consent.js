@@ -127,7 +127,7 @@ class CheckoutConsent {
 
   static noticeHtml(hotelName) {
     const hotel = esc(hotelName);
-    return `We collect your name, email and mobile to make and manage this booking. We share them, with your booking details, with ${hotel} so it can check you in and contact you about this booking. Some providers may store data overseas. See our <a href="/privacy">Privacy Policy</a> for how to access or correct your information or make a complaint. We record your consents with the policy version, the time and your IP address.`;
+    return `We collect your name, email and mobile to make and manage this booking. We share them, with your booking details, with ${hotel} so it can check you in and contact you about this booking. Some providers may store data overseas. See our <a href="/privacy">Privacy Policy</a> for how to access or correct your information or make a complaint. We record your consents with the policy version and the time.`;
   }
 
   static guestNoticeHtml(mailHtml) {

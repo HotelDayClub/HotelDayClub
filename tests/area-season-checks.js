@@ -76,16 +76,13 @@ function destinationForArea(area) {
 }
 
 function listingAreaSnippet(html) {
-  const m = html.match(/class="d2-hero-loc"[^>]*>([^<]+)</);
+  const m = html.match(/class="d2-loc"[^>]*>([^<]+)</);
   return m ? m[1].replace(/&amp;/g, '&').trim() : '';
 }
 
 function searchCardAreaSnippet(html, slug) {
-  const needle = `href="/h/${slug}"`;
-  const i = html.indexOf(needle);
-  if (i < 0) return '';
-  const slice = html.slice(i, i + 2500);
-  const m = slice.match(/class="ex-area"[^>]*>([^<]+)</);
+  const re = new RegExp(`<a class="ex[^"]*" href="/h/${slug}[^"]*"[\\s\\S]*?class="ex-area"[^>]*>([^<]+)<`);
+  const m = html.match(re);
   if (!m) return '';
   return m[1].replace(/&amp;/g, '&').split(' · ')[0].trim();
 }
