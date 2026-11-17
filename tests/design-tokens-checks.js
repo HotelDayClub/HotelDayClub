@@ -76,6 +76,44 @@ assert.ok(/\.app-ftr\{[^}]*background:\s*var\(--hdc-navy\)/.test(baseCssText), '
 assert.ok(/\.app-ftr\{[^}]*color:\s*var\(--hdc-soft\)/.test(baseCssText), 'footer uses light text on navy');
 assert.ok(!/\.app-ftr\{[^}]*background:\s*#fff/.test(baseCssText), 'footer must not reset to white background');
 
+const tokensCss = fs.readFileSync(path.join(root, 'public/tokens.css'), 'utf8');
+function expandHex(hex) {
+  const h = hex.toLowerCase();
+  if (h.length === 4) return '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
+  return h;
+}
+function tokenVar(name) {
+  const found = tokensCss.match(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ':\\s*(#[0-9A-Fa-f]{3,6})'));
+  assert.ok(found, name);
+  return expandHex(found[1]);
+}
+function channel(hex, i) {
+  const n = parseInt(hex.slice(1), 16);
+  const c = ((n >> (16 - i * 8)) & 255) / 255;
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+}
+function contrastRatio(fg, bg) {
+  const lum = hex => 0.2126 * channel(hex, 0) + 0.7152 * channel(hex, 1) + 0.0722 * channel(hex, 2);
+  const hi = Math.max(lum(fg), lum(bg));
+  const lo = Math.min(lum(fg), lum(bg));
+  return (hi + 0.05) / (lo + 0.05);
+}
+const navy = tokenVar('--hdc-navy');
+const soft = tokenVar('--hdc-soft');
+const text = tokenVar('--hdc-text');
+const bg = tokenVar('--hdc-bg');
+const primary = tokenVar('--hdc-primary');
+const footerBody = contrastRatio(soft, navy);
+const footerLinks = contrastRatio('#ffffff', navy);
+const headerSolidNav = contrastRatio(text, bg);
+const headerHomeNav = contrastRatio('#ffffff', navy);
+const headerSolidPill = contrastRatio(primary, bg);
+assert.ok(footerBody >= 4.5, `footer body ${footerBody.toFixed(2)}:1`);
+assert.ok(footerLinks >= 4.5, `footer links ${footerLinks.toFixed(2)}:1`);
+assert.ok(headerSolidNav >= 4.5, `header solid nav ${headerSolidNav.toFixed(2)}:1`);
+assert.ok(headerHomeNav >= 4.5, `header transparent nav ${headerHomeNav.toFixed(2)}:1`);
+assert.ok(headerSolidPill >= 4.5, `header solid pill ${headerSolidPill.toFixed(2)}:1`);
+
 const guestPages = [
   '/',
   '/search',

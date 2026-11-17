@@ -43,6 +43,12 @@ function hotelToday(hotel, now = new Date()) {
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
+function guestSiteDateBounds(now = new Date()) {
+  const min = hotelToday({}, now);
+  const max = ymd(addDays(new Date(`${min}T12:00:00`), 90));
+  return { min, max };
+}
+
 function firstSunday(year, monthIndex) {
   const dow = new Date(Date.UTC(year, monthIndex, 1)).getUTCDay();
   return dow === 0 ? 1 : 1 + (7 - dow);
@@ -274,6 +280,6 @@ function passCalendarLink(booking, hotel, window) {
 }
 
 module.exports = {
-  sydneyOffsetMinutes, hotelZone, hotelToday, HotelClock, zoneToUtc, accessInstants, formatUtc, eventWindow,
+  sydneyOffsetMinutes, hotelZone, hotelToday, guestSiteDateBounds, HotelClock, zoneToUtc, accessInstants, formatUtc, eventWindow,
   bookingIcs, googleCalendarUrl, passCalendarLink,
 };

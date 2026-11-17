@@ -69,6 +69,10 @@ const port = 3910 + Math.floor(Math.random() * 40);
     for (const item of items) {
       assert.ok(faq.includes(item.q), '/faq question ' + item.q);
     }
+    const bring = items.find(item => item.q === 'What should I bring?');
+    assert.ok(bring.html.includes('Towels are included with every pass by default'), '/faq towel default');
+    assert.ok(bring.html.includes('Bring your own towel'), '/faq towel opt-out');
+    assert.ok(!/listing says if a towel is included/i.test(bring.html), '/faq old towel wording');
     const plusCount = (faq.match(/class="faq-plus"/g) || []).length;
     assert.strictEqual(plusCount, items.length, 'faq plus icon count');
 

@@ -29,7 +29,7 @@ const brand = require('./brand');
 const { codeFromQrToken } = require('./qr');
 const { bookingPageBody, bookingMissingBody } = require('./bookingPage');
 const { AdminShell } = require('./adminShell');
-const { eventWindow, bookingIcs, passCalendarLink, hotelToday, HotelClock } = require('./calendar');
+const { eventWindow, bookingIcs, passCalendarLink, hotelToday, guestSiteDateBounds, HotelClock } = require('./calendar');
 const { parseBookingCode } = require('./public/checkin-parse');
 const { ShortCode } = require('./shortCode');
 const { DateHold } = require('./dateHold');
@@ -130,12 +130,13 @@ app.get('/vendor/jsQR.js', (req, res) => {
 });
 
 const clockNow = () => (process.env.HDC_NOW ? new Date(process.env.HDC_NOW) : new Date());
-const today = hotel => {
+const today = (hotel, now) => {
   const fix = process.env.HDC_DEMO_TODAY;
   if (fix && /^\d{4}-\d{2}-\d{2}$/.test(fix)) return fix;
-  const now = clockNow();
-  return hotel ? HotelClock.today(hotel, now) : ymd(now);
+  const clock = now === undefined ? clockNow() : (now instanceof Date ? now : new Date(now));
+  return HotelClock.today(hotel || {}, clock);
 };
+const guestBookBounds = now => guestSiteDateBounds(now === undefined ? clockNow() : (now instanceof Date ? now : new Date(now)));
 const hotelRow = h => {
   if (!h) return h;
   const row = { ...h, photos: JSON.parse(h.photos || '[]'), amenities: JSON.parse(h.amenities || '[]') };
@@ -149,7 +150,7 @@ function destinationHasListings(d) {
 function chosenDate(raw, hotel) {
   const date = String(raw || '');
   const start = today(hotel);
-  const maxDate = hotel ? ymd(addDays(new Date(start + 'T12:00:00'), 90)) : ymd(addDays(new Date(), 90));
+  const maxDate = ymd(addDays(new Date(start + 'T12:00:00'), 90));
   if (/^\d{4}-\d{2}-\d{2}$/.test(date) && date >= start && date <= maxDate) return date;
   return '';
 }
@@ -531,6 +532,7 @@ function homePage({ destination = '', joined = false, error = '', values = {} } 
   const lead = joined ? `<script>if(typeof gtag==='function')gtag('event','generate_lead');</script>` : '';
   const openWait = Boolean(joined || error || pickedDest);
   const exampleCards = hotels.slice(0, 6).map(h => exampleCard(h, '')).join('');
+  const guestDates = guestBookBounds();
   const slot = (src, alt, time, title, copy) => `<div class="slot"><picture><source type="image/webp" srcset="/golden/img/${src}.webp"><img src="/golden/img/${src}.jpg" alt="${alt}" width="900" height="600" loading="lazy" decoding="async"></picture><span class="t">${time}</span><div class="b"><h3>${title}</h3><p>${copy}</p></div></div>`;
   return page('Hotel day passes in Australia', `<header class="hero hero-d2 hero-d1" data-slot="0"><div class="ph"><div class="media">
 <picture class="layer on" data-slot="0"><source media="(max-width:800px)" type="image/webp" srcset="/golden/img/hero-swim-sm.webp"><source media="(max-width:800px)" srcset="/golden/img/hero-swim-sm.jpg"><source type="image/webp" srcset="/golden/img/hero-swim.webp"><img fetchpriority="high" src="/golden/img/hero-swim.jpg" alt="Ocean pool at sunrise" width="1920" height="1080" decoding="async"></picture>
@@ -541,7 +543,7 @@ function homePage({ destination = '', joined = false, error = '', values = {} } 
 <p class="hero-sub">Book a day at a hotel pool, gym or spa. No room needed.</p>
 <form class="search" action="/search" method="get">
 <div class="seg"><label for="w">Where</label><select id="w" class="hdc-pick" name="destination" aria-label="Where"><option value="" data-icon="pin">All of Australia</option>${whereOptions('')}</select></div>
-<div class="seg"><label for="d">When</label><input id="d" class="hdc-date" type="date" name="date" min="${today()}" max="${ymd(addDays(new Date(), 90))}" value=""></div>
+<div class="seg"><label for="d">When</label><input id="d" class="hdc-date" type="date" name="date" min="${guestDates.min}" max="${guestDates.max}" value=""></div>
 <div class="seg"><label for="p">What</label><select id="p" class="hdc-pick" name="want">${WANTS.map(w => `<option value="${w.id}" data-icon="${w.icon}">${esc(w.name)}</option>`).join('')}</select></div>
 <button type="submit">Search</button></form>
 ${homePopularHtml()}</div></header>
@@ -828,8 +830,7 @@ function searchPage(query) {
   const others = result.empty ? `<h2 class="other">Other example listings</h2><div class="list others">${otherCards}</div>` : '';
   const keepSort = params.sort ? `<input type="hidden" name="sort" value="${esc(params.sort)}">` : '';
   const resultClass = result.list.length === 1 ? 'list results is-single' : 'list results';
-  const maxDate = ymd(addDays(new Date(), 90));
-  const minDate = today();
+  const { min: minDate, max: maxDate } = guestBookBounds();
   const heroKeep = hiddenField('mood', params.mood) + hiddenField('want', params.want) + hiddenField('price', params.price) + hiddenField('age', params.age) + hiddenField('sort', params.sort);
   const mood = result.moods.map(m => {
     const href = SearchQuery.href({ ...params, mood: m.on ? '' : m.id });
@@ -2135,7 +2136,7 @@ app.get('/hotel', hotelAuth, (req, res) => {
       OR (${GuestPrivacy.contactGate()} AND (b.guest_name LIKE ? OR b.email LIKE ? OR b.phone LIKE ?))
     ) ORDER BY b.date DESC LIMIT 30`).all(h.id, like, short, short, GuestPrivacy.cutoff(h), like, like, like) : null;
   const s = db.prepare("SELECT COALESCE(SUM(qty),0) spots, COALESCE(SUM(COALESCE(party, qty)),0) people, COALESCE(SUM(total),0) gross, COUNT(*) n FROM bookings WHERE hotel_id=? AND status!='cancelled'").get(h.id);
-  const s30 = db.prepare("SELECT COALESCE(SUM(total),0) gross FROM bookings WHERE hotel_id=? AND status!='cancelled' AND date>=?").get(h.id, ymd(addDays(new Date(), -30)));
+  const s30 = db.prepare("SELECT COALESCE(SUM(total),0) gross FROM bookings WHERE hotel_id=? AND status!='cancelled' AND date>=?").get(h.id, ymd(addDays(new Date(t + 'T12:00:00'), -30)));
   const inToday = todayRows.filter(b => b.checked_in_at).reduce((a, b) => a + b.qty, 0), dueToday = todayRows.reduce((a, b) => a + b.qty, 0);
   const tally = arrivedOfBooked(todayRows);
   const passes = getPasses(h.id);
