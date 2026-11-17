@@ -14,7 +14,40 @@ assert.match(
   /html:not\(\[data-n="1"\]\):not\(\[data-n="2"\]\):not\(\[data-n="3"\]\) \.d2 \.g-all/s,
   'four-plus gallery overlays show-all on last thumb',
 );
-assert.match(css, /\.d2 \.g-thumb\[data-i="3"\]\{grid-column:3;grid-row:2\}/, 'fourth thumb fills top-right grid cell');
+assert.match(
+  css,
+  /html\[data-n="4"\] \.d2 \.g-thumb\[data-i="3"\]\{grid-column:2 \/ span 2;grid-row:2\}/,
+  'four-photo thumb 3 spans bottom row',
+);
+assert.match(
+  css,
+  /html:not\(\[data-n="4"\]\) \.d2 \.g-thumb\[data-i="3"\]\{grid-column:3;grid-row:2\}/,
+  'five-plus thumb 3 stays bottom-right',
+);
+
+function fourPhotoGridCells(cssText) {
+  const cols = 3;
+  const rows = 2;
+  const occ = new Set();
+  const mark = (c, r, cSpan = 1, rSpan = 1) => {
+    for (let dc = 0; dc < cSpan; dc++) {
+      for (let dr = 0; dr < rSpan; dr++) occ.add(`${c + dc},${r + dr}`);
+    }
+  };
+  mark(0, 0, 1, 2);
+  assert.match(cssText, /\.d2 \.g-track\{[^}]*grid-row:1 \/ span 2/, 'hero spans two rows');
+  assert.match(cssText, /\.d2 \.g-thumb\[data-i="1"\]\{grid-column:2;grid-row:1\}/);
+  assert.match(cssText, /\.d2 \.g-thumb\[data-i="2"\]\{grid-column:3;grid-row:1\}/);
+  mark(1, 0);
+  mark(2, 0);
+  mark(1, 1, 2, 1);
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      assert.ok(occ.has(`${c},${r}`), `4-photo grid cell ${c},${r} covered`);
+    }
+  }
+}
+fourPhotoGridCells(css);
 
 function demoHotel(photos) {
   return {
@@ -179,7 +212,21 @@ async function assertGalleryPill(port, slug, anchor, needIntersect) {
           if (!hasPhoto && !isTrack && !el.classList.contains('d2-pill') && el.id !== 'g-count') emptyTile = true;
         }
         let gridHoles = false;
-        if (grid && n >= 4) {
+        if (grid && n === 4) {
+          const gr = grid.getBoundingClientRect();
+          const cw = gr.width / 3;
+          const ch = gr.height / 2;
+          const spots = [];
+          for (let c = 0; c < 3; c++) {
+            for (let r = 0; r < 2; r++) {
+              spots.push({ x: gr.left + cw * (c + 0.5), y: gr.top + ch * (r + 0.5), label: c + ',' + r });
+            }
+          }
+          for (const spot of spots) {
+            const hit = document.elementsFromPoint(spot.x, spot.y).find(el => grid.contains(el) && (el.classList.contains('g-thumb') || el.id === 'g-track'));
+            if (!hit) gridHoles = true;
+          }
+        } else if (grid && n >= 5) {
           const gr = grid.getBoundingClientRect();
           const cw = gr.width / 3;
           const ch = gr.height / 2;
