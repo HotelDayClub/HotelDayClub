@@ -398,17 +398,21 @@ function page(title, body, opts = {}) {
   const guestD2 = !!opts.guestD2;
   const guestD2Css = guestD2 ? StaticAssets.stylesheet('/guest-d2.css') : '';
   const polishCss = nav === 'guest' ? StaticAssets.stylesheet('/polish.css') : '';
-  const baseCss = nav === 'guest' ? StaticAssets.stylesheet('/base.css') : '';
+  const baseCss = nav === 'guest' || nav === 'hotel' ? StaticAssets.stylesheet('/base.css') : '';
   const homeCss = home && nav === 'guest' ? StaticAssets.stylesheet('/golden/home.css') : '';
-  const staffCss = nav !== 'guest'
+  const adminCss = nav === 'admin'
     ? `${StaticAssets.stylesheet('/styles.css')}${StaticAssets.stylesheet('/app.css')}${StaticAssets.stylesheet('/golden/site.css')}${StaticAssets.stylesheet('/header.css')}`
     : '';
+  const hotelCss = nav === 'hotel' ? StaticAssets.stylesheet('/app.css') : '';
   const guestPageCss = nav === 'guest' && !home && extraCss ? extraCss : '';
+  const hotelPageCss = nav === 'hotel' && extraCss ? extraCss : '';
   const css = home && nav === 'guest'
     ? `${StaticAssets.fontLinks()}<link rel="preload" as="image" href="/golden/img/hero-swim-sm.webp" type="image/webp" media="(max-width:800px)" fetchpriority="high"><link rel="preload" as="image" href="/golden/img/hero-swim.webp" type="image/webp" media="(min-width:801px)" fetchpriority="high">${tokensCss}${pickerCss}${baseCss}${homeCss}${guestD2Css}${polishCss}`
     : nav === 'guest'
     ? `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${baseCss}${guestPageCss}${guestD2Css}${polishCss}`
-    : `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${staffCss}${extraCss}${guestD2Css}${polishCss}`;
+    : nav === 'hotel'
+    ? `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${baseCss}${hotelCss}${hotelPageCss}${guestD2Css}${polishCss}`
+    : `${StaticAssets.fontLinks()}${tokensCss}${pickerCss}${adminCss}${extraCss}${guestD2Css}${polishCss}`;
   const bodyExtra = [guestD2 ? 'guest-d2' : '', opts.bodyClassExtra || ''].filter(Boolean).join(' ');
   const bodyClass = [opts.bodyClass || (home ? 'home' : nav === 'guest' ? 'guest' : 'staff'), bodyExtra].filter(Boolean).join(' ');
   const headerLogo = home ? logoLink('light', { dualOnDark: true }) : logoLink('light');
@@ -839,6 +843,23 @@ function searchPage(query) {
   const countN = result.list.length;
   const countHeading = SearchQuery.countLine(countN);
   const badge = result.drawerCount ? `<span class="cnt">${result.drawerCount}</span>` : '';
+  const mapPins = result.list.map(h => {
+    const lat = Number(h.lat);
+    const lng = Number(h.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    const q = [];
+    if (params.date) q.push('date=' + encodeURIComponent(params.date));
+    if (params.want) q.push('want=' + encodeURIComponent(params.want));
+  if (params.guests) q.push('qty=' + encodeURIComponent(String(params.guests)));
+    const href = '/h/' + h.slug + (q.length ? '?' + q.join('&') : '');
+    return { lat, lng, name: displayName(h), area: guestAreaName(h.area), href };
+  }).filter(Boolean);
+  const mapToggle = mapPins.length
+    ? `<div class="view-toggle" role="group" aria-label="Results view"><button type="button" class="view-btn is-on" id="search-view-list" aria-pressed="true">List</button><button type="button" class="view-btn" id="search-view-map" aria-pressed="false">Map</button></div>`
+    : '';
+  const mapBlock = mapPins.length
+    ? `<script type="application/json" id="search-map-data">${JSON.stringify(mapPins).replace(/</g, '\\u003c')}</script><div class="search-map-wrap" id="search-map-wrap" hidden><div id="search-map" class="search-map" role="region" aria-label="Map of listings"></div></div>`
+    : '';
   const resetHref = SearchQuery.href({ date: params.date });
   const wantRadios = radioGroup('want', [{ value: '', label: 'Any' }].concat(WANTS.filter(w => w.id).map(w => ({ value: w.id, label: w.name }))), params.want, 'fchip');
   const priceRadios = radioGroup('price', [{ value: '', label: 'Any price' }].concat(result.priceChoices.map(n => ({ value: String(n), label: 'Under $' + n }))), params.price ? String(params.price) : '', 'ropt');
@@ -866,8 +887,9 @@ ${keepSort}
 <button type="submit">${FIND_ICON}<span>Search</span></button>
 </form></div></div>
 <button type="button" class="search-sum" aria-haspopup="dialog" aria-controls="search-sheet" aria-label="Edit search: ${esc(pillSub)}"><span class="t"><b>${esc(pillTitle)}</b><small>${esc(pillSub)}</small></span><span class="go" aria-hidden="true">${FIND_ICON}</span></button>
-<div class="toolrow"><button type="button" class="fbtn" id="filters-btn" aria-haspopup="dialog" aria-controls="filter-drawer" aria-expanded="false">${FILTER_ICON}<span>Filters</span>${badge}</button><div class="ichips" role="group" aria-label="Mood">${mood}</div>
+<div class="toolrow">${mapToggle}<button type="button" class="fbtn" id="filters-btn" aria-haspopup="dialog" aria-controls="filter-drawer" aria-expanded="false">${FILTER_ICON}<span>Filters</span>${badge}</button><div class="ichips" role="group" aria-label="Mood">${mood}</div>
 <form class="sort-form" action="/search" method="get">${searchHidden(params, 'sort')}<label class="sort-label"><span class="sort-name">Sort</span><select class="hdc-pick" name="sort" aria-label="Sort listings" onchange="this.form.submit()">${sortOptions}</select></label><noscript><button type="submit">Sort</button></noscript></form></div>
+${mapBlock}
 <div data-live><div class="rhead cnt"><h1 id="search-count" role="status" aria-live="polite">${esc(countHeading)}</h1>${params.mood ? `<a class="mclear" href="${esc(SearchQuery.href({ ...params, mood: '' }))}">Clear</a>` : ''}</div>
 ${params.guestsCapped ? '<p class="cap-note" role="status">Up to 6 people per booking.</p>' : ''}
 ${chips ? `<div class="chips" aria-label="Active filters">${chips}${clear}</div>` : ''}
@@ -1723,6 +1745,16 @@ ${check('Pause a day or block dates yourself')}
 </div>
 <figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-dashboard.webp"><img src="/golden/img/fh-dashboard.jpg" alt="The hotel dashboard for a fictional demo hotel, showing today's check-ins, pause buttons and booking totals" width="1600" height="735" loading="lazy" decoding="async"></picture></div>
 <figcaption>Sample data from the demo dashboard. The hotel and figures are fictional.</figcaption></figure>
+</section>
+<section class="wrap fh-product">
+<p class="fh-kicker">On the day</p>
+<h2>QR check-in and the guest list</h2>
+<div class="fh-shot-row">
+<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-checkin.webp"><img src="/golden/img/fh-checkin.jpg" alt="Demo QR check-in screen for a fictional hotel" width="1600" height="735" loading="lazy" decoding="async"></picture></div>
+<figcaption>Sample QR check-in from the demo. Figures are fictional.</figcaption></figure>
+<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-guestlist.webp"><img src="/golden/img/fh-guestlist.jpg" alt="Demo guest list for a fictional hotel" width="1600" height="735" loading="lazy" decoding="async"></picture></div>
+<figcaption>Sample guest list from the demo. Figures are fictional.</figcaption></figure>
+</div>
 </section>
 <section class="fh-pilot" id="enquiry"><div class="wrap fh-pilot-in">
 <div class="fh-pilot-copy">

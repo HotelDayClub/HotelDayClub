@@ -1,4 +1,10 @@
 /* Search filters, condensing header, and result cards. */
+@import url(/vendor/leaflet/leaflet.css);
+.view-toggle{display:inline-flex;align-items:center;gap:4px;padding:3px;border:1px solid var(--hdc-border);border-radius:999px;background:#fff}
+.view-btn{min-height:44px;min-width:64px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:var(--hdc-text);font:700 15px var(--font-body,Inter,sans-serif);cursor:pointer}
+.view-btn.is-on{background:var(--hdc-primary);color:#fff}
+.search-map-wrap{margin:16px 0 0}
+.search-map{height:min(52vh,520px);min-height:280px;border:1px solid var(--hdc-border);border-radius:var(--r-card);overflow:hidden;background:var(--hdc-tint)}
 .n9-hero{display:none}
 html.js .n9-hero{display:block}
 html.js .search-page .sbar{display:none}

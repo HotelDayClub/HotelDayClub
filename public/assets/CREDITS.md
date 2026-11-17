@@ -2,7 +2,7 @@
 
 All photos were downloaded on 21 Oct 2026 (AEDT) and stored locally in `assets/photos/`. They are used as **generic mood imagery only**. None of them shows, or is presented as, any real hotel; every listing on the site is labelled "Example listing". I avoided photos tagged with a named hotel and any with visible hotel branding.
 
-On 16 Nov 2026 (AEDT) every gallery master in `photos/*.jpg` except `restaurant-view.jpg` was centre-cropped to landscape **3:2** and resized to **1600×1067** for listing, search and home frames. `glass-roof-pool.jpg` was cropped from the upper pool area (glass roof and water). `rooftop-city.jpg`, `glass-roof-pool.jpg` and `indoor-spa-pool.jpg` were mildly brightened so the grid reads as one set. Matching **800×533** WebP copies in `golden/img/cards/` and the `photos/seats/entry.webp` pass thumb were regenerated from those masters.
+On 16 Nov 2026 (AEDT) every gallery master in `photos/*.jpg` except `restaurant-view.jpg` was centre-cropped to landscape **3:2** and resized to **1600×1067** for listing, search and home frames. `glass-roof-pool.jpg` was cropped from the upper pool area (glass roof and water). `glass-roof-pool.jpg` and `indoor-spa-pool.jpg` were mildly brightened so the grid reads as one set. On 17 Nov 2026 `rooftop-city.jpg` (Skyline Rooftop) was replaced with the brighter `infinity-ocean.jpg` master so the home grid reads as one light set. Matching **800×533** WebP copies in `golden/img/cards/` and the `photos/seats/entry.webp` pass thumb were regenerated from those masters.
 
 ## Pexels: free under the Pexels License (https://www.pexels.com/license/). Attribution isn't required but is given here.
 | File | Photo | Photographer |

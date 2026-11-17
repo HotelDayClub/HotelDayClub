@@ -207,26 +207,34 @@ function makeForm(opts = {}) {
   try {
     const Database = require('better-sqlite3');
     const live = new Database(dbPath);
-    const hotel = live.prepare("SELECT id FROM hotels WHERE slug='saltwater-terrace'").get();
-    let when = '';
-    for (let i = 3; i < 24 && !when; i++) {
-      const day = new Date();
-      day.setDate(day.getDate() + i);
-      const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
-      if (!live.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?').get(hotel.id, iso)) when = iso;
-    }
-    const saltHotel = live.prepare("SELECT * FROM hotels WHERE slug='saltwater-terrace'").get();
-  const bayHotel = live.prepare("SELECT * FROM hotels WHERE slug='bayview-spa'").get();
+    const saltRow = live.prepare("SELECT id FROM hotels WHERE slug='saltwater-terrace'").get();
+    const hotel = saltRow;
+    const bayHotel = live.prepare("SELECT * FROM hotels WHERE slug='bayview-spa'").get();
     live.prepare("UPDATE hotels SET kids_hours='Children until 2pm' WHERE slug='skyline-rooftop'").run();
     const skylineHotel = live.prepare("SELECT * FROM hotels WHERE slug='skyline-rooftop'").get();
-    live.close();
-    assert.ok(when);
-
-    for (const [slug, pass, hotel] of [
+    const saltHotel = live.prepare("SELECT * FROM hotels WHERE slug='saltwater-terrace'").get();
+    const slots = [
       ['saltwater-terrace', 'lounger', saltHotel],
       ['bayview-spa', 'entry', bayHotel],
       ['skyline-rooftop', 'chair', skylineHotel],
-    ]) {
+    ];
+    let when = '';
+    findWhen: for (let i = 3; i < 24; i++) {
+      const day = new Date();
+      day.setDate(day.getDate() + i);
+      const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+      if (live.prepare('SELECT 1 FROM blocked_dates WHERE hotel_id=? AND date=?').get(saltRow.id, iso)) continue;
+      for (const [slug, pass] of slots) {
+        const probe = await get(port, `/checkout?hotel=${slug}&date=${encodeURIComponent(iso)}&pass=${pass}&qty=1`);
+        if (probe.status !== 200) continue findWhen;
+      }
+      when = iso;
+      break;
+    }
+    live.close();
+    assert.ok(when, 'open checkout date for demo hotels');
+
+    for (const [slug, pass, hotel] of slots) {
       const riskPage = await get(port, `/checkout?hotel=${slug}&date=${encodeURIComponent(when)}&pass=${pass}&qty=1`);
       assert.strictEqual(riskPage.status, 200, slug + ' checkout risk');
       assertCheckoutRiskMatchesStored(hotel, riskPage.body);

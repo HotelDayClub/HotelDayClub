@@ -70,7 +70,7 @@ picture.layer img{width:100%;height:100%;object-fit:cover;display:block}
 @keyframes mq{to{transform:translateX(-50%)}}
 .marquee span{padding:0 28px;color:var(--white)}
 .assure{background:var(--hdc-bg);border-top:1px solid var(--hdc-border);border-bottom:1px solid var(--hdc-border);padding:34px 5vw}
-.assure ul{list-style:none;margin:0 auto;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:28px 20px;max-width:1180px;align-items:start}
+.assure ul{list-style:none;margin:0 auto;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:28px 20px;max-width:var(--max,1200px);align-items:start}
 .assure li{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;gap:8px;width:100%}
 .assure li:has(> .assure-link){padding:0}
 .assure li > .assure-link{width:100%}
@@ -279,7 +279,7 @@ body.home .assure li{min-width:0;width:auto;max-width:none}
 body.home .assure li,body.home .assure-link{gap:4px}
 body.home .assure-link{margin:0;padding:8px 4px}
 body.home .assure b,body.home .assure span{display:block;white-space:normal;overflow:visible;text-overflow:clip;-webkit-line-clamp:unset}
-body.home main > section{padding:8px 16px;max-width:1180px;margin-left:auto;margin-right:auto;width:100%;box-sizing:border-box}
+body.home main > section{padding:8px 16px;max-width:var(--max,1200px);margin-left:auto;margin-right:auto;width:100%;box-sizing:border-box}
 body.home h2{font-size:clamp(24px,2.2vw,32px);margin:0;line-height:1.1;max-width:100%}
 body.home .home-note{margin:4px 0 0;max-width:100%}
 body.home .day{display:grid;grid-template-columns:1fr;gap:12px;margin-top:8px;width:100%;max-width:100%;overflow:visible}

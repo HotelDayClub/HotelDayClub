@@ -229,11 +229,16 @@ function mainFacilityFact(h, groups) {
   }
   const pf = policyFacts(h || {});
   const pool = String(pf.pool || '').trim();
-  if (!pool || pool === 'Not set') return '';
-  if (facilityRe.test(pool)) return pool;
-  const heat = h && h.heated != null && h.heated !== '' ? (Number(h.heated) ? 'Heated' : 'Unheated') : '';
-  if (heat) return `${heat} ${pool.toLowerCase()} pool`;
-  return `${pool} pool`;
+  if (pool && pool !== 'Not set' && facilityRe.test(pool)) return pool;
+  const setting = String((h && h.setting) || '').trim();
+  const heated = h && h.heated != null && h.heated !== '' ? Number(h.heated) : null;
+  const heat = heated === 1 ? 'Heated' : heated === 0 ? 'Unheated' : '';
+  const place = /indoor/i.test(setting) ? 'indoor' : /outdoor/i.test(setting) ? 'outdoor' : '';
+  if (place && heat) return `${heat} ${place} pool`;
+  if (place) return `${place.charAt(0).toUpperCase() + place.slice(1)} pool`;
+  if (heat) return `${heat} pool`;
+  if (pool && pool !== 'Not set') return pool;
+  return '';
 }
 
 function hoursFactText(o) {

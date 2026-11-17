@@ -259,7 +259,7 @@ body:has(.d2) .sec-action .sa-arr{font-weight:700}
 .d2-ir li{display:flex;gap:12px;align-items:center;min-height:40px;padding:4px 0}
 .d2-ir .d2ic{width:20px;height:20px;color:var(--teal)}
 .d2-ir .r{margin-left:auto;font-weight:600;white-space:nowrap}
-.d2-inc{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;list-style:none;margin:0;padding:0}
+.d2-inc{display:grid;grid-template-columns:1fr;gap:4px 16px;list-style:none;margin:0;padding:0}
 .d2-inc li{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border:0;font:600 16px/22px var(--d2-body);color:var(--text)}
 .d2-inc .d2ic{width:28px;height:28px;color:var(--teal);flex:none;margin-top:0}
 .d2-inc.d2-os{grid-template-columns:1fr;margin-top:8px}
@@ -494,7 +494,7 @@ dialog.d2-sheet[open] .d2-book,.js dialog.d2-sheet[open] .d2-book{display:block}
  .d2-block h3{font-size:28px;line-height:34px}
  .d2-card{grid-template-columns:112px 1fr}
  .d2-card img{width:112px;height:96px}
- .d2-inc{grid-template-columns:1fr 1fr 1fr;gap:8px 24px}
+ .d2-inc{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 20px}
  .d2-inc .d2ic{width:32px;height:32px}
  .d2-hours-band{padding:40px 24px}
  .d2-hours-in{display:grid;grid-template-columns:1fr 1fr;gap:32px 48px;align-items:start;padding:0 24px;max-width:848px}
@@ -535,8 +535,8 @@ html.pass-b .d2-card-body{padding:14px 16px 16px}
 @media (min-width:1024px){
   html.pass-b .d2-cards{gap:16px}
   html.pass-b .d2-card,
-  html.pass-b .d2-card.d2-row{grid-template-columns:40% 1fr;align-items:center}
+  html.pass-b .d2-card.d2-row{grid-template-columns:minmax(112px,40%) 1fr;align-items:center}
   html.pass-b .d2-card img,
   html.pass-b .d2-card picture,
-  html.pass-b .d2-card picture img{height:100%;min-height:0;aspect-ratio:3/2;object-fit:cover}
+  html.pass-b .d2-card picture img{height:100%;min-height:0;aspect-ratio:1/1;object-fit:cover}
 }

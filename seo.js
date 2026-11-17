@@ -158,8 +158,7 @@ function shortName(name) {
 
 function listingTitle(name, demo) {
   const raw = String(name || '');
-  const mark = demo || /\(Demo\)\s*$/i.test(raw);
-  const lead = shortName(raw) + (mark ? ' (Demo)' : '') + ' day pass';
+  const lead = shortName(raw) + ' day pass';
   return fullTitle(lead);
 }
 

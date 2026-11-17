@@ -71,5 +71,5 @@ a.text-link:focus-visible,button.text-link:focus-visible{outline:3px solid var(-
   a.sec-action{min-height:40px;padding:8px 14px;font-size:14px}
 }
 @media(max-width:767px){
-  html{--section:48px}
+  :root{--section:48px}
 }

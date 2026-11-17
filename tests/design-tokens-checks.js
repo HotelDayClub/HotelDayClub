@@ -15,6 +15,7 @@ const guestCss = [
   'public/help-centre.css',
   'public/guest-d2.css',
   'public/pickers.css',
+  'public/booking-ticket.css',
 ];
 const allowHex = new Set(['#fff', '#ffffff', '#000', '#000000']);
 
@@ -46,12 +47,12 @@ for (const rel of guestCss) {
   }
 }
 
-function get(port, urlPath) {
+function get(port, urlPath, headers = {}) {
   return new Promise((resolve, reject) => {
-    http.get({ hostname: '127.0.0.1', port, path: urlPath }, res => {
+    http.get({ hostname: '127.0.0.1', port, path: urlPath, headers }, res => {
       const chunks = [];
       res.on('data', c => chunks.push(c));
-      res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString() }));
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString() }));
     }).on('error', reject);
   });
 }
@@ -109,6 +110,34 @@ const port = 3820 + Math.floor(Math.random() * 40);
         assert.ok(html.body.includes('class="hdr"'), p + ' white header shell');
       }
     }
+    const hotelLogin = await get(port, '/hotel/login');
+    assert.ok(hotelLogin.body.includes('/base.css'), 'hotel login loads base.css');
+    assert.ok(!hotelLogin.body.includes('/styles.css'), 'hotel login drops legacy styles.css');
+    const loginRes = await new Promise((resolve, reject) => {
+      const body = 'user=demo-saltwater&pass=dt-hotel';
+      const req = http.request({
+        hostname: '127.0.0.1', port, path: '/hotel/login', method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) },
+      }, res => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => resolve({ headers: res.headers, body: Buffer.concat(chunks).toString() }));
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+    const cookie = (loginRes.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
+    assert.ok(cookie, 'hotel login cookie');
+    const dashRedirect = await get(port, '/hotel', { Cookie: cookie });
+    const dashPath = dashRedirect.status === 302 && dashRedirect.headers && dashRedirect.headers.location
+      ? String(dashRedirect.headers.location).replace(/^https?:\/\/[^/]+/, '')
+      : '/hotel';
+    const dash = dashRedirect.status === 200 ? dashRedirect : await get(port, dashPath || '/hotel', { Cookie: cookie });
+    assert.strictEqual(dash.status, 200);
+    assert.ok(dash.body.includes('/base.css'), 'hotel dashboard loads base.css');
+    assert.ok(!dash.body.includes('/styles.css'), 'hotel dashboard drops styles.css');
+    assert.ok(dash.body.includes('/app.css'), 'hotel dashboard keeps app.css for layout');
   } finally {
     child.kill('SIGTERM');
   }
