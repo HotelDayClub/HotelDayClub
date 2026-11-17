@@ -1959,6 +1959,7 @@ function arrivalCell(value, mode) {
 }
 function contactLine(b) {
   if (b.contact_hidden) return '';
+  if (!String(b.email || '').trim() && !String(b.phone || '').trim()) return '';
   return `<div class="muted small">${esc(b.email)} · ${esc(b.phone)}</div>`;
 }
 function hotelRows(rows, { hotel, adminCancel }) {
@@ -2134,7 +2135,7 @@ function renderCheckin(req, res) {
 ${info ? checkinCard(info, h) : ''}
 <form class="checkin-search" method="get" action="/hotel/checkin"><label class="fl">Search<input name="q" value="${esc(q)}" placeholder="Name, email, phone or code" autocomplete="off"></label><button class="btn btn-line">Search</button></form>
 ${results}
-${todaySection(h, { big: true, live: '/hotel/today-list?view=checkin', day: hotelToday(h) })}
+${todaySection(h, { big: true, live: '/hotel/today-list?view=checkin', day: today(h) })}
 </div>
 ${StaticAssets.script('/checkin-parse.js')}${StaticAssets.script('/vendor/jsQR.js')}${StaticAssets.script('/checkin.js')}`, { here: '/hotel/checkin', live: true }));
 }
