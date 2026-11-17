@@ -16,9 +16,9 @@ const DEMO_SEED = {
   'saltwater-terrace': {
     intro: '',
     areas: [
-      { name: 'The Pool', line: 'Heated outdoor pool with loungers and ocean views.', details: 'Heated outdoor pool with loungers and ocean views.', hours: '', photo: 'infinity-palms.jpg', kind: 'pool' },
+      { name: 'The Pool', line: 'Heated outdoor pool with loungers and ocean views.', details: 'Heated outdoor pool with loungers and ocean views.', hours: '', photo: 'infinity-ocean.jpg', kind: 'pool' },
       { name: 'The Terrace', line: 'Shaded deck with loungers and daybeds around the pool.', details: 'Shaded deck with loungers and daybeds around the pool.', hours: '', photo: 'hero-loungers.jpg', kind: 'other' },
-      { name: 'Pool bar', line: 'Have a drink by the pool. Cocktails, coffee and light bites.', details: 'Have a drink by the pool. Cocktails, coffee and light bites.', hours: '', photo: 'loungers-snacks.jpg', kind: 'bar' },
+      { name: 'Pool bar', line: 'Have a drink by the pool. Cocktails, coffee and light bites.', details: 'Have a drink by the pool. Cocktails, coffee and light bites.', hours: '', photo: 'hero-loungers.jpg', kind: 'bar' },
       { name: 'Restaurant', line: 'Lunch with a view. Modern Australian, seafood and share plates.', details: 'Lunch with a view. Modern Australian, seafood and share plates.', hours: '12pm–3pm', photo: 'restaurant-view.jpg', kind: 'restaurant' },
     ],
   },
@@ -27,7 +27,7 @@ const DEMO_SEED = {
     areas: [
       { name: 'Rooftop pool', line: 'Heated pool with city views and a breeze off the harbour.', details: 'Heated pool with city views and a breeze off the harbour.', hours: '', photo: 'rooftop-city.jpg', kind: 'pool' },
       { name: 'Pool deck', line: 'Loungers and chairs on the roof around the pool.', details: 'Loungers and chairs on the roof around the pool.', hours: '', photo: 'hero-loungers.jpg', kind: 'other' },
-      { name: 'Rooftop bar', line: 'Cocktails and small plates with skyline views.', details: 'Cocktails and small plates with skyline views.', hours: '', photo: 'loungers-snacks.jpg', kind: 'bar' },
+      { name: 'Rooftop bar', line: 'Cocktails and small plates with skyline views.', details: 'Cocktails and small plates with skyline views.', hours: '', photo: 'hero-loungers.jpg', kind: 'bar' },
     ],
   },
   'harbourside-lido': {
@@ -35,29 +35,29 @@ const DEMO_SEED = {
     areas: [
       { name: 'Glass-roof pool', line: 'Light-filled indoor pool under a glass roof.', details: 'Light-filled indoor pool under a glass roof.', hours: '', photo: 'glass-roof-pool.jpg', kind: 'pool' },
       { name: 'Lido deck', line: 'Loungers beside the pool hall.', details: 'Loungers beside the pool hall.', hours: '', photo: 'indoor-spa-pool.jpg', kind: 'other' },
-      { name: 'Café', line: 'Coffee, pastries and light lunch in the pool hall.', details: 'Coffee, pastries and light lunch in the pool hall.', hours: '', photo: 'loungers-snacks.jpg', kind: 'cafe' },
+      { name: 'Café', line: 'Coffee, pastries and light lunch in the pool hall.', details: 'Coffee, pastries and light lunch in the pool hall.', hours: '', photo: 'hero-loungers.jpg', kind: 'cafe' },
     ],
   },
   'palm-court': {
     intro: '',
     areas: [
-      { name: 'Lagoon pool', line: 'Outdoor lagoon with palms and a shallow end for families.', details: 'Outdoor lagoon with palms and a shallow end for families.', hours: '', photo: 'tropical-resort.jpg', kind: 'pool' },
-      { name: 'Garden terrace', line: 'Loungers and shade in the palm gardens.', details: 'Loungers and shade in the palm gardens.', hours: '', photo: 'thatched-umbrellas.jpg', kind: 'other' },
-      { name: 'Pool café', line: 'Coffee and light bites beside the lagoon.', details: 'Coffee and light bites beside the lagoon.', hours: '', photo: 'loungers-snacks.jpg', kind: 'cafe' },
+      { name: 'Lagoon pool', line: 'Outdoor lagoon with palms and a shallow end for families.', details: 'Outdoor lagoon with palms and a shallow end for families.', hours: '', photo: 'glass-roof-pool.jpg', kind: 'pool' },
+      { name: 'Garden terrace', line: 'Loungers and shade in the palm gardens.', details: 'Loungers and shade in the palm gardens.', hours: '', photo: 'spa-loungers.jpg', kind: 'other' },
+      { name: 'Pool café', line: 'Coffee and light bites beside the lagoon.', details: 'Coffee and light bites beside the lagoon.', hours: '', photo: 'hero-loungers.jpg', kind: 'cafe' },
     ],
   },
   'manly-sands': {
     intro: '',
     areas: [
-      { name: 'Magnesium pool', line: 'Outdoor pool steps from the beach.', details: 'Outdoor pool steps from the beach.', hours: '', photo: 'infinity-palms.jpg', kind: 'pool' },
-      { name: 'Beach deck', line: 'Loungers and daybeds facing the water.', details: 'Loungers and daybeds facing the water.', hours: '', photo: 'daybed-canopy.jpg', kind: 'other' },
-      { name: 'Kiosk', line: 'Drinks and snacks by the pool.', details: 'Drinks and snacks by the pool.', hours: '', photo: 'loungers-snacks.jpg', kind: 'bar' },
+      { name: 'Magnesium pool', line: 'Outdoor pool steps from the beach.', details: 'Outdoor pool steps from the beach.', hours: '', photo: 'clifftop-ocean.jpg', kind: 'pool' },
+      { name: 'Beach deck', line: 'Loungers and daybeds facing the water.', details: 'Loungers and daybeds facing the water.', hours: '', photo: 'hero-loungers.jpg', kind: 'other' },
+      { name: 'Kiosk', line: 'Drinks and snacks by the pool.', details: 'Drinks and snacks by the pool.', hours: '', photo: 'hero-loungers.jpg', kind: 'bar' },
     ],
   },
   'bayview-spa': {
     intro: '',
     areas: [
-      { name: 'Bathhouse', line: 'Hot and cold plunge pools in a calm bathhouse.', details: 'Hot and cold plunge pools in a calm bathhouse.', hours: '', photo: 'spa-steps.jpg', kind: 'spa' },
+      { name: 'Bathhouse', line: 'Hot and cold plunge pools in a calm bathhouse.', details: 'Hot and cold plunge pools in a calm bathhouse.', hours: '', photo: 'spa-loungers.jpg', kind: 'spa' },
       { name: 'Outdoor pool', line: 'Heated outdoor pool in the garden.', details: 'Heated outdoor pool in the garden.', hours: '', photo: 'indoor-spa-pool.jpg', kind: 'pool' },
       { name: 'Garden lounge', line: 'Quiet loungers in the garden.', details: 'Quiet loungers in the garden.', hours: '', photo: 'hero-loungers.jpg', kind: 'other' },
     ],

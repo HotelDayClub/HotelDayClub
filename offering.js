@@ -16,19 +16,14 @@ const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const PHOTOS = [
   ['hero-loungers.jpg', 'Loungers'],
-  ['daybed-canopy.jpg', 'Daybed'],
-  ['cabana-drapes.jpg', 'Cabana'],
   ['rooftop-city.jpg', 'Rooftop'],
+  ['rooftop-deck.jpg', 'Rooftop deck'],
   ['infinity-ocean.jpg', 'Infinity pool'],
-  ['beach-resort-pool.jpg', 'Beach pool'],
-  ['glass-roof-pool.jpg', 'Glass roof'],
+  ['clifftop-ocean.jpg', 'Ocean pool'],
+  ['glass-roof-pool.jpg', 'Indoor pool'],
   ['indoor-spa-pool.jpg', 'Indoor spa'],
-  ['spa-steps.jpg', 'Spa'],
-  ['tropical-resort.jpg', 'Lagoon'],
-  ['resort-palms.jpg', 'Palms'],
-  ['thatched-umbrellas.jpg', 'Umbrellas'],
-  ['loungers-snacks.jpg', 'Poolside'],
-  ['infinity-palms.jpg', 'Palms and pool'],
+  ['spa-loungers.jpg', 'Day spa'],
+  ['hotel-gym.jpg', 'Hotel gym'],
   ['restaurant-view.jpg', 'Restaurant'],
 ];
 

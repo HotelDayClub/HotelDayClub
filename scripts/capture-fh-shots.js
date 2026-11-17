@@ -125,6 +125,7 @@ function prepGuestData(db) {
       db.prepare("UPDATE bookings SET guest_name=?, email='', phone='', party=1, qty=1 WHERE id=?").run(names[i - 1] || 'Guest', row.id);
       db.prepare('DELETE FROM booking_guests WHERE booking_id=?').run(row.id);
     }
+    db.prepare('UPDATE bookings SET checked_in_at=NULL, arrived_count=NULL WHERE id=?').run(row.id);
   });
   const left = db.prepare('SELECT COUNT(*) n FROM bookings WHERE hotel_id=? AND date=?').get(h.id, day).n;
   const { addDays, ymd } = require('../util');

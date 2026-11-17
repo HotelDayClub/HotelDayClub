@@ -22,15 +22,15 @@ const PRESETS = {
     { name: 'Café', blurb: PURCHASE + '.', servesFood: 1 },
   ],
   'palm-court': [
-    { name: 'Lagoon pool', blurb: 'A big lagoon pool ringed by palms, with plenty of shade and a family-friendly shallow end.', hours: 'Thu–Sun 10am–5pm', photo: 'tropical-resort.jpg' },
+    { name: 'Lagoon pool', blurb: 'A big lagoon pool ringed by palms, with plenty of shade and a family-friendly shallow end.', hours: 'Thu–Sun 10am–5pm', photo: 'glass-roof-pool.jpg' },
     { name: 'Café', blurb: PURCHASE + '.', servesFood: 1 },
   ],
   'manly-sands': [
-    { name: 'Magnesium pool', blurb: 'A magnesium pool.', hours: 'Daily 10am–4pm', photo: 'infinity-palms.jpg' },
+    { name: 'Magnesium pool', blurb: 'A magnesium pool.', hours: 'Daily 10am–4pm', photo: 'clifftop-ocean.jpg' },
     { name: 'Kiosk', blurb: 'A kiosk selling food and drinks. No glass.', servesFood: 1 },
   ],
   'bayview-spa': [
-    { name: 'Bathhouse', blurb: 'A calm bathhouse with hot and cold plunge.', hours: 'Tue–Sun 9am–4pm', photo: 'spa-steps.jpg' },
+    { name: 'Bathhouse', blurb: 'A calm bathhouse with hot and cold plunge.', hours: 'Tue–Sun 9am–4pm', photo: 'spa-loungers.jpg' },
     { name: 'Plunge pools', blurb: 'Hot and cold plunge.', hours: 'Tue–Sun 9am–4pm', photo: 'indoor-spa-pool.jpg' },
     { name: 'Heated outdoor pool', blurb: 'A heated outdoor pool.', hours: 'Tue–Sun 9am–4pm' },
     { name: 'Sauna and steam room', blurb: 'Sauna and steam room during the visit.' },

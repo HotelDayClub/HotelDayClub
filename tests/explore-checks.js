@@ -124,7 +124,7 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
     const restCard = cardsHtml.slice(cardsHtml.indexOf('<h3>Restaurant</h3>'));
     assert.ok(/^<h3>Restaurant<\/h3>\s*<span class="d2-ex-chip">Not included<\/span>/.test(restCard), 'restaurant card chip');
     assert.ok(sheet.includes('Where to check in'), 'check-in footer');
-    assert.ok(salt.body.includes('loungers-snacks.jpg'), 'bar photo');
+    assert.ok(salt.body.includes('hero-loungers.jpg'), 'bar photo');
 
     const hdr = salt.body.slice(salt.body.indexOf('<header'), salt.body.indexOf('<main>'));
     const logoImgs = (hdr.match(/<img[^>]+alt="Hotel Day Club"/g) || []).length;
@@ -133,7 +133,7 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
     assert.ok(!hdr.includes('hdc-lockup-dark.svg'), 'no dark lockup on listing');
 
     const palm = await get(port, '/h/palm-court?pass=chair#book');
-    assert.ok(palm.body.includes('resort-palms.jpg') || palm.body.includes('assets/photos/resort-palms'), 'palm chair photo');
+    assert.ok(palm.body.includes('hero-loungers.jpg') || palm.body.includes('assets/photos/hero-loungers'), 'palm chair photo');
 
     let chrome = '';
     try {
