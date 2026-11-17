@@ -522,7 +522,9 @@ function homePage({ destination = '', joined = false, error = '', values = {} } 
     const webp = base && fs.existsSync(path.join(__dirname, 'public', 'golden', 'img', 'cards', base + '.webp'));
     const src = !h ? '' : webp ? `/golden/img/cards/${esc(base)}.webp` : `/assets/photos/${esc(h.photos[0])}`;
     const img = src ? `<img src="${src}" alt="Example photo for ${esc(d.name)}" width="800" height="600" loading="lazy" decoding="async">` : '';
-    return `<li class="dt${i === 0 && listed.length === 5 ? ' dt-big' : ''}"><a class="dest-tile" href="/destinations/${encodeURIComponent(d.slug)}">${img}<span class="dt-txt"><span class="dest-name">${esc(d.name)}</span><span class="dest-status">${exampleCount(d.count)}</span></span></a></li>`;
+    const mosaic = listed.length === 5 || listed.length === 6;
+    const cls = `${i === 0 && mosaic ? ' dt-big' : ''}${i === 5 && listed.length === 6 ? ' dt-tail' : ''}`;
+    return `<li class="dt${cls}"><a class="dest-tile" href="/destinations/${encodeURIComponent(d.slug)}">${img}<span class="dt-txt"><span class="dest-name">${esc(d.name)}</span><span class="dest-status">${exampleCount(d.count)}</span></span></a></li>`;
   };
   const destTiles = listed.length ? `<ul class="dest-tiles dt-n${listed.length}">${listed.map(tileHtml).join('')}</ul>` : '';
   const soon = counts.filter(d => !d.count);
@@ -1215,7 +1217,7 @@ function renderCheckout(query, res, extra = {}) {
   const incLines = includedLines(incItems, people);
   const parkNote = includedNote(incItems);
   const demo = Number(h.is_demo) === 1;
-  const hotelLabel = demo && !/\(Demo\)\s*$/i.test(h.name) ? `${seo.shortName(h.name)} (Demo)` : h.name;
+  const hotelLabel = seo.shortName(h.name);
   const passLabel = `${spotLabel(p)} × ${qty}`;
   const planSpan = dayHoursText(db, h, date);
   const passAreas = forPass(db, p.id).map(area => ({
@@ -1247,7 +1249,7 @@ function renderCheckout(query, res, extra = {}) {
 ${fieldError(errors, 'arrival')}</label>
 <p class="muted small" id="arrival-help">An estimate only. It lets the hotel plan for you; it is not a reserved time slot.</p>
 </section>`;
-  const confirmLabel = `Confirm booking · ${money(grand)} (demo)`;
+  const confirmLabel = `Confirm booking · ${money(grand)}`;
   const on = key => draft[key] === '1' || draft[key] === 'on';
   const tick = (name, html, required) => CheckoutConsent.box({ name, html, required, checked: on(name), invalid: !!errors[name] });
   const remaining = CheckoutFlow.requiredTicks().filter(name => !on(name)).length;
@@ -1263,7 +1265,8 @@ ${fieldError(errors, 'arrival')}</label>
   const dockBtn = CheckoutFlow.confirmControl({ id: 'co-btn-dock', reasonId: 'co-reason-dock', label: confirmLabel, remaining, full: false, placement: 'dock' });
   const paymentCard = `<section class="co-card co-pay" id="co-pay"><h2><span class="co-step">${steps.payment}</span> Payment</h2><div class="demo-pay"><p>Demo site. No card is collected and nothing is charged.</p></div></section>`;
   res.status(extra.status || 200).send(page('Checkout', `<div class="wrap sec checkout">
-<a class="link small" href="/h/${h.slug}?date=${date}">← Back to listing</a><h1 class="l-title">Book your day (demo)</h1>
+<a class="link small" href="/h/${h.slug}?date=${date}">← Back to listing</a><h1 class="l-title">Book your day</h1>
+<p class="muted small">Demo site. No card is charged and no real booking is created.</p>
 <div class="co-layout">
 <aside class="co-sum" id="co-sum">
 <button type="button" class="co-sum-bar" id="co-sum-bar" aria-expanded="false" aria-controls="co-sum-body"><span>${esc(passLabel)}</span><b class="co-total">${money(grand)}</b></button>
@@ -1272,7 +1275,7 @@ ${PhotoAssets.imgTag(h.photos[0], { alt: demo ? 'Stock photo, not this hotel' : 
 <div class="pad">
 <h2>${esc(hotelLabel)}</h2>
 <p class="muted small">${esc(guestAreaName(h.area))}</p>
-<dl><dt>Date</dt><dd class="co-fact"><span class="co-fact-val">${esc(nice(date))}</span>${dateChange}</dd><dt>Pass</dt><dd class="co-fact"><span class="co-fact-val co-pass-line">${esc(passLabel)} · ${esc(money(p.price * qty))} (demo)</span>${passChange}</dd><dt>Guests</dt><dd>${people}</dd>${extrasRow}</dl>
+<dl><dt>Date</dt><dd class="co-fact"><span class="co-fact-val">${esc(nice(date))}</span>${dateChange}</dd><dt>Pass</dt><dd class="co-fact"><span class="co-fact-val co-pass-line">${esc(passLabel)} · ${esc(money(p.price * qty))}</span>${passChange}</dd><dt>Guests</dt><dd>${people}</dd>${extrasRow}</dl>
 ${included}
 <div class="bb-total"><span>Total</span><b class="co-total" id="co-total">${money(grand)}</b></div>
 <p class="muted small">Prices include GST. Demo only.</p>
@@ -1344,10 +1347,10 @@ function syncConsent(){
 }
 function escHtml(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function paint(){let extra=0;const parts=[];
- document.querySelectorAll('#co-addons input:checked').forEach(i=>{const price=+i.dataset.price,q=i.dataset.per==='booking'?1:people;extra+=price*q;const name=i.parentElement.querySelector('.extra-name').textContent;parts.push(escHtml(name)+' × '+q+' · <span class="co-nowrap">'+fmt(price*q)+' (demo)</span>')});
+ document.querySelectorAll('#co-addons input:checked').forEach(i=>{const price=+i.dataset.price,q=i.dataset.per==='booking'?1:people;extra+=price*q;const name=i.parentElement.querySelector('.extra-name').textContent;parts.push(escHtml(name)+' × '+q+' · <span class="co-nowrap">'+fmt(price*q)+'</span>')});
  const total=pass*spots+extra;
  const extras=document.getElementById('co-extras-val'); if(extras) extras.innerHTML=parts.length?parts.join(', '):'None';
- const label='Confirm booking · '+fmt(total)+' (demo)';
+ const label='Confirm booking · '+fmt(total);
  document.querySelectorAll('.co-total').forEach(el=>{el.textContent=fmt(total)});
  if(!sending) document.querySelectorAll('.co-btn').forEach(btn=>{btn.textContent=label});
  syncConsent();

@@ -227,6 +227,9 @@ function cookie(res) {
     const hiw = await get(port, '/how-it-works');
     assert.ok(hiw.body.includes('href="/for-hotels"'));
     assert.ok(!hiw.body.includes('href="/hotel/join"'));
+    assert.ok(home.body.includes('class="dest-tiles dt-n6"'), 'six listed destinations use mosaic grid');
+    const polish = fs.readFileSync(path.join(__dirname, '..', 'public', 'polish.css'), 'utf8');
+    assert.match(polish, /dest-tiles\.dt-n6[\s\S]*\.dt-tail\{grid-column:2 \/ -1;grid-row:3\}/);
     assert.ok(home.body.includes('Explore by destination'));
     assert.ok(home.body.includes('<h2>Where to spend the day</h2>'));
     assert.ok(/href="\/destinations\/sydney"[\s\S]*?Sydney CBD[\s\S]*?1 example listing/.test(home.body));
