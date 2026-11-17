@@ -1762,10 +1762,9 @@ ${check('Pause a day or block dates yourself')}
 </section>
 <section class="fh-pilot" id="enquiry"><div class="wrap fh-pilot-in">
 <div class="fh-pilot-copy">
-<p class="fh-kicker">A short pilot</p>
 <h2>See if it suits the hotel.</h2>
-<p>A brief trial is a simple way to find out. We shape it with you, then you decide.</p>
-<p>Hotels are invited. There is no sign-up form. Send us a note and we will be in touch.</p>
+<p>Send us a note and we will walk you through how it would work for your hotel.</p>
+<p>Hotels are invited. There is no sign-up form.</p>
 <p class="fh-mail">Prefer email? <a href="${href}">Talk to us at ${esc(contactEmail())}</a></p>
 </div>
 <div class="fh-form-card">${form}</div>

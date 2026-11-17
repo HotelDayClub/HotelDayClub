@@ -64,7 +64,9 @@ function start(port) {
     assert.ok(hotels.body.includes('name="return" value="/for-hotels"'));
     assert.ok(hotels.body.includes('Forgot password?'));
     assert.ok(hotels.body.includes('mailto:hello@hoteldayclub.com.au'));
-    assert.ok(hotels.body.includes('A short pilot'));
+    assert.ok(hotels.body.includes('walk you through how it would work for your hotel'));
+    assert.ok(!/\btrial\b/i.test(hotels.body));
+    assert.ok(!/\bpilot\b/i.test(hotels.body));
     assert.ok(hotels.body.includes('Talk to us'));
     assert.ok(hotels.body.includes('Australia'));
     assert.ok(!hotels.body.includes(secret));

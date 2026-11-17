@@ -61,6 +61,9 @@ const port = 3910 + Math.floor(Math.random() * 40);
       assert.ok(!/\bcommission\b/i.test(prose), p + ' mentions commission');
       assert.ok(!/\u2014/.test(prose), p + ' em-dash');
     }
+    const fhProse = (await get(port, '/for-hotels')).body.replace(/<footer[\s\S]*/i, '').replace(/<script[\s\S]*?<\/script>/gi, '');
+    assert.ok(!/\btrial\b/i.test(fhProse), '/for-hotels trial');
+    assert.ok(!/\bpilot\b/i.test(fhProse), '/for-hotels pilot');
 
     const faq = (await get(port, '/faq')).body;
     const items = seo.faqItems(mail);
