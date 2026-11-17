@@ -35,6 +35,12 @@ const PAGES = {
     title: 'Contact us',
     description: 'Send a message to Hotel Day Club about a booking, a change, a cancellation or a hotel in Australia. We\'ll reply by email.',
   },
+  about: {
+    path: '/about',
+    title: 'About Hotel Day Club',
+    crumb: 'About',
+    description: 'What Hotel Day Club is: hotel pool and gym day passes in Australia for locals on quieter days, with founding hotels launching first.',
+  },
   privacy: {
     path: '/privacy',
     title: 'Privacy policy',

@@ -89,7 +89,7 @@ app.get('/sitemap.xml', (req, res) => {
   const lastmod = ymd(new Date());
   const paths = [];
   if (seo.siteIndexable()) {
-    paths.push('/', '/search', '/for-hotels', '/how-it-works', '/faq', '/contact');
+    paths.push('/', '/search', '/for-hotels', '/how-it-works', '/faq', '/contact', '/about');
     if (seo.legalPagesIndexable()) paths.push('/privacy', '/terms', '/refunds', '/risk');
     paths.push('/guides');
     for (const g of seo.GUIDES) paths.push('/guides/' + g.slug);
@@ -301,7 +301,7 @@ class SiteFooter {
   static html() {
     const destLinks = DESTINATIONS.map(d => `<a href="/destinations/${esc(d.slug)}">${esc(d.name)}</a>`).join('');
     const guideLinks = [`<a href="/guides">All guides</a>`, ...seo.GUIDES.map(g => `<a href="/guides/${esc(g.slug)}">${esc(g.h1)}</a>`)].join('');
-    const siteLinks = '<a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/contact">Contact</a><a href="/for-hotels">For hotels</a><a href="/hotel/login">Hotel login</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a>';
+    const siteLinks = '<a href="/about">About</a><a href="/how-it-works">How day passes work</a><a href="/faq">Questions</a><a href="/contact">Contact</a><a href="/for-hotels">For hotels</a><a href="/hotel/login">Hotel login</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/risk">Risk warning</a>';
     return `<footer class="app-ftr"><div class="wrap ftr-in"><div class="ftr-top"><div class="ftr-brand">${logoLink('dark')}<p>Contact ${contactMail()}</p></div>
 <div class="ftr-cols">
 ${this.column('ftr-dest', 'Destinations', destLinks, 'dest-links')}
@@ -2828,6 +2828,29 @@ app.get('/admin/export/bookings.csv', adminAuth, (req, res) => {
 app.get('/admin/export/hotels.csv', adminAuth, (req, res) => {
   const rows = db.prepare(`SELECT id, slug, name, area, status, login, contact_name, contact_email, address FROM hotels ORDER BY id`).all();
   sendCsv(res, 'hotels.csv', hotelsCsv(rows));
+});
+
+app.get('/about', (req, res) => {
+  const copy = seo.pageCopy('about');
+  const body = `<div class="wrap sec narrow about-page">
+<p class="contact-kicker">About</p>
+<h1 class="l-title">Hotel Day Club</h1>
+<p class="lead">We help people book a few hours at a hotel pool, spa or gym without staying overnight.</p>
+<div class="legal-doc about-copy">
+<p>Hotel Day Club is a simple way to use a hotel's wellness spaces on quieter days. If you live nearby, you can swim, relax or work out when the hotel has room to spare.</p>
+<p>Hotels set their own hours, prices and how many day guests they take. They earn from capacity that might otherwise sit empty. Overnight guests always come first.</p>
+<p>We are launching in Australia with a small group of founding hotels. This site is a demo: the listings are examples, photos are stock, and no payment is taken here yet.</p>
+<p>Questions? <a href="/contact">Contact us</a> or read <a href="/how-it-works">how day passes work</a>.</p>
+</div></div>`;
+  res.send(page('About Hotel Day Club', body, {
+    analytics: true,
+    index: true,
+    path: '/about',
+    bodyClass: 'guest about-page',
+    guestD2: true,
+    ...copy,
+    jsonld: seo.graph(seo.crumbs([{ name: 'About', path: '/about' }])),
+  }));
 });
 
 app.get('/how-it-works', (req, res) => {

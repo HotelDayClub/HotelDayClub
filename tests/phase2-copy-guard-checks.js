@@ -53,7 +53,7 @@ const port = 3910 + Math.floor(Math.random() * 40);
 (async () => {
   const child = await start(port, path.join(dir, 'app.db'));
   try {
-    const guests = ['/', '/search', '/for-hotels', '/how-it-works', '/faq', '/contact', '/guides'];
+    const guests = ['/', '/search', '/for-hotels', '/how-it-works', '/faq', '/contact', '/about', '/guides'];
     for (const p of guests) {
       const { status, body } = await get(port, p);
       assert.strictEqual(status, 200, p);
