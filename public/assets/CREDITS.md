@@ -19,7 +19,7 @@ On 16 Nov 2026 (AEDT) every gallery master in `photos/*.jpg` except `restaurant-
 | photos/glass-roof-pool.jpg (cropped 16 Nov 2026 to 1600×1067 landscape, upper pool and roof) | https://www.pexels.com/photo/view-of-a-pool-under-a-glass-roof-in-a-resort-12739423/ | Toni Berisha |
 | photos/indoor-spa-pool.jpg | https://www.pexels.com/photo/brown-and-white-hot-tub-6667423/ | Pavel Danilyuk |
 | photos/restaurant-view.jpg (downloaded 16 Nov 2026 (AEDT), cropped to 2:3 and resized to 1000x1500) | https://www.pexels.com/photo/chairs-and-table-on-terrace-under-mesh-roof-18030810/ | Matteo Milan |
-| photos/rooftop-city.jpg (resized 17 Nov 2026 to 1600×1067 landscape) | https://www.pexels.com/photo/rooftop-pool-overlooking-cityscape-3571098/ | Nguyen Hung |
+| photos/rooftop-city.jpg (centre-cropped 17 Nov 2026 to 1600×1067 landscape) | https://www.pexels.com/photo/lounge-chairs-by-the-pool-1870774/ | Jacoby Clarke |
 
 ## Unsplash: free under the Unsplash License (https://unsplash.com/license). Attribution isn't required but is given here.
 | File | Photo | Photographer |
