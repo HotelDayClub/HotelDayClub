@@ -64,9 +64,10 @@ function getJson(url) {
 }
 async function waitJson(url) {
   const started = Date.now();
+  const limit = process.env.CI ? 60000 : 20000;
   for (;;) {
     try { return await getJson(url); } catch (err) {
-      if (Date.now() - started > 20000) throw new Error('timeout ' + url);
+      if (Date.now() - started > limit) throw new Error('timeout ' + url);
       await new Promise(r => setTimeout(r, 200));
     }
   }
@@ -118,6 +119,7 @@ function cdp(WS, wsUrl) {
   });
   const chrome = spawn(bin, [
     '--headless=new', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage',
+    '--disable-extensions', '--no-first-run', '--no-default-browser-check',
     `--remote-debugging-port=${debugPort}`, `--user-data-dir=${path.join(dir, 'chrome')}`, 'about:blank',
   ], { stdio: 'ignore' });
   let session;
