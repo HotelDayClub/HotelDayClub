@@ -22,7 +22,7 @@ body:has(.d2) .d2-photos{margin-top:0}
  body:has(.d2) .d2-hero,
  body:has(.d2) .g-wrap{margin-top:0;margin-bottom:0;padding-top:0;padding-bottom:0;border-radius:0}
 }
-body:has(.d2) main{overflow-x:hidden}
+body:has(.d2) main{overflow-x:clip}
 .d2 .ex{display:inline-block;font:600 14px/20px var(--d2-body);color:var(--hdc-rose-ink);background:var(--hdc-sun-soft);border-radius:var(--r-ctl);padding:0 6px}
 .d2-lock{overflow:hidden}
 
