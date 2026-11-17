@@ -50,6 +50,7 @@ for (const rel of guestCss) {
 
 const listingCss = fs.readFileSync(path.join(root, 'public/listing-dir2.css'), 'utf8');
 assert.match(listingCss, /body:has\(\.d2\) main\{overflow-x:clip\}/, 'listing main uses overflow-x clip');
+assert.match(listingCss, /\.d2-side\{[^}]*top:calc\(var\(--d2-top,64px\) \+ var\(--d2-tabs-h,53px\) \+ 24px\)/s, 'sticky aside clears tabs bar');
 
 function chromeBin() {
   for (const bin of ['/usr/bin/google-chrome-stable', '/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium']) {
@@ -158,11 +159,16 @@ function waitJson(url, n = 0) {
         expression: `(() => {
           const side = document.getElementById('d2-side');
           const hdr = document.querySelector('.hdr');
-          if (!side || !hdr) return { ok: false, why: 'missing nodes' };
+          const tabs = document.querySelector('.d2-tabs');
+          const from = document.getElementById('d2-sticky-from');
+          if (!side || !hdr || !tabs) return { ok: false, why: 'missing nodes' };
           const sb = side.getBoundingClientRect();
           const hb = hdr.getBoundingClientRect();
+          const tb = tabs.getBoundingClientRect();
           const cs = getComputedStyle(side);
-          const expected = hb.bottom + 24;
+          const root = getComputedStyle(document.querySelector('.d2') || document.body);
+          const tabsH = parseFloat(root.getPropertyValue('--d2-tabs-h')) || tb.height;
+          const expected = hb.bottom + tabsH + 24;
           let el = side.parentElement;
           while (el) {
             const st = getComputedStyle(el);
@@ -175,7 +181,10 @@ function waitJson(url, n = 0) {
             if (el === document.documentElement) break;
             el = el.parentElement;
           }
-          return { ok: cs.position === 'sticky' && Math.abs(sb.top - expected) < 4, top: sb.top, expected, scrollY: window.scrollY, sticky: cs.position };
+          const fb = from ? from.getBoundingClientRect() : null;
+          const clearTabs = fb ? fb.top >= tb.bottom - 2 : true;
+          const stickyOk = cs.position === 'sticky' && Math.abs(sb.top - expected) < 4;
+          return { ok: stickyOk && clearTabs, top: sb.top, expected, tabsBottom: tb.bottom, fromTop: fb && fb.top, scrollY: window.scrollY, sticky: cs.position };
         })()`,
       });
       const v = pos.result.value;

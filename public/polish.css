@@ -109,7 +109,8 @@ body.home #explore .ex-chips li{background:var(--hdc-sun-soft);color:var(--hdc-t
 /* ---------- Home destinations: photo tiles and one coming-soon row ---------- */
 body.home .dest-tiles{list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:220px;gap:16px;margin:28px 0 0;padding:0}
 body.home .dest-tiles.dt-n5,body.home .dest-tiles.dt-n6{grid-template-columns:1.25fr 1fr 1fr;grid-auto-rows:200px}
-body.home .dest-tiles.dt-n6{grid-template-rows:200px 200px minmax(160px,auto)}
+body.home .dest-tiles.dt-n6{grid-template-rows:repeat(3,200px)}
+body.home .dest-tiles.dt-n6 .dt-big{grid-row:span 3}
 body.home .dest-tiles.dt-n6 .dt-tail{grid-column:2 / -1;grid-row:3}
 body.home .dest-tiles .dt-big{grid-row:span 2}
 body.home .dest-tile{position:relative;display:block;height:100%;border-radius:20px;overflow:hidden;color:var(--white);text-decoration:none;background:var(--hdc-deep)}
@@ -126,6 +127,8 @@ body.home .dest-chip{display:inline-flex;align-items:center;min-height:40px;padd
 body.home .dest-chip:hover{border-color:var(--hdc-primary);color:var(--hdc-primary)}
 @media (max-width:800px){
   body.home .dest-tiles,body.home .dest-tiles.dt-n5,body.home .dest-tiles.dt-n6{grid-template-columns:1fr 1fr;grid-auto-rows:150px;gap:10px}
+  body.home .dest-tiles.dt-n6{grid-template-rows:none}
+  body.home .dest-tiles.dt-n6 .dt-big{grid-row:auto}
   body.home .dest-tiles.dt-n6 .dt-tail{grid-column:1 / -1;grid-row:auto}
   body.home .dest-tiles .dt-big{grid-row:auto;grid-column:1 / -1}
   body.home .dest-tile .dest-name{font-size:19px}
