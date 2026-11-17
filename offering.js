@@ -24,6 +24,12 @@ const PHOTOS = [
   ['spa-loungers.jpg', 'Day spa'],
   ['hotel-gym.jpg', 'Hotel gym'],
   ['restaurant-view.jpg', 'Restaurant'],
+  ['coastal-deck-pool.jpg', 'Coastal deck pool'],
+  ['harbour-twilight-pool.jpg', 'Harbour pool at dusk'],
+  ['pool-lane-morning.jpg', 'Morning pool lane'],
+  ['spa-sauna-room.jpg', 'Sauna and steam'],
+  ['rooftop-daybed-pool.jpg', 'Rooftop daybed'],
+  ['lagoon-garden-pool.jpg', 'Garden lagoon pool'],
 ];
 
 const pad = n => String(n).padStart(2, '0');

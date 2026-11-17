@@ -519,11 +519,19 @@ function homePage({ destination = '', joined = false, error = '', values = {} } 
     : destination;
   const counts = DESTINATIONS.map(d => ({ ...d, count: hotels.filter(h => d.areas.includes(h.area)).length }));
   const listed = counts.filter(d => d.count);
+  const DEST_TILE_PHOTOS = {
+    'sydney-cbd': 'pool-lane-morning.jpg',
+    bondi: 'coastal-deck-pool.jpg',
+    manly: 'hotel-gym.jpg',
+    'north-sydney': 'indoor-spa-pool.jpg',
+    'eastern-suburbs': 'spa-loungers.jpg',
+    parramatta: 'harbour-twilight-pool.jpg',
+  };
   const tileHtml = (d, i) => {
-    const h = hotels.find(x => d.areas.includes(x.area) && x.photos && x.photos[0]);
-    const base = h ? String(h.photos[0]).replace(/\.jpe?g$/i, '') : '';
+    const tileFile = DEST_TILE_PHOTOS[d.id] || '';
+    const base = tileFile.replace(/\.jpe?g$/i, '');
     const webp = base && fs.existsSync(path.join(__dirname, 'public', 'golden', 'img', 'cards', base + '.webp'));
-    const src = !h ? '' : webp ? `/golden/img/cards/${esc(base)}.webp` : `/assets/photos/${esc(h.photos[0])}`;
+    const src = !tileFile ? '' : webp ? `/golden/img/cards/${esc(base)}.webp` : `/assets/photos/${esc(tileFile)}`;
     const img = src ? `<img src="${src}" alt="Example photo for ${esc(d.name)}" width="800" height="600" loading="lazy" decoding="async">` : '';
     const mosaic = listed.length === 5 || listed.length === 6;
     const cls = `${i === 0 && mosaic ? ' dt-big' : ''}${i === 5 && listed.length === 6 ? ' dt-tail' : ''}`;
@@ -560,9 +568,9 @@ ${reassureStrip(false, { home: true })}
 <p class="home-note">One example day. The hotel sets the hours.</p>
 <div class="day">
 ${slot('gym-sm', 'Hotel gym with free weights', '8 am', 'Swim &amp; gym', 'A gym session, then laps before the city wakes up.')}
-${slot('4-sm', 'Hotel daybed beside a pool', '12 pm', 'Daybed by the pool', 'Stretch out in the shade.')}
-${slot('3-sm', 'Spa treatment table', '3 pm', 'Spa afternoon', 'Steam, sauna, a treatment if the hotel offers one.')}
-${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
+${slot('rooftop-daybed-pool', 'Rooftop pool with daybeds', '12 pm', 'Daybed by the pool', 'Stretch out in the shade.')}
+${slot('spa-sauna-room', 'Modern sauna and steam room', '3 pm', 'Spa afternoon', 'Steam, sauna, a treatment if the hotel offers one.')}
+${slot('lagoon-garden-pool', 'Garden pool in the late afternoon light', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
 </div></section>
 <section id="destinations" data-rv><div class="sec-row"><div><span class="kicker sand">Explore by destination</span><h2>Where to spend the day</h2></div>${LinkStyles.sectionAction('/search', 'All destinations')}</div>
 ${destTiles}
@@ -2231,7 +2239,7 @@ ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
 ${GuestPrivacy.note()}</div></div>
 ${soldWarnHtml(h.id, passes, days, grid)}
 ${opsBar(h, passes)}
-<div class="stats">${stat('Spots booked', s.spots, `${s.n} bookings · ${s.people} people`)}${stat('Your payout', money(payoutTotal), `${s.n} bookings · last 30 days ${money(payout30)}`)}</div>
+<div class="stats">${stat('Spots booked', s.spots, `${s.n} bookings · ${s.people} people`)}${stat('Your payout', money(payoutTotal), 'Confirmed bookings on your listing')}</div>
 <div class="seat-stats">${bySeat.map(r => `<span><b>${esc(spotLabel(r))}</b> ${r.spots} booked · ${r.people} people</span>`).join('')}</div>
 ${todaySection(h)}
 <section id="lookup" class="panel"><h2 class="ph2">Booking lookup</h2><form class="lookup" method="get" action="/hotel#lookup"><input name="q" value="${esc(q)}" placeholder="Booking code (HDC-7Q4K-2M9X), name, email or phone"><button class="btn btn-navy">${ICON.search} Find</button>${q ? '<a class="link" href="/hotel">Clear</a>' : ''}</form>

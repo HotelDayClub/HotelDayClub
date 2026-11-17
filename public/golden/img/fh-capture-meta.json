@@ -1,0 +1,23 @@
+{
+  "fh-dashboard": {
+    "source": "dash-main",
+    "width": 1600,
+    "height": 927,
+    "clipWidth": 1588,
+    "clipHeight": 920
+  },
+  "fh-checkin": {
+    "source": "dash-main",
+    "width": 1600,
+    "height": 922,
+    "clipWidth": 1596,
+    "clipHeight": 920
+  },
+  "fh-guestlist": {
+    "source": "dash-main",
+    "width": 1600,
+    "height": 918,
+    "clipWidth": 1604,
+    "clipHeight": 920
+  }
+}

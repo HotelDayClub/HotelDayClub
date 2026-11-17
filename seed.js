@@ -31,9 +31,9 @@ const OFFERINGS = {
     age_policy: 'All ages', kids_hours: 'All open hours', towels: 1, food_rule: FOOD_RULE,
     id_required: 1, lifeguard: 0,
     spots: [
-      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the infinity pool, with a towel.', holds: 1, price: 45, daily_cap: 24, photo: 'hero-loungers.jpg', featured: 1 },
-      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A reserved daybed for two, with shade.', holds: 2, price: 95, daily_cap: 6, photo: 'clifftop-ocean.jpg' },
-      { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A draped cabana for four, with loungers.', holds: 4, price: 220, daily_cap: 3, photo: 'indoor-spa-pool.jpg' },
+      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the infinity pool, with a towel.', holds: 1, price: 45, daily_cap: 24, photo: 'rooftop-daybed-pool.jpg', featured: 1 },
+      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A reserved daybed for two, with shade.', holds: 2, price: 95, daily_cap: 6, photo: 'coastal-deck-pool.jpg' },
+      { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A draped cabana for four, with loungers.', holds: 4, price: 220, daily_cap: 3, photo: 'spa-sauna-room.jpg' },
     ],
   },
   'skyline-rooftop': {
@@ -41,9 +41,9 @@ const OFFERINGS = {
     age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: FOOD_RULE,
     id_required: 1, lifeguard: 0, room_only_from: '16:00', room_only_to: '17:00',
     spots: [
-      { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair on the rooftop deck, with a towel.', holds: 1, price: 55, daily_cap: 20, photo: 'rooftop-city.jpg', featured: 1 },
-      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A reserved daybed for two, with a city view.', holds: 2, price: 120, daily_cap: 8, photo: 'rooftop-city.jpg' },
-      { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A cabana for four on the roof.', holds: 4, price: 260, daily_cap: 4, photo: 'indoor-spa-pool.jpg' },
+      { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair on the rooftop deck, with a towel.', holds: 1, price: 55, daily_cap: 20, photo: 'hotel-gym.jpg', featured: 1 },
+      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A reserved daybed for two, with a city view.', holds: 2, price: 120, daily_cap: 8, photo: 'coastal-deck-pool.jpg' },
+      { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A cabana for four on the roof.', holds: 4, price: 260, daily_cap: 4, photo: 'lagoon-garden-pool.jpg' },
     ],
   },
   'harbourside-lido': {
@@ -52,9 +52,9 @@ const OFFERINGS = {
     id_required: 1, lifeguard: 0,
     season_start: '12-01', season_end: '03-31', season_opens: '08:00', season_closes: '19:00',
     spots: [
-      { code: 'entry', kind: 'entry', name: 'General entry', description: 'Pool, steam room and sauna.', holds: 1, price: 65, daily_cap: 40, photo: 'glass-roof-pool.jpg', featured: 1 },
-      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger under the glass roof, with a robe.', holds: 1, price: 85, daily_cap: 16, photo: 'hero-loungers.jpg' },
-      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A quiet daybed for two beside the pool.', holds: 2, price: 150, daily_cap: 6, photo: 'indoor-spa-pool.jpg' },
+      { code: 'entry', kind: 'entry', name: 'General entry', description: 'Pool, steam room and sauna.', holds: 1, price: 65, daily_cap: 40, photo: 'pool-lane-morning.jpg', featured: 1 },
+      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger under the glass roof, with a robe.', holds: 1, price: 85, daily_cap: 16, photo: 'coastal-deck-pool.jpg' },
+      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A quiet daybed for two beside the pool.', holds: 2, price: 150, daily_cap: 6, photo: 'spa-sauna-room.jpg' },
     ],
   },
   'palm-court': {
@@ -62,9 +62,9 @@ const OFFERINGS = {
     age_policy: 'All ages', kids_hours: 'All open hours, shallow end', towels: 1, food_rule: FOOD_RULE,
     id_required: 1, lifeguard: 1,
     spots: [
-      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger in the palm gardens, with a towel.', holds: 1, price: 35, daily_cap: 40, photo: 'clifftop-ocean.jpg', featured: 1 },
-      { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair by the shallow end.', holds: 1, price: 25, daily_cap: 30, photo: 'hero-loungers.jpg' },
-      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A shaded daybed for two.', holds: 2, price: 70, daily_cap: 10, photo: 'spa-loungers.jpg' },
+      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger in the palm gardens, with a towel.', holds: 1, price: 35, daily_cap: 40, photo: 'rooftop-daybed-pool.jpg', featured: 1 },
+      { code: 'chair', kind: 'chair', name: 'Pool chair', description: 'A chair by the shallow end.', holds: 1, price: 25, daily_cap: 30, photo: 'hotel-gym.jpg' },
+      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A shaded daybed for two.', holds: 2, price: 70, daily_cap: 10, photo: 'indoor-spa-pool.jpg' },
     ],
   },
   'manly-sands': {
@@ -72,8 +72,8 @@ const OFFERINGS = {
     age_policy: 'All ages', kids_hours: 'Children welcome until 2pm', towels: 1, food_rule: FOOD_RULE,
     id_required: 1, lifeguard: 0,
     spots: [
-      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the magnesium pool, with a towel.', holds: 1, price: 40, daily_cap: 28, photo: 'clifftop-ocean.jpg', featured: 1 },
-      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A canopy daybed for two, steps from the beach.', holds: 2, price: 90, daily_cap: 8, photo: 'hero-loungers.jpg' },
+      { code: 'lounger', kind: 'lounger', name: 'Sun lounger', description: 'A lounger by the magnesium pool, with a towel.', holds: 1, price: 40, daily_cap: 28, photo: 'rooftop-daybed-pool.jpg', featured: 1 },
+      { code: 'daybed', kind: 'daybed', name: 'Daybed', description: 'A canopy daybed for two, steps from the beach.', holds: 2, price: 90, daily_cap: 8, photo: 'spa-loungers.jpg' },
     ],
   },
   'bayview-spa': {
@@ -81,8 +81,8 @@ const OFFERINGS = {
     age_policy: '18+', kids_hours: 'No children', towels: 1, food_rule: FOOD_RULE,
     id_required: 1, lifeguard: 0,
     spots: [
-      { code: 'entry', kind: 'entry', name: 'General entry', description: 'Bathhouse, plunge pools and the outdoor pool.', holds: 1, price: 80, daily_cap: 24, photo: 'spa-loungers.jpg', featured: 1 },
-      { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A draped cabana for two by the outdoor pool.', holds: 2, price: 180, daily_cap: 5, photo: 'indoor-spa-pool.jpg' },
+      { code: 'entry', kind: 'entry', name: 'General entry', description: 'Bathhouse, plunge pools and the outdoor pool.', holds: 1, price: 80, daily_cap: 24, photo: 'hotel-gym.jpg', featured: 1 },
+      { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A draped cabana for two by the outdoor pool.', holds: 2, price: 180, daily_cap: 5, photo: 'coastal-deck-pool.jpg' },
     ],
   },
 };
@@ -213,15 +213,15 @@ const hotels = [
   ['saltwater-terrace', 'The Saltwater Terrace (Demo)', 'Eastern Beaches', DEMO_INTROS['saltwater-terrace'].tagline, DEMO_INTROS['saltwater-terrace'].blurb,
    ['infinity-ocean.jpg', 'clifftop-ocean.jpg', 'hero-loungers.jpg', 'indoor-spa-pool.jpg'], ['Heated pool', 'Ocean view', 'Pool bar', 'Towels included', 'Showers & lockers'], 'demo-saltwater'],
   ['skyline-rooftop', 'Skyline Rooftop Hotel (Demo)', 'North Sydney', DEMO_INTROS['skyline-rooftop'].tagline, DEMO_INTROS['skyline-rooftop'].blurb,
-   ['rooftop-city.jpg', 'hotel-gym.jpg', 'infinity-ocean.jpg', 'indoor-spa-pool.jpg'], ['Heated pool', 'Rooftop', 'City views', 'Daybeds', 'Gym access'], 'demo-skyline'],
+   ['rooftop-city.jpg', 'harbour-twilight-pool.jpg', 'pool-lane-morning.jpg', 'spa-sauna-room.jpg'], ['Heated pool', 'Rooftop', 'City views', 'Daybeds', 'Gym access'], 'demo-skyline'],
   ['harbourside-lido', 'Harbourside Lido (Demo)', 'CBD & Harbour', DEMO_INTROS['harbourside-lido'].tagline, DEMO_INTROS['harbourside-lido'].blurb,
-   ['glass-roof-pool.jpg', 'spa-loungers.jpg', 'rooftop-city.jpg', 'indoor-spa-pool.jpg'], ['Indoor heated pool', 'Sauna', 'Steam room', 'Spa treatments', 'Robes'], 'demo-harbourside'],
+   ['glass-roof-pool.jpg', 'spa-loungers.jpg', 'hotel-gym.jpg', 'rooftop-daybed-pool.jpg'], ['Indoor heated pool', 'Sauna', 'Steam room', 'Spa treatments', 'Robes'], 'demo-harbourside'],
   ['palm-court', 'Palm Court Resort (Demo)', 'Parramatta', DEMO_INTROS['palm-court'].tagline, DEMO_INTROS['palm-court'].blurb,
-   ['glass-roof-pool.jpg', 'clifftop-ocean.jpg', 'spa-loungers.jpg', 'infinity-ocean.jpg'], ['Lagoon pool', 'Kid-friendly', 'Free parking', 'Shade umbrellas', 'Café'], 'demo-palmcourt'],
+   ['clifftop-ocean.jpg', 'lagoon-garden-pool.jpg', 'coastal-deck-pool.jpg', 'spa-sauna-room.jpg'], ['Lagoon pool', 'Kid-friendly', 'Free parking', 'Shade umbrellas', 'Café'], 'demo-palmcourt'],
   ['manly-sands', 'Manly Sands House (Demo)', 'Northern Beaches', DEMO_INTROS['manly-sands'].tagline, DEMO_INTROS['manly-sands'].blurb,
-   ['clifftop-ocean.jpg', 'infinity-ocean.jpg', 'rooftop-city.jpg', 'indoor-spa-pool.jpg'], ['Magnesium pool', 'Beachside', 'Daybeds', 'Kiosk', 'Towels included'], 'demo-manly'],
+   ['hero-loungers.jpg', 'infinity-ocean.jpg', 'coastal-deck-pool.jpg', 'pool-lane-morning.jpg'], ['Magnesium pool', 'Beachside', 'Daybeds', 'Kiosk', 'Towels included'], 'demo-manly'],
   ['bayview-spa', 'Bayview Spa Hotel (Demo)', 'Eastern Suburbs', DEMO_INTROS['bayview-spa'].tagline, DEMO_INTROS['bayview-spa'].blurb,
-   ['spa-loungers.jpg', 'indoor-spa-pool.jpg', 'glass-roof-pool.jpg', 'clifftop-ocean.jpg'], ['Heated pool', 'Hot & cold plunge', 'Cabanas', 'Adults only (18+)', 'Robes'], 'demo-bayview'],
+   ['restaurant-view.jpg', 'indoor-spa-pool.jpg', 'spa-loungers.jpg', 'harbour-twilight-pool.jpg'], ['Heated pool', 'Hot & cold plunge', 'Cabanas', 'Adults only (18+)', 'Robes'], 'demo-bayview'],
 ];
 const insH = db.prepare('INSERT INTO hotels(slug,name,area,tagline,blurb,photos,amenities,hours,rating,login,password,status,is_demo) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
 const insB = db.prepare('INSERT INTO blocked_dates(hotel_id,date,reason) VALUES (?,?,?)');

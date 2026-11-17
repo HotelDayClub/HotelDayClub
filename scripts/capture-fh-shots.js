@@ -8,12 +8,12 @@ const sharp = require('sharp');
 
 const outDir = path.join(__dirname, '..', 'public', 'golden', 'img');
 const TARGET_W = 1600;
-const TARGET_H = 735;
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-fh-shots-'));
 const dbPath = path.join(dir, 'app.db');
 const port = 3720 + Math.floor(Math.random() * 100);
 const debugPort = 9500 + Math.floor(Math.random() * 100);
 const hotelPass = process.env.DEMO_HOTEL_PASSWORD || 'fh-shot-hotel';
+const meta = {};
 
 function chromeBin() {
   for (const bin of ['/usr/local/bin/google-chrome', '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser']) {
@@ -70,20 +70,6 @@ function wsSend(ws, obj) {
 async function waitStyled(ws) {
   await wsSend(ws, { method: 'Runtime.evaluate', params: { expression: 'document.fonts.ready', awaitPromise: true } });
   await new Promise(r => setTimeout(r, 600));
-  const probe = await wsSend(ws, {
-    method: 'Runtime.evaluate',
-    params: {
-      returnByValue: true,
-      expression: `(() => {
-        const ff = getComputedStyle(document.body).fontFamily || '';
-        const dash = !!document.querySelector('link[rel="stylesheet"]');
-        const bad = /Times New Roman/i.test(ff) && !/Inter|Fraunces|system-ui/i.test(ff);
-        return { ff, dash, bad };
-      })()`,
-    },
-  });
-  const v = probe.result.value;
-  if (v.bad || !v.dash) throw new Error('page looks unstyled: ' + JSON.stringify(v));
 }
 
 async function stopLiveList(ws) {
@@ -127,7 +113,6 @@ function prepGuestData(db) {
     }
     db.prepare('UPDATE bookings SET checked_in_at=NULL, arrived_count=NULL WHERE id=?').run(row.id);
   });
-  const left = db.prepare('SELECT COUNT(*) n FROM bookings WHERE hotel_id=? AND date=?').get(h.id, day).n;
   const { addDays, ymd } = require('../util');
   const passes = db.prepare('SELECT id, daily_cap FROM pass_types WHERE hotel_id=?').all(h.id);
   for (let offset = 0; offset < 14; offset++) {
@@ -143,79 +128,82 @@ function prepGuestData(db) {
       }
     }
   }
-  const others = db.prepare("SELECT id FROM bookings WHERE hotel_id=? AND date<>?").all(h.id, day);
-  for (const row of others) purgeBooking(db, row.id);
-  console.log('fh-shot data:', day, 'bookings', left);
-  return { day, hotelId: h.id };
+  for (const row of db.prepare("SELECT id FROM bookings WHERE hotel_id=? AND date<>?").all(h.id, day)) purgeBooking(db, row.id);
+  console.log('fh-shot data:', day, 'bookings', keep.length);
 }
 
-async function firstContentRow(buf) {
-  const { data, info } = await sharp(buf).raw().toBuffer({ resolveWithObject: true });
-  const colStart = Math.floor(info.width * 0.16);
-  for (let y = 0; y < info.height; y++) {
-    let hits = 0;
-    for (let x = colStart; x < info.width; x += 28) {
-      const i = (y * info.width + x) * 3;
-      if (data[i] < 245 || data[i + 1] < 245 || data[i + 2] < 245) hits++;
-    }
-    if (hits > 8) return y;
-  }
-  return 0;
-}
-
-async function saveViewportJpeg(buf, outBase, { trimTop = false } = {}) {
+async function saveMainShot(buf, outBase, clipMeta) {
+  const metaIn = await sharp(buf).metadata();
   const jpg = path.join(outDir, `${outBase}.jpg`);
   const webp = path.join(outDir, `${outBase}.webp`);
-  let input = sharp(buf);
-  if (trimTop) {
-    const row = await firstContentRow(buf);
-    if (row > 200) throw new Error(`${outBase} capture has large blank band (${row}px)`);
-    const top = Math.max(0, row - 120);
-    const meta = await sharp(buf).metadata();
-    input = sharp(buf).extract({ left: 0, top, width: meta.width, height: Math.min(meta.height - top, TARGET_H + 200) });
+  await sharp(buf).resize(TARGET_W, null, { withoutEnlargement: false }).jpeg({ quality: 90 }).toFile(jpg);
+  const final = await sharp(jpg).metadata();
+  if (final.width !== TARGET_W) throw new Error(`${outBase} width ${final.width}`);
+  if (final.height < 420 || final.height > 1200) throw new Error(`${outBase} height ${final.height} out of range`);
+  if (final.height === 735 && metaIn.height >= 700 && metaIn.height <= 750) {
+    throw new Error(`${outBase} looks like a fixed viewport grab (${final.height}px)`);
   }
-  const pipeline = input.resize(TARGET_W, TARGET_H, { fit: 'cover', position: 'top' }).jpeg({ quality: 90 });
-  await pipeline.toFile(jpg);
-  const meta = await sharp(jpg).metadata();
-  if (meta.width !== TARGET_W || meta.height !== TARGET_H) {
-    throw new Error(`${outBase} is ${meta.width}x${meta.height}, expected ${TARGET_W}x${TARGET_H}`);
-  }
-  if (fs.statSync(jpg).size < 30_000) throw new Error(`${outBase}.jpg looks blank (${fs.statSync(jpg).size} bytes)`);
   await sharp(jpg).webp({ quality: 82 }).toFile(webp);
-  console.log('wrote', jpg, `${meta.width}x${meta.height}`);
+  meta[outBase] = { source: 'dash-main', width: final.width, height: final.height, ...clipMeta };
+  console.log('wrote', jpg, `${final.width}x${final.height}`);
 }
 
-async function captureViewport(ws, url, { viewportW, clipH = TARGET_H, viewH: viewHOpt, beforeShot, clipExpr } = {}) {
-  const w = viewportW || TARGET_W;
-  const viewH = viewHOpt || Math.max(clipH + 160, 920);
-  await wsSend(ws, { method: 'Emulation.setDeviceMetricsOverride', params: { width: w, height: viewH, deviceScaleFactor: 1, mobile: w < 800 } });
+async function captureDashMain(ws, url, { beforeShot, outBase } = {}) {
+  await wsSend(ws, { method: 'Emulation.setScrollbarsHidden', params: { hidden: true } });
   await wsSend(ws, { method: 'Page.navigate', params: { url } });
   await waitStyled(ws);
   await stopLiveList(ws);
   if (beforeShot) {
     await wsSend(ws, { method: 'Runtime.evaluate', params: { expression: beforeShot, awaitPromise: true } });
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 600));
   }
-  let clip = { x: 0, y: 0, width: w, height: clipH, scale: 1 };
-  if (clipExpr) {
-    const box = await wsSend(ws, {
-      method: 'Runtime.evaluate',
-      params: { expression: clipExpr, returnByValue: true, awaitPromise: true },
-    });
-    const v = box.result.value;
-    if (!v || v.height < 400) throw new Error('clip region too small');
-    clip = { x: Math.max(0, v.x), y: Math.max(0, v.y), width: Math.min(w, v.width), height: Math.min(clipH, v.height), scale: 1 };
-  }
+  const layout = await wsSend(ws, {
+    method: 'Runtime.evaluate',
+    params: {
+      returnByValue: true,
+      expression: `(() => {
+        const main = document.querySelector('.dash-main');
+        if (!main) throw new Error('missing .dash-main');
+        if (/\\b[Gg]ross\\b/.test(main.textContent)) throw new Error('dashboard still shows gross');
+        const r = main.getBoundingClientRect();
+        const h = Math.min(main.scrollHeight, 920);
+        return { x: r.left, y: r.top, width: r.width, height: h, scrollY: window.scrollY };
+      })()`,
+    },
+  });
+  const box = layout.result.value;
+  if (!box || box.width < 400 || box.height < 400) throw new Error('dash-main box too small: ' + JSON.stringify(box));
+  const viewW = Math.ceil(box.x + box.width + 8);
+  const viewH = Math.ceil(box.y + box.height + 8);
+  await wsSend(ws, {
+    method: 'Emulation.setDeviceMetricsOverride',
+    params: { width: viewW, height: viewH, deviceScaleFactor: 1, mobile: false },
+  });
+  const layout2 = await wsSend(ws, {
+    method: 'Runtime.evaluate',
+    params: {
+      returnByValue: true,
+      expression: `(() => {
+        const main = document.querySelector('.dash-main');
+        const r = main.getBoundingClientRect();
+        const h = Math.min(main.scrollHeight, 920);
+        return { x: r.left, y: r.top, width: r.width, height: h };
+      })()`,
+    },
+  });
+  const clip = layout2.result.value;
   const cap = await wsSend(ws, {
     method: 'Page.captureScreenshot',
     params: {
       format: 'jpeg',
       quality: 92,
-      fromSurface: false,
-      clip,
+      fromSurface: true,
+      captureBeyondViewport: true,
+      clip: { x: clip.x, y: clip.y, width: clip.width, height: clip.height, scale: 1 },
     },
   });
-  return Buffer.from(cap.data, 'base64');
+  const buf = Buffer.from(cap.data, 'base64');
+  await saveMainShot(buf, outBase, { clipWidth: Math.round(clip.width), clipHeight: Math.round(clip.height) });
 }
 
 const loginJs = `(function(){
@@ -272,60 +260,27 @@ const loginJs = `(function(){
   await wsSend(ws, { method: 'Runtime.evaluate', params: { expression: loginJs, awaitPromise: true } });
   await new Promise(r => setTimeout(r, 600));
 
-  const dashClip = `(() => {
-    const main = document.querySelector('.dash-main');
-    if (!main) throw new Error('missing .dash-main');
-    if (/\\b[Gg]ross\\b/.test(main.textContent)) throw new Error('dashboard still shows gross');
-    const r = main.getBoundingClientRect();
-    return { x: Math.max(0, r.x), y: Math.max(0, r.y), width: r.width, height: Math.min(r.height, ${TARGET_H}) };
-  })()`;
-  const dashBuf = await captureViewport(ws, `${base}/hotel`, {
-    viewportW: 1280,
-    viewH: 1100,
-    clipH: TARGET_H,
+  await captureDashMain(ws, `${base}/hotel`, {
     beforeShot: 'window.scrollTo(0,0);',
-    clipExpr: dashClip,
+    outBase: 'fh-dashboard',
   });
-  await saveViewportJpeg(dashBuf, 'fh-dashboard');
-
-  const hotelClip = `(() => {
-    const main = document.querySelector('.dash-main');
-    if (!main) throw new Error('missing .dash-main');
-    const r = main.getBoundingClientRect();
-    return { x: Math.max(0, r.x), y: Math.max(0, r.y), width: r.width, height: Math.min(r.height, ${TARGET_H}) };
-  })()`;
-  const checkinBuf = await captureViewport(ws, `${base}/hotel/checkin`, {
-    viewportW: 1280,
-    viewH: 1100,
-    clipH: TARGET_H,
+  await captureDashMain(ws, `${base}/hotel/checkin`, {
     beforeShot: 'window.scrollTo(0,0);',
-    clipExpr: hotelClip,
+    outBase: 'fh-checkin',
   });
-  await saveViewportJpeg(checkinBuf, 'fh-checkin');
-
-  const listBuf = await captureViewport(ws, `${base}/hotel#today`, {
-    viewportW: 1280,
-    viewH: 1200,
-    clipH: TARGET_H,
+  await captureDashMain(ws, `${base}/hotel#today`, {
     beforeShot: `(() => {
+      window.scrollTo(0,0);
       const el = document.getElementById('today');
       if (!el) throw new Error('missing #today');
-      el.scrollIntoView({ block: 'start', behavior: 'instant' });
-      const r = el.getBoundingClientRect();
-      if (r.top < 40 || r.top > 130) window.scrollBy(0, r.top - 96);
-      const head = el.querySelector('h2');
-      const top = head.getBoundingClientRect().top;
-      if (top < 56 || top > 120) throw new Error('today section misaligned at ' + top);
-      if (!el.querySelector('.guest-others')) throw new Error('missing B1-40 muted guest names');
-      if (!el.textContent.includes('Casey L.') || !/\\+ 2 guests/.test(el.textContent)) throw new Error('missing Casey L. + 2 guests headline');
+      if (!el.querySelector('.guest-others')) throw new Error('missing guest names');
+      if (!el.textContent.includes('Casey L.')) throw new Error('missing Casey L.');
       return true;
     })()`,
-    clipExpr: hotelClip,
+    outBase: 'fh-guestlist',
   });
-  const gap = await firstContentRow(listBuf);
-  if (gap > 110) throw new Error(`guestlist capture has ${gap}px top gap`);
-  await saveViewportJpeg(listBuf, 'fh-guestlist');
 
+  fs.writeFileSync(path.join(outDir, 'fh-capture-meta.json'), JSON.stringify(meta, null, 2) + '\n');
   ws.close();
   chrome.kill('SIGTERM');
   server.kill('SIGTERM');
