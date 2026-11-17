@@ -334,7 +334,7 @@ form:has(select[name="topic"] option[value="partnership"]:checked) .contact-note
 }
 
 .small{font-size:.85rem}.center{text-align:center}.mt{margin-top:28px}
-.sec{padding-top:48px;padding-bottom:20px}.narrow{max-width:640px}
+.narrow{max-width:640px}
 .sec-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
 .spots.out{color:var(--hdc-rose-ink);font-weight:600}
 .app-search select{cursor:pointer}
