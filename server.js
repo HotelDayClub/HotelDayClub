@@ -49,6 +49,7 @@ const { StaticAssets } = require('./staticAssets');
 const { PhotoAssets } = require('./photoAssets');
 const { bookingsCsv, hotelsCsv, hotelBookingsCsv } = require('./dataExport');
 const { GuestPrivacy } = require('./guestPrivacy');
+const HotelMail = require('./hotelMail');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
   hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST, dayPlan,
@@ -750,7 +751,7 @@ function searchCard(hotel, params, index, kidsChip) {
   const pill = offer.sold
     ? '<span class="book-pill">See other dates</span>'
     : `<span class="book-pill">Book<span class="vh"> ${esc(displayName(hotel))}</span></span>`;
-  return `<a class="ex${offer.sold ? ' is-sold' : ''}" href="${esc(href)}"><span class="ex-ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></span><span class="ex-top"><h3>${esc(displayName(hotel))}</h3>${price}</span>${sold}<p class="ex-area">${esc(area)}</p>${when}${chips}${kids}${pill}</a>`;
+  return `<a class="ex${offer.sold ? ' is-sold' : ''}" data-slug="${esc(hotel.slug)}" href="${esc(href)}"><span class="ex-ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></span><span class="ex-bd"><span class="ex-top"><h3>${esc(displayName(hotel))}</h3>${price}</span>${sold}<p class="ex-area">${esc(area)}</p>${when}${chips}${kids}${pill}</span></a>`;
 }
 function radioGroup(name, options, current, klass) {
   const now = String(current || '');
@@ -853,16 +854,32 @@ function searchPage(query) {
     const q = [];
     if (params.date) q.push('date=' + encodeURIComponent(params.date));
     if (params.want) q.push('want=' + encodeURIComponent(params.want));
-  if (params.guests) q.push('qty=' + encodeURIComponent(String(params.guests)));
+    if (params.guests) q.push('qty=' + encodeURIComponent(String(params.guests)));
     const href = '/h/' + h.slug + (q.length ? '?' + q.join('&') : '');
-    return { lat, lng, name: displayName(h), area: guestAreaName(h.area), href };
+    const on = result.dateOf(h) || params.date;
+    const offer = cardOffer(h, on, params.want);
+    return {
+      lat,
+      lng,
+      slug: h.slug,
+      name: displayName(h),
+      area: guestAreaName(h.area),
+      href,
+      price: offer.sold ? null : offer.price,
+      priceLabel: offer.sold ? '' : money(offer.price),
+    };
   }).filter(Boolean);
   const mapToggle = mapPins.length
     ? `<div class="view-toggle" role="group" aria-label="Results view"><button type="button" class="view-btn is-on" id="search-view-list" aria-pressed="true">List</button><button type="button" class="view-btn" id="search-view-map" aria-pressed="false">Map</button></div>`
     : '';
-  const mapBlock = mapPins.length
-    ? `<script type="application/json" id="search-map-data">${JSON.stringify(mapPins).replace(/</g, '\\u003c')}</script><div class="search-map-wrap" id="search-map-wrap" hidden><div id="search-map" class="search-map" role="region" aria-label="Map of listings"></div></div>`
+  const mapScript = mapPins.length
+    ? `<script type="application/json" id="search-map-data">${JSON.stringify(mapPins).replace(/</g, '\\u003c')}</script>`
     : '';
+  const mapPane = mapPins.length
+    ? `<div class="search-map-wrap" id="search-map-wrap" hidden><div id="search-map" class="search-map" role="region" aria-label="Map of listings"></div></div>`
+    : '';
+  const splitOpen = mapPins.length ? '<div class="search-split">' : '';
+  const splitClose = mapPins.length ? '</div>' : '';
   const resetHref = SearchQuery.href({ date: params.date });
   const wantRadios = radioGroup('want', [{ value: '', label: 'Any' }].concat(WANTS.filter(w => w.id).map(w => ({ value: w.id, label: w.name }))), params.want, 'fchip');
   const priceRadios = radioGroup('price', [{ value: '', label: 'Any price' }].concat(result.priceChoices.map(n => ({ value: String(n), label: 'Under $' + n }))), params.price ? String(params.price) : '', 'ropt');
@@ -892,13 +909,13 @@ ${keepSort}
 <button type="button" class="search-sum" aria-haspopup="dialog" aria-controls="search-sheet" aria-label="Edit search: ${esc(pillSub)}"><span class="t"><b>${esc(pillTitle)}</b><small>${esc(pillSub)}</small></span><span class="go" aria-hidden="true">${FIND_ICON}</span></button>
 <div class="toolrow">${mapToggle}<button type="button" class="fbtn" id="filters-btn" aria-haspopup="dialog" aria-controls="filter-drawer" aria-expanded="false">${FILTER_ICON}<span>Filters</span>${badge}</button><div class="ichips" role="group" aria-label="Mood">${mood}</div>
 <form class="sort-form" action="/search" method="get">${searchHidden(params, 'sort')}<label class="sort-label"><span class="sort-name">Sort</span><select class="hdc-pick" name="sort" aria-label="Sort listings" onchange="this.form.submit()">${sortOptions}</select></label><noscript><button type="submit">Sort</button></noscript></form></div>
-${mapBlock}
-<div data-live><div class="rhead cnt"><h1 id="search-count" role="status" aria-live="polite">${esc(countHeading)}</h1>${params.mood ? `<a class="mclear" href="${esc(SearchQuery.href({ ...params, mood: '' }))}">Clear</a>` : ''}</div>
+${mapScript}
+${splitOpen}<div class="search-main" data-live><div class="rhead cnt"><h1 id="search-count" role="status" aria-live="polite">${esc(countHeading)}</h1>${params.mood ? `<a class="mclear" href="${esc(SearchQuery.href({ ...params, mood: '' }))}">Clear</a>` : ''}</div>
 ${params.guestsCapped ? '<p class="cap-note" role="status">Up to 6 people per booking.</p>' : ''}
 ${chips ? `<div class="chips" aria-label="Active filters">${chips}${clear}</div>` : ''}
 ${empty || `<div class="${resultClass}">${cards}</div>`}${others}
 <p class="note">Fictional example hotels. ${LinkStyles.textLink('/guides', 'Read the day pass guides')}.</p>
-</div>
+</div>${mapPane}${splitClose}
 <div class="sheet-bd" data-close-drawer hidden></div>
 <form id="filter-drawer" class="drawer" action="/search" method="get" role="dialog" aria-modal="true" aria-labelledby="filters-h" hidden>
 <div class="dh"><h2 id="filters-h" tabindex="-1">Filters</h2><a class="tlink" href="${esc(resetHref)}">Reset</a><button class="ibtn" type="button" data-close-drawer aria-label="Close filters">Close</button></div>
@@ -1945,7 +1962,7 @@ function todaySection(h, { big = false, live = '/hotel/today-list', day = '' } =
   return `<section id="today" class="panel" data-live="${esc(live)}"><h2 class="ph2">Today's guests <span class="muted small">${rows.length} booking${rows.length === 1 ? '' : 's'} · ${spots} spots · ${people} people · ${tally.arrived} arrived of ${tally.booked} booked</span> <a class="link small no-print" href="/hotel/print">Print list</a></h2>${body}</section>`;
 }
 function dashShell(h, inner, { here = '', live = false } = {}) {
-  const links = [['/hotel#today', 'Today'], ['/hotel/analytics', 'Analytics'], ['/hotel/checkin', 'Check in'], ['/hotel/settings', 'Settings'], ['/hotel#lookup', 'Lookup'], ['/hotel#upcoming', 'Upcoming'], ['/hotel#avail', 'Availability'], ['/hotel#addons', 'Add-ons'], ['/hotel#blocked', 'Blocked dates']];
+  const links = [['/hotel#today', 'Today'], ['/hotel/analytics', 'Analytics'], ['/hotel/statement', 'Statements'], ['/hotel/checkin', 'Check in'], ['/hotel/settings', 'Settings'], ['/hotel#lookup', 'Lookup'], ['/hotel#upcoming', 'Upcoming'], ['/hotel#avail', 'Availability'], ['/hotel#addons', 'Add-ons'], ['/hotel#blocked', 'Blocked dates']];
   return page(h.name, `<div class="dash"><aside class="side"><div class="side-h"><span class="badge-inline">${h.status === 'pending' ? 'Pending approval' : 'Demo listing'}</span><h3>${esc(h.name)}</h3><p class="small">${esc(h.area)}</p></div>
 <nav>${links.map(([href, label]) => `<a href="${href}" class="${here === href ? 'on' : ''}">${label}</a>`).join('')}${h.status === 'pending' ? '' : `<a href="/h/${h.slug}" target="_blank">View listing</a>`}</nav></aside>
 <div class="dash-main">${h.status === 'pending' ? '<div class="pending-note"><b>Pending approval.</b> This hotel appears on the site once an admin approves it.</div>' : ''}${inner}</div></div>${live ? LIVE_LIST : ''}`, { nav: 'hotel', bare: true });
@@ -2323,21 +2340,36 @@ function readOps(token) {
   } catch { return null; }
 }
 app.get('/hotel/email-preview', hotelAuth, (req, res) => {
-  const h = req.hotel, tmr = HotelClock.offset(h, 1);
-  const rows = GuestPrivacy.presentAll(withNotes(db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? AND b.status!='cancelled' ORDER BY b.guest_name`).all(h.id, tmr)), h);
-  const spots = rows.reduce((s, b) => s + b.qty, 0);
-  const sum = getPasses(h.id).reduce((s, p) => s + p.daily_cap, 0);
-  const caps = [...new Set([8, Math.max(1, Math.round(sum / 2)), Math.max(1, sum - 4)].filter(n => n > 0 && n < sum))].sort((a, b) => a - b).slice(0, 3);
-  const pause = opsToken({ h: h.id, a: 'pause', d: tmr });
-  const capLinks = (caps.length ? caps : [Math.max(1, sum)]).map(n => `<a class="btn btn-line" href="/hotel/go/${opsToken({ h: h.id, a: 'cap', d: tmr, n })}">Cap at ${n}</a>`).join('');
-  res.send(dashShell(h, `<p class="eyebrow-s">Tonight's email</p><h1 class="l-title">Guest list for ${esc(nice(tmr))}</h1>
+  const h = req.hotel;
+  const now = clockNow();
+  const mail = HotelMail.nightBeforeFor(db, h, now, { signOps: payload => opsToken(payload) });
+  const to = h.contact_email || h.login;
+  res.send(dashShell(h, `<p class="eyebrow-s">Tonight's email</p><h1 class="l-title">Guest list for ${esc(mail.visitLabel)}</h1>
 <p class="muted">This is the note we would send the night before. The links work for 36 hours. They do not sign you in.</p>
-<article class="email-card"><p class="muted small">To ${esc(h.contact_email || h.login)} · ${esc(h.name)}</p>
-<h2>Tomorrow at the pool</h2>
-<p>${rows.length} booking${rows.length === 1 ? '' : 's'} · ${spots} spots</p>
-${rows.length ? `<ul class="email-guests">${rows.map(b => `<li><b>${esc(b.guest_name)}</b> <span class="muted">${esc(b.code)} · ${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}${b.addons ? ' · ' + esc(b.addons) : ''}</span></li>`).join('')}</ul>` : '<p class="muted">No day-pass guests tomorrow.</p>'}
-<div class="email-acts"><a class="btn btn-navy" href="/hotel/go/${pause}">Pause tomorrow</a>${capLinks}<a class="btn btn-line" href="/hotel/print?date=${tmr}">Print this list</a></div>
-</article>`, { here: '' }));
+${HotelMail.nightBeforePreviewHtml(mail, to)}`, { here: '' }));
+});
+app.get('/hotel/statement', hotelAuth, (req, res) => {
+  const h = req.hotel;
+  const now = clockNow();
+  const month = HotelMail.parseStatementMonth(req.query.month, h, now);
+  const st = HotelMail.statementFor(db, h, month, now);
+  const pick = esc(month);
+  res.send(dashShell(h, `<p class="eyebrow-s">Monthly statement</p><h1 class="l-title">Statement for ${esc(st ? st.label : month)}</h1>
+<p class="muted">This is the note we would send at the start of the month. It shows your payout only.</p>
+<form class="lookup" method="get" action="/hotel/statement" style="margin-bottom:18px"><label class="fl">Month<input name="month" value="${pick}" placeholder="YYYY-MM" pattern="\\d{4}-\\d{2}"></label><button class="btn btn-line">Show</button></form>
+${HotelMail.statementPreviewHtml(st)}`, { here: '/hotel/statement' }));
+});
+app.post('/internal/cron/hotel-mail', express.json(), (req, res) => {
+  const check = HotelMail.verifyCronSecret(req.get('x-cron-secret') || req.body?.secret);
+  if (check.missing) return res.status(404).end();
+  if (!check.ok) return res.status(403).end();
+  const origin = seo.ORIGIN || `http://localhost:${PORT}`;
+  HotelMail.tick(db, { now: clockNow(), signOps: payload => opsToken(payload), origin })
+    .then(result => res.json(result))
+    .catch(err => {
+      console.error(err && err.stack ? err.stack : err);
+      res.status(500).json({ error: 'tick failed' });
+    });
 });
 function opsMiss(res) {
   return res.status(400).send(page('Link expired', `<div class="wrap sec narrow"><h1 class="l-title">This link has expired</h1><p class="muted">Open tonight's email again from the dashboard, or <a href="/hotel/login">log in</a>.</p></div>`, { bare: true, index: false, canonical: false }));
@@ -3205,4 +3237,8 @@ app.listen(PORT, () => {
   console.log(`Hotel Day Club demo on http://localhost:${PORT}`);
   console.log('data: database at ' + paths.dbPath());
   backups.startScheduler(db);
+  HotelMail.startScheduler(db, {
+    signOps: payload => opsToken(payload),
+    origin: seo.ORIGIN || `http://localhost:${PORT}`,
+  });
 });

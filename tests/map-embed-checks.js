@@ -1,7 +1,13 @@
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const { arrivalInner } = require('../arrival');
 const { listingHtml } = require('../listingView');
 const { MapEmbed } = require('../mapEmbed');
+
+const searchUiJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'search-ui.js'), 'utf8');
+assert.ok(searchUiJs.includes('priceLabel'), 'search map data carries price labels');
+assert.ok(searchUiJs.includes('srch-map-pin-price'), 'search map renders price pills');
 
 const savedKey = process.env.GOOGLE_MAPS_EMBED_KEY;
 const KEY = 'dummy-embed-key';
