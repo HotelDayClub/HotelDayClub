@@ -367,8 +367,21 @@
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(mapInst);
         var bounds = [];
+        function mapPinIcon() {
+          return window.L.divIcon({
+            className: 'srch-map-pin',
+            html: '<span class="srch-map-pin-dot" aria-hidden="true"></span>',
+            iconSize: [28, 36],
+            iconAnchor: [14, 36],
+            popupAnchor: [0, -34],
+          });
+        }
         pins.forEach(function (p) {
-          var m = window.L.marker([p.lat, p.lng]).addTo(mapInst);
+          var m = window.L.marker([p.lat, p.lng], {
+            icon: mapPinIcon(),
+            alt: p.name,
+            title: p.name,
+          }).addTo(mapInst);
           var link = document.createElement('a');
           link.href = p.href;
           link.innerHTML = '<b></b><br><span></span>';

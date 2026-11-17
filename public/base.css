@@ -342,8 +342,6 @@ form:has(select[name="topic"] option[value="partnership"]:checked) .contact-note
 .how-grid{display:grid;gap:28px 36px;margin-top:28px}@media(min-width:760px){.how-grid{grid-template-columns:repeat(3,1fr)}}
 .how-grid>div{background:transparent;padding:0}
 .how .n,.how-grid .n{display:block;width:auto;height:auto;border-radius:0;background:transparent;color:var(--navy);font-family:var(--font-display);font-weight:560;font-size:1.8rem;line-height:1;margin-bottom:8px}
-.app-ftr{border-top:1px solid var(--line);padding:48px 0 36px;margin-top:24px;background:#fff}
-.app-ftr .wrap{display:flex;flex-direction:column;gap:12px}.app-ftr p{margin-top:6px}
 .badge-inline{display:inline-block;background:var(--hdc-rose-soft);color:var(--coral-dk);font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:999px;letter-spacing:.02em}
 /* listing */
 .listing{padding-top:24px;padding-bottom:30px}

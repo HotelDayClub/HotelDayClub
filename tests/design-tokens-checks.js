@@ -71,6 +71,11 @@ function start(port) {
   });
 }
 
+const baseCssText = fs.readFileSync(path.join(root, 'public/base.css'), 'utf8');
+assert.ok(/\.app-ftr\{[^}]*background:\s*var\(--hdc-navy\)/.test(baseCssText), 'footer uses navy background token');
+assert.ok(/\.app-ftr\{[^}]*color:\s*var\(--hdc-soft\)/.test(baseCssText), 'footer uses light text on navy');
+assert.ok(!/\.app-ftr\{[^}]*background:\s*#fff/.test(baseCssText), 'footer must not reset to white background');
+
 const guestPages = [
   '/',
   '/search',

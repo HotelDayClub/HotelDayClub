@@ -14,6 +14,7 @@ assert.match(
   /html:not\(\[data-n="1"\]\):not\(\[data-n="2"\]\):not\(\[data-n="3"\]\) \.d2 \.g-all/s,
   'four-plus gallery overlays show-all on last thumb',
 );
+assert.match(css, /\.d2 \.g-thumb\[data-i="3"\]\{grid-column:3;grid-row:2\}/, 'fourth thumb fills top-right grid cell');
 
 function demoHotel(photos) {
   return {
@@ -177,11 +178,26 @@ async function assertGalleryPill(port, slug, anchor, needIntersect) {
           const isTrack = el.id === 'g-track';
           if (!hasPhoto && !isTrack && !el.classList.contains('d2-pill') && el.id !== 'g-count') emptyTile = true;
         }
+        let gridHoles = false;
+        if (grid && n >= 4) {
+          const gr = grid.getBoundingClientRect();
+          const cw = gr.width / 3;
+          const ch = gr.height / 2;
+          const spots = [
+            { x: gr.left + cw * 2.5, y: gr.top + ch * 0.5, label: '2,1' },
+            { x: gr.left + cw * 2.5, y: gr.top + ch * 1.5, label: '3,2' },
+          ];
+          for (const spot of spots) {
+            const hit = document.elementsFromPoint(spot.x, spot.y).find(el => grid.contains(el) && (el.classList.contains('g-thumb') || el.id === 'g-track'));
+            if (!hit) gridHoles = true;
+          }
+        }
         return {
           n,
           pillNotTile,
           intersects,
           emptyTile,
+          gridHoles,
           allW: Math.round(ab.width),
           hostW: Math.round(hb.width),
           allH: Math.round(ab.height),
@@ -192,6 +208,7 @@ async function assertGalleryPill(port, slug, anchor, needIntersect) {
     assert.ok(v.pillNotTile, `${slug} show-all is a pill not a tile: ` + JSON.stringify(v));
     if (needIntersect) assert.ok(v.intersects, `${slug} pill on photo (${anchor}): ` + JSON.stringify(v));
     assert.ok(!v.emptyTile, `${slug} no empty gallery tile: ` + JSON.stringify(v));
+    assert.ok(!v.gridHoles, `${slug} gallery grid has no empty mosaic cell: ` + JSON.stringify(v));
   } finally {
     if (session) session.ws.close();
     chrome.kill('SIGTERM');

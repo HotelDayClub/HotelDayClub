@@ -10,6 +10,9 @@ const { DESTINATIONS } = require('../destinations');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-search-'));
 const dbPath = path.join(dir, 'daypass.db');
+const searchUiJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'search-ui.js'), 'utf8');
+assert.ok(searchUiJs.includes('divIcon'), 'map pins use Leaflet divIcon');
+assert.ok(!/marker-icon|marker-shadow|images\/marker/i.test(searchUiJs), 'map must not load missing Leaflet marker assets');
 
 function get(port, urlPath) {
   return new Promise((resolve, reject) => {
