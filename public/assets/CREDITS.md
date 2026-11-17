@@ -55,7 +55,7 @@ WebP and smaller mobile copies sit beside those JPEGs. The on-page chip says "St
 
 | File | Source | Notes |
 |---|---|---|
-| golden/img/fh-loungers.jpg, fh-loungers-sm.jpg (and .webp) | https://www.pexels.com/photo/3385041/ (Andrea Piacquadio) | Homepage hotels banner and For hotels hero. Distinct from listing hero-loungers stock. |
+| golden/img/fh-loungers.jpg, fh-loungers-sm.jpg (and .webp) | https://www.pexels.com/photo/3385041/ | Homepage hotels banner and For hotels hero. Distinct from listing hero-loungers stock. |
 | golden/img/fh-dashboard.jpg (and .webp) | Screenshot of `/hotel` as demo-saltwater, captured 17 Nov 2026 (AEDT) | Sample data only. Cropped to `.dash-main` (no header, banner or scrollbar). |
 | golden/img/fh-checkin.jpg (and .webp) | Screenshot of `/hotel/checkin` as demo-saltwater, captured 17 Nov 2026 (AEDT) | Sample data only. Cropped to `.dash-main`. |
 | golden/img/fh-guestlist.jpg (and .webp) | Screenshot of `/hotel` Today's guests as demo-saltwater, captured 17 Nov 2026 (AEDT) | Cropped to `.dash-main`. Multi-guest headline (Casey L. + 2 guests with names). |
