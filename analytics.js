@@ -274,7 +274,11 @@ ${hbars(report.byWeekday, row => row.bookings, row => row.label, row => `${row.b
 </div>`;
 }
 
+function report(db, hotel, opts = {}) {
+  return buildAnalytics(db, hotel, opts);
+}
+
 module.exports = {
   HOTEL_SHARE, RANGES, normalRange, share, pct, isDemoHotel,
-  recordListingView, buildAnalytics, renderAnalytics,
+  recordListingView, buildAnalytics, report, renderAnalytics,
 };
