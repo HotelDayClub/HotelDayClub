@@ -412,6 +412,11 @@ function start(port, extra = {}) {
         assert.ok(doc.body.includes('Effective ' + publishedOn), pathName);
         assert.ok(doc.body.includes('A clean pool towel is included for each guest unless the listing says &quot;Bring your own towel&quot;.'), pathName);
         assert.ok(!doc.body.includes('Version 1.0'), pathName);
+      } else if (pathName === '/privacy') {
+        assert.ok(doc.body.includes('Version 1.2'), pathName);
+        assert.ok(doc.body.includes('Effective 17 November 2026'), pathName);
+        assert.ok(!doc.body.includes('Version 1.0'), pathName);
+        assert.ok(!doc.body.includes('[publish date]'), pathName);
       } else {
         assert.ok(doc.body.includes('Version 1.1'), pathName);
         assert.ok(doc.body.includes('Effective ' + publishedOn), pathName);
@@ -486,21 +491,22 @@ function start(port, extra = {}) {
     assert.ok(risk.body.includes('Look after your own belongings.'));
     const privacy = await get(port, '/privacy');
     assert.ok(privacy.body.includes('Hotel Day Club is a registered business name (ABN 98 227 458 028) (&quot;we&quot;, &quot;us&quot;).'));
-    assert.ok(privacy.body.includes('Last updated 15 November 2026'));
-    assert.ok(privacy.body.includes('Effective 15 November 2026'));
-    assert.ok(!privacy.body.includes('Last updated 11 November 2026'));
+    assert.ok(privacy.body.includes('Last updated 17 November 2026'));
+    assert.ok(privacy.body.includes('Effective 17 November 2026'));
+    assert.ok(!privacy.body.includes('Last updated 15 November 2026'));
     assert.ok(privacy.body.includes('online booking platform'));
     assert.ok(!/booking agent/i.test(privacy.body));
-    assert.strictEqual((privacy.body.match(/Stripe/g) || []).length, 10);
-    assert.ok(privacy.body.includes('handled by our payment provider, Stripe, when live payments are switched on.'));
-    assert.ok(privacy.body.includes('from Stripe, about payment status and fraud-screening outcomes'));
-    assert.ok(privacy.body.includes('payments: Stripe'));
-    assert.ok(privacy.body.includes('Payment card data is handled by Stripe'));
-    assert.ok(privacy.body.includes('Stripe may process data in the United States and India'));
-    assert.ok(privacy.body.includes('where Stripe or its service providers operate'));
-    assert.ok(privacy.body.includes('Stripe may use Stripe Radar'));
-    assert.ok(privacy.body.includes('Stripe describes Radar'));
-    assert.ok(privacy.body.includes('Payment is processed by Stripe.'));
+    assert.ok(privacy.body.includes('do not take payment on this site yet'));
+    assert.ok(privacy.body.includes('we store the time you accepted the terms'));
+    assert.ok(privacy.body.includes('It does not see other hotels&#39; guests'));
+    assert.ok(privacy.body.includes('Your name is shortened and your email is masked'));
+    assert.ok(privacy.body.includes('no-show or an incident'));
+    assert.ok(privacy.body.includes('We do not send marketing email or SMS yet'));
+    assert.ok(!privacy.body.includes('two-factor authentication'));
+    assert.ok(privacy.body.includes('no automatic deletion period'));
+    assert.ok(privacy.body.includes('Server logs and backups'));
+    assert.ok(!privacy.body.includes('Payment is processed by Stripe'));
+    assert.ok(!privacy.body.includes('your IP address'));
     assert.ok(privacy.body.includes('Google Analytics 4 (measurement ID G-9F5ZH1T4YN)'));
     assert.ok(privacy.body.includes('You can block cookies in your browser.'));
     assert.ok(privacy.body.includes('We do not run advertising pixels'));
