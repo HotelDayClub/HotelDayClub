@@ -291,7 +291,6 @@ body.home .slot .b{padding:12px 14px 14px}
 body.home .slot h3{font-size:clamp(16px,4vw,20px);line-height:1.25}
 body.home .slot p{margin:6px 0 0;font-size:14px;line-height:1.45;overflow:visible;text-overflow:clip;display:block;white-space:normal}
 body.home .list{margin-top:6px;gap:12px}
-body.home #explore{padding-top:4px}
 body.home #explore .sec-row{flex-wrap:nowrap;align-items:flex-end;gap:8px;min-width:0}
 body.home #explore .sec-row > div{min-width:0;flex:1 1 auto}
 body.home #explore .see-all{white-space:nowrap;flex:0 0 auto}
@@ -394,7 +393,6 @@ body.home #explore .home-note{margin-top:2px;font-size:14px;line-height:1.3}
 @media (min-width:1280px){
   body.home .copy{padding:10px 5vw 8px}
   body.home .assure{padding:8px 5vw}
-  body.home #explore{padding-top:0}
   body.home .list{margin-top:4px}
   body.home .day{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
   body.home .slot img{min-height:150px}

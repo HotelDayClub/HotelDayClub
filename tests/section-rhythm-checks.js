@@ -30,15 +30,40 @@ function assertPaddingBlock(block, label) {
   assert.ok(!/margin:\s*var\(--section\)/.test(block), label + ' section margin doubling');
 }
 
-assertPaddingBlock(
-  ruleBlock(polish, 'body.home main > section:not(.assure):not(.steps):not(.wl-band)'),
-  'home main sections',
+function assertExploreNoPaddingTopOverride(css, label) {
+  for (const m of css.matchAll(/#explore\s*\{([^}]*)\}/g)) {
+    const decl = m[1].match(/padding-top\s*:\s*([^;}+]+)/);
+    if (!decl) continue;
+    const val = decl[1].trim();
+    assert.ok(/var\(--section\)/.test(val), label + ' #explore padding-top must use var(--section)');
+  }
+}
+
+function collectCssFiles(dir, out = []) {
+  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, ent.name);
+    if (ent.isDirectory()) collectCssFiles(p, out);
+    else if (ent.name.endsWith('.css')) out.push(p);
+  }
+  return out;
+}
+
+const homeMainSectionRhythm = ruleBlock(
+  polish,
+  'body.home main > section:not(.assure):not(.steps):not(.wl-band)',
 );
+assertPaddingBlock(homeMainSectionRhythm, 'home main sections');
+assert.match(homeMainSectionRhythm, /padding-block:\s*var\(--section\)/, 'home #explore top rhythm');
 assertPaddingBlock(ruleBlock(polish, 'body.home main > section.steps.steps-d1'), 'home steps');
 assertPaddingBlock(ruleBlock(polish, 'body.home main > section.wl-band'), 'home waitlist band');
 assert.match(ruleBlock(polish, 'body.home section.assure.assure-d1'), /padding:calc\(var\(--section\) \/ 2\)/, 'home trust strip desktop');
 assert.ok(polish.includes('body.home section.assure.assure-d1{padding-block:calc(var(--section) / 2);padding-inline:0}'), 'home trust strip mobile');
-assert.ok(!/body\.home #explore\{padding-top:/.test(polish), 'explore extra top padding');
+for (const file of collectCssFiles(path.join(root, 'public'))) {
+  assertExploreNoPaddingTopOverride(
+    fs.readFileSync(file, 'utf8'),
+    path.relative(root, file),
+  );
+}
 
 assertPaddingBlock(ruleBlock(polish, '.fh.fh-d1 > section.wrap'), 'for-hotels sections');
 assert.match(ruleBlock(polish, '.fh.fh-d1 > section.fh-figs'), /padding-block:calc\(var\(--section\) \/ 2\)/, 'for-hotels figs strip');
