@@ -264,7 +264,7 @@ function makeForm(opts = {}) {
     assert.ok(tickHints >= 4, 'disabled confirm hints ' + tickHints);
     assert.ok(!body.includes('Tick the 5 boxes'));
     assert.ok(body.includes('<span class="co-fact-val co-pass-line">Sun lounger × 1 · $45</span>'));
-    assert.ok(!body.includes('(Demo)'), 'checkout hotel heading drops demo suffix');
+    assert.ok(!body.includes('(Demo)'), 'B1-06 checkout hotel heading drops demo suffix');
     assert.ok(!/<co-pass-line>[^<]*\(demo\)/i.test(body), 'checkout pass line has no (demo)');
     assert.ok(body.includes(`href="/h/saltwater-terrace?date=${when}&amp;pass=lounger&amp;qty=1#book"`));
     assert.ok(body.includes(`href="/h/saltwater-terrace?date=${when}#book"`));

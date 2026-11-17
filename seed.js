@@ -424,7 +424,9 @@ function seedPerformance(db, now = new Date()) {
           }
           const spot = options[Math.floor(dayRand() * options.length)];
           const room = caps.get(spot.id);
+          if (room <= 0) continue;
           const qty = Math.min(room, dayRand() < 0.2 ? 2 : 1);
+          if (soldPass.get(spot.id, date).n + qty > spot.daily_cap) continue;
           caps.set(spot.id, room - qty);
           spots += qty;
           place(spot, date, qty, 'confirmed', false, date < todayStr && dayRand() < 0.04, dayRand);

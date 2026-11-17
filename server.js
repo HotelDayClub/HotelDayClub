@@ -2010,7 +2010,7 @@ function todaySection(h, { big = false, live = '/hotel/today-list', day = '' } =
 }
 function dashShell(h, inner, { here = '', live = false } = {}) {
   const links = [['/hotel#today', 'Today'], ['/hotel/analytics', 'Analytics'], ['/hotel/statement', 'Statements'], ['/hotel/checkin', 'Check in'], ['/hotel/settings', 'Settings'], ['/hotel#lookup', 'Lookup'], ['/hotel#upcoming', 'Upcoming'], ['/hotel#avail', 'Availability'], ['/hotel#addons', 'Add-ons'], ['/hotel#blocked', 'Blocked dates']];
-  return page(h.name, `<div class="dash"><aside class="side"><div class="side-h"><span class="badge-inline">${h.status === 'pending' ? 'Pending approval' : 'Demo listing'}</span><h3>${esc(h.name)}</h3><p class="small">${esc(h.area)}</p></div>
+  return page(displayName(h), `<div class="dash"><aside class="side"><div class="side-h"><span class="badge-inline">${h.status === 'pending' ? 'Pending approval' : 'Demo listing'}</span><h3>${esc(displayName(h))}</h3><p class="small">${esc(h.area)}</p></div>
 <nav>${links.map(([href, label]) => `<a href="${href}" class="${here === href ? 'on' : ''}">${label}</a>`).join('')}${h.status === 'pending' ? '' : `<a href="/h/${h.slug}" target="_blank">View listing</a>`}</nav></aside>
 <div class="dash-main">${h.status === 'pending' ? '<div class="pending-note"><b>Pending approval.</b> This hotel appears on the site once an admin approves it.</div>' : ''}${inner}</div></div>${live ? LIVE_LIST : ''}`, { nav: 'hotel', bare: true });
 }
@@ -2222,7 +2222,7 @@ app.get('/hotel', hotelAuth, (req, res) => {
   const grid = Object.fromEntries(days.map(d => [d, availability(h.id, d)]));
   res.send(dashShell(h, `
 ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
-<div class="dash-head"><div><p class="eyebrow-s">Hotel dashboard</p><h1 class="l-title">G'day, ${esc(h.name.replace(' (Demo)', ''))}</h1><p class="muted">${esc(nice(t))} · ${inToday} of ${dueToday} spots checked in today · ${tally.arrived} arrived of ${tally.booked} booked</p></div>
+<div class="dash-head"><div><p class="eyebrow-s">Hotel dashboard</p><h1 class="l-title">G'day, ${esc(displayName(h))}</h1><p class="muted">${esc(nice(t))} · ${inToday} of ${dueToday} spots checked in today · ${tally.arrived} arrived of ${tally.booked} booked</p></div>
 <div class="dash-export"><div class="dash-actions"><a class="btn btn-line" href="/hotel/analytics">Analytics</a><a class="btn btn-line" href="/hotel/bookings.csv">Download bookings</a><a class="btn btn-navy" href="/hotel/checkin">Check in a guest</a></div>
 ${GuestPrivacy.note()}</div></div>
 ${soldWarnHtml(h.id, passes, days, grid)}
@@ -2474,7 +2474,7 @@ app.get('/hotel/print', hotelAuth, (req, res) => {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today(h);
   const rows = GuestPrivacy.presentAll(withNotes(db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? AND b.status!='cancelled' ORDER BY b.guest_name`).all(h.id, date)), h);
   res.send(page('Guest list', `<div class="wrap sec print-sheet"><div class="no-print"><a class="link" href="/hotel">← Dashboard</a></div>
-<h1 class="l-title">${esc(h.name)}</h1><p class="muted">${esc(nice(date))} · ${rows.length} booking${rows.length === 1 ? '' : 's'}</p>
+<h1 class="l-title">${esc(displayName(h))}</h1><p class="muted">${esc(nice(date))} · ${rows.length} booking${rows.length === 1 ? '' : 's'}</p>
 <p>${esc(GuestCheckIn.line())}</p>
 <p class="no-print" style="margin:14px 0"><button class="btn btn-navy" type="button" onclick="print()">Print</button></p>
 <div class="tbl-wrap"><table class="tbl print-list"><thead><tr><th></th><th>Guest</th><th>Code</th><th>Seating</th><th>People</th><th>Notes</th></tr></thead><tbody>
@@ -2742,9 +2742,9 @@ app.post('/admin/approve', adminAuth, (req, res) => {
   const h = id && db.prepare('SELECT * FROM hotels WHERE id=? AND status=?').get(id, 'pending');
   if (!h) return adminGo(res, '/admin/hotels', 'Nothing to approve.');
   const gaps = venueMissing(h);
-  if (gaps.length) return adminGo(res, '/admin/hotels', `${h.name} is not live yet. Set ${gaps.join(', ')} first.`);
+  if (gaps.length) return adminGo(res, '/admin/hotels', `${displayName(h)} is not live yet. Set ${gaps.join(', ')} first.`);
   db.prepare("UPDATE hotels SET status='active' WHERE id=?").run(id);
-  return adminGo(res, '/admin/hotels', `Approved ${h.name}.`);
+  return adminGo(res, '/admin/hotels', `Approved ${displayName(h)}.`);
 });
 app.get('/admin', adminAuth, (req, res) => {
   const counts = AdminShell.counts(db);
@@ -2787,7 +2787,7 @@ app.get('/admin/hotels', adminAuth, (req, res) => {
   const counts = AdminShell.counts(db);
   const hotels = db.prepare("SELECT * FROM hotels ORDER BY CASE WHEN status='pending' THEN 0 ELSE 1 END, name, id").all();
   const rows = hotels.map(h => `<tr>
-<td data-label="Hotel"><span><b>${esc(h.name)}</b><div class="adm-muted">${esc(h.area || '')}</div>${pendingDetail(h)}</span></td>
+<td data-label="Hotel"><span><b>${esc(displayName(h))}</b><div class="adm-muted">${esc(h.area || '')}</div>${pendingDetail(h)}</span></td>
 <td data-label="Status">${hotelStatusPill(h.status)}</td>
 <td data-label="Login">${esc(h.login || '')}</td>
 <td data-label="Actions">${hotelActions(h)}</td>
