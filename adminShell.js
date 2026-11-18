@@ -80,7 +80,7 @@ class AdminShell {
     const body = rows.map(b => `<tr>
 <td data-label="Ref"><a href="/booking/${esc(b.code)}">${esc(b.code)}</a></td>
 <td data-label="Guest"><span><b>${esc(b.guest_name)}</b><div class="adm-muted">${esc(b.email)}</div></span></td>
-<td data-label="Hotel">${esc(b.hotel)}</td>
+<td data-label="Hotel">${esc(displayName(b.hotel))}</td>
 <td data-label="Date">${esc(nice(b.date))}</td>
 <td data-label="Status">${AdminShell.bookingStatus(b)}</td>
 <td class="num" data-label="Gross sales">${money(b.total)}</td>

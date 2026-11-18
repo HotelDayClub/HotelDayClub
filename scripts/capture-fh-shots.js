@@ -143,14 +143,17 @@ async function saveMainShot(buf, outBase, clipMeta, metaSource = 'dash-main') {
   const metaIn = await sharp(buf).metadata();
   const jpg = path.join(outDir, `${outBase}.jpg`);
   const webp = path.join(outDir, `${outBase}.webp`);
-  const resizeH = (outBase === 'fh-checkin' || outBase === 'fh-guestlist') ? FH_PAIR_H : null;
+  const resizeH = FH_PAIR_H; // all three marketing shots are 1600x922
+  // Fit, never crop: pad to the pair height with the page colour from the top-left pixel.
+  const px = await sharp(buf).extract({ left: 0, top: 0, width: 1, height: 1 }).raw().toBuffer();
+  const background = { r: px[0], g: px[1], b: px[2] };
   const pipe = resizeH
-    ? sharp(buf).resize(TARGET_W, resizeH, { fit: 'cover', position: 'top' })
+    ? sharp(buf).resize(TARGET_W, resizeH, { fit: 'contain', position: 'top', background })
     : sharp(buf).resize(TARGET_W, null, { withoutEnlargement: false });
   await pipe.jpeg({ quality: 90 }).toFile(jpg);
   const final = await sharp(jpg).metadata();
   if (final.width !== TARGET_W) throw new Error(`${outBase} width ${final.width}`);
-  const minH = outBase === 'fh-guestlist' ? 280 : 420;
+  const minH = resizeH || 420;
   if (final.height < minH || final.height > 1200) throw new Error(`${outBase} height ${final.height} out of range`);
   if (final.height === 735 && metaIn.height >= 700 && metaIn.height <= 750) {
     throw new Error(`${outBase} looks like a fixed viewport grab (${final.height}px)`);
@@ -162,6 +165,7 @@ async function saveMainShot(buf, outBase, clipMeta, metaSource = 'dash-main') {
 
 async function captureDashMain(ws, url, { beforeShot, outBase, clipSelector, metaSource = 'dash-main' } = {}) {
   await wsSend(ws, { method: 'Emulation.setScrollbarsHidden', params: { hidden: true } });
+  await wsSend(ws, { method: 'Emulation.setDeviceMetricsOverride', params: { width: 1600, height: 1000, deviceScaleFactor: 1, mobile: false } });
   await wsSend(ws, { method: 'Page.navigate', params: { url } });
   await waitStyled(ws);
   await stopLiveList(ws);
@@ -169,6 +173,8 @@ async function captureDashMain(ws, url, { beforeShot, outBase, clipSelector, met
     await wsSend(ws, { method: 'Runtime.evaluate', params: { expression: beforeShot, awaitPromise: true } });
     await new Promise(r => setTimeout(r, 600));
   }
+  const masked = await wsSend(ws, { method: 'Runtime.evaluate', params: { returnByValue: true, expression: MASK_MONEY } });
+  if (masked.exceptionDetails) throw new Error(outBase + ': ' + masked.exceptionDetails.text);
   const layout = await wsSend(ws, {
     method: 'Runtime.evaluate',
     params: {
@@ -197,14 +203,22 @@ async function captureDashMain(ws, url, { beforeShot, outBase, clipSelector, met
         const el = document.querySelector(${JSON.stringify(clipSelector)});
         if (!main || !el) throw new Error('clip target missing');
         if (!main.contains(el)) throw new Error('clip outside dash-main');
+        const pad = 16;
         const r = el.getBoundingClientRect();
-        return { x: r.left, y: r.top, width: r.width, height: Math.min(r.height, 920) };
+        const th = el.querySelector('thead');
+        const t = th ? th.getBoundingClientRect() : null;
+        return {
+          x: Math.max(0, r.left + window.scrollX - pad), y: Math.max(0, r.top + window.scrollY - pad),
+          width: r.width + pad * 2, height: Math.min(r.height, 900) + pad * 2,
+          theadTop: t ? t.top + window.scrollY : null, theadBottom: t ? t.bottom + window.scrollY : null,
+          headerText: th ? [...th.querySelectorAll('th')].map(c => c.textContent.trim()).join(' | ') : '',
+        };
       })()`
     : `(() => {
         const main = document.querySelector('.dash-main');
         const r = main.getBoundingClientRect();
-        const h = Math.min(main.scrollHeight, 920);
-        return { x: r.left, y: r.top, width: r.width, height: h };
+        const h = Math.min(main.scrollHeight, Math.round(r.width * ${FH_PAIR_H} / ${TARGET_W}));
+        return { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: h };
       })()`;
   const layout2 = await wsSend(ws, {
     method: 'Runtime.evaluate',
@@ -222,8 +236,23 @@ async function captureDashMain(ws, url, { beforeShot, outBase, clipSelector, met
     },
   });
   const buf = Buffer.from(cap.data, 'base64');
-  await saveMainShot(buf, outBase, { clipWidth: Math.round(clip.width), clipHeight: Math.round(clip.height) }, metaSource);
+  const extra = clip.headerText !== undefined ? { clipY: Math.round(clip.y), theadTop: Math.round(clip.theadTop), theadBottom: Math.round(clip.theadBottom), headerText: clip.headerText } : {};
+  await saveMainShot(buf, outBase, { clipWidth: Math.round(clip.width), clipHeight: Math.round(clip.height), moneyMasked: masked.result.value, ...extra }, metaSource);
 }
+
+// Hides every dollar amount inside .dash-main before capture (public marketing images show no prices or payouts).
+const MASK_MONEY = `(() => {
+  const main = document.querySelector('.dash-main');
+  const re = /A?\\$\\s?\\d[\\d,]*(?:\\.\\d{1,2})?/g;
+  const walk = document.createTreeWalker(main, NodeFilter.SHOW_TEXT);
+  let n; let hits = 0;
+  while ((n = walk.nextNode())) {
+    const next = n.nodeValue.replace(re, '$ ••');
+    if (next !== n.nodeValue) { n.nodeValue = next; hits += 1; }
+  }
+  if (/\\$\\s?\\d/.test(main.textContent)) throw new Error('dollar amount still visible');
+  return hits;
+})()`;
 
 const loginJs = `(function(){
   return fetch('/hotel/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'user=demo-saltwater&pass='+encodeURIComponent('${hotelPass.replace(/'/g, "\\'")}'),credentials:'include'}).then(r=>r.status);
@@ -295,11 +324,10 @@ const loginJs = `(function(){
       if (!el.textContent.includes('Casey L.')) throw new Error('missing Casey L.');
       const tbl = el.querySelector('.tbl-wrap') || el.querySelector('table');
       if (!tbl) throw new Error('missing guest table');
-      tbl.scrollIntoView({ block: 'start', behavior: 'instant' });
-      document.querySelector('.site-hd')?.setAttribute('aria-hidden', 'true');
+      window.scrollTo(0, 0);
       return true;
     })()`,
-    clipSelector: '#today .tbl-wrap',
+    clipSelector: '#today',
     metaSource: 'dash-main#today-table',
     outBase: 'fh-guestlist',
   });

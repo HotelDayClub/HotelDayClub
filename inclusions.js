@@ -92,17 +92,18 @@ const DRESS = {
   'bayview-spa': 'Swimwear. Robes are provided for the bathhouse in this demo.',
 };
 
+// Fallback when a pass has no photo. '' renders the no-photo tile: no non-tropical daybed or cabana photo exists.
 const SEAT_PHOTO = {
-  lounger: '/assets/photos/seats/lounger.webp',
-  daybed: '/assets/photos/seats/daybed.webp',
-  cabana: '/assets/photos/seats/cabana.webp',
-  chair: '/assets/photos/seats/chair.webp',
-  entry: '/assets/photos/seats/entry.webp',
-  custom: '/assets/photos/seats/pool.webp',
+  lounger: '/golden/img/cards/hero-loungers.webp',
+  daybed: '',
+  cabana: '',
+  chair: '/golden/img/cards/terrace-pool.webp',
+  entry: '/golden/img/cards/pool-lane-morning.webp',
+  custom: '/golden/img/cards/coastal-deck-pool.webp',
 };
 
 function seatPhoto(kind) {
-  return SEAT_PHOTO[kind] || SEAT_PHOTO.custom;
+  return Object.prototype.hasOwnProperty.call(SEAT_PHOTO, kind) ? SEAT_PHOTO[kind] : SEAT_PHOTO.custom;
 }
 
 function loadInclusions(db, hotelId) {

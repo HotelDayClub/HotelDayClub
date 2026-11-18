@@ -272,7 +272,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     const harbTrack = pages['harbourside-lido'].match(/id="g-track"[^>]*>([\s\S]*?)<\/div>/);
     assert.ok(harbTrack, 'harbourside gallery track');
     assert.match(harbTrack[1], /^<picture>[\s\S]*glass-roof-pool/);
-    assert.ok(harbTrack[1].includes('spa-loungers.jpg'));
+    assert.ok(harbTrack[1].includes('spa-sauna-room.jpg'));
     assert.strictEqual((harbTrack[1].match(/<img\b/g) || []).length, 4, 'four track photos');
 
     // A5: included amenities omit per-guest towel counts; towel chip is on the listing header.
@@ -473,7 +473,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(saltExplore.includes('href="#explore">Pool bar'), 'pool bar links to explore');
     assert.ok(saltExplore.includes('10am\u20134pm'), 'pool bar hours on explore card');
     assert.ok(saltExplore.includes('class="d2-ex-chip">Not included</span>'), 'Not included chip on bar');
-    assert.strictEqual((saltExplore.match(/class="d2-ex-card"/g) || []).length, 4, 'saltwater four explore cards');
+    assert.strictEqual((saltExplore.match(/class="d2-ex-card[" ]/g) || []).length, 4, 'saltwater four explore cards');
     const exSheetAt = saltExplore.indexOf('id="d2-explore-sheet"');
     const exSheetEnd = saltExplore.indexOf('</dialog>', exSheetAt);
     const exSheet = saltExplore.slice(exSheetAt, exSheetEnd > exSheetAt ? exSheetEnd : undefined);

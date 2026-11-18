@@ -14,7 +14,7 @@ const DEMO_SEED_V1 = {
   'skyline-rooftop': {
     intro: 'A short look at this example rooftop hotel. Your pass covers the pool during the hours below; the bar is on site and not included.',
     areas: [
-      { name: 'Rooftop pool', line: 'Heated pool with city views', details: 'A heated rooftop pool. Access is during the hours on your pass.', hours: '11am–4pm', photo: 'rooftop-city.jpg', kind: 'pool' },
+      { name: 'Rooftop pool', line: 'Heated pool with city views', details: 'A heated rooftop pool. Access is during the hours on your pass.', hours: '11am–4pm', photo: '', kind: 'pool' },
       { name: 'Pool deck', line: 'Loungers and chairs on the roof', details: 'Day passes include a lounger or pool chair on the deck.', hours: '11am–4pm', photo: 'hero-loungers.jpg', kind: 'other' },
       { name: 'Rooftop bar', line: 'A bar on the roof', details: 'A bar on the roof. ' + FOOD_RULE, hours: 'During pass hours, 11am–4pm', photo: 'hero-loungers.jpg', kind: 'bar' },
     ],

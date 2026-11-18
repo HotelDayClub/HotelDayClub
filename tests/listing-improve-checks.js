@@ -4,6 +4,7 @@ const path = require('path');
 const { FOOD_RULE, FREE_CANCEL, rulesText } = require('../offering');
 const { ListingImprove } = require('../listingImprove');
 const { listingHtml } = require('../listingView');
+const { mainFacilityFact } = require('../listingDir2');
 
 const shareJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'share.js'), 'utf8');
 
@@ -182,5 +183,24 @@ assert.ok(!html.includes('&lt;maintenance&gt;'));
 assert.ok(!/\bstars?\b|aggregateRating|\d\.\d\/5/i.test(html));
 assert.ok(!html.includes('1 × Towels'));
 assert.ok(!html.includes('\u2014'));
+
+assert.strictEqual(mainFacilityFact({ setting: 'outdoor', heated: 1 }, {
+  included: [{ label: 'Heated outdoor pool' }],
+  optional: [{ label: 'Pool bar' }],
+  onsite: [{ label: 'Spa treatment credit' }],
+}), 'Heated outdoor pool', 'included pool fact, not bar or credit extra');
+assert.strictEqual(mainFacilityFact({ setting: 'indoor', heated: 1 }, {
+  included: [],
+  optional: [{ label: 'Spa treatment credit' }],
+  onsite: [{ label: 'Magnesium pool' }],
+}), 'Heated indoor pool', 'no optional or onsite facility in Included key fact');
+for (const bad of ['Pool bar', 'Café', 'Kiosk snacks', 'Restaurant', 'Spa treatment credit', 'Drink credit']) {
+  const onlyExtra = mainFacilityFact({ setting: 'outdoor', heated: 0 }, {
+    included: [],
+    optional: [{ label: bad }],
+    onsite: [{ label: bad }],
+  });
+  assert.ok(!/bar|cafe|café|kiosk|restaurant|credit|treatment|food|drink/i.test(onlyExtra), `fallback must not echo venue extra: ${bad}`);
+}
 
 console.log('listing-improve-checks ok');

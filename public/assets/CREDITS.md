@@ -45,7 +45,8 @@ These files are generic stock. They are not photographs of the fictional example
 
 | File | Source | Notes |
 |---|---|---|
-| golden/img/fh-loungers.jpg, fh-loungers-sm.jpg (and .webp) | https://www.pexels.com/photo/36651201/ | Adrien Olichon. Homepage hotels banner and For hotels hero. |
+| golden/img/fh-loungers.jpg, fh-loungers-sm.jpg (and .webp) | https://www.pexels.com/photo/36651201/ | Adrien Olichon. For hotels hero. |
+| photos/rooftop-pergola-pool.jpg (and .webp, cards/.webp) | https://www.pexels.com/photo/36651201/ | Adrien Olichon. Copy of fh-loungers.jpg. Skyline Rooftop cover. |
 | golden/img/fh-dashboard.jpg (and .webp) | Screenshot of `/hotel` as demo-saltwater | Cropped to `.dash-main`. |
 | golden/img/fh-checkin.jpg (and .webp) | Screenshot of `/hotel/checkin` as demo-saltwater | Cropped to `.dash-main`. |
 | golden/img/fh-guestlist.jpg (and .webp) | Screenshot of `/hotel` `#today` as demo-saltwater | Cropped to `#today` within `.dash-main`. |

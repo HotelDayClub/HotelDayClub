@@ -1,39 +1,148 @@
 {
-  "infinity-ocean.jpg": { "provider": "pexels", "id": "13711854" },
-  "clifftop-ocean.jpg": { "provider": "pexels", "id": "30615183" },
-  "hero-loungers.jpg": { "provider": "pexels", "id": "38127493" },
-  "indoor-spa-pool.jpg": { "provider": "pexels", "id": "6667430" },
-  "rooftop-city.jpg": { "provider": "pexels", "id": "1870774" },
-  "hotel-gym.jpg": { "provider": "pexels", "id": "40371837" },
-  "glass-roof-pool.jpg": { "provider": "pexels", "id": "7174400" },
-  "spa-loungers.jpg": { "provider": "pexels", "id": "7031707" },
-  "restaurant-view.jpg": { "provider": "pexels", "id": "1267320" },
-  "coastal-deck-pool.jpg": { "provider": "pexels", "id": "3680282" },
-  "harbour-twilight-pool.jpg": { "provider": "pexels", "id": "31817160" },
-  "pool-lane-morning.jpg": { "provider": "pexels", "id": "19073612" },
-  "spa-sauna-room.jpg": { "provider": "pexels", "id": "8092430" },
-  "sea-terrace-pool.jpg": { "provider": "pexels", "id": "16248179" },
-  "terrace-pool.jpg": { "provider": "pexels", "id": "261327" },
-  "hero-swim.jpg": { "provider": "pexels", "id": "30975492" },
-  "hero-swim-sm.jpg": { "provider": "pexels", "id": "30975492" },
-  "gym-sm.jpg": { "provider": "pexels", "id": "1552242" },
-  "fh-loungers.jpg": { "provider": "pexels", "id": "36651201" },
-  "fh-loungers-sm.jpg": { "provider": "pexels", "id": "36651201" },
-  "golden/hero-swim.jpg": { "provider": "pexels", "id": "30975492" },
-  "golden/gym-sm.jpg": { "provider": "pexels", "id": "1552242" },
-  "golden/pool-lane-morning.jpg": { "provider": "pexels", "id": "19073612" },
-  "golden/terrace-pool.jpg": { "provider": "pexels", "id": "261327" },
-  "golden/spa-sauna-room.jpg": { "provider": "pexels", "id": "8092430" },
-  "golden/sea-terrace-pool.jpg": { "provider": "pexels", "id": "16248179" },
-  "golden/harbour-twilight-pool.jpg": { "provider": "pexels", "id": "31817160" },
-  "golden/fh-loungers.jpg": { "provider": "pexels", "id": "36651201" },
-  "golden/fh-loungers-sm.jpg": { "provider": "pexels", "id": "36651201" },
+  "infinity-ocean.jpg": {
+    "provider": "pexels",
+    "id": "13711854"
+  },
+  "clifftop-ocean.jpg": {
+    "provider": "pexels",
+    "id": "30615183"
+  },
+  "hero-loungers.jpg": {
+    "provider": "pexels",
+    "id": "38127493"
+  },
+  "indoor-spa-pool.jpg": {
+    "provider": "pexels",
+    "id": "6667430"
+  },
+  "rooftop-city.jpg": {
+    "provider": "pexels",
+    "id": "1870774"
+  },
+  "hotel-gym.jpg": {
+    "provider": "pexels",
+    "id": "40371837"
+  },
+  "glass-roof-pool.jpg": {
+    "provider": "pexels",
+    "id": "7174400"
+  },
+  "spa-loungers.jpg": {
+    "provider": "pexels",
+    "id": "7031707"
+  },
+  "restaurant-view.jpg": {
+    "provider": "pexels",
+    "id": "1267320"
+  },
+  "coastal-deck-pool.jpg": {
+    "provider": "pexels",
+    "id": "3680282"
+  },
+  "harbour-twilight-pool.jpg": {
+    "provider": "pexels",
+    "id": "31817160"
+  },
+  "pool-lane-morning.jpg": {
+    "provider": "pexels",
+    "id": "19073612"
+  },
+  "spa-sauna-room.jpg": {
+    "provider": "pexels",
+    "id": "8092430"
+  },
+  "sea-terrace-pool.jpg": {
+    "provider": "pexels",
+    "id": "16248179"
+  },
+  "terrace-pool.jpg": {
+    "provider": "pexels",
+    "id": "261327"
+  },
+  "hero-swim.jpg": {
+    "provider": "pexels",
+    "id": "30975492"
+  },
+  "hero-swim-sm.jpg": {
+    "provider": "pexels",
+    "id": "30975492"
+  },
+  "gym-sm.jpg": {
+    "provider": "pexels",
+    "id": "1552242"
+  },
+  "fh-loungers.jpg": {
+    "provider": "pexels",
+    "id": "36651201"
+  },
+  "fh-loungers-sm.jpg": {
+    "provider": "pexels",
+    "id": "36651201"
+  },
+  "golden/hero-swim.jpg": {
+    "provider": "pexels",
+    "id": "30975492"
+  },
+  "golden/gym-sm.jpg": {
+    "provider": "pexels",
+    "id": "1552242"
+  },
+  "golden/pool-lane-morning.jpg": {
+    "provider": "pexels",
+    "id": "19073612"
+  },
+  "golden/terrace-pool.jpg": {
+    "provider": "pexels",
+    "id": "261327"
+  },
+  "golden/spa-sauna-room.jpg": {
+    "provider": "pexels",
+    "id": "8092430"
+  },
+  "golden/sea-terrace-pool.jpg": {
+    "provider": "pexels",
+    "id": "16248179"
+  },
+  "golden/harbour-twilight-pool.jpg": {
+    "provider": "pexels",
+    "id": "31817160"
+  },
+  "golden/fh-loungers.jpg": {
+    "provider": "pexels",
+    "id": "36651201"
+  },
+  "golden/fh-loungers-sm.jpg": {
+    "provider": "pexels",
+    "id": "36651201"
+  },
   "seats": {
-    "lounger": { "provider": "pexels", "id": "38127493" },
-    "daybed": { "provider": "pexels", "id": "1870774" },
-    "cabana": { "provider": "pexels", "id": "7174400" },
-    "chair": { "provider": "pexels", "id": "40371837" },
-    "entry": { "provider": "pexels", "id": "13711854" },
-    "pool": { "provider": "pexels", "id": "7174400" }
+    "lounger": {
+      "provider": "pexels",
+      "id": "38127493"
+    },
+    "daybed": {
+      "provider": "pexels",
+      "id": "1870774"
+    },
+    "cabana": {
+      "provider": "pexels",
+      "id": "7174400"
+    },
+    "chair": {
+      "provider": "pexels",
+      "id": "40371837"
+    },
+    "entry": {
+      "provider": "pexels",
+      "id": "13711854"
+    },
+    "pool": {
+      "provider": "pexels",
+      "id": "7174400"
+    }
+  },
+  "rooftop-pergola-pool.jpg": {
+    "provider": "pexels",
+    "id": "36651201"
   }
 }

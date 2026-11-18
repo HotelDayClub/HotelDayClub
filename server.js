@@ -5,7 +5,7 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
 const db = require('./db');
-const { seed, ensureAddons, ensureSchedules, seedPerformance } = require('./seed');
+const { seed, ensureAddons, ensureSchedules, seedPerformance, seedGuestNames } = require('./seed');
 const {
   seatPhoto, SEAT_PHOTO, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
   includedLines, includedNote, addonsHtml, inclusionsForm, beatsHtml, policyInner, guestFoodLine, PASS_FOOD_LINE, FOOD_DRINK,
@@ -524,8 +524,8 @@ function homePage({ destination = '', joined = false, error = '', values = {} } 
     bondi: 'coastal-deck-pool.jpg',
     manly: 'hotel-gym.jpg',
     'north-sydney': 'indoor-spa-pool.jpg',
-    'eastern-suburbs': 'spa-loungers.jpg',
-    parramatta: 'harbour-twilight-pool.jpg',
+    'eastern-suburbs': '',
+    parramatta: '',
   };
   const tileHtml = (d, i) => {
     const tileFile = DEST_TILE_PHOTOS[d.id] || '';
@@ -568,9 +568,9 @@ ${reassureStrip(false, { home: true })}
 <p class="home-note">One example day. The hotel sets the hours.</p>
 <div class="day">
 ${slot('gym-sm', 'Two people training with battle ropes in a gym', '8 am', 'Swim &amp; gym', 'A gym session, then laps before the city wakes up.')}
-${slot('terrace-pool', 'Rectangular terrace pool with red loungers under blue sky', '12 pm', 'Daybed by the pool', 'Stretch out in the shade.')}
+${slot('sea-terrace-pool', 'Terrace pool with loungers overlooking the sea', '12 pm', 'Lounger by the pool', 'Stretch out in the shade.')}
 ${slot('spa-sauna-room', 'Warm-lit wooden sauna room with benches and bucket', '3 pm', 'Spa afternoon', 'Steam, sauna, a treatment if the hotel offers one.')}
-${slot('sea-terrace-pool', 'Terrace pool with loungers overlooking the sea', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
+${slot('harbour-twilight-pool', 'Infinity pool with two loungers at sunset', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
 </div></section>
 <section id="destinations" data-rv><div class="sec-row"><div><span class="kicker sand">Explore by destination</span><h2>Where to spend the day</h2></div>${LinkStyles.sectionAction('/search', 'All destinations')}</div>
 ${destTiles}
@@ -593,7 +593,7 @@ ${FAQ_PLUS('Can I cancel?', 'Yes. Free cancellation up to 24 hours before your a
 <div class="hp" aria-hidden="true"><label>Company website<input name="company_website" tabindex="-1" autocomplete="off" value=""></label></div>
 <label class="wl-email"><span class="sr-only">Email</span><input name="email" type="email" required autocomplete="email" maxlength="254" placeholder="you@example.com"></label>
 <button class="btn" type="submit">Join the waitlist</button></form></div></section>
-<div class="hotels hotels-d1" id="hotels"><div class="hotels-copy"><span class="kicker">For hotels</span><h2>A quiet pool, put to use.</h2><p>List spare pool, gym and spa capacity. You set the hours, prices and guest numbers.</p><a class="btn" href="/for-hotels">Talk to us</a></div><picture class="hotels-ph"><source type="image/webp" srcset="/golden/img/fh-loungers-sm.webp"><img src="/golden/img/fh-loungers-sm.jpg" alt="Rooftop pool with pergolas and loungers, city towers behind" width="800" height="534" loading="lazy" decoding="async"></picture></div>
+<div class="hotels hotels-d1" id="hotels"><div class="hotels-copy"><span class="kicker">For hotels</span><h2>A quiet pool, put to use.</h2><p>List spare pool, gym and spa capacity. You set the hours, prices and guest numbers.</p><a class="btn" href="/for-hotels">Talk to us</a></div><picture class="hotels-ph"><source type="image/webp" srcset="/golden/img/cards/hero-loungers.webp"><img src="/assets/photos/hero-loungers.jpg" alt="Sun loungers beside a hotel pool" width="800" height="533" loading="lazy" decoding="async"></picture></div>
 <noscript><style>#waitlist{display:block;position:static;margin:24px auto 40px}</style></noscript>
 <dialog id="waitlist" aria-labelledby="wl-title" data-open="${openWait ? '1' : '0'}"><div class="wl-in">
 <button type="button" class="wl-x" data-close>Close</button>
@@ -1807,7 +1807,7 @@ ${check('Bookings, sales and fill rate in one place')}
 ${check('Pause a day or block dates yourself')}
 </ul>
 </div>
-<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-dashboard.webp"><img src="/golden/img/fh-dashboard.jpg" alt="The hotel dashboard for a fictional demo hotel, showing today's check-ins, pause buttons and booking totals" width="1600" height="735" loading="lazy" decoding="async"></picture></div>
+<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-dashboard.webp"><img src="/golden/img/fh-dashboard.jpg" alt="The hotel dashboard for a fictional demo hotel, showing today's check-ins and pause buttons, with amounts hidden" width="1600" height="922" loading="lazy" decoding="async"></picture></div>
 <figcaption>Sample data from the demo dashboard. The hotel and figures are fictional.</figcaption></figure>
 </section>
 <section class="wrap fh-product">
@@ -1976,17 +1976,20 @@ function hotelRows(rows, { hotel, adminCancel }) {
   if (hotel && !adminCancel) rows = GuestPrivacy.presentAll(rows, hotel);
   return rows;
 }
-const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false, hotel = null } = {}) => {
+// amount: 'payout' on hotel pages (the hotel's share), 'total' on admin pages (what the guest paid).
+const amountHead = amount => amount === 'total' ? 'Guest paid' : 'Your payout';
+const amountOf = (b, amount) => money(amount === 'total' ? b.total : share(b.total).payout);
+const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false, hotel = null, amount = 'payout' } = {}) => {
   rows = hotelRows(rows, { hotel, adminCancel });
   const head = arrival ? '<th>Arrival</th>' : '';
   const cell = b => arrival ? `<td>${arrival === 'detail' ? `Expected arrival: ${arrivalCell(b.expected_arrival, 'detail')}` : arrivalCell(b.expected_arrival, 'short')}</td>` : '';
   const versionLine = b => versions ? ConsentLog.adminLine(b) : '';
-  return rows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th>${hotelCol ? '<th>Hotel</th>' : ''}<th>Date</th><th>Guest</th>${head}<th>Seating</th><th>Spots</th><th>Your payout</th><th>Status</th></tr></thead><tbody>
-${rows.map(b => { const g = BookingGuests.headlineHtml(b, hotel, clockNow()); return `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(displayName(b.hotel))}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(g.title)}</b>${g.others} ${parkingTag(b)}${contactLine(b)}${versionLine(b)}</td>${cell(b)}${seatCell(b)}<td>${b.qty}</td><td>${money(share(b.total).payout)}</td>
+  return rows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th>${hotelCol ? '<th>Hotel</th>' : ''}<th>Date</th><th>Guest</th>${head}<th>Seating</th><th>Spots</th><th>${amountHead(amount)}</th><th>Status</th></tr></thead><tbody>
+${rows.map(b => { const g = BookingGuests.headlineHtml(b, hotel, clockNow()); return `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(displayName(b.hotel))}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(g.title)}</b>${g.others} ${parkingTag(b)}${contactLine(b)}${versionLine(b)}</td>${cell(b)}${seatCell(b)}<td>${b.qty}</td><td>${amountOf(b, amount)}</td>
 <td>${statusCell(b, { checkin, redirect, day, compact: true, adminCancel, hotel })}${noteBits(b, hotel, adminCancel)}${logForm(b, redirect, log)}</td></tr>`; }).join('')}</tbody></table></div>` : '<p class="muted">No guests.</p>';
 };
 const BQ = `SELECT b.*, p.name pass, p.holds, h.name hotel, (SELECT group_concat(ba.name || ' × ' || ba.qty, ', ') FROM booking_addons ba WHERE ba.booking_id=b.id) addons, (SELECT 1 FROM booking_addons ba JOIN addons a ON a.id=ba.addon_id WHERE ba.booking_id=b.id AND a.code='parking') parking_addon, (SELECT mode FROM inclusions i WHERE i.hotel_id=b.hotel_id AND i.code='parking') parking_mode FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id JOIN hotels h ON h.id=b.hotel_id`;
-function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false, hotel = null } = {}) {
+function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false, hotel = null, amount = 'payout' } = {}) {
   rows = hotelRows(rows, { hotel, adminCancel });
   if (!rows.length) return '<p class="muted">No guests.</p>';
   return `<div class="guest-cards">${rows.map(b => {
@@ -2000,7 +2003,7 @@ function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel
       : `<p class="muted small">Arrival: ${arrivalCell(b.expected_arrival, 'short')}</p>`;
     const versionLine = versions ? ConsentLog.adminLine(b) : '';
     const g = BookingGuests.headlineHtml(b, hotel, clockNow());
-    return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(g.title)}</b>${g.others} ${parkingTag(b)}<div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(displayName(b.hotel)) : ''} · ${esc(nice(b.date))}</div>${versionLine}</div><b>${money(share(b.total).payout)}</b></div>
+    return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(g.title)}</b>${g.others} ${parkingTag(b)}<div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(displayName(b.hotel)) : ''} · ${esc(nice(b.date))}</div>${versionLine}</div><b>${amountOf(b, amount)}</b></div>
 <p>${esc(label)} × ${b.qty} · ${party} ${party === 1 ? 'person' : 'people'}</p>${arrivalLine}${rules}${adds}${noteBits(b, hotel, adminCancel)}${action}${logForm(b, redirect, log)}</article>`;
   }).join('')}</div>`;
 }
@@ -2786,7 +2789,7 @@ app.get('/admin/bookings', adminAuth, (req, res) => {
   const rows = db.prepare(`${BQ} ${whereSql} ORDER BY b.created_at DESC, b.id DESC LIMIT 10 OFFSET ?`).all(...filter.args, (page - 1) * 10);
   const hotels = db.prepare('SELECT id, name FROM hotels ORDER BY name').all();
   const list = rows.length
-    ? guestList(rows, { checkin: false, hotelCol: true, log: false, adminCancel: true, arrival: 'short', versions: true })
+    ? guestList(rows, { checkin: false, hotelCol: true, log: false, adminCancel: true, arrival: 'short', versions: true, amount: 'total' })
     : '<p>No bookings match. <a href="/admin/bookings">Clear filters.</a></p>';
   const inner = `${AdminShell.flash(req.query.msg)}
 ${AdminShell.heading('Bookings', 'Newest first. Search by code, guest name or email.')}
@@ -3066,7 +3069,9 @@ ensureAccess(db);
 HotelAmenities.ensure(db);
 ensureArrival(db);
 ensureExplore(db);
+require('./demoPhotos').applyDemoPhotos(db);
 seedPerformance(db);
+seedGuestNames(db);
 syncHoursLabels(db);
 migrateHotelPasswords(db);
 adminPassword();

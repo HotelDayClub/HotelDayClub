@@ -7,30 +7,30 @@ const MAX_AREAS = 12;
 // Named areas already stated on each fictional listing. Nothing here adds a venue the copy does not name.
 const PRESETS = {
   'saltwater-terrace': [
-    { name: 'Infinity pool', blurb: 'A heated infinity pool on level one, looking straight out to the Pacific.', hours: 'Daily 10am–4pm', photo: 'infinity-ocean.jpg' },
+    { name: 'Infinity pool', blurb: 'A heated infinity pool on level one, looking straight out to the Pacific.', hours: 'Daily 10am–4pm', photo: 'harbour-twilight-pool.jpg' },
     { name: 'Pool bar', blurb: 'The pool bar sells drinks from 11.', hours: 'From 11am', servesFood: 1 },
   ],
   'skyline-rooftop': [
-    { name: 'Heated rooftop pool', blurb: 'A heated rooftop pool with city views.', hours: 'Mon–Thu 11am–4pm, Sat–Sun 11am–4pm', photo: 'rooftop-city.jpg' },
+    { name: 'Heated rooftop pool', blurb: 'A heated rooftop pool with city views.', hours: 'Mon–Thu 11am–4pm, Sat–Sun 11am–4pm', photo: '' },
     { name: 'Bar', blurb: 'A bar selling drinks from noon.', hours: 'From noon', servesFood: 1 },
     { name: 'Gym', blurb: 'Use the gym on the same day.', link: 'none' },
   ],
   'harbourside-lido': [
-    { name: 'Glass-roofed pool', blurb: 'A light-filled pool under a glass roof.', hours: 'Daily 9am–6pm', photo: 'glass-roof-pool.jpg' },
+    { name: 'Glass-roofed pool', blurb: 'A light-filled pool under a glass roof.', hours: 'Daily 9am–6pm', photo: '' },
     { name: 'Steam room', blurb: 'Steam room during the visit.' },
     { name: 'Sauna', blurb: 'Sauna during the visit.' },
     { name: 'Café', blurb: PURCHASE + '.', servesFood: 1 },
   ],
   'palm-court': [
-    { name: 'Lagoon pool', blurb: 'A big lagoon pool ringed by palms, with plenty of shade and a family-friendly shallow end.', hours: 'Thu–Sun 10am–5pm', photo: 'glass-roof-pool.jpg' },
+    { name: 'Lagoon pool', blurb: 'A big lagoon pool ringed by palms, with plenty of shade and a family-friendly shallow end.', hours: 'Thu–Sun 10am–5pm', photo: 'coastal-deck-pool.jpg' },
     { name: 'Café', blurb: PURCHASE + '.', servesFood: 1 },
   ],
   'manly-sands': [
-    { name: 'Magnesium pool', blurb: 'A magnesium pool.', hours: 'Daily 10am–4pm', photo: 'clifftop-ocean.jpg' },
+    { name: 'Magnesium pool', blurb: 'A magnesium pool.', hours: 'Daily 10am–4pm', photo: 'coastal-deck-pool.jpg' },
     { name: 'Kiosk', blurb: 'A kiosk selling food and drinks. No glass.', servesFood: 1 },
   ],
   'bayview-spa': [
-    { name: 'Bathhouse', blurb: 'A calm bathhouse with hot and cold plunge.', hours: 'Tue–Sun 9am–4pm', photo: 'spa-loungers.jpg' },
+    { name: 'Bathhouse', blurb: 'A calm bathhouse with hot and cold plunge.', hours: 'Tue–Sun 9am–4pm', photo: 'spa-sauna-room.jpg' },
     { name: 'Plunge pools', blurb: 'Hot and cold plunge.', hours: 'Tue–Sun 9am–4pm', photo: 'indoor-spa-pool.jpg' },
     { name: 'Heated outdoor pool', blurb: 'A heated outdoor pool.', hours: 'Tue–Sun 9am–4pm' },
     { name: 'Sauna and steam room', blurb: 'Sauna and steam room during the visit.' },

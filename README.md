@@ -13,8 +13,13 @@ npm run restore -- /path/to/hdc-YYYY-MM-DD-HHmm.sqlite   # stop the server first
 npm run bg           # runs in the background on http://localhost:3030, with an auto-restart loop (log: server.log)
 npm test             # Playwright end-to-end test (screenshots are local-only, not committed)
 npm run check        # all Node checks in tests/*-checks.js (layout checks need Chrome locally)
-npm run check:layout # pass-row and search card height smoke tests only (same as tests/layout-checks.js)
+npm run check:layout # Chrome layout checks: tests/layout-checks.js, then tests/layout-regression-checks.js
 ```
+
+### Checks in CI
+`.github/workflows/checks.yml` runs two jobs on Node 20 for every push to `main` or `cursor/**` and for every pull request:
+- **check** runs `npm run check`: every `tests/*-checks.js` file in turn. `scripts/check.js` clears `TZ` for each file, so results do not depend on the machine's time zone.
+- **layout** runs `node tests/layout-checks.js`, then `node tests/layout-regression-checks.js`. Both start the app and a headless Chrome and measure the rendered page: pass rows and search cards, then the confirmation ticket stub, home, checkout and For hotels. Run the same two files locally with `npm run check:layout` (Chrome required).
 
 ### Security headers
 HTML responses set Content-Security-Policy, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, Referrer-Policy, and Permissions-Policy. Strict-Transport-Security is sent when the request is HTTPS (`x-forwarded-proto: https`). `X-Powered-By` is disabled. Some inline styles still use `unsafe-inline` in CSP; moving them behind nonces is a noted follow-up.

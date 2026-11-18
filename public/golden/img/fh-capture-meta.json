@@ -2,22 +2,29 @@
   "fh-dashboard": {
     "source": "dash-main",
     "width": 1600,
-    "height": 927,
-    "clipWidth": 1588,
-    "clipHeight": 920
+    "height": 922,
+    "clipWidth": 1368,
+    "clipHeight": 788,
+    "moneyMasked": 7
   },
   "fh-checkin": {
     "source": "dash-main",
     "width": 1600,
     "height": 922,
-    "clipWidth": 1596,
-    "clipHeight": 920
+    "clipWidth": 1368,
+    "clipHeight": 788,
+    "moneyMasked": 3
   },
   "fh-guestlist": {
     "source": "dash-main#today-table",
     "width": 1600,
     "height": 922,
-    "clipWidth": 1490,
-    "clipHeight": 556
+    "clipWidth": 1328,
+    "clipHeight": 661,
+    "moneyMasked": 7,
+    "clipY": 499,
+    "theadTop": 567,
+    "theadBottom": 601,
+    "headerText": "Code | Date | Guest | Arrival | Seating | Spots | Your payout | Status"
   }
 }

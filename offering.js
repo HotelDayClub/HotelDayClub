@@ -17,7 +17,7 @@ const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const PHOTOS = [
   ['hero-loungers.jpg', 'Loungers'],
-  ['rooftop-city.jpg', 'Rooftop'],
+  ['rooftop-pergola-pool.jpg', 'Rooftop pool'],
   ['infinity-ocean.jpg', 'Infinity pool'],
   ['clifftop-ocean.jpg', 'Ocean pool'],
   ['glass-roof-pool.jpg', 'Indoor pool'],

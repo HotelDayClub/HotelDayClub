@@ -188,12 +188,12 @@ function passPhoto(p) {
 }
 function passThumb(p, alt) {
   const file = safePhoto(String(p.photo || ''));
-  if (!file) return `<img src="${esc(seatPhoto(p.kind || 'custom'))}" alt="${esc(alt)}" width="88" height="88" loading="lazy" decoding="async">`;
+  if (!file) return seatPhoto(p.kind || 'custom') ? `<img src="${esc(seatPhoto(p.kind || 'custom'))}" alt="${esc(alt)}" width="88" height="88" loading="lazy" decoding="async">` : `<span class="d2-noph" aria-hidden="true">${icon('sun')}</span>`;
   return PhotoAssets.imgTag(file, { alt, width: 88, height: 88, sizes: '88px' });
 }
 function passRowPhoto(p, alt) {
   const file = safePhoto(String(p.photo || ''));
-  if (!file) return `<img src="${esc(seatPhoto(p.kind || 'custom'))}" alt="${esc(alt)}" width="800" height="600" loading="lazy" decoding="async">`;
+  if (!file) return seatPhoto(p.kind || 'custom') ? `<img src="${esc(seatPhoto(p.kind || 'custom'))}" alt="${esc(alt)}" width="800" height="600" loading="lazy" decoding="async">` : `<span class="d2-noph" aria-hidden="true">${icon('sun')}</span>`;
   return PhotoAssets.imgTag(file, { alt, width: 800, height: 600, sizes: '(max-width:390px) 100vw, 40vw', loading: 'lazy' });
 }
 function galleryPhoto(p, alt, i) {
@@ -221,11 +221,12 @@ ${factsHtml || ''}<button type="button" class="d2-rm text-link" id="d2-rm" aria-
 
 function mainFacilityFact(h, groups) {
   const g = groups || {};
-  const rows = [...(g.included || []), ...(g.optional || []), ...(g.onsite || [])];
+  const skipRe = /food|drink|bar|cafe|café|kiosk|restaurant|credit|treatment/i;
   const facilityRe = /pool|spa|gym|sauna|steam|lido|plunge|bathhouse/i;
-  for (const row of rows) {
+  for (const row of g.included || []) {
     const label = String(row.label || '').trim();
-    if (label && facilityRe.test(label)) return label;
+    if (!label || skipRe.test(label)) continue;
+    if (facilityRe.test(label)) return label;
   }
   const pf = policyFacts(h || {});
   const pool = String(pf.pool || '').trim();

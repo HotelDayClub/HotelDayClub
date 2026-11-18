@@ -47,8 +47,7 @@ async function sampleTopStrip(abs) {
     assert.ok(fs.existsSync(abs), name + ' exists');
     const fileMeta = await sharp(abs).metadata();
     assert.strictEqual(fileMeta.width, 1600, name + ' width');
-    const minH = base === 'fh-guestlist' || base === 'fh-checkin' ? 900 : 420;
-    assert.ok(fileMeta.height >= minH && fileMeta.height <= 1200, name + ' height ' + fileMeta.height);
+    assert.strictEqual(fileMeta.height, 922, name + ' height ' + fileMeta.height);
     assert.notStrictEqual(fileMeta.height, 735, name + ' must not be legacy 1600×735 viewport grab');
 
     const strip = await sampleTopStrip(abs);
@@ -58,6 +57,14 @@ async function sampleTopStrip(abs) {
     hashes.push(crypto.createHash('sha256').update(fs.readFileSync(abs)).digest('hex'));
   }
   assert.strictEqual(new Set(hashes).size, shots.length, 'for-hotels screenshots must be distinct');
+  for (const base of ['fh-dashboard', 'fh-checkin', 'fh-guestlist']) {
+    assert.strictEqual(meta[base].height, 922, base + ' is 1600x922');
+    assert.ok(meta[base].moneyMasked >= 1, base + ' dollar amounts masked before capture');
+  }
+  const gl = meta['fh-guestlist'];
+  for (const word of ['Code', 'Guest', 'Seating', 'Status']) assert.ok(String(gl.headerText).split(' | ').includes(word), 'fh-guestlist header row shows ' + word);
+  assert.ok(gl.theadTop >= gl.clipY && gl.theadBottom <= gl.clipY + gl.clipHeight, 'fh-guestlist clip contains the table header row');
+  assert.ok(gl.clipY > 200, 'fh-guestlist clip starts at the #today card, not the page top');
 
   for (const base of ['fh-dashboard', 'fh-checkin', 'fh-guestlist']) {
     const webp = path.join(imgDir, `${base}.webp`);
