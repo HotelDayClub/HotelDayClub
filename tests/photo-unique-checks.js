@@ -48,6 +48,9 @@ function assertPageUnique(label, html) {
     assert.ok(!seen.has(k), `${label} duplicate source ${k} (${src})`);
     seen.add(k);
   }
+  const heroLoungersId = 'pexels:38127493';
+  const heroHits = srcs.filter(s => sourceKey(sourceForSrc(s)) === heroLoungersId);
+  assert.ok(heroHits.length <= 1, `${label} must not show hero-loungers more than once`);
 }
 
 (async () => {
