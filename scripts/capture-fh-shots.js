@@ -8,6 +8,7 @@ const sharp = require('sharp');
 
 const outDir = path.join(__dirname, '..', 'public', 'golden', 'img');
 const TARGET_W = 1600;
+const FH_PAIR_H = 922;
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-fh-shots-'));
 const dbPath = path.join(dir, 'app.db');
 const port = 3720 + Math.floor(Math.random() * 100);
@@ -98,19 +99,25 @@ function prepGuestData(db) {
   const BookingGuests = require('../bookingGuests');
   const clock = process.env.HDC_NOW ? new Date(process.env.HDC_NOW) : new Date();
   const day = HotelClock.today(h, clock);
+  const passTypes = db.prepare('SELECT id, code, price, holds FROM pass_types WHERE hotel_id=?').all(h.id);
+  const passBy = Object.fromEntries(passTypes.map(p => [p.code, p]));
   const rows = db.prepare('SELECT id FROM bookings WHERE hotel_id=? AND date=? ORDER BY id').all(h.id, day);
   const keep = rows.slice(0, 3);
   for (const row of rows.slice(3)) purgeBooking(db, row.id);
   if (!keep.length) throw new Error('no bookings to style for fh shots');
-  const names = ['Jordan P.', 'Riley M.'];
+  const sty = [
+    { code: 'cabana', guest: 'Casey L.', party: 3, guests: ['Casey L.', 'Alex T.', 'Jordan R.'] },
+    { code: 'lounger', guest: 'Jordan P.', party: 1, guests: ['Jordan P.'] },
+    { code: 'daybed', guest: 'Riley M.', party: 2, guests: ['Riley M.', 'Sam K.'] },
+  ];
   keep.forEach((row, i) => {
-    if (i === 0) {
-      db.prepare("UPDATE bookings SET guest_name=?, email='', phone='', party=3, qty=1 WHERE id=?").run('Casey L.', row.id);
-      BookingGuests.save(db, row.id, ['Casey L.', 'Alex T.', 'Jordan R.']);
-    } else {
-      db.prepare("UPDATE bookings SET guest_name=?, email='', phone='', party=1, qty=1 WHERE id=?").run(names[i - 1] || 'Guest', row.id);
-      db.prepare('DELETE FROM booking_guests WHERE booking_id=?').run(row.id);
-    }
+    const spec = sty[i] || sty[sty.length - 1];
+    const pass = passBy[spec.code];
+    if (!pass) throw new Error('missing pass ' + spec.code);
+    const total = pass.price * 1;
+    db.prepare('UPDATE bookings SET guest_name=?, pass_type_id=?, party=?, qty=1, unit_price=?, total=?, email=?, phone=? WHERE id=?')
+      .run(spec.guest, pass.id, spec.party, pass.price, total, '', '', row.id);
+    BookingGuests.save(db, row.id, spec.guests);
     db.prepare('UPDATE bookings SET checked_in_at=NULL, arrived_count=NULL WHERE id=?').run(row.id);
   });
   const { addDays, ymd } = require('../util');
@@ -136,7 +143,11 @@ async function saveMainShot(buf, outBase, clipMeta, metaSource = 'dash-main') {
   const metaIn = await sharp(buf).metadata();
   const jpg = path.join(outDir, `${outBase}.jpg`);
   const webp = path.join(outDir, `${outBase}.webp`);
-  await sharp(buf).resize(TARGET_W, null, { withoutEnlargement: false }).jpeg({ quality: 90 }).toFile(jpg);
+  const resizeH = (outBase === 'fh-checkin' || outBase === 'fh-guestlist') ? FH_PAIR_H : null;
+  const pipe = resizeH
+    ? sharp(buf).resize(TARGET_W, resizeH, { fit: 'cover', position: 'top' })
+    : sharp(buf).resize(TARGET_W, null, { withoutEnlargement: false });
+  await pipe.jpeg({ quality: 90 }).toFile(jpg);
   const final = await sharp(jpg).metadata();
   if (final.width !== TARGET_W) throw new Error(`${outBase} width ${final.width}`);
   const minH = outBase === 'fh-guestlist' ? 280 : 420;
@@ -282,11 +293,14 @@ const loginJs = `(function(){
       if (!el) throw new Error('missing #today');
       if (!el.querySelector('.guest-others')) throw new Error('missing guest names');
       if (!el.textContent.includes('Casey L.')) throw new Error('missing Casey L.');
-      el.scrollIntoView({ block: 'start', behavior: 'instant' });
+      const tbl = el.querySelector('.tbl-wrap') || el.querySelector('table');
+      if (!tbl) throw new Error('missing guest table');
+      tbl.scrollIntoView({ block: 'start', behavior: 'instant' });
+      document.querySelector('.site-hd')?.setAttribute('aria-hidden', 'true');
       return true;
     })()`,
-    clipSelector: '#today',
-    metaSource: 'dash-main#today',
+    clipSelector: '#today .tbl-wrap',
+    metaSource: 'dash-main#today-table',
     outBase: 'fh-guestlist',
   });
 

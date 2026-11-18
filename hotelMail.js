@@ -63,9 +63,12 @@ function withNotes(db, rows) {
 }
 
 function guestLine(row) {
+  const head = BookingGuests.headlineHtml(row, null, new Date());
   const seat = spotLabel({ name: row.pass, holds: row.holds });
   const extra = row.addons ? ` · ${row.addons}` : '';
-  return `${row.guest_name} · ${row.code} · ${seat} × ${row.qty}${extra}`;
+  const names = (row.guest_names || []).slice(1).filter(Boolean);
+  const nameBit = names.length ? ` · ${names.join(', ')}` : '';
+  return `${head.title}${nameBit} · ${row.code} · ${seat} × ${row.qty}${extra}`;
 }
 
 function guestLineHtml(row, hotel, now) {

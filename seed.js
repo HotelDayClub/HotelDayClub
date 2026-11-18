@@ -3,6 +3,7 @@ const { ymd, addDays } = require('./util');
 const { HotelClock } = require('./calendar');
 const { parseTime, writeOffering, rulesText, syncLateAddons, dayPlan, FOOD_RULE } = require('./offering');
 const { demoHotelPassword } = require('./passwords');
+const BookingGuests = require('./bookingGuests');
 
 const CATALOG = [
   { code: 'gym', name: 'Gym access', blurb: 'Use the gym on the same day.', per: 'guest', price: 25, cap: 20 },
@@ -263,6 +264,11 @@ db.transaction(() => {
         const created = ymd(addDays(today, Math.min(d, 0) - 3)) + ' 09:00';
         const bid = insBk.run('HDC-' + (seq++), id, spot.id, date, qty, spot.price, spot.price * qty, nm, nm.toLowerCase().replace(' ', '.') + '@example.com',
           '04' + String(10000000 + rnd(89999999)), 'confirmed', ci, created, people, created, rules).lastInsertRowid;
+        if (people > 1) {
+          const guestList = [nm];
+          for (let g = 1; g < people; g++) guestList.push(names[(rnd(names.length) + g) % names.length]);
+          BookingGuests.save(db, bid, guestList);
+        }
         const want = (d === 0 && k === 0) ? 2 : (rnd(100) < 40 ? 1 + rnd(2) : 0);
         if (!want || !hotelAddons.length) continue;
         const idxs = hotelAddons.map((_, ix) => ix);
