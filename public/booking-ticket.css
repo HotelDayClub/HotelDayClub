@@ -61,6 +61,7 @@ body:has(.tk){background:var(--cream)}
 .tk-chip.inc{background:var(--tk-soft);border-color:var(--border)}
 .tk-more{margin-top:24px;border-top:1px solid var(--border);padding-top:16px}
 .tk-cx{font-weight:700;font-size:15px;line-height:22px}
+.tk-cx a[href$="#manage"]{text-decoration:underline}
 .tk-cx.late{font-weight:600;padding:10px 12px;border-radius:var(--r-ctl);background:var(--hdc-sun-soft);border:1px solid var(--apricot);border-left-width:4px}
 .tk-manage{margin:0}
 .tk-manage summary{display:inline-flex;align-items:center;gap:6px;min-height:44px;font-weight:700;color:var(--teal);cursor:pointer;list-style:none}
