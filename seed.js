@@ -83,7 +83,7 @@ const OFFERINGS = {
     id_required: 1, lifeguard: 0,
     spots: [
       { code: 'entry', kind: 'entry', name: 'General entry', description: 'Bathhouse, plunge pools and the outdoor pool.', holds: 1, price: 80, daily_cap: 24, photo: 'indoor-spa-pool.jpg', featured: 1 },
-      { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A draped cabana for two by the outdoor pool.', holds: 2, price: 180, daily_cap: 5, photo: 'spa-loungers.jpg' },
+      { code: 'cabana', kind: 'cabana', name: 'Cabana', description: 'A draped cabana for two by the outdoor pool.', holds: 2, price: 180, daily_cap: 12, photo: 'spa-loungers.jpg' },
     ],
   },
 };
