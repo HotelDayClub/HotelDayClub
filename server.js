@@ -1814,9 +1814,9 @@ ${check('Pause a day or block dates yourself')}
 <p class="fh-kicker">On the day</p>
 <h2>QR check-in and the guest list</h2>
 <div class="fh-shot-row">
-<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-checkin.webp"><img src="/golden/img/fh-checkin.jpg" alt="Demo QR check-in screen for a fictional hotel" width="1600" height="735" loading="lazy" decoding="async"></picture></div>
+<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-checkin.webp"><img src="/golden/img/fh-checkin.jpg" alt="Demo QR check-in screen for a fictional hotel" width="1600" height="922" loading="lazy" decoding="async"></picture></div>
 <figcaption>Sample QR check-in from the demo. Figures are fictional.</figcaption></figure>
-<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-guestlist.webp"><img src="/golden/img/fh-guestlist.jpg" alt="Demo guest list for a fictional hotel" width="1600" height="735" loading="lazy" decoding="async"></picture></div>
+<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-guestlist.webp"><img src="/golden/img/fh-guestlist.jpg" alt="Demo guest list for a fictional hotel" width="1600" height="922" loading="lazy" decoding="async"></picture></div>
 <figcaption>Sample guest list from the demo. Figures are fictional.</figcaption></figure>
 </div>
 </section>
@@ -1981,8 +1981,8 @@ const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel
   const head = arrival ? '<th>Arrival</th>' : '';
   const cell = b => arrival ? `<td>${arrival === 'detail' ? `Expected arrival: ${arrivalCell(b.expected_arrival, 'detail')}` : arrivalCell(b.expected_arrival, 'short')}</td>` : '';
   const versionLine = b => versions ? ConsentLog.adminLine(b) : '';
-  return rows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th>${hotelCol ? '<th>Hotel</th>' : ''}<th>Date</th><th>Guest</th>${head}<th>Seating</th><th>Spots</th><th>Total</th><th>Status</th></tr></thead><tbody>
-${rows.map(b => { const g = BookingGuests.headlineHtml(b, hotel, clockNow()); return `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(displayName(b.hotel))}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(g.title)}</b>${g.others} ${parkingTag(b)}${contactLine(b)}${versionLine(b)}</td>${cell(b)}${seatCell(b)}<td>${b.qty}</td><td>${money(b.total)}</td>
+  return rows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th>${hotelCol ? '<th>Hotel</th>' : ''}<th>Date</th><th>Guest</th>${head}<th>Seating</th><th>Spots</th><th>Your payout</th><th>Status</th></tr></thead><tbody>
+${rows.map(b => { const g = BookingGuests.headlineHtml(b, hotel, clockNow()); return `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(displayName(b.hotel))}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(g.title)}</b>${g.others} ${parkingTag(b)}${contactLine(b)}${versionLine(b)}</td>${cell(b)}${seatCell(b)}<td>${b.qty}</td><td>${money(share(b.total).payout)}</td>
 <td>${statusCell(b, { checkin, redirect, day, compact: true, adminCancel, hotel })}${noteBits(b, hotel, adminCancel)}${logForm(b, redirect, log)}</td></tr>`; }).join('')}</tbody></table></div>` : '<p class="muted">No guests.</p>';
 };
 const BQ = `SELECT b.*, p.name pass, p.holds, h.name hotel, (SELECT group_concat(ba.name || ' × ' || ba.qty, ', ') FROM booking_addons ba WHERE ba.booking_id=b.id) addons, (SELECT 1 FROM booking_addons ba JOIN addons a ON a.id=ba.addon_id WHERE ba.booking_id=b.id AND a.code='parking') parking_addon, (SELECT mode FROM inclusions i WHERE i.hotel_id=b.hotel_id AND i.code='parking') parking_mode FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id JOIN hotels h ON h.id=b.hotel_id`;
@@ -2000,7 +2000,7 @@ function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel
       : `<p class="muted small">Arrival: ${arrivalCell(b.expected_arrival, 'short')}</p>`;
     const versionLine = versions ? ConsentLog.adminLine(b) : '';
     const g = BookingGuests.headlineHtml(b, hotel, clockNow());
-    return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(g.title)}</b>${g.others} ${parkingTag(b)}<div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(displayName(b.hotel)) : ''} · ${esc(nice(b.date))}</div>${versionLine}</div><b>${money(b.total)}</b></div>
+    return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(g.title)}</b>${g.others} ${parkingTag(b)}<div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(displayName(b.hotel)) : ''} · ${esc(nice(b.date))}</div>${versionLine}</div><b>${money(share(b.total).payout)}</b></div>
 <p>${esc(label)} × ${b.qty} · ${party} ${party === 1 ? 'person' : 'people'}</p>${arrivalLine}${rules}${adds}${noteBits(b, hotel, adminCancel)}${action}${logForm(b, redirect, log)}</article>`;
   }).join('')}</div>`;
 }
@@ -2485,7 +2485,7 @@ app.post('/hotel/go/:token', async (req, res) => {
 app.get('/hotel/print', hotelAuth, (req, res) => {
   const h = req.hotel;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today(h);
-  const rows = GuestPrivacy.presentAll(withNotes(db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? AND b.status!='cancelled' ORDER BY b.guest_name`).all(h.id, date)), h);
+  const rows = GuestPrivacy.presentAll(withNotes(enrichBookings(db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? AND b.status!='cancelled' ORDER BY b.guest_name`).all(h.id, date))), h);
   res.send(page('Guest list', `<div class="wrap sec print-sheet"><div class="no-print"><a class="link" href="/hotel">← Dashboard</a></div>
 <h1 class="l-title">${esc(displayName(h))}</h1><p class="muted">${esc(nice(date))} · ${rows.length} booking${rows.length === 1 ? '' : 's'}</p>
 <p>${esc(GuestCheckIn.line())}</p>
@@ -2764,7 +2764,7 @@ app.get('/admin', adminAuth, (req, res) => {
   const { per, tot, addonAll } = adminTotals();
   const recent = db.prepare(`${BQ} ORDER BY b.created_at DESC, b.id DESC LIMIT 5`).all();
   const notes = db.prepare(`SELECT n.*, b.code, b.guest_name, b.date, h.name hotel FROM guest_notes n JOIN bookings b ON b.id=n.booking_id JOIN hotels h ON h.id=n.hotel_id ORDER BY n.id DESC LIMIT 40`).all();
-  const noteBody = notes.length ? notes.map(n => `<div class="pending-row"><div><b>${n.kind === 'incident' ? 'Incident' : 'No-show'}</b> · ${esc(n.guest_name)} · ${esc(n.code)}<div class="adm-muted small">${esc(n.hotel)} · ${esc(nice(n.date))} · ${esc(HotelClock.iso(n.created_at))}${n.note ? ' · ' + esc(n.note) : ''}</div></div></div>`).join('') : '<p class="adm-muted">No notes yet. Hotels log a no-show or an incident from the guest list.</p>';
+  const noteBody = notes.length ? notes.map(n => `<div class="pending-row"><div><b>${n.kind === 'incident' ? 'Incident' : 'No-show'}</b> · ${esc(n.guest_name)} · ${esc(n.code)}<div class="adm-muted small">${esc(displayName({ name: n.hotel }))} · ${esc(nice(n.date))} · ${esc(HotelClock.iso(n.created_at))}${n.note ? ' · ' + esc(n.note) : ''}</div></div></div>`).join('') : '<p class="adm-muted">No notes yet. Hotels log a no-show or an incident from the guest list.</p>';
   const inner = `${AdminShell.flash(req.query.msg)}
 ${AdminShell.heading('Overview', 'All active hotels. Cancelled bookings are not counted.')}
 ${AdminShell.tiles(tot, addonAll)}

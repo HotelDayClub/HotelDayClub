@@ -59,6 +59,9 @@ function get(port, path, headers = {}) {
     let text = res.body.replace(/<style[\s\S]*?<\/style>/gi, '').replace(/style="[^"]*"/gi, '');
     if (p.endsWith('.csv')) text = res.body;
     assert.ok(!banned.test(text), `${p} must not mention gross, revenue, % or split`);
+    if (p === '/hotel' || p.startsWith('/hotel/today-list')) {
+      assert.ok(!/<th>\s*Total\s*<\/th>/i.test(res.body), `${p} must not show guest Total column`);
+    }
   }
 
   const hotelSources = ['server.js', 'hotelMail.js', 'analytics.js'].map(f => fs.readFileSync(path.join(root, f), 'utf8'));
