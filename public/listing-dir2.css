@@ -91,6 +91,13 @@ body:has(.d2) main{overflow-x:clip}
  .d2-datebtn{min-height:36px;padding:0 6px;font-size:14px;gap:4px;max-width:min(9.75rem,34vw)}
  .d2-datebtn .d2ic{width:16px;height:16px}
 }
+@media (max-width:360px){
+ .d2-tabs .in{gap:6px;padding:0 8px}
+ .d2-tabs nav{gap:8px}
+ .d2-tabs nav a{font-size:14px}
+ .d2-datebtn{flex:none;gap:3px;padding:0 5px;max-width:min(8.75rem,32vw)}
+ .d2-datebtn .d2ic{width:15px;height:15px}
+}
 
 .d2-col{max-width:800px;margin:0 auto;padding:0 16px}
 .d2-layout{display:block;margin:0;padding:0}
