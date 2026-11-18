@@ -1,4 +1,5 @@
 const { esc, ymd, nice } = require('./util');
+const { displayName } = require('./hotelName');
 
 const KINDS = [
   { code: 'lounger', name: 'Sun lounger' },
@@ -16,20 +17,20 @@ const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const PHOTOS = [
   ['hero-loungers.jpg', 'Loungers'],
-  ['daybed-canopy.jpg', 'Daybed'],
-  ['cabana-drapes.jpg', 'Cabana'],
-  ['rooftop-city.jpg', 'Rooftop'],
+  ['rooftop-pergola-pool.jpg', 'Rooftop pool'],
   ['infinity-ocean.jpg', 'Infinity pool'],
-  ['beach-resort-pool.jpg', 'Beach pool'],
-  ['glass-roof-pool.jpg', 'Glass roof'],
+  ['clifftop-ocean.jpg', 'Ocean pool'],
+  ['glass-roof-pool.jpg', 'Indoor pool'],
   ['indoor-spa-pool.jpg', 'Indoor spa'],
-  ['spa-steps.jpg', 'Spa'],
-  ['tropical-resort.jpg', 'Lagoon'],
-  ['resort-palms.jpg', 'Palms'],
-  ['thatched-umbrellas.jpg', 'Umbrellas'],
-  ['loungers-snacks.jpg', 'Poolside'],
-  ['infinity-palms.jpg', 'Palms and pool'],
+  ['spa-loungers.jpg', 'Day spa'],
+  ['hotel-gym.jpg', 'Hotel gym'],
   ['restaurant-view.jpg', 'Restaurant'],
+  ['coastal-deck-pool.jpg', 'Coastal deck pool'],
+  ['harbour-twilight-pool.jpg', 'Harbour pool at dusk'],
+  ['pool-lane-morning.jpg', 'Morning pool lane'],
+  ['spa-sauna-room.jpg', 'Sauna and steam'],
+  ['terrace-pool.jpg', 'Terrace pool'],
+  ['sea-terrace-pool.jpg', 'Sea terrace pool'],
 ];
 
 const pad = n => String(n).padStart(2, '0');
@@ -737,7 +738,7 @@ function offeringForm({ action, hotel, spots, hours, account, error, lockedIds }
 ${error ? `<div class="alert">${esc(error)}</div>` : ''}
 <nav class="form-jumps"><a href="#sec-hotel">Hotel</a><a href="#sec-seating">Seating</a><a href="#sec-hours">Hours</a><a href="#sec-rules">Rules</a></nav>
 <h2 id="sec-hotel">Hotel</h2>
-<label class="fl">Hotel name<input name="hotel_name" required maxlength="80" value="${esc(h.name || '')}"></label>
+<label class="fl">Hotel name<input name="hotel_name" required maxlength="80" value="${esc(displayName(h) || '')}"></label>
 <div class="two"><label class="fl">Neighbourhood<input name="area" required maxlength="60" value="${esc(h.area || '')}" placeholder="Eastern Beaches"></label>
 <label class="fl">Contact name<input name="contact_name" maxlength="80" value="${esc(h.contact_name || '')}"></label></div>
 <label class="fl">Contact email<input name="contact_email" type="email" maxlength="120" value="${esc(h.contact_email || '')}" placeholder="you@hotel.com"></label>

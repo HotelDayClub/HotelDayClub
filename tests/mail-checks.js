@@ -527,7 +527,7 @@ function recorder(decide) {
       hotel: 'skyline-rooftop', date, pass: 'chair', qty: '1',
       name: 'Alex Citizen', email: 'not-an-email', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
     });
-    assert.strictEqual(missing.status, 409);
+    assert.strictEqual(missing.status, 400);
     assert.ok(missing.body.includes('valid email'));
     const booked = await post('/book', {
       hotel: 'skyline-rooftop', date, pass: 'chair', qty: '1',

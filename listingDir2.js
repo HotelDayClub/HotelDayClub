@@ -188,12 +188,12 @@ function passPhoto(p) {
 }
 function passThumb(p, alt) {
   const file = safePhoto(String(p.photo || ''));
-  if (!file) return `<img src="${esc(seatPhoto(p.kind || 'custom'))}" alt="${esc(alt)}" width="88" height="88" loading="lazy" decoding="async">`;
+  if (!file) return seatPhoto(p.kind || 'custom') ? `<img src="${esc(seatPhoto(p.kind || 'custom'))}" alt="${esc(alt)}" width="88" height="88" loading="lazy" decoding="async">` : `<span class="d2-noph" aria-hidden="true">${icon('sun')}</span>`;
   return PhotoAssets.imgTag(file, { alt, width: 88, height: 88, sizes: '88px' });
 }
 function passRowPhoto(p, alt) {
   const file = safePhoto(String(p.photo || ''));
-  if (!file) return `<img src="${esc(seatPhoto(p.kind || 'custom'))}" alt="${esc(alt)}" width="800" height="600" loading="lazy" decoding="async">`;
+  if (!file) return seatPhoto(p.kind || 'custom') ? `<img src="${esc(seatPhoto(p.kind || 'custom'))}" alt="${esc(alt)}" width="800" height="600" loading="lazy" decoding="async">` : `<span class="d2-noph" aria-hidden="true">${icon('sun')}</span>`;
   return PhotoAssets.imgTag(file, { alt, width: 800, height: 600, sizes: '(max-width:390px) 100vw, 40vw', loading: 'lazy' });
 }
 function galleryPhoto(p, alt, i) {
@@ -221,11 +221,12 @@ ${factsHtml || ''}<button type="button" class="d2-rm text-link" id="d2-rm" aria-
 
 function mainFacilityFact(h, groups) {
   const g = groups || {};
-  const rows = [...(g.included || []), ...(g.optional || []), ...(g.onsite || [])];
+  const skipRe = /food|drink|bar|cafe|café|kiosk|restaurant|credit|treatment/i;
   const facilityRe = /pool|spa|gym|sauna|steam|lido|plunge|bathhouse/i;
-  for (const row of rows) {
+  for (const row of g.included || []) {
     const label = String(row.label || '').trim();
-    if (label && facilityRe.test(label)) return label;
+    if (!label || skipRe.test(label)) continue;
+    if (facilityRe.test(label)) return label;
   }
   const pf = policyFacts(h || {});
   const pool = String(pf.pool || '').trim();
@@ -304,7 +305,7 @@ function passCard(p, h, items, opts) {
   const on = opts.pick && opts.pick.code === p.code;
   const btn = on
     ? `<span class="d2-sel on" aria-hidden="true">${icon('tick')} Selected</span>`
-    : `<span class="d2-sel">${icon('check')} Select</span>`;
+    : `<span class="d2-sel">Select</span>`;
   return `<a class="d2-card d2-row${on ? ' is-on' : ''}" href="${esc(href)}" data-pass="${esc(p.code)}">${passRowPhoto(p, passAlt(p, h))}<div class="d2-card-body"><div class="d2-card-top"><b class="n">${esc(p.name)}</b><p class="pr">${priceHtml(h, p.price)}</p>${scarcityHtml}</div>${desc ? `<p class="d2-card-desc">${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p))}</p>${btn}</div></a>`;
 }
 
@@ -396,7 +397,7 @@ ${holdHtml(o.hold)}
 <p class="d2-note warn" id="d2-late" role="status"${o.lateNote ? '' : ' hidden'}>${esc(o.lateNote || '')}</p>
 ${kids ? `<p class="d2-note kid" id="d2-kids"><b>Children</b> ${esc(kids)}</p>` : ''}
 ${lineItem}
-<p class="d2-total"><span>Total</span> <b id="d2-total"${date && pick ? '' : ' hidden'}>${date && pick ? esc(ListingD2.priceText(h, linePrice)) : ''}</b></p>
+<p class="d2-total"><span>Total</span> <b id="d2-total" class="${date && pick ? '' : 'muted'}">${date && pick ? esc(ListingD2.priceText(h, linePrice)) : (!date ? 'Pick a date' : 'Pick a pass')}</b></p>
 <button class="d2-btn d2-go" id="d2-go" type="submit"${disabled ? ' aria-disabled="true"' : ''}>${bookBtn}</button>
 <p class="d2-cancel-line" id="d2-cancel-line">${esc(cancelLine)}</p>
 <div class="d2-pass-hrs"${passHours ? '' : ' hidden'}><b>Pass hours</b><p id="d2-pass-hrs">${passHours}</p>${passScarcityHtml}</div>
@@ -822,11 +823,14 @@ function paint(){
   if(lineQty) lineQty.textContent=q;
   if(linePr) linePr.textContent=money(price);
   if(lineItem) lineItem.hidden=false;
-  if(totEl){totEl.textContent=money(price);totEl.hidden=false;}
+  if(totEl){totEl.textContent=money(price);totEl.classList.remove('muted');}
   go.textContent='Reserve';
  }else{
   if(lineItem) lineItem.hidden=true;
-  if(totEl) totEl.hidden=true;
+  if(totEl){
+    totEl.textContent=!d?'Pick a date':(!p?'Pick a pass':'');
+    totEl.classList.add('muted');
+  }
   go.textContent='Reserve';
  }
  if(hrsEl){var hs=d&&!closed[d]?(dayHrs[d]||''):'';hrsEl.textContent=hs?'Hours '+hs:'';hrsEl.hidden=!hs}
@@ -836,7 +840,7 @@ function paint(){
   var sel=card.querySelector('.d2-sel');
   var on=p&&p.value===code;
   card.classList.toggle('is-on',!!on);
-  if(sel){sel.classList.toggle('on',!!on);sel.innerHTML=on?'<svg class="d2ic" aria-hidden="true"><use href="#d2-tick"/></svg> Selected':'<svg class="d2ic" aria-hidden="true"><use href="#d2-check"/></svg> Select';}
+  if(sel){sel.classList.toggle('on',!!on);sel.innerHTML=on?'<svg class="d2ic" aria-hidden="true"><use href="#d2-tick"/></svg> Selected':'Select';}
  });
  var ready=!!(p&&d&&!closed[d]&&!soldAll);
  if(ready) go.removeAttribute('aria-disabled'); else go.setAttribute('aria-disabled','true');

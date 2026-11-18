@@ -117,7 +117,7 @@ function cookieFrom(res) {
     const openPage = await get(port, '/booking/HDC-CANCELFREE');
     assert.strictEqual(openPage.status, 200);
     assert.ok(openPage.body.includes('Cancel this demo booking'));
-    assert.ok(openPage.body.includes('Your demo booking'));
+    assert.ok(/You(?:&#39;|'|')re booked/.test(openPage.body));
     assert.ok(!/stripe/i.test(openPage.body));
 
     const evil = await post(port, '/booking/HDC-CANCELFREE/cancel', {}, { Origin: 'https://evil.example' });

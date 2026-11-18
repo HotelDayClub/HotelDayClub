@@ -73,7 +73,10 @@ function visibleText(html) {
 function cardNames(html) {
   const start = html.indexOf('class="list results"');
   const block = start >= 0 ? html.slice(start, html.indexOf('class="note"', start)) : html;
-  return [...block.matchAll(/<a class="ex[^"]*" href="\/h\/([a-z0-9-]+)/g)].map(m => m[1]);
+  return [...block.matchAll(/<a class="ex[^"]*"[^>]*>/g)].map(tag => {
+    const slug = tag[0].match(/data-slug="([a-z0-9-]+)"/) || tag[0].match(/href="\/h\/([a-z0-9-]+)/);
+    return slug ? slug[1] : null;
+  }).filter(Boolean);
 }
 
 // A1-A2: pure helpers and home quick buttons.
@@ -179,6 +182,7 @@ assert.match(listingCss, /\.g-lb-track img[\s\S]*object-fit:\s*contain/);
 assert.match(listingCss, /\.d2 \.g-track > img,\s*\.d2 \.g-track > picture\{/);
 assert.match(listingCss, /\.d2 \.g-track > \* \+ \*\{display:none!important\}/);
 assert.match(listingCss, /html\.pass-b \.d2-card img,[\s\S]*object-fit:\s*cover/);
+assert.match(listingCss, /html\.pass-b \.d2-card\.d2-row\{[\s\S]*max-height:\s*176px/);
 assert.ok(!/html\.pass-b[^{]*\.d2-card[^{]*\{[^}]*object-fit:\s*contain/.test(listingCss), 'pass-row thumbs use cover');
 const guestCss = fs.readFileSync(path.join(root, 'public/guest-d2.css'), 'utf8');
 assert.ok(guestCss.includes('search-page .ex .tag') && guestCss.includes('var(--hdc-sun-soft)') && guestCss.includes('var(--hdc-rose-ink)'));
@@ -268,7 +272,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     const harbTrack = pages['harbourside-lido'].match(/id="g-track"[^>]*>([\s\S]*?)<\/div>/);
     assert.ok(harbTrack, 'harbourside gallery track');
     assert.match(harbTrack[1], /^<picture>[\s\S]*glass-roof-pool/);
-    assert.ok(harbTrack[1].includes('spa-steps.jpg'));
+    assert.ok(harbTrack[1].includes('spa-sauna-room.jpg'));
     assert.strictEqual((harbTrack[1].match(/<img\b/g) || []).length, 4, 'four track photos');
 
     // A5: included amenities omit per-guest towel counts; towel chip is on the listing header.
@@ -382,7 +386,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.strictEqual(count(family.body, 'class="kidchip"'), 1, 'children chip on the part-day hotel only');
     const kidAt = family.body.indexOf('class="kidchip"');
     assert.ok(family.body.lastIndexOf('/h/manly-sands', kidAt) > family.body.lastIndexOf('/h/palm-court', kidAt));
-    assert.ok(family.body.includes('aria-pressed="true" data-key="mood" data-value="family"'));
+    assert.ok(family.body.includes('aria-current="true" data-key="mood" data-value="family"'));
     const quiet = await get(port, '/search?mood=quiet');
     assert.deepStrictEqual(cardNames(quiet.body), ['bayview-spa']);
     const roof = await get(port, '/search?mood=rooftop');
@@ -411,7 +415,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     // A13: ticket.
     const ticketDate = ymd(addDays(new Date(today + 'T12:00:00'), 30));
     const fields = {
-      hotel: 'saltwater-terrace', date: ticketDate, pass: 'daybed', qty: '1', name: 'Alex Citizen', email: 'ticket@example.com', phone: '0412345678',
+      hotel: 'saltwater-terrace', date: ticketDate, pass: 'daybed', qty: '1', name: 'Alex Citizen', guest_2: 'Sam Citizen', email: 'ticket@example.com', phone: '0412345678',
       rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
     };
     const params = new URLSearchParams(fields);
@@ -422,12 +426,13 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     const ticket = await get(port, booked.headers.location);
     const t = ticket.body;
     const tt = visibleText(t);
-    assert.ok(t.includes('<h1>Your demo booking</h1>'));
+    assert.ok(t.includes('<h1>You&#39;re booked</h1>'));
     assert.ok(t.includes('class="tk-ticket"'));
-    assert.ok(/<span class="tk-ok">Confirmed<\/span>/.test(t));
+    assert.ok(/<span class="tk-ok">Confirmed · demo<\/span>/.test(t));
+    assert.ok(t.includes('class="tk-notes"'));
     assert.ok(t.includes('id="tk-code"'));
     assert.ok(t.includes('<dt>Pass</dt><dd>Daybed</dd>'));
-    assert.ok(t.includes('<dt>Guests</dt><dd>2</dd>'));
+    assert.ok(t.includes('<dt>Guests</dt><dd>2 people</dd>'));
     assert.ok(/Fitness centre access \u00d7 2/.test(tt), tt);
     assert.ok(/<span>Parking<\/span>/.test(t));
     assert.ok(!/Parking \u00d7 1/.test(tt));
@@ -435,14 +440,15 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(!t.includes('Towels: 2 provided'));
     assert.strictEqual(count(tt, FOOD_RULE), 1);
     assert.ok(tt.includes('Free cancellation until'));
-    assert.strictEqual(count(t, 'class="tk-btn"'), 1, 'one filled button');
+    assert.ok(t.includes('class="tk-cal"'));
     assert.ok(tt.includes('Example QR (demo)'));
     assert.ok(tt.includes('Demo: nothing is charged or refunded.'));
     assert.ok(tt.includes('No payment was taken and no real booking exists.'));
     assert.ok(t.includes(GuestCheckIn.line().replace(/'/g, '&#39;')));
     assert.ok(t.includes('you can&#39;t charge anything to a room.'));
     assert.ok(tt.includes('accepted at checkout'));
-    assert.ok(!tt.includes('Alex Citizen') && !tt.includes('ticket@example.com'));
+    assert.ok(tt.includes('Alex Citizen') && tt.includes('Sam Citizen'));
+    assert.ok(!tt.includes('ticket@example.com'));
     assert.ok(!tt.includes('\u2014'));
     assert.ok(t.includes('content="noindex'));
     assert.ok(t.includes('/booking-ticket.css'));
@@ -467,7 +473,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
     assert.ok(saltExplore.includes('href="#explore">Pool bar'), 'pool bar links to explore');
     assert.ok(saltExplore.includes('10am\u20134pm'), 'pool bar hours on explore card');
     assert.ok(saltExplore.includes('class="d2-ex-chip">Not included</span>'), 'Not included chip on bar');
-    assert.strictEqual((saltExplore.match(/class="d2-ex-card"/g) || []).length, 4, 'saltwater four explore cards');
+    assert.strictEqual((saltExplore.match(/class="d2-ex-card[" ]/g) || []).length, 4, 'saltwater four explore cards');
     const exSheetAt = saltExplore.indexOf('id="d2-explore-sheet"');
     const exSheetEnd = saltExplore.indexOf('</dialog>', exSheetAt);
     const exSheet = saltExplore.slice(exSheetAt, exSheetEnd > exSheetAt ? exSheetEnd : undefined);
@@ -546,7 +552,7 @@ assert.strictEqual(SearchQuery.isFamily({ age_policy: '18+', kids_hours: 'No chi
           assert.strictEqual(v.visibleCount, 1, 'one visible hero slide ' + tag);
           assert.strictEqual(v.dataN, '4', 'data-n is 4 ' + tag);
           assert.ok(/glass-roof-pool/.test(v.currentSrc), 'visible first slide is the hotel first photo ' + tag);
-          assert.ok(!/spa-steps/.test(v.currentSrc), 'visible first slide is not the second photo ' + tag);
+          assert.ok(!/spa-loungers/.test(v.currentSrc), 'visible first slide is not the second photo ' + tag);
           assert.ok(v.firstW >= v.trackW - 2, 'first slide fills the track ' + tag);
         }
       } finally {

@@ -1,4 +1,5 @@
 const seo = require('./seo');
+const { displayName } = require('./hotelName');
 const { demoSite } = require('./siteMode');
 const { esc, money, nice } = require('./util');
 const { StaticAssets } = require('./staticAssets');
@@ -44,7 +45,7 @@ class AdminShell {
 
   static byHotel(rows, tot) {
     const body = rows.map(r => `<tr>
-<td data-label="Hotel"><span><a href="/admin/bookings?hotel=${r.id}">${esc(r.name)}</a><div class="adm-muted">${esc(r.area || '')}</div></span></td>
+<td data-label="Hotel"><span><a href="/admin/bookings?hotel=${r.id}">${esc(displayName(r))}</a><div class="adm-muted">${esc(r.area || '')}</div></span></td>
 <td class="num" data-label="Bookings">${r.n}</td>
 <td class="num" data-label="Spots">${r.passes}</td>
 <td class="num" data-label="Today">${r.today}</td>
@@ -79,7 +80,7 @@ class AdminShell {
     const body = rows.map(b => `<tr>
 <td data-label="Ref"><a href="/booking/${esc(b.code)}">${esc(b.code)}</a></td>
 <td data-label="Guest"><span><b>${esc(b.guest_name)}</b><div class="adm-muted">${esc(b.email)}</div></span></td>
-<td data-label="Hotel">${esc(b.hotel)}</td>
+<td data-label="Hotel">${esc(displayName(b.hotel))}</td>
 <td data-label="Date">${esc(nice(b.date))}</td>
 <td data-label="Status">${AdminShell.bookingStatus(b)}</td>
 <td class="num" data-label="Gross sales">${money(b.total)}</td>
@@ -102,7 +103,7 @@ class AdminShell {
   static filters({ q, hotel, status, hotels }) {
     const hotelOpts = [`<option value="">All hotels</option>`].concat(hotels.map(h => {
       const on = Number(h.id) === Number(hotel) ? ' selected' : '';
-      return `<option value="${h.id}"${on}>${esc(h.name)}</option>`;
+      return `<option value="${h.id}"${on}>${esc(displayName(h))}</option>`;
     }));
     const states = [['', 'Any status'], ['confirmed', 'Confirmed'], ['arrived', 'Arrived'], ['cancelled', 'Cancelled']];
     const statusOpts = states.map(([value, label]) => `<option value="${value}"${value === status ? ' selected' : ''}>${label}</option>`).join('');

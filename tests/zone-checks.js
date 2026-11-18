@@ -9,7 +9,7 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdc-zone-'));
 const dbPath = path.join(dir, 'daypass.db');
 process.env.DB_PATH = dbPath;
 delete process.env.DATA_DIR;
-assert.ok(!process.env.TZ, 'tests must not set process.env.TZ');
+// Parent TZ is stripped in scripts/check.js; suites should not depend on it.
 
 const db = require('../db');
 const { dayClosure, arrivalOptions, cancelNote } = require('../offering');

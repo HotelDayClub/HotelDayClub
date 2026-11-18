@@ -16,49 +16,49 @@ const DEMO_SEED = {
   'saltwater-terrace': {
     intro: '',
     areas: [
-      { name: 'The Pool', line: 'Heated outdoor pool with loungers and ocean views.', details: 'Heated outdoor pool with loungers and ocean views.', hours: '', photo: 'infinity-palms.jpg', kind: 'pool' },
+      { name: 'The Pool', line: 'Heated outdoor pool with loungers and ocean views.', details: 'Heated outdoor pool with loungers and ocean views.', hours: '', photo: 'harbour-twilight-pool.jpg', kind: 'pool' },
       { name: 'The Terrace', line: 'Shaded deck with loungers and daybeds around the pool.', details: 'Shaded deck with loungers and daybeds around the pool.', hours: '', photo: 'hero-loungers.jpg', kind: 'other' },
-      { name: 'Pool bar', line: 'Have a drink by the pool. Cocktails, coffee and light bites.', details: 'Have a drink by the pool. Cocktails, coffee and light bites.', hours: '', photo: 'loungers-snacks.jpg', kind: 'bar' },
+      { name: 'Pool bar', line: 'Have a drink by the pool. Cocktails, coffee and light bites.', details: 'Have a drink by the pool. Cocktails, coffee and light bites.', hours: '', photo: '', kind: 'bar' },
       { name: 'Restaurant', line: 'Lunch with a view. Modern Australian, seafood and share plates.', details: 'Lunch with a view. Modern Australian, seafood and share plates.', hours: '12pm–3pm', photo: 'restaurant-view.jpg', kind: 'restaurant' },
     ],
   },
   'skyline-rooftop': {
     intro: '',
     areas: [
-      { name: 'Rooftop pool', line: 'Heated pool with city views and a breeze off the harbour.', details: 'Heated pool with city views and a breeze off the harbour.', hours: '', photo: 'rooftop-city.jpg', kind: 'pool' },
-      { name: 'Pool deck', line: 'Loungers and chairs on the roof around the pool.', details: 'Loungers and chairs on the roof around the pool.', hours: '', photo: 'hero-loungers.jpg', kind: 'other' },
-      { name: 'Rooftop bar', line: 'Cocktails and small plates with skyline views.', details: 'Cocktails and small plates with skyline views.', hours: '', photo: 'loungers-snacks.jpg', kind: 'bar' },
+      { name: 'Rooftop pool', line: 'Heated pool with city views and a breeze off the harbour.', details: 'Heated pool with city views and a breeze off the harbour.', hours: '', photo: '', kind: 'pool' },
+      { name: 'Pool deck', line: 'Loungers and chairs on the roof around the pool.', details: 'Loungers and chairs on the roof around the pool.', hours: '', photo: 'terrace-pool.jpg', kind: 'other' },
+      { name: 'Rooftop bar', line: 'Cocktails and small plates with skyline views.', details: 'Cocktails and small plates with skyline views.', hours: '', photo: '', kind: 'bar' },
     ],
   },
   'harbourside-lido': {
     intro: '',
     areas: [
-      { name: 'Glass-roof pool', line: 'Light-filled indoor pool under a glass roof.', details: 'Light-filled indoor pool under a glass roof.', hours: '', photo: 'glass-roof-pool.jpg', kind: 'pool' },
-      { name: 'Lido deck', line: 'Loungers beside the pool hall.', details: 'Loungers beside the pool hall.', hours: '', photo: 'indoor-spa-pool.jpg', kind: 'other' },
-      { name: 'Café', line: 'Coffee, pastries and light lunch in the pool hall.', details: 'Coffee, pastries and light lunch in the pool hall.', hours: '', photo: 'loungers-snacks.jpg', kind: 'cafe' },
+      { name: 'Glass-roof pool', line: 'Light-filled indoor pool under a glass roof.', details: 'Light-filled indoor pool under a glass roof.', hours: '', photo: '', kind: 'pool' },
+      { name: 'Lido deck', line: 'Loungers beside the pool hall.', details: 'Loungers beside the pool hall.', hours: '', photo: 'hero-loungers.jpg', kind: 'other' },
+      { name: 'Café', line: 'Coffee, pastries and light lunch in the pool hall.', details: 'Coffee, pastries and light lunch in the pool hall.', hours: '', photo: '', kind: 'cafe' },
     ],
   },
   'palm-court': {
     intro: '',
     areas: [
-      { name: 'Lagoon pool', line: 'Outdoor lagoon with palms and a shallow end for families.', details: 'Outdoor lagoon with palms and a shallow end for families.', hours: '', photo: 'tropical-resort.jpg', kind: 'pool' },
-      { name: 'Garden terrace', line: 'Loungers and shade in the palm gardens.', details: 'Loungers and shade in the palm gardens.', hours: '', photo: 'thatched-umbrellas.jpg', kind: 'other' },
-      { name: 'Pool café', line: 'Coffee and light bites beside the lagoon.', details: 'Coffee and light bites beside the lagoon.', hours: '', photo: 'loungers-snacks.jpg', kind: 'cafe' },
+      { name: 'Lagoon pool', line: 'Outdoor lagoon with palms and a shallow end for families.', details: 'Outdoor lagoon with palms and a shallow end for families.', hours: '', photo: 'coastal-deck-pool.jpg', kind: 'pool' },
+      { name: 'Garden terrace', line: 'Loungers and shade in the palm gardens.', details: 'Loungers and shade in the palm gardens.', hours: '', photo: 'hero-loungers.jpg', kind: 'other' },
+      { name: 'Pool café', line: 'Coffee and light bites beside the lagoon.', details: 'Coffee and light bites beside the lagoon.', hours: '', photo: '', kind: 'cafe' },
     ],
   },
   'manly-sands': {
     intro: '',
     areas: [
-      { name: 'Magnesium pool', line: 'Outdoor pool steps from the beach.', details: 'Outdoor pool steps from the beach.', hours: '', photo: 'infinity-palms.jpg', kind: 'pool' },
-      { name: 'Beach deck', line: 'Loungers and daybeds facing the water.', details: 'Loungers and daybeds facing the water.', hours: '', photo: 'daybed-canopy.jpg', kind: 'other' },
-      { name: 'Kiosk', line: 'Drinks and snacks by the pool.', details: 'Drinks and snacks by the pool.', hours: '', photo: 'loungers-snacks.jpg', kind: 'bar' },
+      { name: 'Magnesium pool', line: 'Outdoor pool steps from the beach.', details: 'Outdoor pool steps from the beach.', hours: '', photo: 'coastal-deck-pool.jpg', kind: 'pool' },
+      { name: 'Beach deck', line: 'Loungers and daybeds facing the water.', details: 'Loungers and daybeds facing the water.', hours: '', photo: 'sea-terrace-pool.jpg', kind: 'other' },
+      { name: 'Kiosk', line: 'Drinks and snacks by the pool.', details: 'Drinks and snacks by the pool.', hours: '', photo: '', kind: 'bar' },
     ],
   },
   'bayview-spa': {
     intro: '',
     areas: [
-      { name: 'Bathhouse', line: 'Hot and cold plunge pools in a calm bathhouse.', details: 'Hot and cold plunge pools in a calm bathhouse.', hours: '', photo: 'spa-steps.jpg', kind: 'spa' },
-      { name: 'Outdoor pool', line: 'Heated outdoor pool in the garden.', details: 'Heated outdoor pool in the garden.', hours: '', photo: 'indoor-spa-pool.jpg', kind: 'pool' },
+      { name: 'Bathhouse', line: 'Hot and cold plunge pools in a calm bathhouse.', details: 'Hot and cold plunge pools in a calm bathhouse.', hours: '', photo: 'indoor-spa-pool.jpg', kind: 'spa' },
+      { name: 'Outdoor pool', line: 'Heated outdoor pool in the garden.', details: 'Heated outdoor pool in the garden.', hours: '', photo: 'harbour-twilight-pool.jpg', kind: 'pool' },
       { name: 'Garden lounge', line: 'Quiet loungers in the garden.', details: 'Quiet loungers in the garden.', hours: '', photo: 'hero-loungers.jpg', kind: 'other' },
     ],
   },
@@ -125,7 +125,7 @@ function areaImg(file, alt) {
 class HotelExplore {
   static visible(data) {
     if (!data) return null;
-    const areas = (data.areas || []).filter(a => a.name && a.photo);
+    const areas = (data.areas || []).filter(a => a.name);
     if (!areas.length) return null;
     return { intro: data.intro, areas };
   }
@@ -139,8 +139,8 @@ class HotelExplore {
       const food = isBar(a.kind);
       const note = food ? '<span class="d2-ex-chip">Not included</span>' : '';
       const hrs = cardHours(db, hotel, a, date, today);
-      return `<article class="d2-ex-card"${i === 0 ? ' id="d2-ex-first"' : ''}>
-${areaImg(a.photo, demo ? 'Stock photo, not this hotel' : a.name)}
+      return `<article class="d2-ex-card${a.photo ? '' : ' d2-ex-nophoto'}"${i === 0 ? ' id="d2-ex-first"' : ''}>
+${a.photo ? areaImg(a.photo, demo ? 'Stock photo, not this hotel' : a.name) : `<span class="d2-ex-noph" aria-hidden="true">${icon('sun')}</span>`}
 <div class="d2-ex-body">
 <h3>${esc(a.name)}</h3>
 ${note}
@@ -286,7 +286,6 @@ function saveExplore(db, hotelId, body) {
   if (mutated) return mutated;
   const intro = clip(body.about_intro, INTRO_MAX);
   const cards = parseCards(body);
-  if (cards.some(c => !c.photo)) return { err: 'Each card needs a stock photo.' };
   const updHotel = db.prepare('UPDATE hotels SET about_intro=? WHERE id=?');
   const owned = new Set(db.prepare('SELECT id FROM hotel_explore_areas WHERE hotel_id=?').all(hotelId).map(r => r.id));
   const upd = db.prepare('UPDATE hotel_explore_areas SET name=?, line=?, details=?, hours=?, photo=?, kind=?, sort_order=? WHERE id=? AND hotel_id=?');

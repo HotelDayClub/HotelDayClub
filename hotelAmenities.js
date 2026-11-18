@@ -464,7 +464,7 @@ CREATE TABLE IF NOT EXISTS hotel_amenities_log(
         const action = shown ? 'Hide venue' : 'Show venue';
         return `<tr><td data-label="Venue">${esc(row.label)}</td><td data-label="Category">${esc(LABELS[row.category] || row.category)}</td><td data-label="Public status">${shown ? 'Shown' : 'Hidden'}</td><td data-label="Action"><form method="post" action="/admin/venues/hide"><button class="btn btn-line" type="submit" name="id" value="${row.id}">${action}</button></form></td></tr>`;
       }).join('');
-      cards.push(`<section class="adm-card" id="venues-${hotel.id}"><h2>Venues · ${esc(hotel.name)}</h2><div class="adm-table adm-stack"><table class="atab"><thead><tr><th scope="col">Venue</th><th scope="col">Category</th><th scope="col">Public status</th><th scope="col">Action</th></tr></thead><tbody>${body}</tbody></table></div><p class="adm-muted">Every change is logged with time and who made it (hotel or admin). Hidden venues are removed from public pages immediately.</p></section>`);
+      cards.push(`<section class="adm-card" id="venues-${hotel.id}"><h2>Venues · ${esc(require('./hotelName').displayName(hotel))}</h2><div class="adm-table adm-stack"><table class="atab"><thead><tr><th scope="col">Venue</th><th scope="col">Category</th><th scope="col">Public status</th><th scope="col">Action</th></tr></thead><tbody>${body}</tbody></table></div><p class="adm-muted">Every change is logged with time and who made it (hotel or admin). Hidden venues are removed from public pages immediately.</p></section>`);
     }
     if (!cards.length) return '<section class="adm-card" id="venues"><h2>Venues</h2><p>No venues yet.</p></section>';
     return `<div id="venues">${cards.join('')}</div>`;

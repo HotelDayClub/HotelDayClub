@@ -158,6 +158,10 @@ function banned(html, where) {
     assert.deepStrictEqual(tileLabels(bookings.body), labels);
     assert.ok(!bookings.body.includes('<h2>By hotel</h2>'));
     const wide = bookings.body.split('class="guests-wide"')[1].split('class="guests-narrow"')[0];
+    assert.ok(wide.includes('<th>Guest paid</th>') && !wide.includes('Your payout'), 'admin bookings show the guest total, not the hotel payout');
+    assert.ok(!bookings.body.split('class="guests-narrow"')[1].includes('Your payout'), 'admin booking cards show no hotel payout label');
+    const recent = overview.body.slice(overview.body.indexOf('<h2>Recent bookings</h2>'));
+    assert.ok(!recent.split('</section>')[0].includes('(Demo)'), 'admin recent bookings use displayName');
     const tbody = wide.split('<tbody>')[1].split('</tbody>')[0];
     assert.strictEqual((tbody.match(/<tr>/g) || []).length, 10);
     const shown = bookings.body.match(/Showing 1\u201310 of (\d+)/);

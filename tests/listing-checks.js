@@ -531,9 +531,9 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(!palm.body.includes('during day-pass hours'));
     assert.ok(palm.body.includes('>Heated</dt><dd>No</dd>'));
     assert.ok(!palm.body.includes('kids-float.jpg'));
-    assert.ok(palm.body.includes('tropical-resort.jpg'));
-    assert.ok(palm.body.includes('resort-palms.jpg'));
-    assert.ok(palm.body.includes('thatched-umbrellas.jpg'));
+    assert.ok(palm.body.includes('sea-terrace-pool.jpg'));
+    assert.ok(palm.body.includes('clifftop-ocean.jpg'));
+    assert.ok(palm.body.includes('coastal-deck-pool.jpg'));
     assert.ok(palm.body.includes('On-site parking is included'));
     assert.ok(!palm.body.includes('Parking is not offered'));
     assert.ok(palm.body.includes('Food and drink are not sold through Hotel Day Club. You buy and pay for them at the venue.'));
@@ -675,7 +675,7 @@ assert.ok(sevenPhotos.includes('1 / 7'));
       hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '1', book_token: token,
       name: 'Alex Citizen', email: 'not-an-email', phone: '0412', rules: '1',
     });
-    assert.strictEqual(kept.status, 409);
+    assert.strictEqual(kept.status, 400);
     assert.ok(kept.body.includes('value="Alex Citizen"'));
     assert.ok(kept.body.includes('Enter a valid email.'));
     assert.ok(kept.body.includes('Enter a mobile number.'));
@@ -707,7 +707,7 @@ assert.ok(sevenPhotos.includes('1 / 7'));
     assert.ok(!/\b\d+ a day\b/.test(checkout.body));
     const fields = new URLSearchParams({
       hotel: 'saltwater-terrace', date: when, pass: 'lounger', qty: '2', price: '1',
-      name: 'Alex Citizen', email: 'alex-extra@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
+      name: 'Alex Citizen', guest_2: 'Sam Citizen', email: 'alex-extra@example.com', phone: '0412345678', rules: '1', terms: '1', risk: '1', group: '1', share: '1', accept: '1',
     });
     fields.append('addon', 'gym');
     fields.append('addon', 'parking');

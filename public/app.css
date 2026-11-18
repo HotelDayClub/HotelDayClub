@@ -163,11 +163,11 @@ html.js .js-only{display:inline-flex}
 code{background:#EEF1F5;padding:1px 6px;border-radius:6px;font-size:.88em}
 .linkbtn{border:0;background:none;color:var(--lagoon);font-weight:600;text-decoration:underline;padding:0}
 /* dashboard */
-.dash{display:grid;min-height:calc(100vh - 100px)}@media(min-width:1000px){.dash{grid-template-columns:240px 1fr}}
+.dash{display:grid;min-height:calc(100vh - 100px)}@media(min-width:1000px){.dash{grid-template-columns:240px 1fr;align-items:stretch}}
 .dash .side{background:var(--navy);color:#cfe0ee;padding:22px}.dash .side h3{color:#fff;margin-top:8px}
 .dash .side nav{display:flex;gap:4px;flex-wrap:wrap;margin-top:14px}
 .dash .side nav a{padding:8px 12px;border-radius:10px;font-weight:500;font-size:.92rem}.dash .side nav a:hover{background:rgba(255,255,255,.1);color:#fff}
-@media(min-width:1000px){.dash .side nav{flex-direction:column}.dash .side{position:sticky;top:72px;height:calc(100vh - 72px)}}
+@media(min-width:1000px){.dash .side nav{flex-direction:column}.dash .side{position:sticky;top:72px;align-self:stretch;min-height:calc(100vh - 72px);height:auto;overflow-y:auto}}
 .dash-main{padding:24px 20px 50px;background:var(--soft);min-width:0}@media(min-width:1000px){.dash-main{padding:30px 36px}}
 .eyebrow-s{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--hdc-rose-ink)}
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:20px 0}@media(min-width:900px){.stats{grid-template-columns:repeat(4,1fr)}}
@@ -224,7 +224,6 @@ code{background:#EEF1F5;padding:1px 6px;border-radius:6px;font-size:.88em}
 .ftr-in{display:flex;flex-direction:column;gap:14px}
 .demo-banner{background:#F4F1EC;color:#3C4A59;font-size:.78rem;line-height:1.35;text-align:center;padding:6px 16px}
 .legal-links{display:flex;justify-content:center;gap:14px;margin-top:18px;font-size:.88rem}
-.privacy-note{font-size:.88rem;color:#5c6b7a;margin:0 0 14px}
 .legal-page{padding-bottom:48px}
 .legal-grid{display:grid;gap:8px 36px;align-items:start}
 .legal-toc p{margin:0 0 4px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--hdc-secondary)}

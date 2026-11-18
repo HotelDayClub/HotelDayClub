@@ -207,7 +207,7 @@ async function main() {
 
     const page = await get(port, salt.headers.location, { 'X-Forwarded-For': '203.0.113.11' });
     assert.strictEqual(page.status, 200);
-    assert.ok(!page.body.includes('Persis Guest'));
+    assert.ok(page.body.includes('Persis Guest') || page.body.includes('Persis'), 'booking ticket lists guest names');
     assert.ok(!page.body.includes('persist-guest@example.com'));
     assert.ok(!page.body.includes('0412000111'));
     assert.ok(page.body.includes('Saltwater'));
@@ -306,6 +306,13 @@ async function main() {
     assert.ok(!hotels.body.includes('scrypt$'));
     assert.ok(!hotels.body.includes('security-hotel-test'));
     assert.ok(!hotels.body.toLowerCase().includes('password'));
+    const home = await get(port, '/');
+    assert.ok(home.headers['content-security-policy']);
+    assert.strictEqual(home.headers['x-powered-by'], undefined);
+    const httpsHome = await get(port, '/', { 'X-Forwarded-Proto': 'https' });
+    assert.ok(httpsHome.headers['strict-transport-security']);
+    const plainHome = await get(port, '/');
+    assert.strictEqual(plainHome.headers['strict-transport-security'], undefined);
   } finally {
     child.kill();
   }

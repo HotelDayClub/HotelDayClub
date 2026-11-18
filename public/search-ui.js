@@ -242,6 +242,7 @@
         document.title = doc.title;
         history.pushState({}, '', url);
         syncMore(live);
+        bindCardHover(live);
         if (focusValue) {
           var again = document.querySelector('.ichip[data-value="' + focusValue + '"]');
           if (again) again.focus();
@@ -340,7 +341,13 @@
   var live = document.querySelector('[data-live]');
   var btnList = document.getElementById('search-view-list');
   var btnMap = document.getElementById('search-view-map');
+  var wideQuery = window.matchMedia('(min-width: 1024px)');
   var mapInst = null;
+  var markersBySlug = {};
+  var pinRows = [];
+  var activeSlug = '';
+  var mobileView = 'list';
+  function isWide() { return wideQuery.matches; }
   function loadLeaflet(done) {
     if (window.L) { done(); return; }
     var s = document.createElement('script');
@@ -348,37 +355,69 @@
     s.onload = done;
     document.head.appendChild(s);
   }
-  function setSearchView(mode) {
-    if (!mapWrap || !live) return;
-    var mapOn = mode === 'map';
-    mapWrap.hidden = !mapOn;
-    live.hidden = mapOn;
-    if (btnList) { btnList.classList.toggle('is-on', !mapOn); btnList.setAttribute('aria-pressed', mapOn ? 'false' : 'true'); }
-    if (btnMap) { btnMap.classList.toggle('is-on', mapOn); btnMap.setAttribute('aria-pressed', mapOn ? 'true' : 'false'); }
-    if (!mapOn) return;
+  function mapPinIcon(label, on) {
+    var cls = 'srch-map-pin' + (on ? ' is-on' : '');
+    if (label) {
+      return window.L.divIcon({
+        className: cls,
+        html: '<span class="srch-map-pin-price">' + label + '</span>',
+        iconAnchor: [0, 16],
+        popupAnchor: [0, -18],
+      });
+    }
+    return window.L.divIcon({
+      className: cls,
+      html: '<span class="srch-map-pin-dot" aria-hidden="true"></span>',
+      iconSize: [28, 36],
+      iconAnchor: [14, 36],
+      popupAnchor: [0, -34],
+    });
+  }
+  function setPinHighlight(slug) {
+    activeSlug = slug || '';
+    if (live) {
+      [].forEach.call(live.querySelectorAll('.ex[data-slug]'), function (card) {
+        card.classList.toggle('is-pin-on', card.getAttribute('data-slug') === activeSlug);
+      });
+    }
+    Object.keys(markersBySlug).forEach(function (key) {
+      var row = markersBySlug[key];
+      var label = row.pin.priceLabel || '';
+      row.marker.setIcon(mapPinIcon(label, key === activeSlug));
+    });
+  }
+  function bindCardHover(scope) {
+    if (!scope || !isWide()) return;
+    [].forEach.call(scope.querySelectorAll('.ex[data-slug]'), function (card) {
+      if (card.dataset.pinBound) return;
+      card.dataset.pinBound = '1';
+      card.addEventListener('mouseenter', function () { setPinHighlight(card.getAttribute('data-slug')); });
+      card.addEventListener('mouseleave', function () { setPinHighlight(''); });
+      card.addEventListener('focusin', function () { setPinHighlight(card.getAttribute('data-slug')); });
+      card.addEventListener('focusout', function (ev) {
+        if (!ev.relatedTarget || !card.contains(ev.relatedTarget)) setPinHighlight('');
+      });
+    });
+  }
+  function ensureMap() {
+    if (!mapDataEl) return;
     loadLeaflet(function () {
-      if (!mapInst && mapDataEl) {
-        var pins = JSON.parse(mapDataEl.textContent || '[]');
-        var el = document.getElementById('search-map');
-        if (!el || !pins.length) return;
+      var pins = JSON.parse(mapDataEl.textContent || '[]');
+      var el = document.getElementById('search-map');
+      if (!el || !pins.length) return;
+      if (!mapInst) {
         mapInst = window.L.map(el, { scrollWheelZoom: true });
         window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(mapInst);
         var bounds = [];
-        function mapPinIcon() {
-          return window.L.divIcon({
-            className: 'srch-map-pin',
-            html: '<span class="srch-map-pin-dot" aria-hidden="true"></span>',
-            iconSize: [28, 36],
-            iconAnchor: [14, 36],
-            popupAnchor: [0, -34],
-          });
-        }
+        markersBySlug = {};
+        pinRows = pins;
         pins.forEach(function (p) {
+          var label = p.priceLabel || '';
           var m = window.L.marker([p.lat, p.lng], {
-            icon: mapPinIcon(),
+            icon: mapPinIcon(label, false),
             alt: p.name,
             title: p.name,
           }).addTo(mapInst);
@@ -388,16 +427,60 @@
           link.querySelector('b').textContent = p.name;
           link.querySelector('span').textContent = p.area;
           m.bindPopup(link);
+          if (p.slug) {
+            markersBySlug[p.slug] = { marker: m, pin: p };
+            m.on('mouseover', function () { if (isWide()) setPinHighlight(p.slug); });
+            m.on('mouseout', function () { if (isWide()) setPinHighlight(''); });
+            m.on('click', function () {
+              if (!isWide() || !p.slug || !live) return;
+              setPinHighlight(p.slug);
+              var card = live.querySelector('.ex[data-slug="' + p.slug + '"]');
+              if (card) {
+                var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                card.focus({ preventScroll: true });
+                card.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+              }
+            });
+          }
           bounds.push([p.lat, p.lng]);
         });
         if (bounds.length === 1) mapInst.setView(bounds[0], 12);
         else if (bounds.length) mapInst.fitBounds(bounds, { padding: [28, 28] });
       }
+      bindCardHover(live);
       if (mapInst) mapInst.invalidateSize();
     });
+  }
+  function setSearchView(mode) {
+    if (!mapWrap || !live) return;
+    if (isWide()) {
+      mapWrap.hidden = false;
+      live.hidden = false;
+      if (btnList) { btnList.classList.toggle('is-on', true); btnList.setAttribute('aria-pressed', 'true'); }
+      if (btnMap) { btnMap.classList.toggle('is-on', false); btnMap.setAttribute('aria-pressed', 'false'); }
+      ensureMap();
+      return;
+    }
+    mobileView = mode;
+    var mapOn = mode === 'map';
+    mapWrap.hidden = !mapOn;
+    live.hidden = mapOn;
+    if (btnList) { btnList.classList.toggle('is-on', !mapOn); btnList.setAttribute('aria-pressed', mapOn ? 'false' : 'true'); }
+    if (btnMap) { btnMap.classList.toggle('is-on', mapOn); btnMap.setAttribute('aria-pressed', mapOn ? 'true' : 'false'); }
+    if (!mapOn) return;
+    ensureMap();
+  }
+  function layoutSearchMap() {
+    if (!mapWrap || !live) return;
+    if (isWide()) setSearchView('list');
+    else setSearchView(mobileView);
   }
   if (mapDataEl && btnMap && btnList) {
     btnList.addEventListener('click', function () { setSearchView('list'); });
     btnMap.addEventListener('click', function () { setSearchView('map'); });
+    layoutSearchMap();
+    if (typeof wideQuery.addEventListener === 'function') wideQuery.addEventListener('change', layoutSearchMap);
+    else wideQuery.addListener(layoutSearchMap);
   }
+  bindCardHover(live);
 })();

@@ -48,7 +48,7 @@ if (hasFfprobe) {
     const [w, h] = probe.stdout.trim().split('x').map(Number);
     const size = { w, h };
     if (name === 'restaurant-view.jpg') {
-      assert.ok(size.h > size.w, 'restaurant-view stays portrait');
+      assertLandscape32(size, name);
       continue;
     }
     assert.ok(size.w >= 1200, name + ' width');

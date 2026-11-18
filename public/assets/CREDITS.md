@@ -2,32 +2,27 @@
 
 All photos were downloaded on 21 Oct 2026 (AEDT) and stored locally in `assets/photos/`. They are used as **generic mood imagery only**. None of them shows, or is presented as, any real hotel; every listing on the site is labelled "Example listing". I avoided photos tagged with a named hotel and any with visible hotel branding.
 
-On 16 Nov 2026 (AEDT) every gallery master in `photos/*.jpg` except `restaurant-view.jpg` was centre-cropped to landscape **3:2** and resized to **1600×1067** for listing, search and home frames. `glass-roof-pool.jpg` was cropped from the upper pool area (glass roof and water). `glass-roof-pool.jpg` and `indoor-spa-pool.jpg` were mildly brightened so the grid reads as one set. On 17 Nov 2026 `rooftop-city.jpg` was replaced with a distinct Pexels rooftop pool master (no longer a copy of `infinity-ocean.jpg`). Matching **800×533** WebP copies in `golden/img/cards/` were regenerated from that master.
+On 17 Nov 2026 (AEDT) listing gallery masters in `photos/*.jpg` were centre-cropped to landscape **3:2** and resized to **1600×1067**. Matching **800×533** WebP copies in `golden/img/cards/` and gallery WebPs beside each JPEG were regenerated from those masters.
 
 ## Pexels: free under the Pexels License (https://www.pexels.com/license/). Attribution isn't required but is given here.
 | File | Photo | Photographer |
 |---|---|---|
-| photos/beach-resort-pool.jpg | https://www.pexels.com/photo/resort-poolside-on-ocean-coast-4566712/ | wewe yang |
-| photos/hero-loungers.jpg | https://www.pexels.com/photo/sunloungers-by-the-poolside-14012236/ | Quang Nguyen Vinh |
-| photos/thatched-umbrellas.jpg | https://www.pexels.com/photo/pool-and-sunbeds-with-straw-umbrellas-in-tropical-hotel-6130039/ | Quang Nguyen Vinh |
-| photos/daybed-canopy.jpg | https://www.pexels.com/photo/mattress-on-wooden-frame-at-pool-10032388/ | Keegan Checks |
-| photos/cabana-drapes.jpg | https://www.pexels.com/photo/luxurious-poolside-cabana-at-resort-34909119/ | Pew Nguyen |
-| photos/loungers-snacks.jpg | https://www.pexels.com/photo/sun-loungers-by-the-swimming-pool-in-a-resort-18971226/ | Ahmet ÇÖTÜR |
-| photos/infinity-ocean.jpg | https://www.pexels.com/photo/infinity-pool-overlooking-ocean-at-luxury-resort-30615183/ | Vinícius Vieira ft |
-| photos/infinity-palms.jpg | https://www.pexels.com/photo/scenic-infinity-pool-overlooking-ocean-resort-38282431/ | Zak Mogel |
-| photos/tropical-resort.jpg | https://www.pexels.com/photo/pool-and-loungers-in-tropical-resort-yard-in-sunlight-5746250/ | Ryutaro Tsukata |
-| photos/glass-roof-pool.jpg (cropped 16 Nov 2026 to 1600×1067 landscape, upper pool and roof) | https://www.pexels.com/photo/view-of-a-pool-under-a-glass-roof-in-a-resort-12739423/ | Toni Berisha |
-| photos/indoor-spa-pool.jpg | https://www.pexels.com/photo/brown-and-white-hot-tub-6667423/ | Pavel Danilyuk |
-| photos/restaurant-view.jpg (downloaded 16 Nov 2026 (AEDT), cropped to 2:3 and resized to 1000x1500) | https://www.pexels.com/photo/chairs-and-table-on-terrace-under-mesh-roof-18030810/ | Matteo Milan |
-| photos/rooftop-city.jpg (centre-cropped 17 Nov 2026 to 1600×1067 landscape) | https://www.pexels.com/photo/lounge-chairs-by-the-pool-1870774/ | Jacoby Clarke |
+| photos/rooftop-city.jpg | https://www.pexels.com/photo/lounge-chairs-by-the-pool-1870774/ | Jacoby Clarke |
+| photos/infinity-ocean.jpg | https://www.pexels.com/photo/infinity-pool-near-a-body-of-water-under-a-cloudy-sky-13711854/ | John Kong |
+| photos/clifftop-ocean.jpg | https://www.pexels.com/photo/infinity-pool-overlooking-ocean-at-luxury-resort-30615183/ | Vinícius Vieira ft |
+| photos/hero-loungers.jpg | https://www.pexels.com/photo/modern-outdoor-pool-with-lounge-chairs-in-summer-38127493/ | panumas nikhomkhai |
+| photos/indoor-spa-pool.jpg | https://www.pexels.com/photo/waterfall-in-the-swimming-pool-6667430/ | Pavel Danilyuk |
+| photos/spa-loungers.jpg | https://www.pexels.com/photo/comfortable-tiled-loungers-in-contemporary-wellness-center-in-daylight-7031707/ | Max Vakhtbovych |
+| photos/hotel-gym.jpg | https://www.pexels.com/photo/modern-gym-with-dumbbells-and-benches-40371837/ | 大 董 |
+| photos/glass-roof-pool.jpg | https://www.pexels.com/photo/interior-of-empty-pool-in-building-7174400/ | Max Vakhtbovych |
+| photos/restaurant-view.jpg | https://www.pexels.com/photo/white-and-brown-wooden-table-and-chairs-1267320/ | ELEVATE |
+| photos/coastal-deck-pool.jpg | https://www.pexels.com/photo/3680282/ | Alexandra Karnasopoulos |
+| photos/harbour-twilight-pool.jpg | https://www.pexels.com/photo/31817160/ | Ahmet ÇÖTÜR |
+| photos/pool-lane-morning.jpg | https://www.pexels.com/photo/19073612/ | Jan van der Wolf |
+| photos/spa-sauna-room.jpg | https://www.pexels.com/photo/8092430/ | Max Vakhtbovych |
+| photos/sea-terrace-pool.jpg | https://www.pexels.com/photo/16248179/ | Josh Hild |
+| photos/terrace-pool.jpg | https://www.pexels.com/photo/261327/ | Pixabay |
 
-## Unsplash: free under the Unsplash License (https://unsplash.com/license). Attribution isn't required but is given here.
-| File | Photo | Photographer |
-|---|---|---|
-| photos/spa-steps.jpg | https://unsplash.com/photos/i1wR9DiCABc | Antonio Araujo (@antonioaaaraujo) |
-| photos/resort-palms.jpg | https://unsplash.com/photos/qDMY-BeGoLs | Long Chung (@chungj07) |
-
-The licence and photographer for each Pexels photo were read from its public page. The Unsplash licence lines ("Free to use under the Unsplash License") and photographers come from the public photo pages as indexed by search; unsplash.com blocked direct page fetches.
 **Before launch:** re-check each licence and replace these photos with images supplied by the hotel that is listed. Stock photos must never be shown as a real hotel's property. `kids-float.jpg` (Pexels 8094751, Roxanne Minnish) showed an identifiable child and has been removed. On startup the app drops that filename from every hotel's photos list and clears it on any pass that still points at it.
 
 ## Other assets
@@ -35,36 +30,23 @@ The licence and photographer for each Pexels photo were read from its public pag
 - Fonts: Fraunces, Inter and Caveat (SIL Open Font License), self-hosted in `public/golden/fonts/` from Google Fonts. DM Sans is no longer requested.
 
 ## Golden Hour homepage media
-Checked 23 October 2026. These files are generic stock. They are not photographs of the fictional example hotels.
-
-### Unsplash License
-The Unsplash help centre states that images can be used for most commercial and personal projects without permission or credit (credit is appreciated): https://help.unsplash.com/en/articles/2612315-can-i-use-unsplash-images-for-personal-or-commercial-projects. The public photo pages and https://unsplash.com/license answered 401 / a bot check, so photographer names could not be confirmed from those pages. Credit is given by photo URL as a courtesy. Several scenes are overseas resorts. Do not present them as a named Australian hotel. Swap them for Australian hotel photography, with permission, before a real launch.
-
-| File | Photo page |
-|---|---|
-| golden/img/1-sm.jpg (dusk pool, Golden hour) | https://unsplash.com/photos/photo-1571896349842-33c89424de2d |
-| golden/img/3-sm.jpg (spa afternoon) | https://unsplash.com/photos/photo-1544161515-4ab6ce6db874 |
-| golden/img/4-sm.jpg (daybed by the pool) | https://unsplash.com/photos/photo-1566073771259-6a8506099945 |
-| golden/img/gym-sm.jpg (8 am gym) | https://unsplash.com/photos/photo-1534438327276-14e5300c3a48 |
-| Not used on the page: photo-1540541338287-41700207dee6, photo-1520250497591-112f2f40a3f4 | Unsplash |
-
-WebP copies of the same files sit beside the JPEGs. Example-listing cards use resized WebP copies in `golden/img/cards/`, made from the licensed listing photos above. Pass photos in `photos/seats/` are smaller WebP crops of those same credited files (lounger, daybed, cabana, chair, glass-roof pool, infinity pool). They are example photos, not the fictional hotels.
-
-### Pexels License
-https://www.pexels.com/license/ was readable: photos and videos are free to use, including commercially; attribution is not required; you may modify them. You may not sell unaltered copies, imply endorsement, or redistribute them on another stock platform.
-
-Homepage hero stills, cropped to 16:9. They are example photos, not partner venues.
+These files are generic stock. They are not photographs of the fictional example hotels.
 
 | File | Photo | Photographer |
 |---|---|---|
-| golden/img/hero-swim.jpg (8:00 Swim & gym) | https://www.pexels.com/photo/30975492/ | Yulius Santoso |
-| golden/img/hero-lunch.jpg (resort pool still, not used on the homepage) | https://www.pexels.com/photo/38188725/ | Relaxing Journeys |
-
-WebP and smaller mobile copies sit beside those JPEGs. The on-page chip says "Stock media · example only". Attribution is optional under the Pexels licence. The footer photographer credit was removed on 26 Oct 2026.
+| golden/img/hero-swim.jpg | https://www.pexels.com/photo/30975492/ | Yulius Santoso |
+| golden/img/gym-sm.jpg | https://www.pexels.com/photo/man-holding-barbell-1552242/ | Leon Mart |
+| golden/img/pool-lane-morning.jpg | https://www.pexels.com/photo/19073612/ | Jan van der Wolf |
+| golden/img/terrace-pool.jpg | https://www.pexels.com/photo/261327/ | Pixabay |
+| golden/img/spa-sauna-room.jpg | https://www.pexels.com/photo/8092430/ | Max Vakhtbovych |
+| golden/img/sea-terrace-pool.jpg | https://www.pexels.com/photo/16248179/ | Josh Hild |
 
 ## For hotels page
 
 | File | Source | Notes |
 |---|---|---|
-| golden/img/fh-loungers.jpg, fh-loungers-sm.jpg (and .webp) | Cropped from photos/hero-loungers.jpg (Pexels, Quang Nguyen Vinh, link above) | A hotel sign in the frame is blurred. Also used in the homepage hotels banner. |
-| golden/img/fh-dashboard.jpg (and .webp) | Screenshot of this site's hotel dashboard, logged in as a fictional demo hotel | Sample data only. Cropped above the guest list, so no guest names. Labelled as sample data on the page. |
+| golden/img/fh-loungers.jpg, fh-loungers-sm.jpg (and .webp) | https://www.pexels.com/photo/36651201/ | Adrien Olichon. For hotels hero. |
+| photos/rooftop-pergola-pool.jpg (and .webp, cards/.webp) | https://www.pexels.com/photo/36651201/ | Adrien Olichon. Copy of fh-loungers.jpg. Skyline Rooftop cover. |
+| golden/img/fh-dashboard.jpg (and .webp) | Screenshot of `/hotel` as demo-saltwater | Cropped to `.dash-main`. |
+| golden/img/fh-checkin.jpg (and .webp) | Screenshot of `/hotel/checkin` as demo-saltwater | Cropped to `.dash-main`. |
+| golden/img/fh-guestlist.jpg (and .webp) | Screenshot of `/hotel` `#today` as demo-saltwater | Cropped to `#today` within `.dash-main`. |

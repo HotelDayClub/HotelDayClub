@@ -5,7 +5,7 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
 const db = require('./db');
-const { seed, ensureAddons, ensureSchedules, seedPerformance } = require('./seed');
+const { seed, ensureAddons, ensureSchedules, seedPerformance, seedGuestNames } = require('./seed');
 const {
   seatPhoto, SEAT_PHOTO, loadInclusions, ensureInclusions, saveInclusions, syncAddonEdit,
   includedLines, includedNote, addonsHtml, inclusionsForm, beatsHtml, policyInner, guestFoodLine, PASS_FOOD_LINE, FOOD_DRINK,
@@ -18,7 +18,7 @@ const { listingHtml, reassureStrip, ListingPanel, dayStepLinks } = require('./li
 const { ListingD2 } = require('./listingDir2');
 const { HomeQuick } = require('./homeQuick');
 const { LinkStyles } = require('./linkStyles');
-const { buildAnalytics, renderAnalytics, recordListingView, normalRange } = require('./analytics');
+const { buildAnalytics, renderAnalytics, recordListingView, normalRange, share } = require('./analytics');
 const { adminPassword, verifyPassword, safeEqual, hashPassword, migrateHotelPasswords, maskName, maskEmail } = require('./passwords');
 const { staffCookie, clearStaffCookie, resolveCookieSecret } = require('./session');
 const { ymd, addDays, esc, money, nice } = require('./util');
@@ -49,6 +49,9 @@ const { StaticAssets } = require('./staticAssets');
 const { PhotoAssets } = require('./photoAssets');
 const { bookingsCsv, hotelsCsv, hotelBookingsCsv } = require('./dataExport');
 const { GuestPrivacy } = require('./guestPrivacy');
+const HotelMail = require('./hotelMail');
+const { displayName } = require('./hotelName');
+const BookingGuests = require('./bookingGuests');
 const {
   KINDS, spotLabel, closureReason, rulesCard, rulesText,
   hoursFor, hoursView, hoursLines, syncHoursLabels, saveOffering, offeringForm, LIVE_LIST, dayPlan,
@@ -56,6 +59,9 @@ const {
   venueMissing, PICK_DATE_CANCEL, arrivalOptions, normalizeArrival, arrivalText,
 } = require('./offering');
 const app = express();
+app.disable('x-powered-by');
+const { securityHeaders } = require('./securityHeaders');
+app.use(securityHeaders);
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3030;
 const SECRET = resolveCookieSecret();
@@ -494,9 +500,6 @@ function exampleCard(h, date) {
   const chips = short.length ? `<ul class="ex-chips">${short.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : '';
   return `<a class="ex" href="${href}"><span class="ex-ph">${img}<span class="tag">Example</span></span><span class="ex-top"><h3>${esc(displayName(h))}</h3><span class="ex-price"><small>from</small> ${money(from)}</span></span><p class="ex-area">${esc(sub)}</p>${chips}</a>`;
 }
-function displayName(h) {
-  return String((h && h.name) || '').replace(/\s*\(Demo\)\s*$/i, '');
-}
 const { faqPlusDetail } = require('./faqUi');
 const FAQ_PLUS = (q, a) => faqPlusDetail(q, a);
 function homePopularHtml() {
@@ -516,11 +519,19 @@ function homePage({ destination = '', joined = false, error = '', values = {} } 
     : destination;
   const counts = DESTINATIONS.map(d => ({ ...d, count: hotels.filter(h => d.areas.includes(h.area)).length }));
   const listed = counts.filter(d => d.count);
+  const DEST_TILE_PHOTOS = {
+    'sydney-cbd': 'pool-lane-morning.jpg',
+    bondi: 'coastal-deck-pool.jpg',
+    manly: 'hotel-gym.jpg',
+    'north-sydney': 'indoor-spa-pool.jpg',
+    'eastern-suburbs': '',
+    parramatta: '',
+  };
   const tileHtml = (d, i) => {
-    const h = hotels.find(x => d.areas.includes(x.area) && x.photos && x.photos[0]);
-    const base = h ? String(h.photos[0]).replace(/\.jpe?g$/i, '') : '';
+    const tileFile = DEST_TILE_PHOTOS[d.id] || '';
+    const base = tileFile.replace(/\.jpe?g$/i, '');
     const webp = base && fs.existsSync(path.join(__dirname, 'public', 'golden', 'img', 'cards', base + '.webp'));
-    const src = !h ? '' : webp ? `/golden/img/cards/${esc(base)}.webp` : `/assets/photos/${esc(h.photos[0])}`;
+    const src = !tileFile ? '' : webp ? `/golden/img/cards/${esc(base)}.webp` : `/assets/photos/${esc(tileFile)}`;
     const img = src ? `<img src="${src}" alt="Example photo for ${esc(d.name)}" width="800" height="600" loading="lazy" decoding="async">` : '';
     const mosaic = listed.length === 5 || listed.length === 6;
     const cls = `${i === 0 && mosaic ? ' dt-big' : ''}${i === 5 && listed.length === 6 ? ' dt-tail' : ''}`;
@@ -556,10 +567,10 @@ ${reassureStrip(false, { home: true })}
 <section data-rv><span class="kicker sand">Plan your day</span><h2>A hotel day, your way</h2>
 <p class="home-note">One example day. The hotel sets the hours.</p>
 <div class="day">
-${slot('gym-sm', 'Hotel gym with free weights', '8 am', 'Swim &amp; gym', 'A gym session, then laps before the city wakes up.')}
-${slot('4-sm', 'Hotel daybed beside a pool', '12 pm', 'Daybed by the pool', 'Stretch out in the shade.')}
-${slot('3-sm', 'Spa treatment table', '3 pm', 'Spa afternoon', 'Steam, sauna, a treatment if the hotel offers one.')}
-${slot('1-sm', 'Hotel pool at dusk', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
+${slot('gym-sm', 'Two people training with battle ropes in a gym', '8 am', 'Swim &amp; gym', 'A gym session, then laps before the city wakes up.')}
+${slot('sea-terrace-pool', 'Terrace pool with loungers overlooking the sea', '12 pm', 'Lounger by the pool', 'Stretch out in the shade.')}
+${slot('spa-sauna-room', 'Warm-lit wooden sauna room with benches and bucket', '3 pm', 'Spa afternoon', 'Steam, sauna, a treatment if the hotel offers one.')}
+${slot('harbour-twilight-pool', 'Infinity pool with two loungers at sunset', '6 pm', 'Golden hour', 'Last swim as the lights come on.')}
 </div></section>
 <section id="destinations" data-rv><div class="sec-row"><div><span class="kicker sand">Explore by destination</span><h2>Where to spend the day</h2></div>${LinkStyles.sectionAction('/search', 'All destinations')}</div>
 ${destTiles}
@@ -582,7 +593,7 @@ ${FAQ_PLUS('Can I cancel?', 'Yes. Free cancellation up to 24 hours before your a
 <div class="hp" aria-hidden="true"><label>Company website<input name="company_website" tabindex="-1" autocomplete="off" value=""></label></div>
 <label class="wl-email"><span class="sr-only">Email</span><input name="email" type="email" required autocomplete="email" maxlength="254" placeholder="you@example.com"></label>
 <button class="btn" type="submit">Join the waitlist</button></form></div></section>
-<div class="hotels hotels-d1" id="hotels"><div class="hotels-copy"><span class="kicker">For hotels</span><h2>A quiet pool, put to use.</h2><p>List spare pool, gym and spa capacity. You set the hours, prices and guest numbers.</p><a class="btn" href="/for-hotels">Talk to us</a></div><picture class="hotels-ph"><source type="image/webp" srcset="/golden/img/fh-loungers-sm.webp"><img src="/golden/img/fh-loungers-sm.jpg" alt="Sun loungers and umbrellas beside a hotel pool" width="800" height="534" loading="lazy" decoding="async"></picture></div>
+<div class="hotels hotels-d1" id="hotels"><div class="hotels-copy"><span class="kicker">For hotels</span><h2>A quiet pool, put to use.</h2><p>List spare pool, gym and spa capacity. You set the hours, prices and guest numbers.</p><a class="btn" href="/for-hotels">Talk to us</a></div><picture class="hotels-ph"><source type="image/webp" srcset="/golden/img/cards/hero-loungers.webp"><img src="/assets/photos/hero-loungers.jpg" alt="Sun loungers beside a hotel pool" width="800" height="533" loading="lazy" decoding="async"></picture></div>
 <noscript><style>#waitlist{display:block;position:static;margin:24px auto 40px}</style></noscript>
 <dialog id="waitlist" aria-labelledby="wl-title" data-open="${openWait ? '1' : '0'}"><div class="wl-in">
 <button type="button" class="wl-x" data-close>Close</button>
@@ -705,9 +716,9 @@ function dayPillsHtml(hotel, selected, qty) {
     }
     const stop = !given && (pill.selected || !selectedOpen);
     if (stop) given = true;
-    const pressed = pill.selected ? ' aria-pressed="true" aria-current="date"' : ' aria-pressed="false"';
+    const cur = pill.selected ? ' aria-current="date"' : '';
     const qtyBit = qty ? '&qty=' + encodeURIComponent(String(qty)) : '';
-    return `<a class="daypill${pill.selected ? ' on' : ''}" href="/h/${esc(hotel.slug)}?date=${esc(pill.date)}${qtyBit}"${pressed} tabindex="${stop ? '0' : '-1'}"><b>${esc(pill.label)}</b><span>${esc(pill.hours)}</span></a>`;
+    return `<a class="daypill${pill.selected ? ' on' : ''}" href="/h/${esc(hotel.slug)}?date=${esc(pill.date)}${qtyBit}"${cur} tabindex="${stop ? '0' : '-1'}"><b>${esc(pill.label)}</b><span>${esc(pill.hours)}</span></a>`;
   }).join('');
   return `<div class="days"><div class="day-row" role="group" aria-label="Days for ${esc(hotel.name)}">${items}</div><button type="button" class="day-more ibtn" aria-label="More days for ${esc(hotel.name)}" hidden>${MORE_ICON}</button></div>`;
 }
@@ -750,7 +761,7 @@ function searchCard(hotel, params, index, kidsChip) {
   const pill = offer.sold
     ? '<span class="book-pill">See other dates</span>'
     : `<span class="book-pill">Book<span class="vh"> ${esc(displayName(hotel))}</span></span>`;
-  return `<a class="ex${offer.sold ? ' is-sold' : ''}" href="${esc(href)}"><span class="ex-ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></span><span class="ex-top"><h3>${esc(displayName(hotel))}</h3>${price}</span>${sold}<p class="ex-area">${esc(area)}</p>${when}${chips}${kids}${pill}</a>`;
+  return `<a class="ex${offer.sold ? ' is-sold' : ''}" data-slug="${esc(hotel.slug)}" href="${esc(href)}"><span class="ex-ph">${cardImage(photo, alt, index)}<span class="tag">Example</span></span><span class="ex-bd"><span class="ex-top"><h3>${esc(displayName(hotel))}</h3>${price}</span>${sold}<p class="ex-area">${esc(area)}</p>${when}${chips}${kids}${pill}</span></a>`;
 }
 function radioGroup(name, options, current, klass) {
   const now = String(current || '');
@@ -836,7 +847,8 @@ function searchPage(query) {
   const heroKeep = hiddenField('mood', params.mood) + hiddenField('want', params.want) + hiddenField('price', params.price) + hiddenField('age', params.age) + hiddenField('sort', params.sort);
   const mood = result.moods.map(m => {
     const href = SearchQuery.href({ ...params, mood: m.on ? '' : m.id });
-    return `<a class="ichip mood" href="${esc(href)}" aria-pressed="${m.on ? 'true' : 'false'}" data-key="mood" data-value="${esc(m.id)}">${m.on ? TICK_ICON : ''}${esc(m.label)}</a>`;
+    const cur = m.on ? ' aria-current="true"' : '';
+    return `<a class="ichip mood" href="${esc(href)}"${cur} data-key="mood" data-value="${esc(m.id)}">${m.on ? TICK_ICON : ''}${esc(m.label)}</a>`;
   }).join('');
   const summary = SearchQuery.summary(params);
   const pillTitle = SearchQuery.pillWhen(params);
@@ -853,16 +865,32 @@ function searchPage(query) {
     const q = [];
     if (params.date) q.push('date=' + encodeURIComponent(params.date));
     if (params.want) q.push('want=' + encodeURIComponent(params.want));
-  if (params.guests) q.push('qty=' + encodeURIComponent(String(params.guests)));
+    if (params.guests) q.push('qty=' + encodeURIComponent(String(params.guests)));
     const href = '/h/' + h.slug + (q.length ? '?' + q.join('&') : '');
-    return { lat, lng, name: displayName(h), area: guestAreaName(h.area), href };
+    const on = result.dateOf(h) || params.date;
+    const offer = cardOffer(h, on, params.want);
+    return {
+      lat,
+      lng,
+      slug: h.slug,
+      name: displayName(h),
+      area: guestAreaName(h.area),
+      href,
+      price: offer.sold ? null : offer.price,
+      priceLabel: offer.sold ? '' : money(offer.price),
+    };
   }).filter(Boolean);
   const mapToggle = mapPins.length
     ? `<div class="view-toggle" role="group" aria-label="Results view"><button type="button" class="view-btn is-on" id="search-view-list" aria-pressed="true">List</button><button type="button" class="view-btn" id="search-view-map" aria-pressed="false">Map</button></div>`
     : '';
-  const mapBlock = mapPins.length
-    ? `<script type="application/json" id="search-map-data">${JSON.stringify(mapPins).replace(/</g, '\\u003c')}</script><div class="search-map-wrap" id="search-map-wrap" hidden><div id="search-map" class="search-map" role="region" aria-label="Map of listings"></div></div>`
+  const mapScript = mapPins.length
+    ? `<script type="application/json" id="search-map-data">${JSON.stringify(mapPins).replace(/</g, '\\u003c')}</script>`
     : '';
+  const mapPane = mapPins.length
+    ? `<div class="search-map-wrap" id="search-map-wrap" hidden><div id="search-map" class="search-map" role="region" aria-label="Map of listings"></div></div>`
+    : '';
+  const splitOpen = mapPins.length ? '<div class="search-split">' : '';
+  const splitClose = mapPins.length ? '</div>' : '';
   const resetHref = SearchQuery.href({ date: params.date });
   const wantRadios = radioGroup('want', [{ value: '', label: 'Any' }].concat(WANTS.filter(w => w.id).map(w => ({ value: w.id, label: w.name }))), params.want, 'fchip');
   const priceRadios = radioGroup('price', [{ value: '', label: 'Any price' }].concat(result.priceChoices.map(n => ({ value: String(n), label: 'Under $' + n }))), params.price ? String(params.price) : '', 'ropt');
@@ -892,13 +920,14 @@ ${keepSort}
 <button type="button" class="search-sum" aria-haspopup="dialog" aria-controls="search-sheet" aria-label="Edit search: ${esc(pillSub)}"><span class="t"><b>${esc(pillTitle)}</b><small>${esc(pillSub)}</small></span><span class="go" aria-hidden="true">${FIND_ICON}</span></button>
 <div class="toolrow">${mapToggle}<button type="button" class="fbtn" id="filters-btn" aria-haspopup="dialog" aria-controls="filter-drawer" aria-expanded="false">${FILTER_ICON}<span>Filters</span>${badge}</button><div class="ichips" role="group" aria-label="Mood">${mood}</div>
 <form class="sort-form" action="/search" method="get">${searchHidden(params, 'sort')}<label class="sort-label"><span class="sort-name">Sort</span><select class="hdc-pick" name="sort" aria-label="Sort listings" onchange="this.form.submit()">${sortOptions}</select></label><noscript><button type="submit">Sort</button></noscript></form></div>
-${mapBlock}
-<div data-live><div class="rhead cnt"><h1 id="search-count" role="status" aria-live="polite">${esc(countHeading)}</h1>${params.mood ? `<a class="mclear" href="${esc(SearchQuery.href({ ...params, mood: '' }))}">Clear</a>` : ''}</div>
-${params.guestsCapped ? '<p class="cap-note" role="status">Up to 6 people per booking.</p>' : ''}
-${chips ? `<div class="chips" aria-label="Active filters">${chips}${clear}</div>` : ''}
-${empty || `<div class="${resultClass}">${cards}</div>`}${others}
+${mapScript}
+${splitOpen}<div class="search-main" data-live><div class="search-preface"><div class="rhead cnt"><h1 id="search-count" role="status" aria-live="polite">${esc(countHeading)}</h1>${params.mood ? `<a class="mclear" href="${esc(SearchQuery.href({ ...params, mood: '' }))}">Clear</a>` : ''}</div>
+<p class="cap-note">Example listings. Prices per spot for ${esc(params.dateLabel || 'any date')}.</p>
+${params.guestsCapped ? '<p class="cap-note cap-guests" role="status">Up to 6 people per booking.</p>' : ''}
+${chips ? `<div class="chips" aria-label="Active filters">${chips}${clear}</div>` : ''}</div>
+<div class="search-results">${empty || `<div class="${resultClass}">${cards}</div>`}${others}
 <p class="note">Fictional example hotels. ${LinkStyles.textLink('/guides', 'Read the day pass guides')}.</p>
-</div>
+</div></div>${mapPane}${splitClose}
 <div class="sheet-bd" data-close-drawer hidden></div>
 <form id="filter-drawer" class="drawer" action="/search" method="get" role="dialog" aria-modal="true" aria-labelledby="filters-h" hidden>
 <div class="dh"><h2 id="filters-h" tabindex="-1">Filters</h2><a class="tlink" href="${esc(resetHref)}">Reset</a><button class="ibtn" type="button" data-close-drawer aria-label="Close filters">Close</button></div>
@@ -916,7 +945,7 @@ ${empty || `<div class="${resultClass}">${cards}</div>`}${others}
 <div class="ssheet-body"></div>
 </div>
 </div>
-<script>(function(){var c=document.querySelector('.ichips');var on=c&&c.querySelector('.mood[aria-pressed="true"]');if(on)c.scrollLeft=Math.max(0,on.offsetLeft-120)})();</script>`;
+<script>(function(){var c=document.querySelector('.ichips');var on=c&&c.querySelector('.mood[aria-current="true"]');if(on)c.scrollLeft=Math.max(0,on.offsetLeft-120)})();</script>`;
   return page(result.heading, body, {
     titleReady: true,
     documentTitle: result.title,
@@ -1182,14 +1211,34 @@ function issueBookToken(existing) {
   bookHolds.set(token, { pending: false, code: '', at: now });
   return token;
 }
-function bookFieldErrors(body) {
-  const errors = {};
-  if (!String(body.name || '').trim()) errors.name = 'Enter your name.';
+function bookFieldErrors(body, party = 1) {
+  const errors = { ...BookingGuests.fieldErrors(body, party) };
   if (!/^\S+@\S+\.\S+$/.test(String(body.email || '').trim())) errors.email = 'Enter a valid email.';
   if (String(body.phone || '').replace(/\D/g, '').length < 8) errors.phone = 'Enter a mobile number.';
   const ticked = key => body[key] === '1' || body[key] === 'on';
   if (!ticked('accept')) errors.accept = 'Tick the box above to continue.';
   return errors;
+}
+function checkoutGuestFields(party, draft, errors) {
+  const n = Math.max(1, Math.floor(Number(party) || 1));
+  if (n <= 1) return '';
+  let html = '';
+  for (let i = 2; i <= n; i++) {
+    const key = `guest_${i}`;
+    const val = draft[key] || draft[`guest${i}`] || '';
+    const err = errors && errors[key] ? ` aria-invalid="true" aria-describedby="err-${key}"` : '';
+    html += `<label class="fl">Guest ${i} full name<input name="${key}" required autocomplete="name" placeholder="Full name" value="${esc(val)}"${err}>${fieldError(errors, key)}</label>`;
+  }
+  return html;
+}
+function enrichBookings(rows) {
+  const ids = (rows || []).map(r => r.id);
+  const map = BookingGuests.loadMap(db, ids);
+  return BookingGuests.attach(rows, map);
+}
+function guestListLine(b, hotel, now) {
+  const { title, others } = BookingGuests.headlineHtml(b, hotel, now);
+  return `<b>${esc(title)}</b>${others}`;
 }
 function fieldError(errors, key) {
   return errors && errors[key] ? `<p class="field-error" id="err-${key}">${esc(errors[key])}</p>` : '';
@@ -1287,6 +1336,7 @@ ${['hotel', 'date', 'qty'].map(k => `<input type="hidden" name="${k}" value="${e
 ${extra.formError ? `<div class="alert" role="alert">${esc(extra.formError)}</div>` : ''}
 <section class="co-card"><h2><span class="co-step">${steps.details}</span> Your details</h2>
 <label class="fl">Full name<input name="name" required autocomplete="name" placeholder="Alex Citizen" value="${esc(draft.name || '')}" ${errors.name ? 'aria-invalid="true" aria-describedby="err-name"' : ''}>${fieldError(errors, 'name')}</label>
+${checkoutGuestFields(people, draft, errors)}
 <div class="two"><label class="fl">Email<input name="email" type="email" required autocomplete="email" placeholder="alex@example.com" value="${esc(draft.email || '')}" ${errors.email ? 'aria-invalid="true" aria-describedby="err-email"' : ''}>${fieldError(errors, 'email')}</label>
 <label class="fl">Mobile<input name="phone" type="tel" required pattern="[0-9+ \\-\\(\\)]{8,}" autocomplete="tel" placeholder="0412 345 678" value="${esc(draft.phone || '')}" ${errors.phone ? 'aria-invalid="true" aria-describedby="err-phone"' : ''}>${fieldError(errors, 'phone')}</label></div>
 </section>
@@ -1415,9 +1465,9 @@ app.post('/book', async (req, res) => {
     }
     hold.pending = true;
   }
-  const errors = bookFieldErrors(b);
   let code, v, arrivalValue = 'unsure', arrivalBlocked = false;
   v = validate(b);
+  const errors = bookFieldErrors(b, v.people || 1);
   if (!v.err && v.h) {
     const checked = checkedArrival(v.h, v.date, b.arrival);
     if (checked.malformed || checked.status === 400) {
@@ -1432,9 +1482,10 @@ app.post('/book', async (req, res) => {
     if (v.err && holdReply(v, res)) return;
     if (v.err && !v.h) return sendNotFound(res);
     if (v.err) return renderCheckout(b, res, { draft: b, errors, token, status: 409, formError: v.err });
-    return renderCheckout(b, res, { draft: b, errors, token, status: 409 });
+    return renderCheckout(b, res, { draft: b, errors, token, status: 400 });
   }
-  const name = String(b.name || '').trim();
+  const guestNames = BookingGuests.namesFromBody(b, v.people);
+  const name = guestNames[0] || '';
   const email = String(b.email || '').trim();
   const phone = String(b.phone || '').trim();
   db.transaction(() => {
@@ -1462,7 +1513,8 @@ app.post('/book', async (req, res) => {
     const info = db.prepare(`INSERT INTO bookings(code,short_code,hotel_id,pass_type_id,date,qty,unit_price,total,guest_name,email,phone,party,rules_ack_at,rules_text,marketing_opt_in,terms_ack_at,risk_ack_at,risk_text,cancel_note,expected_arrival,terms_version,refunds_version,privacy_version,risk_version,consent_at,consent_ip,created_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?,?,datetime('now'),datetime('now'),?,?,?,?,?,?,?,?,?,datetime('now'))`)
       .run(code, shortCode, v.h.id, v.p.id, v.date, v.qty, v.p.price, v.p.price * v.qty + v.addonTotal, name, email, phone, v.people, rulesSnapshot, marketingOn, riskText(v.h), note, arrivalValue, versions.terms, versions.refunds, versions.privacy, versions.risk, consentAt, consentIp);
-    ConsentLog.write(db, info.lastInsertRowid, { at: consentAt, ip: consentIp, marketing: marketingOn === 1, rulesText: rulesSnapshot });
+    BookingGuests.save(db, info.lastInsertRowid, guestNames);
+    ConsentLog.write(db, info.lastInsertRowid, { at: consentAt, ip: consentIp, marketing: marketingOn === 1, rulesText: rulesSnapshot, guestNames });
     const insAdd = db.prepare('INSERT INTO booking_addons(booking_id,addon_id,name,qty,unit_price,total) VALUES (?,?,?,?,?,?)');
     for (const ad of v.addons) insAdd.run(info.lastInsertRowid, ad.id, ad.name, ad.qty, ad.price, ad.line);
   }).immediate();
@@ -1472,7 +1524,7 @@ app.post('/book', async (req, res) => {
   }
   if (arrivalBlocked) {
     if (hold) hold.pending = false;
-    return renderCheckout(b, res, { draft: b, errors, token, status: 409 });
+    return renderCheckout(b, res, { draft: b, errors, token, status: 400 });
   }
   if (v.err) {
     if (hold) hold.pending = false;
@@ -1487,6 +1539,12 @@ app.post('/book', async (req, res) => {
     await sendBookingConfirmation(db, code);
   } catch (err) {
     console.error('booking confirmation email failed code=' + code);
+  }
+  try {
+    const origin = `${req.protocol}://${req.get('host') || 'localhost'}`;
+    await HotelMail.sendNewBooking(db, code, { origin });
+  } catch (err) {
+    console.error('hotel new-booking email failed code=' + code);
   }
   res.redirect(303, '/booking/' + code);
 });
@@ -1572,16 +1630,18 @@ app.get('/booking/:code', async (req, res) => {
   const view = hoursView(db, hotel, b.date);
   const when = view.span || view.hoursLine;
   const party = b.party || b.qty * (b.holds || 1);
+  const guestNames = BookingGuests.listForBooking(db, b.id);
   const note = b.cancel_note || cancelNote(db, hotel, b.date, b.created_at || undefined);
   const hasParking = bookingHasParking(db, b.id, hotel.id);
   bookingPrivate(res);
   res.send(page(cancelled ? 'Booking cancelled' : 'Booking confirmed', bookingPageBody({
-    b,
+    b: { ...b, hotel: displayName(b.hotel) },
     hotel,
     qr,
     adds,
     when,
     party,
+    guestNames,
     note,
     lines: includedLines(loadInclusions(db, hotel.id), party),
     areas: forPass(db, b.pass_type_id),
@@ -1719,7 +1779,7 @@ ${field('Work email', 'email', 'type="email" required maxlength="254" autocomple
 <p class="fh-lead">Hotel Day Club is for hotels in Australia. Local guests book your pool, gym or spa for the day, on the days you choose. They do not need a room.</p>
 <p class="fh-cta"><a class="btn btn-coral" href="#enquiry">Talk to us</a><a class="text-link" href="#dashboard">See how it works<span aria-hidden="true"> ↓</span></a></p>
 </div>
-<picture class="fh-hero-ph"><source type="image/webp" srcset="/golden/img/fh-loungers-sm.webp 800w, /golden/img/fh-loungers.webp 1400w" sizes="(max-width:800px) 100vw, 560px"><img src="/golden/img/fh-loungers.jpg" alt="Sun loungers and umbrellas beside a hotel pool" width="1400" height="934" fetchpriority="high" decoding="async"></picture>
+<picture class="fh-hero-ph"><source type="image/webp" srcset="/golden/img/fh-loungers-sm.webp 800w, /golden/img/fh-loungers.webp 1400w" sizes="(max-width:800px) 100vw, 560px"><img src="/golden/img/fh-loungers.jpg" alt="Rooftop pool with pergolas and loungers, city towers behind" width="1400" height="934" fetchpriority="high" decoding="async"></picture>
 </section>
 <section class="fh-figs" aria-label="At a glance"><ul class="wrap">
 ${fig('$0', 'to list, no monthly fee')}
@@ -1747,18 +1807,29 @@ ${check('Bookings, sales and fill rate in one place')}
 ${check('Pause a day or block dates yourself')}
 </ul>
 </div>
-<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-dashboard.webp"><img src="/golden/img/fh-dashboard.jpg" alt="The hotel dashboard for a fictional demo hotel, showing today's check-ins, pause buttons and booking totals" width="1600" height="735" loading="lazy" decoding="async"></picture></div>
+<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-dashboard.webp"><img src="/golden/img/fh-dashboard.jpg" alt="The hotel dashboard for a fictional demo hotel, showing today's check-ins and pause buttons, with amounts hidden" width="1600" height="922" loading="lazy" decoding="async"></picture></div>
 <figcaption>Sample data from the demo dashboard. The hotel and figures are fictional.</figcaption></figure>
 </section>
 <section class="wrap fh-product">
 <p class="fh-kicker">On the day</p>
 <h2>QR check-in and the guest list</h2>
 <div class="fh-shot-row">
-<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-checkin.webp"><img src="/golden/img/fh-checkin.jpg" alt="Demo QR check-in screen for a fictional hotel" width="1600" height="735" loading="lazy" decoding="async"></picture></div>
+<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-checkin.webp"><img src="/golden/img/fh-checkin.jpg" alt="Demo QR check-in screen for a fictional hotel" width="1600" height="922" loading="lazy" decoding="async"></picture></div>
 <figcaption>Sample QR check-in from the demo. Figures are fictional.</figcaption></figure>
-<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-guestlist.webp"><img src="/golden/img/fh-guestlist.jpg" alt="Demo guest list for a fictional hotel" width="1600" height="735" loading="lazy" decoding="async"></picture></div>
+<figure class="fh-shot"><div class="fh-frame"><span class="fh-dots" aria-hidden="true"><i></i><i></i><i></i></span><picture><source type="image/webp" srcset="/golden/img/fh-guestlist.webp"><img src="/golden/img/fh-guestlist.jpg" alt="Demo guest list for a fictional hotel" width="1600" height="922" loading="lazy" decoding="async"></picture></div>
 <figcaption>Sample guest list from the demo. Figures are fictional.</figcaption></figure>
 </div>
+</section>
+<section class="wrap fh-how" id="how-hotel">
+<p class="fh-kicker">Partnership</p>
+<h2>How it works for your hotel</h2>
+<ol class="fh-steps">
+<li><b>Talk to us.</b> We walk you through it and agree terms in your hotel agreement.</li>
+<li><b>We set up your listing with you:</b> your passes, prices, spots and hours. You can pause a day or block dates yourself.</li>
+<li><b>Guests book online.</b> You get the guest list by email the night before.</li>
+<li><b>On the day,</b> your front desk checks each booking in by QR code or by name, and points the guests to the pool. Guests buy any food and drink from you.</li>
+</ol>
+<p class="fh-day-job">On the day, the only job is check-in at the front desk. Each month you get a statement of your bookings.</p>
 </section>
 <section class="fh-enquiry" id="enquiry"><div class="wrap fh-enquiry-in">
 <div class="fh-enquiry-copy">
@@ -1897,24 +1968,28 @@ function arrivalCell(value, mode) {
 }
 function contactLine(b) {
   if (b.contact_hidden) return '';
+  if (!String(b.email || '').trim() && !String(b.phone || '').trim()) return '';
   return `<div class="muted small">${esc(b.email)} · ${esc(b.phone)}</div>`;
 }
 function hotelRows(rows, { hotel, adminCancel }) {
-  rows = withNotes(rows);
+  rows = withNotes(enrichBookings(rows));
   if (hotel && !adminCancel) rows = GuestPrivacy.presentAll(rows, hotel);
   return rows;
 }
-const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false, hotel = null } = {}) => {
+// amount: 'payout' on hotel pages (the hotel's share), 'total' on admin pages (what the guest paid).
+const amountHead = amount => amount === 'total' ? 'Guest paid' : 'Your payout';
+const amountOf = (b, amount) => money(amount === 'total' ? b.total : share(b.total).payout);
+const guestTable = (rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false, hotel = null, amount = 'payout' } = {}) => {
   rows = hotelRows(rows, { hotel, adminCancel });
   const head = arrival ? '<th>Arrival</th>' : '';
   const cell = b => arrival ? `<td>${arrival === 'detail' ? `Expected arrival: ${arrivalCell(b.expected_arrival, 'detail')}` : arrivalCell(b.expected_arrival, 'short')}</td>` : '';
   const versionLine = b => versions ? ConsentLog.adminLine(b) : '';
-  return rows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th>${hotelCol ? '<th>Hotel</th>' : ''}<th>Date</th><th>Guest</th>${head}<th>Seating</th><th>Spots</th><th>Total</th><th>Status</th></tr></thead><tbody>
-${rows.map(b => `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(b.hotel)}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(b.guest_name)}</b> ${parkingTag(b)}${contactLine(b)}${versionLine(b)}</td>${cell(b)}${seatCell(b)}<td>${b.qty}</td><td>${money(b.total)}</td>
-<td>${statusCell(b, { checkin, redirect, day, compact: true, adminCancel, hotel })}${noteBits(b, hotel, adminCancel)}${logForm(b, redirect, log)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No guests.</p>';
+  return rows.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Code</th>${hotelCol ? '<th>Hotel</th>' : ''}<th>Date</th><th>Guest</th>${head}<th>Seating</th><th>Spots</th><th>${amountHead(amount)}</th><th>Status</th></tr></thead><tbody>
+${rows.map(b => { const g = BookingGuests.headlineHtml(b, hotel, clockNow()); return `<tr><td><a class="link" href="/booking/${b.code}">${b.code}</a></td>${hotelCol ? `<td>${esc(displayName(b.hotel))}</td>` : ''}<td>${esc(nice(b.date))}</td><td><b>${esc(g.title)}</b>${g.others} ${parkingTag(b)}${contactLine(b)}${versionLine(b)}</td>${cell(b)}${seatCell(b)}<td>${b.qty}</td><td>${amountOf(b, amount)}</td>
+<td>${statusCell(b, { checkin, redirect, day, compact: true, adminCancel, hotel })}${noteBits(b, hotel, adminCancel)}${logForm(b, redirect, log)}</td></tr>`; }).join('')}</tbody></table></div>` : '<p class="muted">No guests.</p>';
 };
 const BQ = `SELECT b.*, p.name pass, p.holds, h.name hotel, (SELECT group_concat(ba.name || ' × ' || ba.qty, ', ') FROM booking_addons ba WHERE ba.booking_id=b.id) addons, (SELECT 1 FROM booking_addons ba JOIN addons a ON a.id=ba.addon_id WHERE ba.booking_id=b.id AND a.code='parking') parking_addon, (SELECT mode FROM inclusions i WHERE i.hotel_id=b.hotel_id AND i.code='parking') parking_mode FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id JOIN hotels h ON h.id=b.hotel_id`;
-function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false, hotel = null } = {}) {
+function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel', log = true, day = '', adminCancel = false, arrival = '', versions = false, hotel = null, amount = 'payout' } = {}) {
   rows = hotelRows(rows, { hotel, adminCancel });
   if (!rows.length) return '<p class="muted">No guests.</p>';
   return `<div class="guest-cards">${rows.map(b => {
@@ -1927,7 +2002,8 @@ function guestCards(rows, { checkin = true, hotelCol = false, redirect = '/hotel
       ? `<p>Expected arrival: ${arrivalCell(b.expected_arrival, 'detail')}</p>`
       : `<p class="muted small">Arrival: ${arrivalCell(b.expected_arrival, 'short')}</p>`;
     const versionLine = versions ? ConsentLog.adminLine(b) : '';
-    return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(b.guest_name)}</b> ${parkingTag(b)}<div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(b.hotel) : ''} · ${esc(nice(b.date))}</div>${versionLine}</div><b>${money(b.total)}</b></div>
+    const g = BookingGuests.headlineHtml(b, hotel, clockNow());
+    return `<article class="guest-card"><div class="guest-card-top"><div><b>${esc(g.title)}</b>${g.others} ${parkingTag(b)}<div class="muted small">${esc(b.code)}${hotelCol ? ' · ' + esc(displayName(b.hotel)) : ''} · ${esc(nice(b.date))}</div>${versionLine}</div><b>${amountOf(b, amount)}</b></div>
 <p>${esc(label)} × ${b.qty} · ${party} ${party === 1 ? 'person' : 'people'}</p>${arrivalLine}${rules}${adds}${noteBits(b, hotel, adminCancel)}${action}${logForm(b, redirect, log)}</article>`;
   }).join('')}</div>`;
 }
@@ -1945,8 +2021,8 @@ function todaySection(h, { big = false, live = '/hotel/today-list', day = '' } =
   return `<section id="today" class="panel" data-live="${esc(live)}"><h2 class="ph2">Today's guests <span class="muted small">${rows.length} booking${rows.length === 1 ? '' : 's'} · ${spots} spots · ${people} people · ${tally.arrived} arrived of ${tally.booked} booked</span> <a class="link small no-print" href="/hotel/print">Print list</a></h2>${body}</section>`;
 }
 function dashShell(h, inner, { here = '', live = false } = {}) {
-  const links = [['/hotel#today', 'Today'], ['/hotel/analytics', 'Analytics'], ['/hotel/checkin', 'Check in'], ['/hotel/settings', 'Settings'], ['/hotel#lookup', 'Lookup'], ['/hotel#upcoming', 'Upcoming'], ['/hotel#avail', 'Availability'], ['/hotel#addons', 'Add-ons'], ['/hotel#blocked', 'Blocked dates']];
-  return page(h.name, `<div class="dash"><aside class="side"><div class="side-h"><span class="badge-inline">${h.status === 'pending' ? 'Pending approval' : 'Demo listing'}</span><h3>${esc(h.name)}</h3><p class="small">${esc(h.area)}</p></div>
+  const links = [['/hotel#today', 'Today'], ['/hotel/analytics', 'Analytics'], ['/hotel/statement', 'Statements'], ['/hotel/checkin', 'Check in'], ['/hotel/settings', 'Settings'], ['/hotel#lookup', 'Lookup'], ['/hotel#upcoming', 'Upcoming'], ['/hotel#avail', 'Availability'], ['/hotel#addons', 'Add-ons'], ['/hotel#blocked', 'Blocked dates']];
+  return page(displayName(h), `<div class="dash"><aside class="side"><div class="side-h"><span class="badge-inline">${h.status === 'pending' ? 'Pending approval' : 'Demo listing'}</span><h3>${esc(displayName(h))}</h3><p class="small">${esc(h.area)}</p></div>
 <nav>${links.map(([href, label]) => `<a href="${href}" class="${here === href ? 'on' : ''}">${label}</a>`).join('')}${h.status === 'pending' ? '' : `<a href="/h/${h.slug}" target="_blank">View listing</a>`}</nav></aside>
 <div class="dash-main">${h.status === 'pending' ? '<div class="pending-note"><b>Pending approval.</b> This hotel appears on the site once an admin approves it.</div>' : ''}${inner}</div></div>${live ? LIVE_LIST : ''}`, { nav: 'hotel', bare: true });
 }
@@ -1958,10 +2034,15 @@ app.get('/hotel/today-list', hotelAuth, (req, res) => {
 });
 app.get('/hotel/bookings.csv', hotelAuth, (req, res) => {
   const rows = db.prepare(`SELECT b.id, b.date AS date, b.code AS booking_code, b.guest_name, b.email, b.phone, p.name AS pass,
-    COALESCE(b.party, b.qty * COALESCE(p.holds, 1)) AS guests, b.expected_arrival, b.status, b.total AS gross_sales
+    COALESCE(b.party, b.qty * COALESCE(p.holds, 1)) AS guests, b.expected_arrival, b.status, b.total
     FROM bookings b JOIN pass_types p ON p.id=b.pass_type_id
     WHERE b.hotel_id=? ORDER BY b.date, b.id`).all(req.hotel.id);
-  sendCsv(res, 'bookings.csv', hotelBookingsCsv(GuestPrivacy.presentAll(withNotes(rows), req.hotel)));
+  const shaped = GuestPrivacy.presentAll(withNotes(enrichBookings(rows)), req.hotel).map(row => ({
+    ...row,
+    guest_names: BookingGuests.csvNames(row.guest_names, row.contact_hidden),
+    paid_to_you: share(row.total).payout,
+  }));
+  sendCsv(res, 'bookings.csv', hotelBookingsCsv(shaped));
 });
 function bookingDayState(b, hotel) {
   const day = hotelToday(hotel);
@@ -1980,6 +2061,7 @@ function checkinLookup(hotel, code) {
   if (!b && short) b = db.prepare(`${BQ} WHERE b.short_code=?`).get(short);
   if (!b) return { st: 'missing', code: c || short };
   if (Number(b.hotel_id) !== Number(hotel.id)) return { st: 'other', code: b.short_code || b.code };
+  b = enrichBookings([b])[0];
   return { st: bookingDayState(b, hotel), b, code: b.code, at: b.checked_in_at ? HotelClock.clock(hotel, b.checked_in_at) : '' };
 }
 function checkinSearch(hotel, raw) {
@@ -1996,9 +2078,10 @@ function checkinSearch(hotel, raw) {
       OR (${GuestPrivacy.contactGate()} AND (
         lower(b.guest_name) LIKE ? OR lower(b.email) LIKE ?
         OR (? != '' AND replace(replace(replace(replace(replace(b.phone,' ',''),'-',''),'(',''),')',''),'+','') LIKE ?)
+        ${BookingGuests.searchGuestSql('b')}
       ))
     ) ORDER BY CASE WHEN b.date=? THEN 0 WHEN b.date>? THEN 1 ELSE 2 END, b.date, b.guest_name LIMIT 40`)
-    .all(hotel.id, like, short, short, GuestPrivacy.cutoff(hotel), like, like, digits, phoneLike, day, day);
+    .all(hotel.id, like, short, short, GuestPrivacy.cutoff(hotel), like, like, digits, phoneLike, like, day, day);
 }
 const checkinHits = new Map();
 function checkinLimited(ip) {
@@ -2024,7 +2107,8 @@ function checkinCard(info, hotel) {
   if (!info || !info.code) return '';
   if (info.st === 'missing') return `<div class="scan-status bad" role="status"><b>Not found</b><span>No booking ${esc(info.code)} at this hotel.</span></div>`;
   if (info.st === 'other') return `<div class="scan-status bad" role="status"><b>Another hotel</b><span>This booking is for another hotel.</span></div>`;
-  const b = GuestPrivacy.present(withNotes([info.b])[0], hotel);
+  const b = GuestPrivacy.present(withNotes(enrichBookings([info.b]))[0], hotel);
+  const g = BookingGuests.headlineHtml(b, hotel, clockNow());
   const pass = `${spotLabel({ name: b.pass, holds: b.holds })} × ${b.qty}`;
   const note = checkinStatusText(info, hotel);
   const tone = info.st === 'ready' ? 'valid' : info.st === 'used' ? 'used' : 'bad';
@@ -2032,7 +2116,7 @@ function checkinCard(info, hotel) {
     ? `<form method="post" action="/hotel/checkin"><input type="hidden" name="code" value="${esc(info.code)}"><input type="hidden" name="confirm" value="1"><input type="hidden" name="r" value="/hotel/checkin">${arrivedField(b)}<button class="btn btn-navy btn-checkin">Check in</button></form>`
     : '';
   const statusLabel = info.st === 'ready' ? 'Confirmed' : info.st === 'used' ? checkedInLabel(b, hotel) : info.st === 'cancel' ? 'Cancelled' : 'Confirmed';
-  return `<article class="checkin-card scan-status ${tone}"><p class="eyebrow-s">Booking ${esc(b.short_code || info.code)}</p><h2>${esc(b.guest_name)} ${parkingTag(b)}</h2><dl><dt>Pass</dt><dd>${esc(pass)}</dd><dt>Qty</dt><dd>${b.qty}</dd><dt>Date</dt><dd>${esc(nice(b.date))}</dd><dt>Arrival</dt><dd>${arrivalCell(b.expected_arrival, 'short')}</dd><dt>Status</dt><dd>${esc(statusLabel)}</dd></dl><p>${esc(note)}</p>${button}</article>`;
+  return `<article class="checkin-card scan-status ${tone}"><p class="eyebrow-s">Booking ${esc(b.short_code || info.code)}</p><h2>${esc(g.title)}${g.others} ${parkingTag(b)}</h2><dl><dt>Pass</dt><dd>${esc(pass)}</dd><dt>Qty</dt><dd>${b.qty}</dd><dt>Date</dt><dd>${esc(nice(b.date))}</dd><dt>Arrival</dt><dd>${arrivalCell(b.expected_arrival, 'short')}</dd><dt>Status</dt><dd>${esc(statusLabel)}</dd></dl><p>${esc(note)}</p>${button}</article>`;
 }
 function checkinResultCard(b, hotel) {
   const info = { st: bookingDayState(b, hotel), b, code: b.code, at: b.checked_in_at ? HotelClock.clock(hotel, b.checked_in_at) : '' };
@@ -2064,7 +2148,7 @@ function renderCheckin(req, res) {
 ${info ? checkinCard(info, h) : ''}
 <form class="checkin-search" method="get" action="/hotel/checkin"><label class="fl">Search<input name="q" value="${esc(q)}" placeholder="Name, email, phone or code" autocomplete="off"></label><button class="btn btn-line">Search</button></form>
 ${results}
-${todaySection(h, { big: true, live: '/hotel/today-list?view=checkin', day: hotelToday(h) })}
+${todaySection(h, { big: true, live: '/hotel/today-list?view=checkin', day: today(h) })}
 </div>
 ${StaticAssets.script('/checkin-parse.js')}${StaticAssets.script('/vendor/jsQR.js')}${StaticAssets.script('/checkin.js')}`, { here: '/hotel/checkin', live: true }));
 }
@@ -2117,10 +2201,10 @@ function soldWarnHtml(hotelId, passes, days, grid) {
     if (!rows.length || rows[0].blocked) continue;
     const booked = rows.reduce((sum, row) => sum + row.sold, 0);
     const dayCap = caps.has(date) ? Number(caps.get(date)) : base;
-    if (dayCap > 0 && booked * 100 >= dayCap * 80) lines.push(`${nice(date)} is ${Math.round(booked * 100 / dayCap)}% sold.`);
+    if (dayCap > 0 && booked * 100 >= dayCap * 80) lines.push(`${nice(date)} is nearly full (${booked} of ${dayCap} spots).`);
     for (const row of rows) {
       const cap = Number(row.cap) || 0;
-      if (cap > 0 && row.sold * 100 >= cap * 80) lines.push(`${spotLabel(row)} is ${Math.round(row.sold * 100 / cap)}% sold on ${nice(date)}.`);
+      if (cap > 0 && row.sold * 100 >= cap * 80) lines.push(`${spotLabel(row)} is nearly full on ${nice(date)} (${row.sold} of ${cap}).`);
     }
   }
   if (!lines.length) return '';
@@ -2137,26 +2221,28 @@ app.get('/hotel', hotelAuth, (req, res) => {
       OR (? != '' AND b.short_code = ?)
       OR (${GuestPrivacy.contactGate()} AND (b.guest_name LIKE ? OR b.email LIKE ? OR b.phone LIKE ?))
     ) ORDER BY b.date DESC LIMIT 30`).all(h.id, like, short, short, GuestPrivacy.cutoff(h), like, like, like) : null;
-  const s = db.prepare("SELECT COALESCE(SUM(qty),0) spots, COALESCE(SUM(COALESCE(party, qty)),0) people, COALESCE(SUM(total),0) gross, COUNT(*) n FROM bookings WHERE hotel_id=? AND status!='cancelled'").get(h.id);
-  const s30 = db.prepare("SELECT COALESCE(SUM(total),0) gross FROM bookings WHERE hotel_id=? AND status!='cancelled' AND date>=?").get(h.id, ymd(addDays(new Date(t + 'T12:00:00'), -30)));
+  const s = db.prepare("SELECT COALESCE(SUM(qty),0) spots, COALESCE(SUM(COALESCE(party, qty)),0) people, COALESCE(SUM(total),0) sales, COUNT(*) n FROM bookings WHERE hotel_id=? AND status!='cancelled'").get(h.id);
+  const s30 = db.prepare("SELECT COALESCE(SUM(total),0) sales FROM bookings WHERE hotel_id=? AND status!='cancelled' AND date>=?").get(h.id, ymd(addDays(new Date(t + 'T12:00:00'), -30)));
   const inToday = todayRows.filter(b => b.checked_in_at).reduce((a, b) => a + b.qty, 0), dueToday = todayRows.reduce((a, b) => a + b.qty, 0);
   const tally = arrivedOfBooked(todayRows);
   const passes = getPasses(h.id);
   const bySeat = db.prepare(`SELECT p.name, p.holds, COALESCE(SUM(CASE WHEN b.id IS NOT NULL THEN b.qty END),0) spots, COALESCE(SUM(CASE WHEN b.id IS NOT NULL THEN COALESCE(b.party, b.qty * p.holds) END),0) people
     FROM pass_types p LEFT JOIN bookings b ON b.pass_type_id=p.id AND b.hotel_id=? AND b.status!='cancelled' WHERE p.hotel_id=? GROUP BY p.id ORDER BY p.sort`).all(h.id, h.id);
-  const addonGross = db.prepare("SELECT COALESCE(SUM(ba.total),0) n FROM booking_addons ba JOIN bookings b ON b.id=ba.booking_id WHERE b.hotel_id=? AND b.status!='cancelled'").get(h.id).n;
+  const addonSales = db.prepare("SELECT COALESCE(SUM(ba.total),0) n FROM booking_addons ba JOIN bookings b ON b.id=ba.booking_id WHERE b.hotel_id=? AND b.status!='cancelled'").get(h.id).n;
+  const payoutTotal = share(s.sales + addonSales).payout;
+  const payout30 = share(s30.sales).payout;
   const addonsAll = getAddons(h.id);
   const blocked = db.prepare('SELECT * FROM blocked_dates WHERE hotel_id=? AND date>=? ORDER BY date').all(h.id, t);
   const days = Array.from({ length: 14 }, (_, i) => ymd(addDays(new Date(t + 'T12:00:00'), i)));
   const grid = Object.fromEntries(days.map(d => [d, availability(h.id, d)]));
   res.send(dashShell(h, `
 ${req.query.msg ? `<div class="flash">${esc(req.query.msg)}</div>` : ''}
-<div class="dash-head"><div><p class="eyebrow-s">Hotel dashboard</p><h1 class="l-title">G'day, ${esc(h.name.replace(' (Demo)', ''))}</h1><p class="muted">${esc(nice(t))} · ${inToday} of ${dueToday} spots checked in today · ${tally.arrived} arrived of ${tally.booked} booked</p></div>
+<div class="dash-head"><div><p class="eyebrow-s">Hotel dashboard</p><h1 class="l-title">G'day, ${esc(displayName(h))}</h1><p class="muted">${esc(nice(t))} · ${inToday} of ${dueToday} spots checked in today · ${tally.arrived} arrived of ${tally.booked} booked</p></div>
 <div class="dash-export"><div class="dash-actions"><a class="btn btn-line" href="/hotel/analytics">Analytics</a><a class="btn btn-line" href="/hotel/bookings.csv">Download bookings</a><a class="btn btn-navy" href="/hotel/checkin">Check in a guest</a></div>
 ${GuestPrivacy.note()}</div></div>
 ${soldWarnHtml(h.id, passes, days, grid)}
 ${opsBar(h, passes)}
-<div class="stats">${stat('Spots booked', s.spots, `${s.n} bookings · ${s.people} people`)}${stat('Gross sales', money(s.gross), `Includes ${money(addonGross)} add-ons · last 30 days ${money(s30.gross)}`)}</div>
+<div class="stats">${stat('Spots booked', s.spots, `${s.n} bookings · ${s.people} people`)}${stat('Your payout', money(payoutTotal), 'Confirmed bookings on your listing')}</div>
 <div class="seat-stats">${bySeat.map(r => `<span><b>${esc(spotLabel(r))}</b> ${r.spots} booked · ${r.people} people</span>`).join('')}</div>
 ${todaySection(h)}
 <section id="lookup" class="panel"><h2 class="ph2">Booking lookup</h2><form class="lookup" method="get" action="/hotel#lookup"><input name="q" value="${esc(q)}" placeholder="Booking code (HDC-7Q4K-2M9X), name, email or phone"><button class="btn btn-navy">${ICON.search} Find</button>${q ? '<a class="link" href="/hotel">Clear</a>' : ''}</form>
@@ -2323,21 +2409,37 @@ function readOps(token) {
   } catch { return null; }
 }
 app.get('/hotel/email-preview', hotelAuth, (req, res) => {
-  const h = req.hotel, tmr = HotelClock.offset(h, 1);
-  const rows = GuestPrivacy.presentAll(withNotes(db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? AND b.status!='cancelled' ORDER BY b.guest_name`).all(h.id, tmr)), h);
-  const spots = rows.reduce((s, b) => s + b.qty, 0);
-  const sum = getPasses(h.id).reduce((s, p) => s + p.daily_cap, 0);
-  const caps = [...new Set([8, Math.max(1, Math.round(sum / 2)), Math.max(1, sum - 4)].filter(n => n > 0 && n < sum))].sort((a, b) => a - b).slice(0, 3);
-  const pause = opsToken({ h: h.id, a: 'pause', d: tmr });
-  const capLinks = (caps.length ? caps : [Math.max(1, sum)]).map(n => `<a class="btn btn-line" href="/hotel/go/${opsToken({ h: h.id, a: 'cap', d: tmr, n })}">Cap at ${n}</a>`).join('');
-  res.send(dashShell(h, `<p class="eyebrow-s">Tonight's email</p><h1 class="l-title">Guest list for ${esc(nice(tmr))}</h1>
+  const h = req.hotel;
+  const now = clockNow();
+  const origin = `${req.protocol}://${req.get('host') || 'localhost'}`;
+  const mail = HotelMail.nightBeforeFor(db, h, now, { signOps: payload => opsToken(payload), origin });
+  const to = h.contact_email || h.login;
+  res.send(dashShell(h, `<p class="eyebrow-s">Tonight's email</p><h1 class="l-title">Guest list for ${esc(mail.visitLabel)}</h1>
 <p class="muted">This is the note we would send the night before. The links work for 36 hours. They do not sign you in.</p>
-<article class="email-card"><p class="muted small">To ${esc(h.contact_email || h.login)} · ${esc(h.name)}</p>
-<h2>Tomorrow at the pool</h2>
-<p>${rows.length} booking${rows.length === 1 ? '' : 's'} · ${spots} spots</p>
-${rows.length ? `<ul class="email-guests">${rows.map(b => `<li><b>${esc(b.guest_name)}</b> <span class="muted">${esc(b.code)} · ${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}${b.addons ? ' · ' + esc(b.addons) : ''}</span></li>`).join('')}</ul>` : '<p class="muted">No day-pass guests tomorrow.</p>'}
-<div class="email-acts"><a class="btn btn-navy" href="/hotel/go/${pause}">Pause tomorrow</a>${capLinks}<a class="btn btn-line" href="/hotel/print?date=${tmr}">Print this list</a></div>
-</article>`, { here: '' }));
+${HotelMail.nightBeforePreviewHtml(mail, to)}`, { here: '' }));
+});
+app.get('/hotel/statement', hotelAuth, (req, res) => {
+  const h = req.hotel;
+  const now = clockNow();
+  const month = HotelMail.parseStatementMonth(req.query.month, h, now);
+  const st = HotelMail.statementFor(db, h, month, now);
+  const pick = esc(month);
+  res.send(dashShell(h, `<p class="eyebrow-s">Monthly statement</p><h1 class="l-title">Statement for ${esc(st ? st.label : month)}</h1>
+<p class="muted">This is the note we would send at the start of the month. It shows your payout only.</p>
+<form class="lookup" method="get" action="/hotel/statement" style="margin-bottom:18px"><label class="fl">Month<input name="month" value="${pick}" placeholder="YYYY-MM" pattern="\\d{4}-\\d{2}"></label><button class="btn btn-line">Show</button></form>
+${HotelMail.statementPreviewHtml(st)}`, { here: '/hotel/statement' }));
+});
+app.post('/internal/cron/hotel-mail', express.json(), (req, res) => {
+  const check = HotelMail.verifyCronSecret(req.get('x-cron-secret') || req.body?.secret);
+  if (check.missing) return res.status(404).end();
+  if (!check.ok) return res.status(403).end();
+  const origin = seo.ORIGIN || `http://localhost:${PORT}`;
+  HotelMail.tick(db, { now: clockNow(), signOps: payload => opsToken(payload), origin })
+    .then(result => res.json(result))
+    .catch(err => {
+      console.error(err && err.stack ? err.stack : err);
+      res.status(500).json({ error: 'tick failed' });
+    });
 });
 function opsMiss(res) {
   return res.status(400).send(page('Link expired', `<div class="wrap sec narrow"><h1 class="l-title">This link has expired</h1><p class="muted">Open tonight's email again from the dashboard, or <a href="/hotel/login">log in</a>.</p></div>`, { bare: true, index: false, canonical: false }));
@@ -2386,13 +2488,13 @@ app.post('/hotel/go/:token', async (req, res) => {
 app.get('/hotel/print', hotelAuth, (req, res) => {
   const h = req.hotel;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today(h);
-  const rows = GuestPrivacy.presentAll(withNotes(db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? AND b.status!='cancelled' ORDER BY b.guest_name`).all(h.id, date)), h);
+  const rows = GuestPrivacy.presentAll(withNotes(enrichBookings(db.prepare(`${BQ} WHERE b.hotel_id=? AND b.date=? AND b.status!='cancelled' ORDER BY b.guest_name`).all(h.id, date))), h);
   res.send(page('Guest list', `<div class="wrap sec print-sheet"><div class="no-print"><a class="link" href="/hotel">← Dashboard</a></div>
-<h1 class="l-title">${esc(h.name)}</h1><p class="muted">${esc(nice(date))} · ${rows.length} booking${rows.length === 1 ? '' : 's'}</p>
+<h1 class="l-title">${esc(displayName(h))}</h1><p class="muted">${esc(nice(date))} · ${rows.length} booking${rows.length === 1 ? '' : 's'}</p>
 <p>${esc(GuestCheckIn.line())}</p>
 <p class="no-print" style="margin:14px 0"><button class="btn btn-navy" type="button" onclick="print()">Print</button></p>
 <div class="tbl-wrap"><table class="tbl print-list"><thead><tr><th></th><th>Guest</th><th>Code</th><th>Seating</th><th>People</th><th>Notes</th></tr></thead><tbody>
-${rows.map(b => `<tr><td><span class="print-tick"></span></td><td><b>${esc(b.guest_name)}</b></td><td>${esc(b.code)}</td><td>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</td><td>${b.party || b.qty * (b.holds || 1)}</td><td>${esc((b.notes || []).map(n => noteLabel(n, h)).join('; '))}${b.addons ? ' ' + esc(b.addons) : ''}</td></tr>`).join('') || '<tr><td colspan="6">No guests.</td></tr>'}
+${rows.map(b => { const g = BookingGuests.headlineHtml(b, h, clockNow()); return `<tr><td><span class="print-tick"></span></td><td><b>${esc(g.title)}</b>${g.others}</td><td>${esc(b.code)}</td><td>${esc(spotLabel({ name: b.pass, holds: b.holds }))} × ${b.qty}</td><td>${b.party || b.qty * (b.holds || 1)}</td><td>${esc((b.notes || []).map(n => noteLabel(n, h)).join('; '))}${b.addons ? ' ' + esc(b.addons) : ''}</td></tr>`; }).join('') || '<tr><td colspan="6">No guests.</td></tr>'}
 </tbody></table></div></div>`, { nav: 'hotel', bare: true }));
 });
 app.post('/hotel/addons', hotelAuth, (req, res) => {
@@ -2630,7 +2732,7 @@ app.post('/admin/hotel-password', adminAuth, (req, res) => {
   if (String(hotel.login || '').startsWith('demo-')) return adminGo(res, '/admin/hotels', 'The demo hotel password is set on the server.');
   if (password.length < 4 || password.length > 200) return adminGo(res, '/admin/hotels', 'Use a password of 4 to 200 characters.');
   db.prepare('UPDATE hotels SET password=? WHERE id=?').run(hashPassword(password), hotel.id);
-  return adminGo(res, '/admin/hotels', `Password set for ${hotel.name}.`);
+  return adminGo(res, '/admin/hotels', `Password set for ${displayName(hotel)}.`);
 });
 app.post('/admin/booking/cancel', adminAuth, async (req, res) => {
   if (!ownForm(req, res)) return;
@@ -2656,16 +2758,16 @@ app.post('/admin/approve', adminAuth, (req, res) => {
   const h = id && db.prepare('SELECT * FROM hotels WHERE id=? AND status=?').get(id, 'pending');
   if (!h) return adminGo(res, '/admin/hotels', 'Nothing to approve.');
   const gaps = venueMissing(h);
-  if (gaps.length) return adminGo(res, '/admin/hotels', `${h.name} is not live yet. Set ${gaps.join(', ')} first.`);
+  if (gaps.length) return adminGo(res, '/admin/hotels', `${displayName(h)} is not live yet. Set ${gaps.join(', ')} first.`);
   db.prepare("UPDATE hotels SET status='active' WHERE id=?").run(id);
-  return adminGo(res, '/admin/hotels', `Approved ${h.name}.`);
+  return adminGo(res, '/admin/hotels', `Approved ${displayName(h)}.`);
 });
 app.get('/admin', adminAuth, (req, res) => {
   const counts = AdminShell.counts(db);
   const { per, tot, addonAll } = adminTotals();
   const recent = db.prepare(`${BQ} ORDER BY b.created_at DESC, b.id DESC LIMIT 5`).all();
   const notes = db.prepare(`SELECT n.*, b.code, b.guest_name, b.date, h.name hotel FROM guest_notes n JOIN bookings b ON b.id=n.booking_id JOIN hotels h ON h.id=n.hotel_id ORDER BY n.id DESC LIMIT 40`).all();
-  const noteBody = notes.length ? notes.map(n => `<div class="pending-row"><div><b>${n.kind === 'incident' ? 'Incident' : 'No-show'}</b> · ${esc(n.guest_name)} · ${esc(n.code)}<div class="adm-muted small">${esc(n.hotel)} · ${esc(nice(n.date))} · ${esc(HotelClock.iso(n.created_at))}${n.note ? ' · ' + esc(n.note) : ''}</div></div></div>`).join('') : '<p class="adm-muted">No notes yet. Hotels log a no-show or an incident from the guest list.</p>';
+  const noteBody = notes.length ? notes.map(n => `<div class="pending-row"><div><b>${n.kind === 'incident' ? 'Incident' : 'No-show'}</b> · ${esc(n.guest_name)} · ${esc(n.code)}<div class="adm-muted small">${esc(displayName({ name: n.hotel }))} · ${esc(nice(n.date))} · ${esc(HotelClock.iso(n.created_at))}${n.note ? ' · ' + esc(n.note) : ''}</div></div></div>`).join('') : '<p class="adm-muted">No notes yet. Hotels log a no-show or an incident from the guest list.</p>';
   const inner = `${AdminShell.flash(req.query.msg)}
 ${AdminShell.heading('Overview', 'All active hotels. Cancelled bookings are not counted.')}
 ${AdminShell.tiles(tot, addonAll)}
@@ -2687,7 +2789,7 @@ app.get('/admin/bookings', adminAuth, (req, res) => {
   const rows = db.prepare(`${BQ} ${whereSql} ORDER BY b.created_at DESC, b.id DESC LIMIT 10 OFFSET ?`).all(...filter.args, (page - 1) * 10);
   const hotels = db.prepare('SELECT id, name FROM hotels ORDER BY name').all();
   const list = rows.length
-    ? guestList(rows, { checkin: false, hotelCol: true, log: false, adminCancel: true, arrival: 'short', versions: true })
+    ? guestList(rows, { checkin: false, hotelCol: true, log: false, adminCancel: true, arrival: 'short', versions: true, amount: 'total' })
     : '<p>No bookings match. <a href="/admin/bookings">Clear filters.</a></p>';
   const inner = `${AdminShell.flash(req.query.msg)}
 ${AdminShell.heading('Bookings', 'Newest first. Search by code, guest name or email.')}
@@ -2701,7 +2803,7 @@ app.get('/admin/hotels', adminAuth, (req, res) => {
   const counts = AdminShell.counts(db);
   const hotels = db.prepare("SELECT * FROM hotels ORDER BY CASE WHEN status='pending' THEN 0 ELSE 1 END, name, id").all();
   const rows = hotels.map(h => `<tr>
-<td data-label="Hotel"><span><b>${esc(h.name)}</b><div class="adm-muted">${esc(h.area || '')}</div>${pendingDetail(h)}</span></td>
+<td data-label="Hotel"><span><b>${esc(displayName(h))}</b><div class="adm-muted">${esc(h.area || '')}</div>${pendingDetail(h)}</span></td>
 <td data-label="Status">${hotelStatusPill(h.status)}</td>
 <td data-label="Login">${esc(h.login || '')}</td>
 <td data-label="Actions">${hotelActions(h)}</td>
@@ -2839,6 +2941,14 @@ app.get('/about', (req, res) => {
 <p class="contact-kicker">About</p>
 <h1 class="l-title">Hotel Day Club</h1>
 <p class="lead">We help people book a few hours at a hotel pool, spa or gym without staying overnight.</p>
+<section class="about-commit" aria-labelledby="about-commit-h">
+<h2 id="about-commit-h" class="about-commit-h">What we hold ourselves to</h2>
+<ul class="about-commit-list">
+<li><b>Clear rules on the page.</b> Example listings show hours, age rules and what is included before you book. Hotels can pause a day or cap spots from their dashboard.</li>
+<li><b>Your details for this booking only.</b> Checkout records your consent, and we share your name and contact details with the hotel for check-in. We do not sell demo bookings or take payment on this site.</li>
+<li><b>Honest labels.</b> This demo keeps fictional hotels, stock photos and Example tags so nothing is mistaken for a real venue.</li>
+</ul>
+</section>
 <div class="legal-doc about-copy">
 <p>Hotel Day Club is a simple way to use a hotel's wellness spaces on quieter days. If you live nearby, you can swim, relax or work out when the hotel has room to spare.</p>
 <p>Hotels set their own hours, prices and how many day guests they take. They earn from capacity that might otherwise sit empty. Overnight guests always come first.</p>
@@ -2959,7 +3069,9 @@ ensureAccess(db);
 HotelAmenities.ensure(db);
 ensureArrival(db);
 ensureExplore(db);
+require('./demoPhotos').applyDemoPhotos(db);
 seedPerformance(db);
+seedGuestNames(db);
 syncHoursLabels(db);
 migrateHotelPasswords(db);
 adminPassword();
@@ -3205,4 +3317,8 @@ app.listen(PORT, () => {
   console.log(`Hotel Day Club demo on http://localhost:${PORT}`);
   console.log('data: database at ' + paths.dbPath());
   backups.startScheduler(db);
+  HotelMail.startScheduler(db, {
+    signOps: payload => opsToken(payload),
+    origin: seo.ORIGIN || `http://localhost:${PORT}`,
+  });
 });

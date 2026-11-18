@@ -11,7 +11,18 @@ npm start            # http://localhost:3030, or the port in PORT. Seeds demo da
 npm run seed         # optional reset: deletes the SQLite file and recreates it with 6 demo hotels and about 270 sample bookings. Do not run this on Render.
 npm run restore -- /path/to/hdc-YYYY-MM-DD-HHmm.sqlite   # stop the server first. See "Restore a backup" below.
 npm run bg           # runs in the background on http://localhost:3030, with an auto-restart loop (log: server.log)
-npm test             # Playwright end-to-end test; it also refreshes screenshots/
+npm test             # Playwright end-to-end test (screenshots are local-only, not committed)
+npm run check        # all Node checks in tests/*-checks.js (layout checks need Chrome locally)
+npm run check:layout # Chrome layout checks: tests/layout-checks.js, then tests/layout-regression-checks.js
+```
+
+### Checks in CI
+`.github/workflows/checks.yml` runs two jobs on Node 20 for every push to `main` or `cursor/**` and for every pull request:
+- **check** runs `npm run check`: every `tests/*-checks.js` file in turn. `scripts/check.js` clears `TZ` for each file, so results do not depend on the machine's time zone.
+- **layout** runs `node tests/layout-checks.js`, then `node tests/layout-regression-checks.js`. Both start the app and a headless Chrome and measure the rendered page: pass rows and search cards, then the confirmation ticket stub, home, checkout and For hotels. Run the same two files locally with `npm run check:layout` (Chrome required).
+
+### Security headers
+HTML responses set Content-Security-Policy, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, Referrer-Policy, and Permissions-Policy. Strict-Transport-Security is sent when the request is HTTPS (`x-forwarded-proto: https`). `X-Powered-By` is disabled. Some inline styles still use `unsafe-inline` in CSP; moving them behind nonces is a noted follow-up.
 ```
 Run `npm run seed` before each pitch to reset the data. Sample bookings are dated relative to today.
 
@@ -58,6 +69,28 @@ If `RESEND_API_KEY` is unset, the app writes `mail: skipped, RESEND_API_KEY unse
 Checkout already requires a guest email. One booking sends one confirmation. The message has the hotel name, area, date, access hours, pass, guests, extras, total, booking code, a link to the confirmation page (the QR code is on that page), the cancellation time for that date, the short risk line from the confirmation page, and the contact address. It does not include the hotel's street address. It is transactional: no marketing and no unsubscribe link. While the demo banner is on every page, the guest email says it is a demo booking, no payment was taken, and no real booking exists.
 
 Each new contact-form message also emails the contact address (`CONTACT_EMAIL`, otherwise `hello@hoteldayclub.com.au`) through the same mailer, with the same skip-if-unset behaviour. That copy includes the name, email, topic, booking code and message so it can be answered. `/hotel/email-preview` is still only the night-before guest list on screen.
+
+### Hotel operations email (off by default)
+Hotel mail is **disabled unless you turn it on**. Set `HOTEL_MAIL_ENABLED` to `true` or `1` on the host (it is unset in git and defaults to off). When enabled, the app can send:
+
+- **Night-before guest list** (from 18:00 to midnight local hotel time on the evening before; `HOTEL_LIST_SEND_AT` overrides the hour)
+- **Monthly statement** (about 09:00 on the 1st of each month, for the previous month)
+- **New booking alert** to the hotel when a guest finishes checkout (also respects the enabled flag; demo hotels are skipped)
+
+Optional overrides:
+
+| Variable | Purpose |
+|---|---|
+| `HOTEL_MAIL_TEST_TO` | Send every hotel mail to this address instead of the hotel contact |
+| `CRON_SECRET` | Shared secret for `POST /internal/cron/hotel-mail` (header `x-cron-secret`) so Render cron can run the mail tick without browser login |
+| `SITE_ORIGIN` | Absolute site URL for pause, cap and dashboard links in mail (defaults to `http://localhost:PORT`) |
+
+If `HOTEL_MAIL_ENABLED` is off, checkout and the internal cron route still work; no hotel mail is sent. If `RESEND_API_KEY` is unset, the mailer logs a skip and the booking is still saved. Cron example (replace the secret and host):
+
+```bash
+curl -sS -X POST "https://www.hoteldayclub.com.au/internal/cron/hotel-mail" \
+  -H "x-cron-secret: $CRON_SECRET"
+```
 
 ## Launch waitlist
 The homepage has a waitlist form. Each signup is saved in SQLite and, if you connect a spreadsheet, sent there as well. On the free plan the disk is wiped on every deploy, so the spreadsheet is the copy that lasts. With `DATA_DIR` pointed at a persistent disk, the SQLite row survives deploys. Keep a downloaded backup or the spreadsheet as well: a backup stored on the same disk is not an off-server copy. If the spreadsheet is not connected, or the send fails, the visitor still sees a success message. The signup is written to the server log, and it stays in SQLite until that database is removed.
@@ -143,7 +176,9 @@ What still has to be done by hand:
 4. **Real auth:** hotel staff accounts with password reset, roles, and a second factor. Demo hotel passwords are scrypt hashes checked with a constant-time compare. Admin is still one shared password, with a per-address lockout, and there is no two-factor step.
 5. **Email** confirmations and contact-form alerts already send through Resend when `RESEND_API_KEY` and `MAIL_FROM` are set on the host. SMS is still to do. The check-in page already scans a booking QR with the phone camera. `/hotel/email-preview` only shows the night-before guest list.
 6. Legal: replace the draft pages in `legal/` with signed terms, a privacy policy, waivers and age checks. Then set `LEGAL_PAGES_INDEXABLE` to `true` on Render so `/privacy`, `/terms`, `/refunds` and `/risk` can be indexed. Use real hotel photos and names only after that hotel has agreed to be listed. Get trade mark clearance for the name.
-7. Ops: timezone handling (it currently uses the server's local time), rate limiting and CSRF tokens. Nightly SQLite backups and `GET /healthz` are in place once `DATA_DIR` is set. See the persistent-disk steps above. A personal-data inventory is in `docs/data-inventory.md`.
+7. Ops: rate limiting and CSRF tokens. Guest and hotel civil times use each hotel's stored timezone (or state) with Sydney as the fallback; CI runs `npm run check` with and without `TZ`. Nightly SQLite backups and `GET /healthz` are in place once `DATA_DIR` is set. See the persistent-disk steps above. A personal-data inventory is in `docs/data-inventory.md`.
 
 ## Screenshots
-`screenshots/{home,listing,checkout,confirmation,hotel-dashboard,admin}-{desktop,mobile}.png`
+Playwright can write `screenshots/{home,listing,checkout,confirmation,hotel-dashboard,admin}-{desktop,mobile}.png` when you run `npm test`; those files are not committed.
+
+For-hotels product shots live in `public/golden/img/fh-*.jpg` (regenerate with `node scripts/capture-fh-shots.js` when the hotel UI changes; needs Chrome and `DEMO_HOTEL_PASSWORD`).

@@ -130,6 +130,11 @@ function start(port) {
     assert.ok(dash.body.includes('content="noindex, nofollow"'));
     assert.ok(!dash.body.includes(secret));
     assert.ok(!dash.body.includes('\u2014'), 'hotel dashboard avoids em-dashes');
+    // B1-06: demo suffix only on badges, not in the hotel sidebar or greeting.
+    assert.ok(dash.body.includes('<h3>The Saltwater Terrace</h3>'), 'sidebar uses displayName');
+    assert.ok(dash.body.includes("G'day, The Saltwater Terrace"), 'dashboard greeting uses displayName');
+    assert.ok(!dash.body.includes("G'day, The Saltwater Terrace (Demo)"));
+    assert.ok(!/<aside class="side"[\s\S]*<h3>[^<]*\(Demo\)/.test(dash.body), 'sidebar title has no (Demo)');
     const todayList = await get(port, '/hotel/today-list', { Cookie: jar });
     assert.ok(todayList.status === 200);
     assert.ok(!todayList.body.includes('\u2014'), 'today-list avoids em-dashes');
@@ -168,7 +173,7 @@ function start(port) {
     const preview = await get(port, '/hotel/email-preview', { Cookie: realJar });
     assert.ok(preview.body.includes('36 hours'));
     assert.ok(preview.body.includes('They do not sign you in.'));
-    const token = (preview.body.match(/href="\/hotel\/go\/([^"]+)"/) || [])[1];
+    const token = (preview.body.match(/\/hotel\/go\/([^"\s<]+)/) || [])[1];
     assert.ok(token);
     await get(port, '/hotel/logout', { Cookie: realJar });
     const link = await get(port, '/hotel/go/' + token);

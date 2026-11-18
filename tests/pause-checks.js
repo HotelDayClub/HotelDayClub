@@ -230,7 +230,7 @@ function tokenDate(token) {
       assert.strictEqual(ok.status, 302);
       const jar = (ok.headers['set-cookie'] || []).map(cookie => cookie.split(';')[0]).join('; ');
       const email = await get(port, '/hotel/email-preview', { Cookie: jar });
-      const token = (email.body.match(/href="\/hotel\/go\/([^"]+)"/) || [])[1];
+      const token = (email.body.match(/\/hotel\/go\/([^"\s<]+)/) || [])[1];
       assert.ok(token, 'pause token missing');
       return { jar, token, when: tokenDate(token) };
     })();
