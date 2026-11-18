@@ -133,7 +133,7 @@ assert.ok(!/createElement\('style'\)|\.d2-book\{display:\s*block!important/.test
     assert.ok(!hdr.includes('hdc-lockup-dark.svg'), 'no dark lockup on listing');
 
     const palm = await get(port, '/h/palm-court?pass=chair#book');
-    assert.ok(palm.body.includes('hero-loungers.jpg') || palm.body.includes('assets/photos/hero-loungers'), 'palm chair photo');
+    assert.ok(palm.body.includes('pool-lane-morning.jpg') || palm.body.includes('assets/photos/pool-lane-morning'), 'palm chair photo');
 
     let chrome = '';
     try {
