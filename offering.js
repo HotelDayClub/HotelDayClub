@@ -1,4 +1,5 @@
 const { esc, ymd, nice } = require('./util');
+const { displayName } = require('./hotelName');
 
 const KINDS = [
   { code: 'lounger', name: 'Sun lounger' },
@@ -737,7 +738,7 @@ function offeringForm({ action, hotel, spots, hours, account, error, lockedIds }
 ${error ? `<div class="alert">${esc(error)}</div>` : ''}
 <nav class="form-jumps"><a href="#sec-hotel">Hotel</a><a href="#sec-seating">Seating</a><a href="#sec-hours">Hours</a><a href="#sec-rules">Rules</a></nav>
 <h2 id="sec-hotel">Hotel</h2>
-<label class="fl">Hotel name<input name="hotel_name" required maxlength="80" value="${esc(h.name || '')}"></label>
+<label class="fl">Hotel name<input name="hotel_name" required maxlength="80" value="${esc(displayName(h) || '')}"></label>
 <div class="two"><label class="fl">Neighbourhood<input name="area" required maxlength="60" value="${esc(h.area || '')}" placeholder="Eastern Beaches"></label>
 <label class="fl">Contact name<input name="contact_name" maxlength="80" value="${esc(h.contact_name || '')}"></label></div>
 <label class="fl">Contact email<input name="contact_email" type="email" maxlength="120" value="${esc(h.contact_email || '')}" placeholder="you@hotel.com"></label>
