@@ -387,6 +387,7 @@ function page(title, body, opts = {}) {
   const extraJs = opts.js ? StaticAssets.script(opts.js) : '';
   const headerExtra = opts.headerHtml || '';
   const tags = analytics && nav === 'guest' ? gaSnippet(analyticsPath) : '';
+  const trackJs = tags ? StaticAssets.script('/track.js') : '';
   const preconnect = tags ? '<link rel="preconnect" href="https://www.googletagmanager.com">' : '';
   const canonicalUrl = opts.canonical === false || !opts.path ? '' : seo.absolute(opts.path);
   const meta = seo.headMeta({
@@ -434,7 +435,7 @@ function page(title, body, opts = {}) {
 ${preconnect}${meta}${tags}${home ? '<script>document.documentElement.classList.add("js");if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("rv");</script>' : '<script>document.documentElement.classList.add("js")</script>'}${css}</head><body class="${bodyClass}">
 ${demoSite() ? '<div class="demo-banner">Demo site: listings are examples, no real bookings or payments.</div>' : ''}
 ${header}<main>${body}</main>
-${bare ? '' : SiteFooter.html()}${StaticAssets.script('/pickers.js')}${home ? HOME_SCRIPT : ''}${nav === 'guest' ? MENU_SCRIPT : ''}${extraJs}
+${bare ? '' : SiteFooter.html()}${StaticAssets.script('/pickers.js')}${trackJs}${home ? HOME_SCRIPT : ''}${nav === 'guest' ? MENU_SCRIPT : ''}${extraJs}
 </body></html>`;
 }
 const card = (h, date) => {
@@ -901,7 +902,7 @@ function searchPage(query) {
     ? `${FIND_ICON}<span class="cpill-tx">Search</span>`
     : `<span class="cpill-tx">${esc(summary.face)}</span>`;
   const headerHtml = `<div class="cslot"></div><button type="button" class="cpill" hidden aria-haspopup="dialog" aria-controls="search-sheet" aria-label="Edit search: ${esc(summary.where)}, ${esc(summary.when)}, ${esc(guestAria)}">${pillFace}</button>`;
-  const body = `<div class="search-page"><form class="sbar" action="/search" method="get">
+  const body = `<div class="search-page" data-hdc-event-load="search"><form class="sbar" action="/search" method="get">
 ${keepSort}
 <div class="seg"><label for="w">Where</label><select id="w" class="hdc-pick" name="destination" aria-label="Where"><option value="" data-icon="pin"${selectedDest ? '' : ' selected'}>All of Australia</option>${whereOptions(selectedDest)}</select></div>
 <div class="seg"><label for="when">When</label><input id="when" class="hdc-date" type="date" name="date" min="${minDate}" max="${maxDate}" value="${esc(params.date)}"></div>
@@ -947,6 +948,7 @@ ${chips ? `<div class="chips" aria-label="Active filters">${chips}${clear}</div>
 </div>
 <script>(function(){var c=document.querySelector('.ichips');var on=c&&c.querySelector('.mood[aria-current="true"]');if(on)c.scrollLeft=Math.max(0,on.offsetLeft-120)})();</script>`;
   return page(result.heading, body, {
+    analytics: true,
     titleReady: true,
     documentTitle: result.title,
     description: 'Example day passes in Australia. Choose a place, a date, guests, a price and an age. These listings are fictional.',
@@ -1757,7 +1759,7 @@ function forHotelsHtml({ code = '', sent = false, error = '', values = {} } = {}
   const v = values || {};
   const field = (label, name, attrs, val) => `<label class="fl"><span>${label}</span><input name="${name}" ${attrs} value="${esc(val || '')}"></label>`;
   const form = sent
-    ? `<div class="fh-sent" role="status"><h3>Thanks, we have your note.</h3><p>We will be in touch by email soon.</p></div>`
+    ? `<div class="fh-sent" role="status" data-hdc-event-load="generate_lead" data-hdc-lead-type="hotel_enquiry"><h3>Thanks, we have your note.</h3><p>We will be in touch by email soon.</p></div>`
     : `${error ? `<div class="alert" role="alert">${esc(error)}</div>` : ''}<form class="fh-form" method="post" action="/contact">
 <input type="hidden" name="form" value="hotel">
 <div class="hp" aria-hidden="true"><label>Company website<input name="company_website" tabindex="-1" autocomplete="off" value=""></label></div>

@@ -10,6 +10,7 @@
     "bg": "./start.sh",
     "test": "python3 e2e_test.py",
     "test:analytics": "node tests/analytics-checks.js",
+    "test:ga-events": "node tests/ga-events-checks.js",
     "test:waitlist": "node tests/waitlist-checks.js",
     "test:contact": "node tests/contact-checks.js",
     "test:mail": "node tests/mail-checks.js",

@@ -306,7 +306,7 @@ function passCard(p, h, items, opts) {
   const btn = on
     ? `<span class="d2-sel on" aria-hidden="true">${icon('tick')} Selected</span>`
     : `<span class="d2-sel">Select</span>`;
-  return `<a class="d2-card d2-row${on ? ' is-on' : ''}" href="${esc(href)}" data-pass="${esc(p.code)}">${passRowPhoto(p, passAlt(p, h))}<div class="d2-card-body"><div class="d2-card-top"><b class="n">${esc(p.name)}</b><p class="pr">${priceHtml(h, p.price)}</p>${scarcityHtml}</div>${desc ? `<p class="d2-card-desc">${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p))}</p>${btn}</div></a>`;
+  return `<a class="d2-card d2-row${on ? ' is-on' : ''}" href="${esc(href)}" data-pass="${esc(p.code)}" data-kind="${esc(p.kind || 'custom')}" data-price="${esc(p.price)}" data-name="${esc(p.name)}">${passRowPhoto(p, passAlt(p, h))}<div class="d2-card-body"><div class="d2-card-top"><b class="n">${esc(p.name)}</b><p class="pr">${priceHtml(h, p.price)}</p>${scarcityHtml}</div>${desc ? `<p class="d2-card-desc">${esc(desc)}</p>` : ''}<p class="fit">${esc(ListingD2.fitsLine(p))}</p>${btn}</div></a>`;
 }
 
 function chipHtml(c) {
@@ -360,13 +360,13 @@ function sheetHtml(o) {
     const on = pick && p.code === pick.code;
     const off = out(p);
     const thumb = passThumb(p, isDemo(h) ? 'Stock photo, not this hotel' : p.name).replace('width="88" height="88"', 'width="120" height="60"');
-    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${thumb}<b>${esc(p.name)}</b><span class="d2-pt-price">${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><span class="d2-pt-fits">${esc(ListingD2.fitsLine(p))}</span><i class="tk">${icon('tick')}</i></label>`;
+    return `<label class="d2-pt${on ? ' on' : ''}${off ? ' off' : ''}"><input type="radio" name="pass" value="${esc(p.code)}" data-name="${esc(p.name)}" data-price="${esc(p.price)}" data-kind="${esc(p.kind || 'custom')}" data-holds="${esc(Math.max(1, Number(p.holds) || 1))}" data-fits="${esc(ListingD2.fitsLine(p))}" data-label="${esc(ListingD2.priceText(h, p.price))}"${on ? ' checked' : ''}${off ? ' disabled' : ''}>${thumb}<b>${esc(p.name)}</b><span class="d2-pt-price">${off ? 'Sold out' : esc(ListingD2.priceText(h, p.price))}</span><span class="d2-pt-fits">${esc(ListingD2.fitsLine(p))}</span><i class="tk">${icon('tick')}</i></label>`;
   }).join('');
   const dateLabelSticky = date ? ListingD2.label(date) : 'Choose a date';
   const qtyLabelSticky = `${qty} (up to ${SearchQuery.BOOKING_SPOTS} people)`;
   const noJsDate = `<noscript><form class="d2-nojs" action="/h/${esc(encodeURIComponent(h.slug))}#book" method="get"><label>Another date<input type="date" name="date" min="${esc(o.today)}" max="${esc(maxDate)}" value="${esc(outside ? date : '')}"></label><input type="hidden" name="pass" value="${esc(pick ? pick.code : '')}"><input type="hidden" name="qty" value="${qty}"><button class="d2-btn out" type="submit">Use this date</button></form></noscript>`;
   return `<section class="d2-book" id="book" aria-labelledby="d2-book-h" tabindex="-1">
-<form class="d2-form" id="d2-form" action="/checkout" method="get" data-slug="${esc(h.slug)}" data-min="${esc(o.today)}" data-max="${esc(maxDate)}" data-date="${esc(date)}" data-qty="${qty}" data-demo="${isDemo(h) ? '1' : '0'}" data-closed="${esc(JSON.stringify(o.closed || {}))}" data-hours="${esc(JSON.stringify(ListingD2.hoursByWeekday(o.hourRows)))}" data-day-hours="${esc(JSON.stringify(o.dayHours || {}))}" data-max-people="${SearchQuery.BOOKING_SPOTS}" data-cancel="${esc(cancelLine)}">
+<form class="d2-form" id="d2-form" action="/checkout" method="get" data-hdc-event="book_click" data-slug="${esc(h.slug)}" data-min="${esc(o.today)}" data-max="${esc(maxDate)}" data-date="${esc(date)}" data-qty="${qty}" data-demo="${isDemo(h) ? '1' : '0'}" data-closed="${esc(JSON.stringify(o.closed || {}))}" data-hours="${esc(JSON.stringify(ListingD2.hoursByWeekday(o.hourRows)))}" data-day-hours="${esc(JSON.stringify(o.dayHours || {}))}" data-max-people="${SearchQuery.BOOKING_SPOTS}" data-cancel="${esc(cancelLine)}">
 <input type="hidden" name="hotel" value="${esc(h.slug)}">
 <div class="d2-grab" aria-hidden="true"></div>
 <div class="d2-top"><h2 id="d2-book-h">Book a pass</h2><button type="button" class="d2-x" id="d2-close" aria-label="Close" hidden>${icon('x')}</button></div>
@@ -568,7 +568,7 @@ function listingHtmlD2(opts) {
   const exploreBlock = HotelExplore.sectionHtml(h, exploreData, exploreCtx);
   const hasExplore = Boolean(HotelExplore.visible(exploreData));
   const headDesc = heroDescHtml(h);
-  return `<div class="d2 listing" id="d2-root">${SPRITE}
+  return `<div class="d2 listing" id="d2-root" data-hdc-event-load="view_item" data-hdc-item-id="${esc(h.slug)}" data-hdc-value="${from}">${SPRITE}
 <div class="d2-page">
 ${galleryHtml(h, null)}
 <div class="d2-layout">
